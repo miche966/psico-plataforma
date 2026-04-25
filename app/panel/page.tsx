@@ -3,11 +3,19 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
+interface Candidato {
+  id: string
+  nombre: string
+  apellido: string
+  email: string
+}
+
 interface Sesion {
   id: string
   finalizada_en: string
   puntaje_bruto: Record<string, number>
   candidato_id: string | null
+  candidato?: Candidato
 }
 
 const etiquetas: Record<string, string> = {
@@ -36,7 +44,7 @@ export default function PanelPage() {
   }, [])
 
   async function cargarSesiones() {
-    const { data, error } = await supabase
+    const { data: sesionesData, error } = await supabase
       .from('sesiones')
       .select('*')
       .order('finalizada_en', { ascending: false })
@@ -46,7 +54,27 @@ export default function PanelPage() {
       return
     }
 
-    setSesiones(data || [])
+    const candidatoIds = sesionesData
+      ?.filter(s => s.candidato_id)
+      .map(s => s.candidato_id) || []
+
+    let candidatos: Candidato[] = []
+
+    if (candidatoIds.length > 0) {
+      const { data } = await supabase
+        .from('candidatos')
+        .select('id, nombre, apellido, email')
+        .in('id', candidatoIds)
+
+      candidatos = data || []
+    }
+
+    const sesionesConCandidato = sesionesData?.map(sesion => ({
+      ...sesion,
+      candidato: candidatos.find(c => c.id === sesion.candidato_id)
+    })) || []
+
+    setSesiones(sesionesConCandidato)
     setCargando(false)
   }
 
@@ -61,36 +89,41 @@ export default function PanelPage() {
     })
   }
 
+  function nombreCandidato(sesion: Sesion) {
+    if (sesion.candidato) {
+      return `${sesion.candidato.nombre} ${sesion.candidato.apellido}`
+    }
+    return 'Evaluación anónima'
+  }
+
   if (cargando) {
-    return (
-      <div style={s.centro}>
-        <p>Cargando panel...</p>
-      </div>
-    )
+    return <div style={s.centro}><p>Cargando panel...</p></div>
   }
 
   return (
     <div style={s.contenedor}>
       <div style={s.encabezado}>
-        <h1 style={s.titulo}>Panel del evaluador</h1>
-        <a href="/test" style={s.botonLink}>
-          + Nueva evaluación
-        </a>
+        <div>
+          <h1 style={s.titulo}>Panel del evaluador</h1>
+          <p style={s.subtitulo}>
+            {sesiones.length} evaluación{sesiones.length !== 1 ? 'es' : ''} registrada{sesiones.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <a href="/candidatos" style={s.botonSecundario}>Candidatos</a>
+          <a href="/test" style={s.botonPrimario}>+ Nueva evaluación</a>
+        </div>
       </div>
-
-      <p style={s.subtitulo}>
-        {sesiones.length} evaluación{sesiones.length !== 1 ? 'es' : ''} registrada{sesiones.length !== 1 ? 's' : ''}
-      </p>
 
       {sesiones.length === 0 ? (
         <div style={s.vacio}>
           <p>No hay evaluaciones todavía.</p>
-          <a href="/test" style={s.botonLink}>Iniciar primera evaluación</a>
+          <a href="/candidatos" style={s.botonPrimario}>Ir a candidatos</a>
         </div>
       ) : (
         <div style={s.grid}>
           <div style={s.lista}>
-            {sesiones.map((sesion, index) => (
+            {sesiones.map(sesion => (
               <div
                 key={sesion.id}
                 style={{
@@ -100,9 +133,12 @@ export default function PanelPage() {
                 onClick={() => setSeleccionada(sesion)}
               >
                 <div style={s.tarjetaEncabezado}>
-                  <span style={s.tarjetaTitulo}>
-                    Evaluación #{sesiones.length - index}
-                  </span>
+                  <div>
+                    <div style={s.tarjetaNombre}>{nombreCandidato(sesion)}</div>
+                    {sesion.candidato && (
+                      <div style={s.tarjetaEmail}>{sesion.candidato.email}</div>
+                    )}
+                  </div>
                   <span style={s.tarjetaFecha}>
                     {formatearFecha(sesion.finalizada_en)}
                   </span>
@@ -129,13 +165,13 @@ export default function PanelPage() {
           {seleccionada && (
             <div style={s.detalle}>
               <div style={s.detalleEncabezado}>
-                <h2 style={s.detalleTitulo}>Detalle del perfil</h2>
-                <button
-                  style={s.cerrar}
-                  onClick={() => setSeleccionada(null)}
-                >
-                  ✕
-                </button>
+                <div>
+                  <h2 style={s.detalleTitulo}>{nombreCandidato(seleccionada)}</h2>
+                  {seleccionada.candidato && (
+                    <p style={s.detalleEmail}>{seleccionada.candidato.email}</p>
+                  )}
+                </div>
+                <button style={s.cerrar} onClick={() => setSeleccionada(null)}>✕</button>
               </div>
               <p style={s.detalleInfo}>
                 Completado: {formatearFecha(seleccionada.finalizada_en)}
@@ -145,10 +181,7 @@ export default function PanelPage() {
                   <div key={factor} style={s.factorDetalle}>
                     <div style={s.factorDetalleEncabezado}>
                       <span style={s.factorDetalleNombre}>{etiquetas[factor]}</span>
-                      <span style={{
-                        ...s.factorDetalleValor,
-                        color: colores[factor] || '#2563eb'
-                      }}>
+                      <span style={{ ...s.factorDetalleValor, color: colores[factor] }}>
                         {valor} / 5
                       </span>
                     </div>
@@ -156,12 +189,10 @@ export default function PanelPage() {
                       <div style={{
                         ...s.barraGrandeRelleno,
                         width: `${(valor / 5) * 100}%`,
-                        background: colores[factor] || '#2563eb'
+                        background: colores[factor]
                       }} />
                     </div>
-                    <p style={s.factorDescripcion}>
-                      {interpretacion(factor, valor)}
-                    </p>
+                    <p style={s.factorDescripcion}>{interpretacion(factor, valor)}</p>
                   </div>
                 ))}
               </div>
@@ -175,7 +206,6 @@ export default function PanelPage() {
 
 function interpretacion(factor: string, valor: number): string {
   const nivel = valor >= 4 ? 'alto' : valor >= 3 ? 'moderado' : 'bajo'
-
   const textos: Record<string, Record<string, string>> = {
     extraversion: {
       alto: 'Persona sociable, enérgica y orientada hacia el mundo externo. Disfruta del trabajo en equipo y los entornos dinámicos.',
@@ -203,86 +233,42 @@ function interpretacion(factor: string, valor: number): string {
       bajo: 'Preferencia por métodos conocidos y entornos predecibles. Destaca en roles con procesos claros y definidos.'
     }
   }
-
   return textos[factor]?.[nivel] || ''
 }
 
 const s = {
-  centro: {
-    display: 'flex', justifyContent: 'center',
-    alignItems: 'center', height: '100vh',
-    fontFamily: 'sans-serif'
-  } as React.CSSProperties,
-  contenedor: {
-    maxWidth: '1100px', margin: '0 auto',
-    padding: '2rem', fontFamily: 'sans-serif'
-  } as React.CSSProperties,
-  encabezado: {
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: '0.5rem'
-  } as React.CSSProperties,
-  titulo: {
-    fontSize: '1.5rem', fontWeight: '600', color: '#1e293b', margin: 0
-  } as React.CSSProperties,
-  subtitulo: {
-    fontSize: '0.875rem', color: '#64748b', marginBottom: '1.5rem'
-  } as React.CSSProperties,
-  botonLink: {
-    padding: '0.5rem 1rem', background: '#2563eb', color: '#fff',
-    borderRadius: '8px', textDecoration: 'none', fontSize: '0.875rem'
-  } as React.CSSProperties,
-  vacio: {
-    textAlign: 'center' as const, padding: '3rem',
-    color: '#64748b', fontSize: '0.875rem'
-  },
-  grid: {
-    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem'
-  } as React.CSSProperties,
+  centro: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' } as React.CSSProperties,
+  contenedor: { maxWidth: '1100px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' } as React.CSSProperties,
+  encabezado: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' } as React.CSSProperties,
+  titulo: { fontSize: '1.5rem', fontWeight: '600', color: '#1e293b', margin: '0 0 4px' } as React.CSSProperties,
+  subtitulo: { fontSize: '0.875rem', color: '#64748b', margin: 0 } as React.CSSProperties,
+  botonPrimario: { padding: '0.5rem 1rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '0.875rem', cursor: 'pointer', textDecoration: 'none' } as React.CSSProperties,
+  botonSecundario: { padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '0.875rem', textDecoration: 'none' } as React.CSSProperties,
+  vacio: { textAlign: 'center' as const, padding: '3rem', color: '#64748b', fontSize: '0.875rem' },
+  grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' } as React.CSSProperties,
   lista: { display: 'flex', flexDirection: 'column' as const, gap: '0.75rem' },
-  tarjeta: {
-    border: '1.5px solid #e2e8f0', borderRadius: '12px',
-    padding: '1rem 1.25rem', cursor: 'pointer',
-    transition: 'border-color 0.15s ease', background: '#fff'
-  } as React.CSSProperties,
-  tarjetaEncabezado: {
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: '0.75rem'
-  } as React.CSSProperties,
-  tarjetaTitulo: { fontSize: '0.875rem', fontWeight: '600', color: '#1e293b' } as React.CSSProperties,
-  tarjetaFecha: { fontSize: '0.75rem', color: '#94a3b8' } as React.CSSProperties,
+  tarjeta: { border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '1rem 1.25rem', cursor: 'pointer', transition: 'border-color 0.15s ease', background: '#fff' } as React.CSSProperties,
+  tarjetaEncabezado: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' } as React.CSSProperties,
+  tarjetaNombre: { fontSize: '0.875rem', fontWeight: '600', color: '#1e293b' } as React.CSSProperties,
+  tarjetaEmail: { fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' } as React.CSSProperties,
+  tarjetaFecha: { fontSize: '0.75rem', color: '#94a3b8', whiteSpace: 'nowrap' as const } as React.CSSProperties,
   factoresMini: { display: 'flex', flexDirection: 'column' as const, gap: '4px' },
   factorMiniRow: { display: 'flex', alignItems: 'center', gap: '8px' } as React.CSSProperties,
   factorMiniNombre: { fontSize: '11px', color: '#64748b', minWidth: '110px' } as React.CSSProperties,
-  barraMini: {
-    flex: 1, height: '4px', background: '#e2e8f0',
-    borderRadius: '2px', overflow: 'hidden'
-  } as React.CSSProperties,
+  barraMini: { flex: 1, height: '4px', background: '#e2e8f0', borderRadius: '2px', overflow: 'hidden' } as React.CSSProperties,
   barraMiniRelleno: { height: '100%', borderRadius: '2px' } as React.CSSProperties,
   factorMiniValor: { fontSize: '11px', color: '#64748b', minWidth: '20px' } as React.CSSProperties,
-  detalle: {
-    border: '1.5px solid #e2e8f0', borderRadius: '12px',
-    padding: '1.5rem', background: '#fff', alignSelf: 'flex-start' as const,
-    position: 'sticky' as const, top: '1rem'
-  } as React.CSSProperties,
-  detalleEncabezado: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-  } as React.CSSProperties,
+  detalle: { border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem', background: '#fff', alignSelf: 'flex-start' as const, position: 'sticky' as const, top: '1rem' } as React.CSSProperties,
+  detalleEncabezado: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' } as React.CSSProperties,
   detalleTitulo: { fontSize: '1rem', fontWeight: '600', color: '#1e293b', margin: 0 } as React.CSSProperties,
-  cerrar: {
-    background: 'none', border: 'none', cursor: 'pointer',
-    color: '#94a3b8', fontSize: '1rem'
-  } as React.CSSProperties,
+  detalleEmail: { fontSize: '0.75rem', color: '#94a3b8', margin: '2px 0 0' } as React.CSSProperties,
+  cerrar: { background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '1rem' } as React.CSSProperties,
   detalleInfo: { fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.25rem' } as React.CSSProperties,
   factorDetalle: { marginBottom: '1.25rem' } as React.CSSProperties,
-  factorDetalleEncabezado: {
-    display: 'flex', justifyContent: 'space-between', marginBottom: '6px'
-  } as React.CSSProperties,
+  factorDetalleEncabezado: { display: 'flex', justifyContent: 'space-between', marginBottom: '6px' } as React.CSSProperties,
   factorDetalleNombre: { fontSize: '0.875rem', fontWeight: '500', color: '#1e293b' } as React.CSSProperties,
   factorDetalleValor: { fontSize: '0.875rem', fontWeight: '600' } as React.CSSProperties,
-  barraGrande: {
-    width: '100%', height: '8px', background: '#e2e8f0',
-    borderRadius: '4px', overflow: 'hidden', marginBottom: '6px'
-  } as React.CSSProperties,
+  barraGrande: { width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden', marginBottom: '6px' } as React.CSSProperties,
   barraGrandeRelleno: { height: '100%', borderRadius: '4px', transition: 'width 0.3s ease' } as React.CSSProperties,
   factorDescripcion: { fontSize: '0.75rem', color: '#64748b', lineHeight: '1.5', margin: 0 } as React.CSSProperties,
 }
