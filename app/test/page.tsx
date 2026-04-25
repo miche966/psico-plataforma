@@ -68,7 +68,7 @@ export default function TestPage() {
     }
   }
 
-  function calcularResultado(todasLasRespuestas: Respuesta[]) {
+  async function calcularResultado(todasLasRespuestas: Respuesta[]) {
     const factores: Record<string, number[]> = {
       extraversion: [],
       amabilidad: [],
@@ -90,6 +90,39 @@ export default function TestPage() {
     })
 
     setResultado(promedios)
+
+    const { data: sesion, error: errorSesion } = await supabase
+      .from('sesiones')
+      .insert({
+        test_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        estado: 'finalizado',
+        iniciada_en: new Date().toISOString(),
+        finalizada_en: new Date().toISOString(),
+        puntaje_bruto: promedios
+      })
+      .select()
+      .single()
+
+    if (errorSesion || !sesion) {
+      console.error('Error guardando sesión completo:', JSON.stringify(errorSesion))
+      console.error('Sesion recibida:', JSON.stringify(sesion))
+      return
+    }
+
+    const respuestasParaGuardar = todasLasRespuestas.map(r => ({
+      sesion_id: sesion.id,
+      item_id: r.item_id,
+      valor: r.valor,
+      tiempo_respuesta: 0
+    }))
+
+    const { error: errorRespuestas } = await supabase
+      .from('respuestas')
+      .insert(respuestasParaGuardar)
+
+    if (errorRespuestas) {
+      console.error('Error guardando respuestas:', errorRespuestas)
+    }
   }
 
   const etiquetas: Record<string, string> = {
