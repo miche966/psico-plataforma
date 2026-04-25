@@ -19,7 +19,11 @@ interface Respuesta {
   inverso: boolean
 }
 
+import { useSearchParams } from 'next/navigation'
+
 export default function TestPage() {
+  const searchParams = useSearchParams()
+  const candidatoId = searchParams.get('candidato')
   const [items, setItems] = useState<Item[]>([])
   const [itemActual, setItemActual] = useState(0)
   const [respuestas, setRespuestas] = useState<Respuesta[]>([])
@@ -95,6 +99,7 @@ export default function TestPage() {
       .from('sesiones')
       .insert({
         test_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        candidato_id: candidatoId || null,
         estado: 'finalizado',
         iniciada_en: new Date().toISOString(),
         finalizada_en: new Date().toISOString(),
