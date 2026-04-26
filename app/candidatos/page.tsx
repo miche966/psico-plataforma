@@ -71,7 +71,13 @@ export default function CandidatosPage() {
   }
 
   function copiarLink(candidatoId: string, test: string = 'bigfive') {
-    const ruta = test === 'hexaco' ? '/hexaco' : '/test'
+    const rutas: Record<string, string> = {
+      bigfive: '/test',
+      hexaco: '/hexaco',
+      numerico: '/numerico',
+      verbal: '/verbal'
+    }
+    const ruta = rutas[test] || '/test'
     const link = `${window.location.origin}${ruta}?candidato=${candidatoId}`
     navigator.clipboard.writeText(link)
     setLinkCopiado(candidatoId + test)
@@ -213,6 +219,15 @@ export default function CandidatosPage() {
                       onClick={() => copiarLink(candidato.id, 'numerico')}
                     >
                       {linkCopiado === candidato.id + 'numerico' ? '✓ Copiado' : 'Numérico'}
+                    </button>
+                    <button
+                      style={{
+                        ...s.botonCopiar,
+                        background: linkCopiado === candidato.id + 'verbal' ? '#16a34a' : '#0891b2',
+                      }}
+                      onClick={() => copiarLink(candidato.id, 'verbal')}
+                    >
+                      {linkCopiado === candidato.id + 'verbal' ? '✓ Copiado' : 'Verbal'}
                     </button>
                   </div>
                 </td>
