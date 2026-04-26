@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import jsPDF from 'jspdf'
 
 interface Candidato {
   id: string
@@ -171,7 +172,15 @@ export default function PanelPage() {
                     <p style={s.detalleEmail}>{seleccionada.candidato.email}</p>
                   )}
                 </div>
-                <button style={s.cerrar} onClick={() => setSeleccionada(null)}>✕</button>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+  <button
+    style={s.botonPDF}
+    onClick={() => generarPDF(seleccionada)}
+  >
+    Descargar PDF
+  </button>
+  <button style={s.cerrar} onClick={() => setSeleccionada(null)}>✕</button>
+</div>
               </div>
               <p style={s.detalleInfo}>
                 Completado: {formatearFecha(seleccionada.finalizada_en)}
@@ -203,7 +212,106 @@ export default function PanelPage() {
     </div>
   )
 }
+async function generarPDF(sesion: Sesion) {
+  const doc = new jsPDF()
+  const nombre = sesion.candidato
+    ? `${sesion.candidato.nombre} ${sesion.candidato.apellido}`
+    : 'Evaluación anónima'
+  const fecha = new Date(sesion.finalizada_en).toLocaleDateString('es-AR', {
+    day: '2-digit', month: '2-digit', year: 'numeric'
+  })
 
+  const coloresRGB: Record<string, [number, number, number]> = {
+    extraversion: [37, 99, 235],
+    amabilidad: [22, 163, 74],
+    responsabilidad: [147, 51, 234],
+    neuroticismo: [220, 38, 38],
+    apertura: [234, 88, 12]
+  }
+
+  const etiquetasPDF: Record<string, string> = {
+    extraversion: 'Extraversión',
+    amabilidad: 'Amabilidad',
+    responsabilidad: 'Responsabilidad',
+    neuroticismo: 'Neuroticismo',
+    apertura: 'Apertura'
+  }
+
+  doc.setFillColor(37, 99, 235)
+  doc.rect(0, 0, 210, 35, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(20)
+  doc.setFont('helvetica', 'bold')
+  doc.text('PsicoPlataforma', 20, 15)
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Informe de Evaluación Psicolaboral', 20, 25)
+
+  doc.setTextColor(30, 41, 59)
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text(nombre, 20, 55)
+
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(100, 116, 139)
+  if (sesion.candidato?.email) {
+    doc.text(`Email: ${sesion.candidato.email}`, 20, 63)
+  }
+  doc.text(`Fecha: ${fecha}`, 20, 70)
+  doc.text('Instrumento: Big Five IPIP-NEO (30 ítems)', 20, 77)
+
+  doc.setDrawColor(226, 232, 240)
+  doc.line(20, 85, 190, 85)
+
+  doc.setFontSize(13)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(30, 41, 59)
+  doc.text('Perfil de Personalidad', 20, 97)
+
+  let y = 110
+  if (sesion.puntaje_bruto) {
+    Object.entries(sesion.puntaje_bruto).forEach(([factor, valor]) => {
+      const rgb = coloresRGB[factor] || [37, 99, 235]
+      const etiqueta = etiquetasPDF[factor] || factor
+      const nivel = valor >= 4 ? 'Alto' : valor >= 3 ? 'Moderado' : 'Bajo'
+      const porcentaje = (valor / 5) * 150
+
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(30, 41, 59)
+      doc.text(etiqueta, 20, y)
+
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(rgb[0], rgb[1], rgb[2])
+      doc.text(`${nivel} (${valor}/5)`, 160, y)
+
+      doc.setFillColor(226, 232, 240)
+      doc.rect(20, y + 3, 150, 5, 'F')
+      doc.setFillColor(rgb[0], rgb[1], rgb[2])
+      doc.rect(20, y + 3, porcentaje, 5, 'F')
+
+      const interp = interpretacion(factor, valor)
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(100, 116, 139)
+      const lineas = doc.splitTextToSize(interp, 170)
+      doc.text(lineas, 20, y + 13)
+
+      y += 13 + lineas.length * 5 + 10
+    })
+  }
+
+  doc.setDrawColor(226, 232, 240)
+  doc.line(20, y + 5, 190, y + 5)
+  doc.setFontSize(8)
+  doc.setTextColor(148, 163, 184)
+  doc.text('PsicoPlataforma · seleccion@repúblicamicrofinanzas.com.uy · WhatsApp: 092 651 770', 20, y + 13)
+  doc.text('Instrumento: IPIP-NEO Big Five · Dominio público · Baremación en construcción', 20, y + 19)
+
+  doc.save(`informe-${nombre.replace(/ /g, '-').toLowerCase()}-${fecha.replace(/\//g, '-')}.pdf`)
+}
 function interpretacion(factor: string, valor: number): string {
   const nivel = valor >= 4 ? 'alto' : valor >= 3 ? 'moderado' : 'bajo'
   const textos: Record<string, Record<string, string>> = {
@@ -271,4 +379,10 @@ const s = {
   barraGrande: { width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden', marginBottom: '6px' } as React.CSSProperties,
   barraGrandeRelleno: { height: '100%', borderRadius: '4px', transition: 'width 0.3s ease' } as React.CSSProperties,
   factorDescripcion: { fontSize: '0.75rem', color: '#64748b', lineHeight: '1.5', margin: 0 } as React.CSSProperties,
+  botonPDF: {
+    padding: '0.375rem 0.875rem',
+    background: '#2563eb', color: '#fff',
+    border: 'none', borderRadius: '6px',
+    fontSize: '0.75rem', cursor: 'pointer'
+  } as React.CSSProperties,
 }
