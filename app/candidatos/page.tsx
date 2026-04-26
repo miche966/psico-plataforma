@@ -70,10 +70,11 @@ export default function CandidatosPage() {
     cargarCandidatos()
   }
 
-  function copiarLink(candidatoId: string) {
-    const link = `${window.location.origin}/test?candidato=${candidatoId}`
+  function copiarLink(candidatoId: string, test: string = 'bigfive') {
+    const ruta = test === 'hexaco' ? '/hexaco' : '/test'
+    const link = `${window.location.origin}${ruta}?candidato=${candidatoId}`
     navigator.clipboard.writeText(link)
-    setLinkCopiado(candidatoId)
+    setLinkCopiado(candidatoId + test)
     setTimeout(() => setLinkCopiado(null), 2000)
   }
 
@@ -185,15 +186,26 @@ export default function CandidatosPage() {
                 <td style={s.td}>{candidato.documento || '—'}</td>
                 <td style={s.td}>{formatearFecha(candidato.creado_en)}</td>
                 <td style={s.td}>
-                  <button
-                    style={{
-                      ...s.botonCopiar,
-                      background: linkCopiado === candidato.id ? '#16a34a' : '#2563eb',
-                    }}
-                    onClick={() => copiarLink(candidato.id)}
-                  >
-                    {linkCopiado === candidato.id ? '✓ Copiado' : 'Copiar link'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      style={{
+                        ...s.botonCopiar,
+                        background: linkCopiado === candidato.id + 'bigfive' ? '#16a34a' : '#2563eb',
+                      }}
+                      onClick={() => copiarLink(candidato.id, 'bigfive')}
+                    >
+                      {linkCopiado === candidato.id + 'bigfive' ? '✓ Copiado' : 'Big Five'}
+                    </button>
+                    <button
+                      style={{
+                        ...s.botonCopiar,
+                        background: linkCopiado === candidato.id + 'hexaco' ? '#16a34a' : '#0891b2',
+                      }}
+                      onClick={() => copiarLink(candidato.id, 'hexaco')}
+                    >
+                      {linkCopiado === candidato.id + 'hexaco' ? '✓ Copiado' : 'HEXACO'}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
