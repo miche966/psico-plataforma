@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import jsPDF from 'jspdf'
+import { useRouter } from 'next/navigation'
 
 interface Candidato {
   id: string
@@ -39,6 +40,18 @@ export default function PanelPage() {
   const [sesiones, setSesiones] = useState<Sesion[]>([])
   const [cargando, setCargando] = useState(true)
   const [seleccionada, setSeleccionada] = useState<Sesion | null>(null)
+  const router = useRouter()
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) router.push('/login')
+    })
+  }, [])
+
+  async function cerrarSesion() {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   useEffect(() => {
     cargarSesiones()
@@ -113,8 +126,9 @@ export default function PanelPage() {
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <a href="/candidatos" style={s.botonSecundario}>Candidatos</a>
           <a href="/test" style={s.botonPrimario}>+ Nueva evaluación</a>
+          <button onClick={cerrarSesion} style={s.botonCerrar}>Cerrar sesión</button>
         </div>
-      </div>
+     </div>
 
       {sesiones.length === 0 ? (
         <div style={s.vacio}>
@@ -384,5 +398,14 @@ const s = {
     background: '#2563eb', color: '#fff',
     border: 'none', borderRadius: '6px',
     fontSize: '0.75rem', cursor: 'pointer'
+  } as React.CSSProperties,
+  botonCerrar: {
+    padding: '0.5rem 1rem',
+    background: 'transparent',
+    color: '#94a3b8',
+    border: '1px solid #e2e8f0',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    cursor: 'pointer'
   } as React.CSSProperties,
 }
