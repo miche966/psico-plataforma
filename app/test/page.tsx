@@ -24,6 +24,20 @@ import { useSearchParams } from 'next/navigation'
 export default function TestPage() {
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
+  const [nombreCandidato, setNombreCandidato] = useState<string>('')
+
+  useEffect(() => {
+    if (candidatoId) {
+      supabase
+        .from('candidatos')
+        .select('nombre, apellido')
+        .eq('id', candidatoId)
+        .single()
+        .then(({ data }) => {
+          if (data) setNombreCandidato(`${data.nombre} ${data.apellido}`)
+        })
+    }
+  }, [candidatoId])
   const [items, setItems] = useState<Item[]>([])
   const [itemActual, setItemActual] = useState(0)
   const [respuestas, setRespuestas] = useState<Respuesta[]>([])
@@ -149,31 +163,30 @@ export default function TestPage() {
   if (finalizado) {
     return (
       <div style={estilos.contenedor}>
-        <h1 style={estilos.titulo}>Resultado — Big Five</h1>
-        <p style={estilos.subtitulo}>Escala del 1 al 5</p>
-        {Object.entries(resultado).map(([factor, promedio]) => (
-          <div key={factor} style={estilos.factorRow}>
-            <span style={estilos.factorNombre}>{etiquetas[factor]}</span>
-            <div style={estilos.barraFondo}>
-              <div style={{
-                ...estilos.barraRelleno,
-                width: `${(promedio / 5) * 100}%`
-              }} />
-            </div>
-            <span style={estilos.factorValor}>{promedio}</span>
+        <div style={estilos.checkCirculo}>✓</div>
+        <h1 style={estilos.titulo}>¡Evaluación completada!</h1>
+        {nombreCandidato && (
+          <p style={estilos.nombreCandidato}>Gracias, <strong>{nombreCandidato}</strong>.</p>
+        )}
+        <p style={estilos.mensajeConfirmacion}>
+          Tu evaluación fue registrada correctamente. Tus respuestas han sido enviadas al equipo de selección para su análisis.
+        </p>
+        <div style={estilos.contactoBox}>
+          <p style={estilos.contactoTitulo}>Próximos pasos</p>
+          <p style={estilos.contactoTexto}>
+            El equipo de selección se pondrá en contacto contigo a la brevedad. Si tenés alguna consulta, podés comunicarte por los siguientes medios:
+          </p>
+          <div style={estilos.contactoDetalle}>
+            <p style={estilos.contactoItem}>
+              📧 <a href="mailto:seleccion@repúblicamicrofinanzas.com.uy" style={estilos.link}>
+                seleccion@repúblicamicrofinanzas.com.uy
+              </a>
+            </p>
+            <p style={estilos.contactoItem}>
+              💬 WhatsApp: <a href="https://wa.me/598092651770" style={estilos.link}>092 651 770</a>
+            </p>
           </div>
-        ))}
-        <button
-          style={estilos.boton}
-          onClick={() => {
-            setItemActual(0)
-            setRespuestas([])
-            setFinalizado(false)
-            setResultado({})
-          }}
-        >
-          Reiniciar test
-        </button>
+        </div>
       </div>
     )
   }
@@ -324,5 +337,34 @@ const estilos = {
     borderRadius: '8px',
     fontSize: '1rem',
     cursor: 'pointer'
-  } as React.CSSProperties
+  } as React.CSSProperties,
+  checkCirculo: {
+    width: '64px', height: '64px', borderRadius: '50%',
+    background: '#16a34a', color: '#fff', fontSize: '2rem',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    margin: '0 auto 1.5rem'
+  } as React.CSSProperties,
+  nombreCandidato: {
+    fontSize: '1.125rem', color: '#1e293b',
+    textAlign: 'center' as const, margin: '0 0 1rem'
+  } as React.CSSProperties,
+  mensajeConfirmacion: {
+    fontSize: '0.9rem', color: '#475569', lineHeight: '1.6',
+    textAlign: 'center' as const, marginBottom: '2rem'
+  } as React.CSSProperties,
+  contactoBox: {
+    background: '#f8fafc', border: '1px solid #e2e8f0',
+    borderRadius: '12px', padding: '1.5rem'
+  } as React.CSSProperties,
+  contactoTitulo: {
+    fontSize: '0.875rem', fontWeight: '600',
+    color: '#1e293b', margin: '0 0 0.5rem'
+  } as React.CSSProperties,
+  contactoTexto: {
+    fontSize: '0.875rem', color: '#64748b',
+    lineHeight: '1.6', margin: '0 0 1rem'
+  } as React.CSSProperties,
+  contactoDetalle: { display: 'flex', flexDirection: 'column' as const, gap: '0.5rem' },
+  contactoItem: { fontSize: '0.875rem', color: '#1e293b', margin: 0 } as React.CSSProperties,
+  link: { color: '#2563eb', textDecoration: 'none' } as React.CSSProperties,
 }
