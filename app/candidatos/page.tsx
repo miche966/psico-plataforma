@@ -24,7 +24,8 @@ export default function CandidatosPage() {
     documento: ''
   })
   const [guardando, setGuardando] = useState(false)
-
+const [nivelIcar, setNivelIcar] = useState('3')
+  const [rotacionIcar, setRotacionIcar] = useState('si')
   useEffect(() => {
     cargarCandidatos()
   }, [])
@@ -70,17 +71,21 @@ export default function CandidatosPage() {
     cargarCandidatos()
   }
 
-  function copiarLink(candidatoId: string, test: string = 'bigfive') {
+  function copiarLink(candidatoId: string, test: string = 'bigfive', opciones?: Record<string, string>) {
     const rutas: Record<string, string> = {
       bigfive: '/test',
       hexaco: '/hexaco',
       numerico: '/numerico',
       verbal: '/verbal',
-      integridad: '/integridad'
+      integridad: '/integridad',
+      icar: '/icar'
     }
     const ruta = rutas[test] || '/test'
-    const link = `${window.location.origin}${ruta}?candidato=${candidatoId}`
-    navigator.clipboard.writeText(link)
+    let url = `${window.location.origin}${ruta}?candidato=${candidatoId}`
+    if (opciones) {
+      Object.entries(opciones).forEach(([k, v]) => { url += `&${k}=${v}` })
+    }
+    navigator.clipboard.writeText(url)
     setLinkCopiado(candidatoId + test)
     setTimeout(() => setLinkCopiado(null), 2000)
   }
@@ -230,6 +235,7 @@ export default function CandidatosPage() {
                     >
                       {linkCopiado === candidato.id + 'verbal' ? '✓ Copiado' : 'Verbal'}
                     </button>
+                    
                     <button
                       style={{
                         ...s.botonCopiar,
@@ -239,6 +245,43 @@ export default function CandidatosPage() {
                     >
                       {linkCopiado === candidato.id + 'integridad' ? '✓ Copiado' : 'Integridad'}
                     </button>
+
+                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '4px' }}>
+                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        <select
+                          style={{ fontSize: '11px', padding: '3px 6px', border: '0.5px solid #e2e8f0', borderRadius: '6px', background: '#fff', color: '#1e293b' }}
+                          value={nivelIcar}
+                          onChange={e => setNivelIcar(e.target.value)}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <option value="1">Básico</option>
+                          <option value="2">Intermedio</option>
+                          <option value="3">Avanzado</option>
+                        </select>
+                        <select
+                          style={{ fontSize: '11px', padding: '3px 6px', border: '0.5px solid #e2e8f0', borderRadius: '6px', background: '#fff', color: '#1e293b' }}
+                          value={rotacionIcar}
+                          onChange={e => setRotacionIcar(e.target.value)}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <option value="si">Con rotación</option>
+                          <option value="no">Sin rotación</option>
+                        </select>
+                      </div>
+                      <button
+                        style={{
+                          ...s.botonCopiar,
+                          background: linkCopiado === candidato.id + 'icar' ? '#16a34a' : '#185FA5',
+                        }}
+                        onClick={() => copiarLink(candidato.id, 'icar', {
+                          nivel: nivelIcar,
+                          rotacion: rotacionIcar === 'no' ? 'no' : undefined
+                        } as Record<string, string>)}
+                      >
+                        {linkCopiado === candidato.id + 'icar' ? '✓ Copiado' : 'ICAR'}
+                      </button>
+                    </div>
+
                   </div>
                 </td>
               </tr>
