@@ -75,7 +75,8 @@ export default function CandidatosPage() {
       bigfive: '/test',
       hexaco: '/hexaco',
       numerico: '/numerico',
-      verbal: '/verbal'
+      verbal: '/verbal',
+      integridad: '/integridad'
     }
     const ruta = rutas[test] || '/test'
     const link = `${window.location.origin}${ruta}?candidato=${candidatoId}`
@@ -228,6 +229,15 @@ export default function CandidatosPage() {
                       onClick={() => copiarLink(candidato.id, 'verbal')}
                     >
                       {linkCopiado === candidato.id + 'verbal' ? '✓ Copiado' : 'Verbal'}
+                    </button>
+                    <button
+                      style={{
+                        ...s.botonCopiar,
+                        background: linkCopiado === candidato.id + 'integridad' ? '#16a34a' : '#059669',
+                      }}
+                      onClick={() => copiarLink(candidato.id, 'integridad')}
+                    >
+                      {linkCopiado === candidato.id + 'integridad' ? '✓ Copiado' : 'Integridad'}
                     </button>
                   </div>
                 </td>
