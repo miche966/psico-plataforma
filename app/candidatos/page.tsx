@@ -186,7 +186,7 @@ export default function CandidatosPage() {
                 <td style={s.td}>{candidato.documento || '—'}</td>
                 <td style={s.td}>{formatearFecha(candidato.creado_en)}</td>
                 <td style={s.td}>
-                  <div style={{ display: 'flex', gap: '6px' }}>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                     <button
                       style={{
                         ...s.botonCopiar,
@@ -204,6 +204,15 @@ export default function CandidatosPage() {
                       onClick={() => copiarLink(candidato.id, 'hexaco')}
                     >
                       {linkCopiado === candidato.id + 'hexaco' ? '✓ Copiado' : 'HEXACO'}
+                    </button>
+                    <button
+                      style={{
+                        ...s.botonCopiar,
+                        background: linkCopiado === candidato.id + 'numerico' ? '#16a34a' : '#7c3aed',
+                      }}
+                      onClick={() => copiarLink(candidato.id, 'numerico')}
+                    >
+                      {linkCopiado === candidato.id + 'numerico' ? '✓ Copiado' : 'Numérico'}
                     </button>
                   </div>
                 </td>
