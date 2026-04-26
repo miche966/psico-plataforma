@@ -32,14 +32,24 @@ export default function Home() {
             <div style={s.tarjetaDesc}>Iniciar el Big Five directamente</div>
           </div>
         </Link>
-      </div>
-<Link href="/estadisticas" style={s.tarjeta}>
+
+        <Link href="/estadisticas" style={s.tarjeta}>
           <div style={{ ...s.icono, background: '#f3e8ff' }}>📈</div>
           <div>
             <div style={s.tarjetaTitulo}>Estadísticas</div>
             <div style={s.tarjetaDesc}>Comparación, promedios y gráfico radar</div>
           </div>
         </Link>
+
+        <Link href="/procesos" style={s.tarjeta}>
+          <div style={{ ...s.icono, background: '#fce7f3' }}>📋</div>
+          <div>
+            <div style={s.tarjetaTitulo}>Procesos</div>
+            <div style={s.tarjetaDesc}>Agrupá candidatos por cargo y proceso</div>
+          </div>
+        </Link>
+      </div>
+
       <div style={s.footer}>
         <p style={s.footerText}>Big Five IPIP-NEO · Dominio público · Baremación propia en construcción</p>
       </div>
