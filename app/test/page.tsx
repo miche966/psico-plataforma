@@ -25,6 +25,8 @@ export default function TestPage() {
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
   const [nombreCandidato, setNombreCandidato] = useState<string>('')
+  const [tiempoInicio] = useState(() => Date.now())
+  const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0)
 
   useEffect(() => {
     if (candidatoId) {
@@ -48,6 +50,14 @@ export default function TestPage() {
   useEffect(() => {
     cargarItems()
   }, [])
+
+  useEffect(() => {
+    if (finalizado) return
+    const timer = setInterval(() => {
+      setTiempoTranscurrido(Math.floor((Date.now() - tiempoInicio) / 1000))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [finalizado, tiempoInicio])
 
   async function cargarItems() {
     const { data, error } = await supabase
@@ -205,9 +215,14 @@ export default function TestPage() {
   return (
     <div style={estilos.contenedor}>
       <div style={estilos.encabezado}>
-        <span style={estilos.progresotexto}>
-          {itemActual + 1} de {items.length}
-        </span>
+         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <span style={estilos.progresotexto}>
+            {itemActual + 1} de {items.length}
+          </span>
+          <span style={{ fontSize: '0.75rem', color: tiempoTranscurrido > 900 ? '#dc2626' : '#94a3b8' }}>
+            {Math.floor(tiempoTranscurrido / 60)}:{String(tiempoTranscurrido % 60).padStart(2, '0')} / 15:00
+          </span>
+        </div>
         <div style={estilos.barraFondo}>
           <div style={{
             ...estilos.barraRelleno,

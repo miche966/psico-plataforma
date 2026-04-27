@@ -21,7 +21,7 @@ export default function VerbalPage() {
   const [finalizado, setFinalizado] = useState(false)
   const [puntaje, setPuntaje] = useState({ correctas: 0, total: 0 })
   const [nombreCandidato, setNombreCandidato] = useState('')
-  const [tiempoRestante, setTiempoRestante] = useState(45)
+  const [tiempoRestante, setTiempoRestante] = useState(60)
   const [seleccionada, setSeleccionada] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
@@ -52,7 +52,7 @@ export default function VerbalPage() {
     } else {
       setRespuestas(nuevasRespuestas)
       setItemActual(itemActual + 1)
-      setTiempoRestante(45)
+      setTiempoRestante(60)
       setSeleccionada(null)
     }
   }, [items, itemActual, respuestas])
@@ -63,7 +63,7 @@ export default function VerbalPage() {
       setTiempoRestante(prev => {
         if (prev <= 1) {
           avanzar()
-          return 45
+          return 60
         }
         return prev - 1
       })
@@ -215,7 +215,7 @@ export default function VerbalPage() {
       <div style={s.barraTiempo}>
         <div style={{
           ...s.barraTiempoRelleno,
-          width: `${(tiempoRestante / 45) * 100}%`,
+          width: `${(tiempoRestante / 60) * 100}%`,
           background: tiempoColor
         }} />
       </div>

@@ -24,6 +24,8 @@ export default function SjtCobranzasPage() {
   const [seleccionada, setSeleccionada] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
+  const [tiempoInicio] = useState(() => Date.now())
+  const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0)
 
   useEffect(() => {
     cargarItems()
@@ -59,6 +61,14 @@ export default function SjtCobranzasPage() {
     }, 1000)
     return () => clearInterval(timer)
   }, [items, finalizado, avanzar])
+
+  useEffect(() => {
+    if (finalizado) return
+    const timer = setInterval(() => {
+      setTiempoTranscurrido(Math.floor((Date.now() - tiempoInicio) / 1000))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [finalizado, tiempoInicio])
 
   async function cargarItems() {
     const { data, error } = await supabase
@@ -142,9 +152,14 @@ export default function SjtCobranzasPage() {
           <span style={s.testNombre}>SJT — Cobranzas Telefónicas</span>
           <div style={{ ...s.cronometro, color: tiempoColor }}>{tiempoRestante}s</div>
         </div>
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '0.4rem', alignItems: 'center' }}>
-          <span style={s.progresoTexto}>{itemActual + 1} de {items.length}</span>
-          <span style={s.badge}>{factorLabel[item.factor] || item.factor}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <span style={s.progresoTexto}>{itemActual + 1} de {items.length}</span>
+            <span style={s.badge}>{factorLabel[item.factor] || item.factor}</span>
+          </div>
+          <span style={{ fontSize: '0.75rem', color: tiempoTranscurrido > 900 ? '#dc2626' : '#94a3b8' }}>
+            {Math.floor(tiempoTranscurrido / 60)}:{String(tiempoTranscurrido % 60).padStart(2, '0')} / 15:00
+          </span>
         </div>
         <div style={s.barraFondo}>
           <div style={{ ...s.barraRelleno, width: `${progreso}%` }} />

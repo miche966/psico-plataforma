@@ -28,6 +28,8 @@ export default function CreatividadPage() {
   const [nombreCandidato, setNombreCandidato] = useState('')
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
+  const [tiempoInicio] = useState(() => Date.now())
+  const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0)
 
   useEffect(() => {
     cargarItems()
@@ -37,6 +39,14 @@ export default function CreatividadPage() {
         .then(({ data }) => { if (data) setNombreCandidato(`${data.nombre} ${data.apellido}`) })
     }
   }, [candidatoId])
+
+  useEffect(() => {
+    if (finalizado) return
+    const timer = setInterval(() => {
+      setTiempoTranscurrido(Math.floor((Date.now() - tiempoInicio) / 1000))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [finalizado, tiempoInicio])
 
   async function cargarItems() {
     const { data, error } = await supabase
@@ -142,10 +152,15 @@ export default function CreatividadPage() {
     <div style={s.contenedor}>
       <div style={s.encabezado}>
         <div style={s.testNombre}>Creatividad e Innovación</div>
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '0.4rem', alignItems: 'center' }}>
-          <span style={s.progresoTexto}>{itemActual + 1} de {items.length}</span>
-          <span style={{ ...s.badge, background: colorFactor + '20', color: colorFactor }}>
-            {factorLabel[item.factor] || item.factor}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <span style={s.progresoTexto}>{itemActual + 1} de {items.length}</span>
+            <span style={{ ...s.badge, background: colorFactor + '20', color: colorFactor }}>
+              {factorLabel[item.factor] || item.factor}
+            </span>
+          </div>
+          <span style={{ fontSize: '0.75rem', color: tiempoTranscurrido > 1200 ? '#dc2626' : '#94a3b8' }}>
+            {Math.floor(tiempoTranscurrido / 60)}:{String(tiempoTranscurrido % 60).padStart(2, '0')} / 20:00
           </span>
         </div>
         <div style={s.barraFondo}>

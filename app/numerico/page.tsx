@@ -21,7 +21,7 @@ export default function NumericoPage() {
   const [finalizado, setFinalizado] = useState(false)
   const [puntaje, setPuntaje] = useState({ correctas: 0, total: 0 })
   const [nombreCandidato, setNombreCandidato] = useState('')
-  const [tiempoRestante, setTiempoRestante] = useState(45)
+  const [tiempoRestante, setTiempoRestante] = useState(75)
   const [seleccionada, setSeleccionada] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
@@ -52,7 +52,7 @@ export default function NumericoPage() {
     } else {
       setRespuestas(nuevasRespuestas)
       setItemActual(itemActual + 1)
-      setTiempoRestante(45)
+      setTiempoRestante(75)
       setSeleccionada(null)
     }
   }, [items, itemActual, respuestas])
@@ -63,7 +63,7 @@ export default function NumericoPage() {
       setTiempoRestante(prev => {
         if (prev <= 1) {
           avanzar()
-          return 45
+          return 75
         }
         return prev - 1
       })
@@ -219,7 +219,7 @@ export default function NumericoPage() {
       <div style={s.baraTiempo}>
         <div style={{
           ...s.barraTiempoRelleno,
-          width: `${(tiempoRestante / 45) * 100}%`,
+          width: `${(tiempoRestante / 75) * 100}%`,
           background: tiempoColor
         }} />
       </div>
