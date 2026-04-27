@@ -80,7 +80,11 @@ const [nivelIcar, setNivelIcar] = useState('3')
       integridad: '/integridad',
       icar: '/icar',
       comercial: '/comercial',
-      sjt: '/sjt-comercial'
+      sjt: '/sjt-comercial',
+      tolerancia: '/tolerancia-frustracion',
+      cobranzas: '/sjt-cobranzas',
+      atencion: '/sjt-atencion',
+      ventas: '/sjt-ventas'
     }
     const ruta = rutas[test] || '/test'
     let url = `${window.location.origin}${ruta}?candidato=${candidatoId}`
@@ -247,7 +251,7 @@ const [nivelIcar, setNivelIcar] = useState('3')
                       >
                         {linkCopiado === candidato.id + 'integridad' ? '✓ Copiado' : 'Integridad'}
                       </button>
-                      <button
+                     <button
                         style={{
                           ...s.botonCopiar,
                           background: linkCopiado === candidato.id + 'comercial' ? '#16a34a' : '#d97706',
@@ -264,6 +268,42 @@ const [nivelIcar, setNivelIcar] = useState('3')
                         onClick={() => copiarLink(candidato.id, 'sjt')}
                       >
                         {linkCopiado === candidato.id + 'sjt' ? '✓ Copiado' : 'SJT'}
+                      </button>
+                      <button
+                        style={{
+                          ...s.botonCopiar,
+                          background: linkCopiado === candidato.id + 'tolerancia' ? '#16a34a' : '#0891b2',
+                        }}
+                        onClick={() => copiarLink(candidato.id, 'tolerancia')}
+                      >
+                        {linkCopiado === candidato.id + 'tolerancia' ? '✓ Copiado' : 'Tolerancia'}
+                      </button>
+                      <button
+                        style={{
+                          ...s.botonCopiar,
+                          background: linkCopiado === candidato.id + 'cobranzas' ? '#16a34a' : '#dc2626',
+                        }}
+                        onClick={() => copiarLink(candidato.id, 'cobranzas')}
+                      >
+                        {linkCopiado === candidato.id + 'cobranzas' ? '✓ Copiado' : 'Cobranzas'}
+                      </button>
+                      <button
+                        style={{
+                          ...s.botonCopiar,
+                          background: linkCopiado === candidato.id + 'atencion' ? '#16a34a' : '#2563eb',
+                        }}
+                        onClick={() => copiarLink(candidato.id, 'atencion')}
+                      >
+                        {linkCopiado === candidato.id + 'atencion' ? '✓ Copiado' : 'Atención'}
+                      </button>
+                      <button
+                        style={{
+                          ...s.botonCopiar,
+                          background: linkCopiado === candidato.id + 'ventas' ? '#16a34a' : '#16a34a',
+                        }}
+                        onClick={() => copiarLink(candidato.id, 'ventas')}
+                      >
+                        {linkCopiado === candidato.id + 'ventas' ? '✓ Copiado' : 'Ventas'}
                       </button>
                     </div>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
