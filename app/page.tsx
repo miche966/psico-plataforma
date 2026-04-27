@@ -48,6 +48,13 @@ export default function Home() {
             <div style={s.tarjetaDesc}>Agrupá candidatos por cargo y proceso</div>
           </div>
         </Link>
+        <Link href="/entrevista-video" style={s.tarjeta}>
+          <div style={{ ...s.icono, background: '#fce7f3' }}>🎥</div>
+          <div>
+            <div style={s.tarjetaTitulo}>Entrevistas en Video</div>
+            <div style={s.tarjetaDesc}>Creá preguntas y revisá respuestas en video</div>
+          </div>
+        </Link>
       </div>
 
       <div style={s.footer}>
