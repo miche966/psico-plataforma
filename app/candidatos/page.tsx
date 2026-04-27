@@ -87,7 +87,9 @@ const [nivelIcar, setNivelIcar] = useState('3')
       ventas: '/sjt-ventas',
       detalle: '/atencion-detalle',
       legal: '/sjt-legal',
-      estres: '/estres-laboral'
+      estres: '/estres-laboral',
+      creatividad: '/creatividad',
+      problemas: '/sjt-problemas'
     }
     const ruta = rutas[test] || '/test'
     let url = `${window.location.origin}${ruta}?candidato=${candidatoId}`
@@ -334,6 +336,24 @@ const [nivelIcar, setNivelIcar] = useState('3')
                         onClick={() => copiarLink(candidato.id, 'estres')}
                       >
                         {linkCopiado === candidato.id + 'estres' ? '✓ Copiado' : 'Estrés'}
+                      </button>
+                      <button
+                        style={{
+                          ...s.botonCopiar,
+                          background: linkCopiado === candidato.id + 'creatividad' ? '#16a34a' : '#9333ea',
+                        }}
+                        onClick={() => copiarLink(candidato.id, 'creatividad')}
+                      >
+                        {linkCopiado === candidato.id + 'creatividad' ? '✓ Copiado' : 'Creatividad'}
+                      </button>
+                      <button
+                        style={{
+                          ...s.botonCopiar,
+                          background: linkCopiado === candidato.id + 'problemas' ? '#16a34a' : '#7c3aed',
+                        }}
+                        onClick={() => copiarLink(candidato.id, 'problemas')}
+                      >
+                        {linkCopiado === candidato.id + 'problemas' ? '✓ Copiado' : 'Problemas'}
                       </button>
                     </div>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
