@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
-import { FileText, Download, X, Search, AlertTriangle, BellRing } from 'lucide-react'
+import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
 
 interface Candidato {
@@ -434,61 +434,119 @@ export default function PanelPage() {
 
                     <div className="space-y-5 mt-6">
                       {sesionSeleccionada.puntaje_bruto && (() => {
-                        const pb = sesionSeleccionada.puntaje_bruto
-                        if (esBigFive(pb)) {
-                          return valoresNumericos(pb).map(([factor, valor]) => {
-                            const tc = textColores[factor] || 'text-indigo-600'
-                            const bgc = colores[factor] || 'bg-indigo-600'
-                            return (
-                              <div key={factor}>
-                                <div className="flex justify-between mb-1.5">
-                                  <span className="text-sm font-semibold text-slate-800">{etiquetas[factor] || factor}</span>
-                                  <span className={`text-sm font-bold ${tc}`}>{valor} / 5</span>
-                                </div>
-                                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                                  <div className={`h-full rounded-full transition-all duration-500 ease-out ${bgc}`} style={{ width: `${(valor / 5) * 100}%` }} />
-                                </div>
-                                <p className="text-xs text-slate-500 leading-relaxed">{interpretacion(factor, valor)}</p>
-                              </div>
-                            )
-                          })
-                        }
-                        if (esCognitivo(pb)) {
-                          const { correctas, total, pct } = datosCognitivos(pb)
-                          const nivel = pct >= 80 ? 'Alto' : pct >= 60 ? 'Moderado' : 'En desarrollo'
-                          const colorBg = pct >= 80 ? 'bg-green-500' : pct >= 60 ? 'bg-orange-500' : 'bg-red-500'
-                          const colorText = pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-orange-600' : 'text-red-600'
-                          
-                          return (
-                            <div>
-                              <div className="flex justify-between mb-1.5">
-                                <span className="text-sm font-semibold text-slate-800">Resultado Cognitivo</span>
-                                <span className={`text-sm font-bold ${colorText}`}>{correctas} / {total} ({pct}%)</span>
-                              </div>
-                              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                                <div className={`h-full rounded-full transition-all duration-500 ease-out ${colorBg}`} style={{ width: `${pct}%` }} />
-                              </div>
-                              <p className="text-xs text-slate-500 leading-relaxed">Desempeño detectado: {nivel}</p>
-                            </div>
-                          )
-                        }
-                        const prom = promedioPuntaje(pb)
-                        const colorBg = prom >= 4 ? 'bg-green-500' : prom >= 3 ? 'bg-orange-500' : 'bg-red-500'
-                        const colorText = prom >= 4 ? 'text-green-600' : prom >= 3 ? 'text-orange-600' : 'text-red-600'
-                        
+                        const pb = sesionSeleccionada.puntaje_bruto as any
+                        const metricas = pb.metricas_fraude
+                        const hasFraude = metricas && (metricas.tabSwitches > 0 || metricas.copyPasteAttempts > 0)
+
                         return (
-                          <div>
-                            <div className="flex justify-between mb-1.5">
-                              <span className="text-sm font-semibold text-slate-800">Promedio general</span>
-                              <span className={`text-sm font-bold ${colorText}`}>{prom} / 5</span>
-                            </div>
-                            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                              <div className={`h-full rounded-full transition-all duration-500 ease-out ${colorBg}`} style={{ width: `${Math.min((prom / 5) * 100, 100)}%` }} />
-                            </div>
-                            <p className="text-xs text-slate-500 leading-relaxed">
-                              {prom >= 4 ? 'Nivel alto' : prom >= 3 ? 'Nivel moderado' : 'En desarrollo'}
-                            </p>
-                          </div>
+                          <>
+                            {hasFraude && (
+                              <div className="mb-6 bg-red-50 border border-red-100 rounded-xl p-4">
+                                <div className="flex items-center gap-2 text-red-700 font-bold text-sm mb-2">
+                                  <AlertTriangle className="w-4 h-4" />
+                                  Alerta Anti-Fraude
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 text-xs">
+                                  <div className="bg-white/50 p-2 rounded-lg border border-red-200">
+                                    <span className="text-slate-500 block mb-0.5">Cambios de pestaña</span>
+                                    <span className="text-red-700 font-bold text-base">{metricas.tabSwitches}</span>
+                                  </div>
+                                  <div className="bg-white/50 p-2 rounded-lg border border-red-200">
+                                    <span className="text-slate-500 block mb-0.5">Copy/paste</span>
+                                    <span className="text-red-700 font-bold text-base">{metricas.copyPasteAttempts}</span>
+                                  </div>
+                                </div>
+                                
+                                {metricas.events && metricas.events.length > 0 && (
+                                  <div className="mt-4 pt-4 border-t border-red-100">
+                                    <p className="text-[10px] font-bold text-red-800 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                      <History className="w-3 h-3" />
+                                      Diario de incidencias
+                                    </p>
+                                    <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                                      {metricas.events.map((ev: any, idx: number) => {
+                                        const hora = new Date(ev.timestamp).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                                        let label = 'Evento'
+                                        let color = 'bg-slate-200 text-slate-600'
+                                        
+                                        if (ev.tipo === 'tab_switch' || ev.tipo === 'blur') {
+                                          label = 'Cambio de pestaña / Foco perdido'
+                                          color = 'bg-amber-100 text-amber-700 border-amber-200'
+                                        } else if (ev.tipo === 'copy_paste') {
+                                          label = 'Intento de Copy/Paste'
+                                          color = 'bg-red-100 text-red-700 border-red-200'
+                                        } else if (ev.tipo === 'context_menu') {
+                                          label = 'Click derecho (Menú contextual)'
+                                          color = 'bg-purple-100 text-purple-700 border-purple-200'
+                                        }
+
+                                        return (
+                                          <div key={idx} className={`flex items-center justify-between p-2 rounded-lg border text-[10px] font-medium ${color}`}>
+                                            <span>{label}</span>
+                                            <span className="font-bold opacity-70">{hora}</span>
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {esBigFive(pb) ? valoresNumericos(pb).map(([factor, valor]) => {
+                              const tc = textColores[factor] || 'text-indigo-600'
+                              const bgc = colores[factor] || 'bg-indigo-600'
+                              return (
+                                <div key={factor}>
+                                  <div className="flex justify-between mb-1.5">
+                                    <span className="text-sm font-semibold text-slate-800">{etiquetas[factor] || factor}</span>
+                                    <span className={`text-sm font-bold ${tc}`}>{valor} / 5</span>
+                                  </div>
+                                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                                    <div className={`h-full rounded-full transition-all duration-500 ease-out ${bgc}`} style={{ width: `${(valor / 5) * 100}%` }} />
+                                  </div>
+                                  <p className="text-xs text-slate-500 leading-relaxed">{interpretacion(factor, valor)}</p>
+                                </div>
+                              )
+                            }) : esCognitivo(pb) ? (() => {
+                              const { correctas, total, pct } = datosCognitivos(pb)
+                              const nivel = pct >= 80 ? 'Alto' : pct >= 60 ? 'Moderado' : 'En desarrollo'
+                              const colorBg = pct >= 80 ? 'bg-green-500' : pct >= 60 ? 'bg-orange-500' : 'bg-red-500'
+                              const colorText = pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-orange-600' : 'text-red-600'
+                              
+                              return (
+                                <div>
+                                  <div className="flex justify-between mb-1.5">
+                                    <span className="text-sm font-semibold text-slate-800">Resultado Cognitivo</span>
+                                    <span className={`text-sm font-bold ${colorText}`}>{correctas} / {total} ({pct}%)</span>
+                                  </div>
+                                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                                    <div className={`h-full rounded-full transition-all duration-500 ease-out ${colorBg}`} style={{ width: `${pct}%` }} />
+                                  </div>
+                                  <p className="text-xs text-slate-500 leading-relaxed">Desempeño detectado: {nivel}</p>
+                                </div>
+                              )
+                            })() : (() => {
+                              const prom = promedioPuntaje(pb)
+                              const colorBg = prom >= 4 ? 'bg-green-500' : prom >= 3 ? 'bg-orange-500' : 'bg-red-500'
+                              const colorText = prom >= 4 ? 'text-green-600' : prom >= 3 ? 'text-orange-600' : 'text-red-600'
+                              
+                              return (
+                                <div>
+                                  <div className="flex justify-between mb-1.5">
+                                    <span className="text-sm font-semibold text-slate-800">Promedio general</span>
+                                    <span className={`text-sm font-bold ${colorText}`}>{prom} / 5</span>
+                                  </div>
+                                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                                    <div className={`h-full rounded-full transition-all duration-500 ease-out ${colorBg}`} style={{ width: `${Math.min((prom / 5) * 100, 100)}%` }} />
+                                  </div>
+                                  <p className="text-xs text-slate-500 leading-relaxed">
+                                    {prom >= 4 ? 'Nivel alto' : prom >= 3 ? 'Nivel moderado' : 'En desarrollo'}
+                                  </p>
+                                </div>
+                              )
+                            })()}
+                          </>
                         )
                       })()}
                     </div>

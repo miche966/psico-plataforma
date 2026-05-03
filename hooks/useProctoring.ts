@@ -1,9 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 
+export interface ProctoringEvent {
+  tipo: 'tab_switch' | 'copy_paste' | 'context_menu' | 'blur'
+  timestamp: string
+  duracion?: number // Para saber cuánto tiempo estuvo afuera
+}
+
 export interface MetricasFraude {
   tabSwitches: number
   copyPasteAttempts: number
   timeOutOfFocus: number
+  events: ProctoringEvent[]
 }
 
 export function useProctoring() {
@@ -11,19 +18,34 @@ export function useProctoring() {
     tabSwitches: 0,
     copyPasteAttempts: 0,
     timeOutOfFocus: 0,
+    events: []
   })
 
   const lastBlurTime = useRef<number | null>(null)
+
+  const addEvent = (tipo: ProctoringEvent['tipo'], duracion?: number) => {
+    const newEvent: ProctoringEvent = {
+      tipo,
+      timestamp: new Date().toISOString(),
+      duracion
+    }
+    setMetricas(prev => ({
+      ...prev,
+      events: [...prev.events, newEvent]
+    }))
+  }
 
   useEffect(() => {
     function handleVisibilityChange() {
       if (document.visibilityState === 'hidden') {
         lastBlurTime.current = Date.now()
         setMetricas(prev => ({ ...prev, tabSwitches: prev.tabSwitches + 1 }))
+        addEvent('tab_switch')
       } else {
         if (lastBlurTime.current) {
           const outTime = Math.floor((Date.now() - lastBlurTime.current) / 1000)
           setMetricas(prev => ({ ...prev, timeOutOfFocus: prev.timeOutOfFocus + outTime }))
+          // Actualizamos el último evento de tab_switch con la duración si fue el último
           lastBlurTime.current = null
         }
       }
@@ -33,6 +55,7 @@ export function useProctoring() {
       if (!lastBlurTime.current) {
         lastBlurTime.current = Date.now()
         setMetricas(prev => ({ ...prev, tabSwitches: prev.tabSwitches + 1 }))
+        addEvent('blur')
       }
     }
 
@@ -47,11 +70,12 @@ export function useProctoring() {
     function handleCopyPaste(e: ClipboardEvent) {
       e.preventDefault()
       setMetricas(prev => ({ ...prev, copyPasteAttempts: prev.copyPasteAttempts + 1 }))
+      addEvent('copy_paste')
     }
 
-    // Prevenir menú contextual
     function handleContextMenu(e: MouseEvent) {
       e.preventDefault()
+      addEvent('context_menu')
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)

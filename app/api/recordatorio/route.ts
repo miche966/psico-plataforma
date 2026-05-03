@@ -1,22 +1,28 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
     const { email, nombre, proceso, link, pendientes } = await req.json();
 
-    if (!process.env.RESEND_API_KEY) {
-      return NextResponse.json({ error: 'Falta RESEND_API_KEY en las variables de entorno' }, { status: 500 });
+    const user = process.env.EMAIL_USER;
+    const pass = process.env.EMAIL_PASS;
+
+    if (!user || !pass) {
+      return NextResponse.json({ error: 'Configuración de Gmail incompleta (EMAIL_USER/EMAIL_PASS)' }, { status: 500 });
     }
 
-    const resend = new Resend(process.env.RESEND_API_KEY);
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user, pass },
+    });
 
-    const { data, error } = await resend.emails.send({
-      from: 'Psico-Plataforma <onboarding@resend.dev>',
-      to: [email],
+    const mailOptions = {
+      from: `"Psico-Plataforma" <${user}>`,
+      to: email,
       subject: `Recordatorio: Evaluaciones pendientes para ${proceso}`,
       html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; rounded-xl: 12px;">
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
           <h2 style="color: #1e293b;">Hola ${nombre},</h2>
           <p style="color: #475569; line-height: 1.6;">
             Te contactamos desde el portal de selección para el cargo de <strong>${proceso}</strong>.
@@ -35,18 +41,17 @@ export async function POST(req: Request) {
           </p>
           <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 20px 0;">
           <p style="color: #94a3b8; font-size: 12px;">
-            Este es un correo automático, por favor no respondas a esta dirección.
+            Este es un correo automático enviado a través de Psico-Plataforma.
           </p>
         </div>
       `,
-    });
+    };
 
-    if (error) {
-      return NextResponse.json({ error }, { status: 500 });
-    }
+    await transporter.sendMail(mailOptions);
 
-    return NextResponse.json({ data });
+    return NextResponse.json({ success: true });
   } catch (err: any) {
+    console.error('Error enviando email:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
