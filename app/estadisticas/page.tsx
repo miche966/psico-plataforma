@@ -114,13 +114,45 @@ export default function EstadisticasPage() {
       
     if (procesosData) setProcesos(procesosData)
 
-    const resultado = sesionesData.map(s => ({
+    const resultadoCompleto = sesionesData.map(s => ({
       ...s,
       candidato: candidatos.find(c => c.id === s.candidato_id)
     }))
 
-    setSesiones(resultado)
-    if (resultado.length > 0) setSesionRadar(resultado[0])
+    // AGRUPAR POR CANDIDATO (Quedarse con la sesión más reciente que tenga datos de personalidad)
+    const grupos: Record<string, Sesion> = {}
+    
+    resultadoCompleto.forEach(s => {
+      const cId = s.candidato_id || 'anonimo'
+      
+      // Si no tenemos este candidato aún, o si esta sesión es más reciente que la guardada
+      // PRIORIDAD: Sesiones que tienen factores de personalidad (no solo ceros)
+      const tieneDatos = factores.some(f => (s.puntaje_bruto[f] || 0) > 0)
+      const existenteTieneDatos = grupos[cId] ? factores.some(f => (grupos[cId].puntaje_bruto[f] || 0) > 0) : false
+
+      if (!grupos[cId]) {
+        grupos[cId] = s
+      } else {
+        // Si la nueva tiene datos y la vieja no, reemplazamos
+        if (tieneDatos && !existenteTieneDatos) {
+          grupos[cId] = s
+        } 
+        // Si ambas tienen (o no tienen) datos, nos quedamos con la más reciente
+        else if (new Date(s.finalizada_en) > new Date(grupos[cId].finalizada_en)) {
+          // Solo reemplazamos si no estamos perdiendo datos útiles
+          if (tieneDatos || !existenteTieneDatos) {
+            grupos[cId] = s
+          }
+        }
+      }
+    })
+
+    const resultadoFinal = Object.values(grupos).sort((a, b) => 
+      new Date(b.finalizada_en).getTime() - new Date(a.finalizada_en).getTime()
+    )
+
+    setSesiones(resultadoFinal)
+    if (resultadoFinal.length > 0) setSesionRadar(resultadoFinal[0])
     setCargando(false)
   }
 

@@ -326,7 +326,7 @@ export default function PanelPage() {
                     : 'border-slate-200 hover:border-slate-300'
                 }`}
               >
-                <div className="flex gap-4 items-center">
+                <div className="flex gap-4 items-center w-full overflow-hidden">
                   {/* INDICADOR DE ESTADO IZQUIERDO */}
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border-2 ${
                     c.progreso && c.progreso.completados === c.progreso.total && c.progreso.total > 0
@@ -340,13 +340,14 @@ export default function PanelPage() {
                     )}
                   </div>
 
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 pr-2">
                     <div className="font-bold text-slate-900 leading-tight truncate">{c.nombre} {c.apellido}</div>
                     <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mt-0.5 truncate">{c.proceso_nombre || 'Proceso independiente'}</div>
                     <div className="text-xs text-slate-500 mt-0.5 truncate">{c.email || 'Sin email'}</div>
                   </div>
-                  <div className="flex flex-col items-end gap-2 shrink-0 min-w-[100px]">
-                    <div className="flex items-center gap-2">
+
+                  <div className="flex flex-col items-end gap-2 shrink-0 pr-1">
+                    <div className="flex items-center gap-1.5">
                       {c.progreso && c.progreso.completados < c.progreso.total && (
                         <button
                           onClick={(e) => {
@@ -380,18 +381,18 @@ export default function PanelPage() {
                     </div>
 
                     <div className="flex flex-col items-end">
-                      <span className="text-[10px] font-bold bg-slate-50 text-slate-500 px-2 py-0.5 rounded-md border border-slate-100 uppercase tracking-wider mb-1">
-                        {c.sesiones.length} {c.sesiones.length === 1 ? 'test' : 'tests'}
+                      <span className="text-[9px] font-bold bg-slate-50 text-slate-400 px-1.5 py-0.5 rounded border border-slate-100 uppercase tracking-tighter mb-1">
+                        {c.sesiones.length} {c.sesiones.length === 1 ? 'TEST' : 'TESTS'}
                       </span>
                       {c.progreso && (
-                        <div className="flex flex-col items-end gap-1">
-                          <div className="w-16 h-1 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="flex flex-col items-end gap-0.5">
+                          <div className="w-14 h-1 bg-slate-100 rounded-full overflow-hidden">
                             <div 
-                              className="h-full bg-green-500 rounded-full" 
+                              className="h-full bg-green-500 rounded-full transition-all duration-700" 
                               style={{ width: `${(c.progreso.completados / c.progreso.total) * 100}%` }}
                             />
                           </div>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase">{c.progreso.completados}/{c.progreso.total} tests</span>
+                          <span className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">{c.progreso.completados}/{c.progreso.total} COMP.</span>
                         </div>
                       )}
                     </div>
