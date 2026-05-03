@@ -248,27 +248,33 @@ export default function ProcesosPage() {
     const link = `${getBaseUrl()}/evaluacion?candidato=${c.id}&proceso=${procesoSeleccionado.id}`
 
     try {
-      // Por ahora simulamos el envío, ya que falta configurar el servicio de email (ej: Resend)
-      // En una implementación real llamaríamos a una API interna
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      alert(`Recordatorio enviado a ${c.nombre}. tests pendientes: ${pendientes.length}`)
-      
-      // Aquí iría el fetch a /api/enviar-email
-      /*
-      await fetch('/api/recordatorio', {
+      const res = await fetch('/api/recordatorio', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: c.email,
           nombre: c.nombre,
-          proceso: procesoSeleccionado.nombre,
+          proceso: procesoSeleccionado.cargo,
           link: link,
           pendientes: pendientes.length
         })
       })
-      */
+
+      const data = await res.json()
+      
+      if (res.ok) {
+        alert(`Recordatorio enviado con éxito a ${c.nombre}.`)
+      } else {
+        if (data.error?.includes('RESEND_API_KEY')) {
+          alert('Error: No se ha configurado la API Key de Resend en el servidor.')
+        } else {
+          alert('Hubo un error al enviar el correo. Por favor, verifica la configuración.')
+        }
+        console.error('Error enviando recordatorio:', data.error)
+      }
     } catch (error) {
       console.error(error)
+      alert('Error de conexión al intentar enviar el recordatorio.')
     } finally {
       setEnviandoRecordatorio(null)
     }
