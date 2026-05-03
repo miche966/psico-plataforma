@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
-import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video } from 'lucide-react'
+import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video, CheckCircle2 } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
 
 interface Candidato {
@@ -326,9 +326,27 @@ export default function PanelPage() {
                     : 'border-slate-200 hover:border-slate-300'
                 }`}
               >
-                <div className="flex justify-between items-start">
-                  <div className="flex gap-4">
-                    <div className="mt-1">
+                <div className="flex gap-4 items-center">
+                  {/* INDICADOR DE ESTADO IZQUIERDO */}
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border-2 ${
+                    c.progreso && c.progreso.completados === c.progreso.total && c.progreso.total > 0
+                      ? 'bg-green-50 border-green-200 text-green-600'
+                      : 'bg-slate-50 border-slate-100 text-slate-500'
+                  }`}>
+                    {c.progreso && c.progreso.completados === c.progreso.total && c.progreso.total > 0 ? (
+                      <CheckCircle2 className="w-5 h-5" />
+                    ) : (
+                      `${c.progreso?.completados || 0}/${c.progreso?.total || 0}`
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-slate-900 leading-tight truncate">{c.nombre} {c.apellido}</div>
+                    <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mt-0.5 truncate">{c.proceso_nombre || 'Proceso independiente'}</div>
+                    <div className="text-xs text-slate-500 mt-0.5 truncate">{c.email || 'Sin email'}</div>
+                  </div>
+                  <div className="flex flex-col items-end gap-2 shrink-0 min-w-[100px]">
+                    <div className="flex items-center gap-2">
                       {c.progreso && c.progreso.completados < c.progreso.total && (
                         <button
                           onClick={(e) => {
@@ -336,43 +354,47 @@ export default function PanelPage() {
                             enviarRecordatorio(c)
                           }}
                           disabled={enviandoRecordatorio === c.id}
-                          className={`p-2 rounded-lg transition-all ${
+                          className={`p-1.5 rounded-lg transition-all ${
                             enviandoRecordatorio === c.id
                               ? 'bg-slate-100 text-slate-400'
-                              : 'bg-amber-50 text-amber-600 hover:bg-amber-100 hover:scale-110 shadow-sm'
+                              : 'bg-amber-50 text-amber-600 hover:bg-amber-100 hover:scale-110 shadow-sm border border-amber-100'
                           }`}
-                          title="Enviar recordatorio de tests pendientes"
+                          title="Enviar recordatorio"
                         >
                           {enviandoRecordatorio === c.id ? (
-                            <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                            <div className="w-3.5 h-3.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
                           ) : (
-                            <BellRing className="w-4 h-4" />
+                            <BellRing className="w-3.5 h-3.5" />
                           )}
                         </button>
                       )}
+                      <a
+                        href={`/informe?candidato=${c.id}`}
+                        target="_blank"
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-all border border-indigo-100 shadow-sm"
+                        title="Ver informe"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                      </a>
                     </div>
-                    <div>
-                      <div className="font-bold text-slate-900 leading-tight">{c.nombre} {c.apellido}</div>
-                      <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mt-1">{c.proceso_nombre || 'Proceso independiente'}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">{c.email || 'Sin email'}</div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md border border-indigo-100 uppercase tracking-wider">
-                      {c.sesiones.length} {c.sesiones.length === 1 ? 'test' : 'tests'}
-                    </span>
-                    {c.progreso && (
-                      <div className="flex flex-col items-end gap-1 mt-1">
-                        <div className="w-16 h-1 bg-slate-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-green-500 rounded-full" 
-                            style={{ width: `${(c.progreso.completados / c.progreso.total) * 100}%` }}
-                          />
+
+                    <div className="flex flex-col items-end">
+                      <span className="text-[10px] font-bold bg-slate-50 text-slate-500 px-2 py-0.5 rounded-md border border-slate-100 uppercase tracking-wider mb-1">
+                        {c.sesiones.length} {c.sesiones.length === 1 ? 'test' : 'tests'}
+                      </span>
+                      {c.progreso && (
+                        <div className="flex flex-col items-end gap-1">
+                          <div className="w-16 h-1 bg-slate-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-green-500 rounded-full" 
+                              style={{ width: `${(c.progreso.completados / c.progreso.total) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase">{c.progreso.completados}/{c.progreso.total} tests</span>
                         </div>
-                        <span className="text-[9px] text-slate-400 font-bold">{c.progreso.completados}/{c.progreso.total} COMPLETADOS</span>
-                      </div>
-                    )}
-                    <span className="text-[9px] text-slate-300 mt-1">{formatearFecha(c.ultima_fecha)}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
