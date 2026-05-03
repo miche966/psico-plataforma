@@ -1,8 +1,9 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
+import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 
 interface Item {
   id: string
@@ -26,6 +27,7 @@ export default function HexacoPage() {
   const [respuestas, setRespuestas] = useState<Respuesta[]>([])
   const [cargando, setCargando] = useState(true)
   const [finalizado, setFinalizado] = useState(false)
+  const enEvaluacion = useEvaluacionRedirect(finalizado)
   const [resultado, setResultado] = useState<Record<string, number>>({})
   const [nombreCandidato, setNombreCandidato] = useState('')
   const searchParams = useSearchParams()
@@ -156,6 +158,7 @@ export default function HexacoPage() {
 
   if (cargando) return <div style={e.centro}><p>Cargando test...</p></div>
 
+  if (finalizado && enEvaluacion) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}><p>Cargando siguiente evaluación...</p></div>
   if (finalizado) {
     return (
       <div style={e.contenedor}>
@@ -174,8 +177,8 @@ export default function HexacoPage() {
           </p>
           <div style={e.contactoDetalle}>
             <p style={e.contactoItem}>
-              📧 <a href="mailto:seleccion@repúblicamicrofinanzas.com.uy" style={e.link}>
-                seleccion@repúblicamicrofinanzas.com.uy
+              📧 <a href="mailto:seleccion@republicamicrofinanzas.com.uy" style={e.link}>
+                seleccion@republicamicrofinanzas.com.uy
               </a>
             </p>
             <p style={e.contactoItem}>

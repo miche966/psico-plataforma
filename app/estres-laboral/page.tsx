@@ -1,8 +1,9 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
+import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 
 interface Item {
   id: string
@@ -25,6 +26,7 @@ export default function EstresLaboralPage() {
   const [respuestas, setRespuestas] = useState<Respuesta[]>([])
   const [cargando, setCargando] = useState(true)
   const [finalizado, setFinalizado] = useState(false)
+  const enEvaluacion = useEvaluacionRedirect(finalizado)
   const [nombreCandidato, setNombreCandidato] = useState('')
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
@@ -115,6 +117,7 @@ export default function EstresLaboralPage() {
 
   if (cargando) return <div style={s.centro}><p>Cargando evaluación...</p></div>
 
+  if (finalizado && enEvaluacion) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}><p>Cargando siguiente evaluación...</p></div>
   if (finalizado) return (
     <div style={s.contenedor}>
       <div style={s.checkCirculo}>✓</div>
@@ -130,7 +133,7 @@ export default function EstresLaboralPage() {
         </p>
         <p style={s.contactoTexto}>Si tenés consultas podés comunicarte:</p>
         <div style={s.contactoDetalle}>
-          <p style={s.contactoItem}>📧 <a href="mailto:seleccion@repúblicamicrofinanzas.com.uy" style={s.link}>seleccion@repúblicamicrofinanzas.com.uy</a></p>
+          <p style={s.contactoItem}>📧 <a href="mailto:seleccion@republicamicrofinanzas.com.uy" style={s.link}>seleccion@republicamicrofinanzas.com.uy</a></p>
           <p style={s.contactoItem}>💬 WhatsApp: <a href="https://wa.me/598092651770" style={s.link}>092 651 770</a></p>
         </div>
       </div>

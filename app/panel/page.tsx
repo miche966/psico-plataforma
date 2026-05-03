@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import jsPDF from 'jspdf'
 import { useRouter } from 'next/navigation'
+import AppLayout from '@/components/AppLayout'
+import { FileText, Download, X, Search, AlertTriangle } from 'lucide-react'
 
 interface Candidato {
   id: string
@@ -15,9 +16,36 @@ interface Candidato {
 interface Sesion {
   id: string
   finalizada_en: string
-  puntaje_bruto: Record<string, number>
+  puntaje_bruto: Record<string, unknown>
   candidato_id: string | null
   candidato?: Candidato
+}
+
+const BIG_FIVE_KEYS = ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura']
+
+function esBigFive(pb: Record<string, unknown>): boolean {
+  return BIG_FIVE_KEYS.some(k => k in pb)
+}
+
+function esCognitivo(pb: Record<string, unknown>): boolean {
+  return 'correctas' in pb && 'total' in pb
+}
+
+function valoresNumericos(pb: Record<string, unknown>): [string, number][] {
+  return Object.entries(pb).filter((e): e is [string, number] => typeof e[1] === 'number')
+}
+
+function promedioPuntaje(pb: Record<string, unknown>): number {
+  const nums = valoresNumericos(pb).map(([, v]) => v)
+  if (!nums.length) return 0
+  return Math.round((nums.reduce((a, b) => a + b, 0) / nums.length) * 10) / 10
+}
+
+function datosCognitivos(pb: Record<string, unknown>) {
+  const correctas = Number(pb.correctas) || 0
+  const total = Number(pb.total) || 1
+  const pct = Math.round((correctas / total) * 100)
+  return { correctas, total, pct }
 }
 
 const etiquetas: Record<string, string> = {
@@ -29,17 +57,26 @@ const etiquetas: Record<string, string> = {
 }
 
 const colores: Record<string, string> = {
-  extraversion: '#2563eb',
-  amabilidad: '#16a34a',
-  responsabilidad: '#9333ea',
-  neuroticismo: '#dc2626',
-  apertura: '#ea580c'
+  extraversion: 'bg-blue-600',
+  amabilidad: 'bg-green-600',
+  responsabilidad: 'bg-purple-600',
+  neuroticismo: 'bg-red-600',
+  apertura: 'bg-orange-600'
+}
+
+const textColores: Record<string, string> = {
+  extraversion: 'text-blue-600',
+  amabilidad: 'text-green-600',
+  responsabilidad: 'text-purple-600',
+  neuroticismo: 'text-red-600',
+  apertura: 'text-orange-600'
 }
 
 export default function PanelPage() {
   const [sesiones, setSesiones] = useState<Sesion[]>([])
   const [cargando, setCargando] = useState(true)
   const [seleccionada, setSeleccionada] = useState<Sesion | null>(null)
+  const [filtro, setFiltro] = useState('')
   const router = useRouter()
 
   useEffect(() => {
@@ -47,11 +84,6 @@ export default function PanelPage() {
       if (!session) router.push('/login')
     })
   }, [])
-
-  async function cerrarSesion() {
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
 
   useEffect(() => {
     cargarSesiones()
@@ -110,124 +142,260 @@ export default function PanelPage() {
     return 'Evaluación anónima'
   }
 
+  const sesionesFiltradas = sesiones.filter(s => 
+    nombreCandidato(s).toLowerCase().includes(filtro.toLowerCase()) || 
+    (s.candidato?.email || '').toLowerCase().includes(filtro.toLowerCase())
+  )
+
   if (cargando) {
-    return <div style={s.centro}><p>Cargando panel...</p></div>
+    return (
+      <AppLayout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        </div>
+      </AppLayout>
+    )
   }
 
   return (
-    <div style={s.contenedor}>
-      <div style={s.encabezado}>
+    <AppLayout>
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 style={s.titulo}>Panel del evaluador</h1>
-          <p style={s.subtitulo}>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Panel del evaluador</h1>
+          <p className="text-sm text-slate-500 mt-1">
             {sesiones.length} evaluación{sesiones.length !== 1 ? 'es' : ''} registrada{sesiones.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <a href="/candidatos" style={s.botonSecundario}>Candidatos</a>
-          <a href="/test" style={s.botonPrimario}>+ Nueva evaluación</a>
-          <button onClick={cerrarSesion} style={s.botonCerrar}>Cerrar sesión</button>
+        <div className="flex gap-3">
+          <a href="/test" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2">
+            Nueva evaluación
+          </a>
         </div>
-     </div>
+      </div>
+
+      <div className="mb-6 relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search className="h-4 w-4 text-slate-400" />
+        </div>
+        <input
+          type="text"
+          placeholder="Buscar candidato por nombre o email..."
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm"
+        />
+      </div>
 
       {sesiones.length === 0 ? (
-        <div style={s.vacio}>
-          <p>No hay evaluaciones todavía.</p>
-          <a href="/candidatos" style={s.botonPrimario}>Ir a candidatos</a>
+        <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl shadow-sm">
+          <p className="text-slate-500 mb-4">No hay evaluaciones todavía.</p>
+          <a href="/candidatos" className="text-indigo-600 font-medium hover:text-indigo-700">Ir a candidatos →</a>
         </div>
       ) : (
-        <div style={s.grid}>
-          <div style={s.lista}>
-            {sesiones.map(sesion => (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div className="flex flex-col gap-3">
+            {sesionesFiltradas.map(sesion => (
               <div
                 key={sesion.id}
-                style={{
-                  ...s.tarjeta,
-                  borderColor: seleccionada?.id === sesion.id ? '#2563eb' : '#e2e8f0'
-                }}
                 onClick={() => setSeleccionada(sesion)}
+                className={`p-4 rounded-xl border bg-white cursor-pointer transition-all duration-200 hover:shadow-md ${
+                  seleccionada?.id === sesion.id 
+                    ? 'border-indigo-500 ring-1 ring-indigo-500/20 shadow-sm' 
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
               >
-                <div style={s.tarjetaEncabezado}>
+                <div className="flex justify-between items-start mb-3">
                   <div>
-                    <div style={s.tarjetaNombre}>{nombreCandidato(sesion)}</div>
+                    <div className="font-semibold text-slate-900">{nombreCandidato(sesion)}</div>
                     {sesion.candidato && (
-                      <div style={s.tarjetaEmail}>{sesion.candidato.email}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{sesion.candidato.email}</div>
                     )}
                   </div>
-                  <span style={s.tarjetaFecha}>
+                  <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md">
                     {formatearFecha(sesion.finalizada_en)}
                   </span>
                 </div>
-                <div style={s.factoresMini}>
-                  {sesion.puntaje_bruto && Object.entries(sesion.puntaje_bruto).map(([factor, valor]) => (
-                    <div key={factor} style={s.factorMiniRow}>
-                      <span style={s.factorMiniNombre}>{etiquetas[factor]}</span>
-                      <div style={s.barraMini}>
-                        <div style={{
-                          ...s.barraMiniRelleno,
-                          width: `${(valor / 5) * 100}%`,
-                          background: colores[factor] || '#2563eb'
-                        }} />
+                
+                <div className="flex flex-col gap-1.5">
+                  {sesion.puntaje_bruto && (() => {
+                    const pb = sesion.puntaje_bruto
+                    if (esBigFive(pb)) {
+                      return valoresNumericos(pb).map(([factor, valor]) => (
+                        <div key={factor} className="flex items-center gap-3">
+                          <span className="text-[10px] uppercase font-semibold text-slate-500 w-24 truncate">{etiquetas[factor] || factor}</span>
+                          <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${colores[factor] || 'bg-indigo-500'}`} style={{ width: `${(valor / 5) * 100}%` }} />
+                          </div>
+                          <span className="text-[10px] font-medium text-slate-500 w-6 text-right">{valor}</span>
+                        </div>
+                      ))
+                    }
+                    if (esCognitivo(pb)) {
+                      const { correctas, total, pct } = datosCognitivos(pb)
+                      return (
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] uppercase font-semibold text-slate-500 w-24 truncate">Aciertos</span>
+                          <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-indigo-500" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-[10px] font-medium text-slate-500 w-8 text-right">{correctas}/{total}</span>
+                        </div>
+                      )
+                    }
+                    const prom = promedioPuntaje(pb)
+                    return (
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] uppercase font-semibold text-slate-500 w-24 truncate">Promedio</span>
+                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-indigo-500" style={{ width: `${Math.min((prom / 5) * 100, 100)}%` }} />
+                        </div>
+                        <span className="text-[10px] font-medium text-slate-500 w-6 text-right">{prom}</span>
                       </div>
-                      <span style={s.factorMiniValor}>{valor}</span>
-                    </div>
-                  ))}
+                    )
+                  })()}
+
+                  {sesion.puntaje_bruto && (sesion.puntaje_bruto as any).metricas_fraude && (() => {
+                    const mf = (sesion.puntaje_bruto as any).metricas_fraude
+                    if (mf.tabSwitches > 0 || mf.copyPasteAttempts > 0) {
+                      return (
+                        <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-2.5 flex items-start gap-2">
+                          <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-xs font-bold text-red-800">Alerta Anti-Fraude</p>
+                            <p className="text-[10px] text-red-600 mt-0.5">
+                              Cambios de pestaña: {mf.tabSwitches} | Copy/paste: {mf.copyPasteAttempts}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    }
+                    return null
+                  })()}
                 </div>
               </div>
             ))}
+            {sesionesFiltradas.length === 0 && (
+              <div className="text-center py-8 text-slate-500 text-sm">
+                No se encontraron resultados para la búsqueda.
+              </div>
+            )}
           </div>
 
-          {seleccionada && (
-            <div style={s.detalle}>
-              <div style={s.detalleEncabezado}>
-                <div>
-                  <h2 style={s.detalleTitulo}>{nombreCandidato(seleccionada)}</h2>
-                  {seleccionada.candidato && (
-                    <p style={s.detalleEmail}>{seleccionada.candidato.email}</p>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-  <button
-    style={s.botonPDF}
-    onClick={() => generarPDF(seleccionada)}
-  >
-    Descargar PDF
-  </button>
-  <button style={s.cerrar} onClick={() => setSeleccionada(null)}>✕</button>
-</div>
-              </div>
-              <p style={s.detalleInfo}>
-                Completado: {formatearFecha(seleccionada.finalizada_en)}
-              </p>
-              <div style={{ marginTop: '1.5rem' }}>
-                {seleccionada.puntaje_bruto && Object.entries(seleccionada.puntaje_bruto).map(([factor, valor]) => (
-                  <div key={factor} style={s.factorDetalle}>
-                    <div style={s.factorDetalleEncabezado}>
-                      <span style={s.factorDetalleNombre}>{etiquetas[factor]}</span>
-                      <span style={{ ...s.factorDetalleValor, color: colores[factor] }}>
-                        {valor} / 5
-                      </span>
-                    </div>
-                    <div style={s.barraGrande}>
-                      <div style={{
-                        ...s.barraGrandeRelleno,
-                        width: `${(valor / 5) * 100}%`,
-                        background: colores[factor]
-                      }} />
-                    </div>
-                    <p style={s.factorDescripcion}>{interpretacion(factor, valor)}</p>
+          <div className="sticky top-6">
+            {seleccionada ? (
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">{nombreCandidato(seleccionada)}</h2>
+                    {seleccionada.candidato && (
+                      <p className="text-sm text-slate-500 mt-0.5">{seleccionada.candidato.email}</p>
+                    )}
+                    <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                      Completado el {formatearFecha(seleccionada.finalizada_en)}
+                    </p>
                   </div>
-                ))}
+                  <button onClick={() => setSeleccionada(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <div className="flex gap-2 mb-8">
+                  <a
+                    href={`/informe?candidato=${seleccionada.candidato_id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 flex items-center justify-center gap-2 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-xl transition-colors shadow-sm"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Abrir Informe Interactivo
+                  </a>
+                  <button
+                    onClick={() => generarPDF(seleccionada)}
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-xl transition-colors shadow-sm"
+                  >
+                    <Download className="w-4 h-4" />
+                    PDF Simple
+                  </button>
+                </div>
+
+                <div className="space-y-5">
+                  {seleccionada.puntaje_bruto && (() => {
+                    const pb = seleccionada.puntaje_bruto
+                    if (esBigFive(pb)) {
+                      return valoresNumericos(pb).map(([factor, valor]) => {
+                        const tc = textColores[factor] || 'text-indigo-600'
+                        const bgc = colores[factor] || 'bg-indigo-600'
+                        return (
+                          <div key={factor}>
+                            <div className="flex justify-between mb-1.5">
+                              <span className="text-sm font-semibold text-slate-800">{etiquetas[factor] || factor}</span>
+                              <span className={`text-sm font-bold ${tc}`}>{valor} / 5</span>
+                            </div>
+                            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                              <div className={`h-full rounded-full transition-all duration-500 ease-out ${bgc}`} style={{ width: `${(valor / 5) * 100}%` }} />
+                            </div>
+                            <p className="text-xs text-slate-500 leading-relaxed">{interpretacion(factor, valor)}</p>
+                          </div>
+                        )
+                      })
+                    }
+                    if (esCognitivo(pb)) {
+                      const { correctas, total, pct } = datosCognitivos(pb)
+                      const nivel = pct >= 80 ? 'Alto' : pct >= 60 ? 'Moderado' : 'En desarrollo'
+                      const colorBg = pct >= 80 ? 'bg-green-500' : pct >= 60 ? 'bg-orange-500' : 'bg-red-500'
+                      const colorText = pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-orange-600' : 'text-red-600'
+                      
+                      return (
+                        <div>
+                          <div className="flex justify-between mb-1.5">
+                            <span className="text-sm font-semibold text-slate-800">Resultado Cognitivo</span>
+                            <span className={`text-sm font-bold ${colorText}`}>{correctas} / {total} ({pct}%)</span>
+                          </div>
+                          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                            <div className={`h-full rounded-full transition-all duration-500 ease-out ${colorBg}`} style={{ width: `${pct}%` }} />
+                          </div>
+                          <p className="text-xs text-slate-500 leading-relaxed">Desempeño detectado: {nivel}</p>
+                        </div>
+                      )
+                    }
+                    const prom = promedioPuntaje(pb)
+                    const colorBg = prom >= 4 ? 'bg-green-500' : prom >= 3 ? 'bg-orange-500' : 'bg-red-500'
+                    const colorText = prom >= 4 ? 'text-green-600' : prom >= 3 ? 'text-orange-600' : 'text-red-600'
+                    
+                    return (
+                      <div>
+                        <div className="flex justify-between mb-1.5">
+                          <span className="text-sm font-semibold text-slate-800">Promedio general</span>
+                          <span className={`text-sm font-bold ${colorText}`}>{prom} / 5</span>
+                        </div>
+                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                          <div className={`h-full rounded-full transition-all duration-500 ease-out ${colorBg}`} style={{ width: `${Math.min((prom / 5) * 100, 100)}%` }} />
+                        </div>
+                        <p className="text-xs text-slate-500 leading-relaxed">
+                          {prom >= 4 ? 'Nivel alto' : prom >= 3 ? 'Nivel moderado' : 'En desarrollo'}
+                        </p>
+                      </div>
+                    )
+                  })()}
+                </div>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="bg-slate-50 border border-slate-200 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center h-64">
+                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+                  <Search className="w-5 h-5 text-slate-400" />
+                </div>
+                <h3 className="text-sm font-medium text-slate-900 mb-1">Ninguna evaluación seleccionada</h3>
+                <p className="text-xs text-slate-500 max-w-[200px]">Selecciona una tarjeta de la lista para ver sus resultados en detalle.</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
-    </div>
+    </AppLayout>
   )
 }
+
 async function generarPDF(sesion: Sesion) {
-  const doc = new jsPDF()
   const nombre = sesion.candidato
     ? `${sesion.candidato.nombre} ${sesion.candidato.apellido}`
     : 'Evaluación anónima'
@@ -251,81 +419,33 @@ async function generarPDF(sesion: Sesion) {
     apertura: 'Apertura'
   }
 
-  doc.setFillColor(37, 99, 235)
-  doc.rect(0, 0, 210, 35, 'F')
-  doc.setTextColor(255, 255, 255)
-  doc.setFontSize(20)
-  doc.setFont('helvetica', 'bold')
-  doc.text('PsicoPlataforma', 20, 15)
-  doc.setFontSize(11)
-  doc.setFont('helvetica', 'normal')
-  doc.text('Informe de Evaluación Psicolaboral', 20, 25)
-
-  doc.setTextColor(30, 41, 59)
-  doc.setFontSize(16)
-  doc.setFont('helvetica', 'bold')
-  doc.text(nombre, 20, 55)
-
-  doc.setFontSize(10)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(100, 116, 139)
-  if (sesion.candidato?.email) {
-    doc.text(`Email: ${sesion.candidato.email}`, 20, 63)
-  }
-  doc.text(`Fecha: ${fecha}`, 20, 70)
-  doc.text('Instrumento: Big Five IPIP-NEO (30 ítems)', 20, 77)
-
-  doc.setDrawColor(226, 232, 240)
-  doc.line(20, 85, 190, 85)
-
-  doc.setFontSize(13)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(30, 41, 59)
-  doc.text('Perfil de Personalidad', 20, 97)
-
-  let y = 110
-  if (sesion.puntaje_bruto) {
-    Object.entries(sesion.puntaje_bruto).forEach(([factor, valor]) => {
-      const rgb = coloresRGB[factor] || [37, 99, 235]
-      const etiqueta = etiquetasPDF[factor] || factor
-      const nivel = valor >= 4 ? 'Alto' : valor >= 3 ? 'Moderado' : 'Bajo'
-      const porcentaje = (valor / 5) * 150
-
-      doc.setFontSize(11)
-      doc.setFont('helvetica', 'bold')
-      doc.setTextColor(30, 41, 59)
-      doc.text(etiqueta, 20, y)
-
-      doc.setFontSize(10)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(rgb[0], rgb[1], rgb[2])
-      doc.text(`${nivel} (${valor}/5)`, 160, y)
-
-      doc.setFillColor(226, 232, 240)
-      doc.rect(20, y + 3, 150, 5, 'F')
-      doc.setFillColor(rgb[0], rgb[1], rgb[2])
-      doc.rect(20, y + 3, porcentaje, 5, 'F')
-
-      const interp = interpretacion(factor, valor)
-      doc.setFontSize(9)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(100, 116, 139)
-      const lineas = doc.splitTextToSize(interp, 170)
-      doc.text(lineas, 20, y + 13)
-
-      y += 13 + lineas.length * 5 + 10
-    })
+  const pdfData = {
+    sesion, nombre, fecha,
+    helpers: {
+      esBigFive, esCognitivo, valoresNumericos, promedioPuntaje, datosCognitivos,
+      coloresRGB, etiquetasPDF, interpretacion
+    }
   }
 
-  doc.setDrawColor(226, 232, 240)
-  doc.line(20, y + 5, 190, y + 5)
-  doc.setFontSize(8)
-  doc.setTextColor(148, 163, 184)
-  doc.text('PsicoPlataforma · seleccion@repúblicamicrofinanzas.com.uy · WhatsApp: 092 651 770', 20, y + 13)
-  doc.text('Instrumento: IPIP-NEO Big Five · Dominio público · Baremación en construcción', 20, y + 19)
+  try {
+    const { pdf } = await import('@react-pdf/renderer')
+    const { SimplePDF } = await import('@/components/SimplePDF')
 
-  doc.save(`informe-${nombre.replace(/ /g, '-').toLowerCase()}-${fecha.replace(/\//g, '-')}.pdf`)
+    const blob = await pdf(<SimplePDF data={pdfData} />).toBlob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `informe-${nombre.replace(/ /g, '-').toLowerCase()}-${fecha.replace(/\//g, '-')}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error('Error generando PDF:', err)
+    alert('Hubo un error al generar el PDF simple.')
+  }
 }
+
 function interpretacion(factor: string, valor: number): string {
   const nivel = valor >= 4 ? 'alto' : valor >= 3 ? 'moderado' : 'bajo'
   const textos: Record<string, Record<string, string>> = {
@@ -356,56 +476,4 @@ function interpretacion(factor: string, valor: number): string {
     }
   }
   return textos[factor]?.[nivel] || ''
-}
-
-const s = {
-  centro: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' } as React.CSSProperties,
-  contenedor: { maxWidth: '1100px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' } as React.CSSProperties,
-  encabezado: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' } as React.CSSProperties,
-  titulo: { fontSize: '1.5rem', fontWeight: '600', color: '#1e293b', margin: '0 0 4px' } as React.CSSProperties,
-  subtitulo: { fontSize: '0.875rem', color: '#64748b', margin: 0 } as React.CSSProperties,
-  botonPrimario: { padding: '0.5rem 1rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '0.875rem', cursor: 'pointer', textDecoration: 'none' } as React.CSSProperties,
-  botonSecundario: { padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '0.875rem', textDecoration: 'none' } as React.CSSProperties,
-  vacio: { textAlign: 'center' as const, padding: '3rem', color: '#64748b', fontSize: '0.875rem' },
-  grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' } as React.CSSProperties,
-  lista: { display: 'flex', flexDirection: 'column' as const, gap: '0.75rem' },
-  tarjeta: { border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '1rem 1.25rem', cursor: 'pointer', transition: 'border-color 0.15s ease', background: '#fff' } as React.CSSProperties,
-  tarjetaEncabezado: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' } as React.CSSProperties,
-  tarjetaNombre: { fontSize: '0.875rem', fontWeight: '600', color: '#1e293b' } as React.CSSProperties,
-  tarjetaEmail: { fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' } as React.CSSProperties,
-  tarjetaFecha: { fontSize: '0.75rem', color: '#94a3b8', whiteSpace: 'nowrap' as const } as React.CSSProperties,
-  factoresMini: { display: 'flex', flexDirection: 'column' as const, gap: '4px' },
-  factorMiniRow: { display: 'flex', alignItems: 'center', gap: '8px' } as React.CSSProperties,
-  factorMiniNombre: { fontSize: '11px', color: '#64748b', minWidth: '110px' } as React.CSSProperties,
-  barraMini: { flex: 1, height: '4px', background: '#e2e8f0', borderRadius: '2px', overflow: 'hidden' } as React.CSSProperties,
-  barraMiniRelleno: { height: '100%', borderRadius: '2px' } as React.CSSProperties,
-  factorMiniValor: { fontSize: '11px', color: '#64748b', minWidth: '20px' } as React.CSSProperties,
-  detalle: { border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem', background: '#fff', alignSelf: 'flex-start' as const, position: 'sticky' as const, top: '1rem' } as React.CSSProperties,
-  detalleEncabezado: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' } as React.CSSProperties,
-  detalleTitulo: { fontSize: '1rem', fontWeight: '600', color: '#1e293b', margin: 0 } as React.CSSProperties,
-  detalleEmail: { fontSize: '0.75rem', color: '#94a3b8', margin: '2px 0 0' } as React.CSSProperties,
-  cerrar: { background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '1rem' } as React.CSSProperties,
-  detalleInfo: { fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.25rem' } as React.CSSProperties,
-  factorDetalle: { marginBottom: '1.25rem' } as React.CSSProperties,
-  factorDetalleEncabezado: { display: 'flex', justifyContent: 'space-between', marginBottom: '6px' } as React.CSSProperties,
-  factorDetalleNombre: { fontSize: '0.875rem', fontWeight: '500', color: '#1e293b' } as React.CSSProperties,
-  factorDetalleValor: { fontSize: '0.875rem', fontWeight: '600' } as React.CSSProperties,
-  barraGrande: { width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden', marginBottom: '6px' } as React.CSSProperties,
-  barraGrandeRelleno: { height: '100%', borderRadius: '4px', transition: 'width 0.3s ease' } as React.CSSProperties,
-  factorDescripcion: { fontSize: '0.75rem', color: '#64748b', lineHeight: '1.5', margin: 0 } as React.CSSProperties,
-  botonPDF: {
-    padding: '0.375rem 0.875rem',
-    background: '#2563eb', color: '#fff',
-    border: 'none', borderRadius: '6px',
-    fontSize: '0.75rem', cursor: 'pointer'
-  } as React.CSSProperties,
-  botonCerrar: {
-    padding: '0.5rem 1rem',
-    background: 'transparent',
-    color: '#94a3b8',
-    border: '1px solid #e2e8f0',
-    borderRadius: '8px',
-    fontSize: '0.875rem',
-    cursor: 'pointer'
-  } as React.CSSProperties,
 }

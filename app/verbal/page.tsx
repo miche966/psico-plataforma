@@ -1,8 +1,9 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
+import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 
 interface Item {
   id: string
@@ -19,6 +20,7 @@ export default function VerbalPage() {
   const [respuestas, setRespuestas] = useState<Record<string, string>>({})
   const [cargando, setCargando] = useState(true)
   const [finalizado, setFinalizado] = useState(false)
+  const enEvaluacion = useEvaluacionRedirect(finalizado)
   const [puntaje, setPuntaje] = useState({ correctas: 0, total: 0 })
   const [nombreCandidato, setNombreCandidato] = useState('')
   const [tiempoRestante, setTiempoRestante] = useState(60)
@@ -130,6 +132,7 @@ export default function VerbalPage() {
 
   if (cargando) return <div style={s.centro}><p>Cargando test...</p></div>
 
+  if (finalizado && enEvaluacion) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}><p>Cargando siguiente evaluación...</p></div>
   if (finalizado) {
     return (
       <div style={s.contenedor}>
@@ -148,8 +151,8 @@ export default function VerbalPage() {
           </p>
           <div style={s.contactoDetalle}>
             <p style={s.contactoItem}>
-              📧 <a href="mailto:seleccion@repúblicamicrofinanzas.com.uy" style={s.link}>
-                seleccion@repúblicamicrofinanzas.com.uy
+              📧 <a href="mailto:seleccion@republicamicrofinanzas.com.uy" style={s.link}>
+                seleccion@republicamicrofinanzas.com.uy
               </a>
             </p>
             <p style={s.contactoItem}>

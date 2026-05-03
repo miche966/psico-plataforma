@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
+import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 
 interface Pregunta {
   id: string
@@ -24,6 +25,7 @@ export default function ResponderPage() {
   const [preguntas, setPreguntas] = useState<Pregunta[]>([])
   const [preguntaActual, setPreguntaActual] = useState(0)
   const [estado, setEstado] = useState<Estado>('bienvenida')
+  const enEvaluacion = useEvaluacionRedirect(estado === 'finalizado')
   const [cargando, setCargando] = useState(true)
   const [tiempoRestante, setTiempoRestante] = useState(0)
   const [nombreCandidato, setNombreCandidato] = useState('')
@@ -172,6 +174,8 @@ export default function ResponderPage() {
     </div>
   )
 
+  if (estado === 'finalizado' && enEvaluacion) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}><p>Cargando siguiente evaluación...</p></div>
+
   if (estado === 'finalizado') return (
     <div style={s.contenedor}>
       <div style={s.checkCirculo}>✓</div>
@@ -184,7 +188,7 @@ export default function ResponderPage() {
         <p style={s.contactoTitulo}>Próximos pasos</p>
         <p style={s.contactoTexto}>El equipo de selección revisará tus respuestas y se pondrá en contacto a la brevedad.</p>
         <div style={s.contactoDetalle}>
-          <p style={s.contactoItem}>📧 <a href="mailto:seleccion@repúblicamicrofinanzas.com.uy" style={s.link}>seleccion@repúblicamicrofinanzas.com.uy</a></p>
+          <p style={s.contactoItem}>📧 <a href="mailto:seleccion@republicamicrofinanzas.com.uy" style={s.link}>seleccion@republicamicrofinanzas.com.uy</a></p>
           <p style={s.contactoItem}>💬 WhatsApp: <a href="https://wa.me/598092651770" style={s.link}>092 651 770</a></p>
         </div>
       </div>

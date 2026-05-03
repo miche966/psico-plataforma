@@ -1,8 +1,9 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
+import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 
 interface Item {
   id: string
@@ -19,6 +20,7 @@ export default function NumericoPage() {
   const [respuestas, setRespuestas] = useState<Record<string, string>>({})
   const [cargando, setCargando] = useState(true)
   const [finalizado, setFinalizado] = useState(false)
+  const enEvaluacion = useEvaluacionRedirect(finalizado)
   const [puntaje, setPuntaje] = useState({ correctas: 0, total: 0 })
   const [nombreCandidato, setNombreCandidato] = useState('')
   const [tiempoRestante, setTiempoRestante] = useState(75)
@@ -130,6 +132,7 @@ export default function NumericoPage() {
 
   if (cargando) return <div style={s.centro}><p>Cargando test...</p></div>
 
+  if (finalizado && enEvaluacion) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}><p>Cargando siguiente evaluación...</p></div>
   if (finalizado) {
     const porcentaje = Math.round((puntaje.correctas / puntaje.total) * 100)
     const nivel = porcentaje >= 80 ? 'Alto' : porcentaje >= 60 ? 'Moderado' : 'En desarrollo'
@@ -152,8 +155,8 @@ export default function NumericoPage() {
           </p>
           <div style={s.contactoDetalle}>
             <p style={s.contactoItem}>
-              📧 <a href="mailto:seleccion@repúblicamicrofinanzas.com.uy" style={s.link}>
-                seleccion@repúblicamicrofinanzas.com.uy
+              📧 <a href="mailto:seleccion@republicamicrofinanzas.com.uy" style={s.link}>
+                seleccion@republicamicrofinanzas.com.uy
               </a>
             </p>
             <p style={s.contactoItem}>

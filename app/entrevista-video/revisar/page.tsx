@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useSearchParams, useRouter } from 'next/navigation'
+import AppLayout from '@/components/AppLayout'
+import { ArrowLeft, Play, VideoOff, MessageSquare } from 'lucide-react'
 
 interface Pregunta {
   id: string
@@ -41,6 +43,7 @@ export default function RevisarPage() {
       if (!session) router.push('/login')
     })
     if (entrevistaId) cargarDatos()
+    else setCargando(false)
   }, [entrevistaId])
 
   async function cargarDatos() {
@@ -93,85 +96,131 @@ export default function RevisarPage() {
 
   const respuestasFiltradas = respuestas.filter(r => r.pregunta_id === preguntaSeleccionada)
 
-  if (cargando) return <div style={s.centro}><p>Cargando...</p></div>
+  if (!entrevistaId) {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center py-20 bg-white border border-slate-200 rounded-2xl shadow-sm mt-8">
+          <MessageSquare className="w-12 h-12 text-slate-300 mb-4" />
+          <h2 className="text-lg font-semibold text-slate-800">No se ha seleccionado ninguna entrevista</h2>
+          <p className="text-sm text-slate-500 mt-2 mb-6">Debes seleccionar una entrevista desde el panel principal.</p>
+          <a href="/panel" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors shadow-sm text-sm flex items-center gap-2">
+            <ArrowLeft className="w-4 h-4" />
+            Volver al Panel
+          </a>
+        </div>
+      </AppLayout>
+    )
+  }
+
+  if (cargando) {
+    return (
+      <AppLayout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        </div>
+      </AppLayout>
+    )
+  }
 
   return (
-    <div style={s.contenedor}>
-      <div style={s.encabezado}>
-        <div>
-          <a href="/entrevista-video" style={s.volver}>← Volver a entrevistas</a>
-          <h1 style={s.titulo}>{entrevista?.nombre}</h1>
-          <p style={s.subtitulo}>{respuestas.length} respuesta{respuestas.length !== 1 ? 's' : ''} recibida{respuestas.length !== 1 ? 's' : ''}</p>
+    <AppLayout>
+      <div className="mb-8">
+        <a href="/entrevista-video" className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors mb-4">
+          <ArrowLeft className="w-4 h-4" /> Volver a entrevistas
+        </a>
+        <div className="flex justify-between items-end">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{entrevista?.nombre}</h1>
+            <p className="text-sm text-slate-500 mt-1">
+              {respuestas.length} respuesta{respuestas.length !== 1 ? 's' : ''} recibida{respuestas.length !== 1 ? 's' : ''} en total
+            </p>
+          </div>
         </div>
       </div>
 
       {preguntas.length === 0 ? (
-        <div style={s.vacio}><p>No hay preguntas configuradas en esta entrevista.</p></div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">
+          <p className="text-slate-500 font-medium">No hay preguntas configuradas en esta entrevista.</p>
+        </div>
       ) : (
-        <div style={s.grid}>
-          <div>
-            <div style={s.seccionTitulo}>Preguntas</div>
-            <div style={s.listaPreguntas}>
-              {preguntas.map(pregunta => {
-                const cantRespuestas = respuestas.filter(r => r.pregunta_id === pregunta.id).length
-                return (
-                  <div
-                    key={pregunta.id}
-                    style={{
-                      ...s.preguntaItem,
-                      borderColor: preguntaSeleccionada === pregunta.id ? '#2563eb' : '#e2e8f0',
-                      background: preguntaSeleccionada === pregunta.id ? '#E6F1FB' : '#fff'
-                    }}
-                    onClick={() => setPreguntaSeleccionada(pregunta.id)}
-                  >
-                    <div style={s.preguntaNum}>{pregunta.orden}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={s.preguntaTexto}>{pregunta.pregunta}</div>
-                      <div style={s.preguntaMeta}>{cantRespuestas} respuesta{cantRespuestas !== 1 ? 's' : ''}</div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div className="lg:col-span-1 flex flex-col gap-3">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1">Preguntas</h3>
+            {preguntas.map(pregunta => {
+              const cantRespuestas = respuestas.filter(r => r.pregunta_id === pregunta.id).length
+              const isActive = preguntaSeleccionada === pregunta.id
+              return (
+                <div
+                  key={pregunta.id}
+                  onClick={() => setPreguntaSeleccionada(pregunta.id)}
+                  className={`flex gap-3 p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
+                    isActive 
+                      ? 'bg-indigo-50 border-indigo-200 shadow-sm ring-1 ring-indigo-500/10' 
+                      : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
+                  }`}
+                >
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                    isActive ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {pregunta.orden}
+                  </div>
+                  <div className="flex-1">
+                    <div className={`text-sm font-medium leading-relaxed mb-1.5 ${isActive ? 'text-indigo-900' : 'text-slate-700'}`}>
+                      {pregunta.pregunta}
+                    </div>
+                    <div className={`text-[11px] font-semibold ${isActive ? 'text-indigo-600' : 'text-slate-400'}`}>
+                      {cantRespuestas} respuesta{cantRespuestas !== 1 ? 's' : ''}
                     </div>
                   </div>
-                )
-              })}
-            </div>
+                </div>
+              )
+            })}
           </div>
 
-          <div>
-            <div style={s.seccionTitulo}>
-              Respuestas — {preguntas.find(p => p.id === preguntaSeleccionada)?.pregunta?.substring(0, 50)}...
-            </div>
+          <div className="lg:col-span-2">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 ml-1">
+              Respuestas Recibidas
+            </h3>
             {respuestasFiltradas.length === 0 ? (
-              <div style={s.vacio}><p>No hay respuestas para esta pregunta todavía.</p></div>
+              <div className="bg-slate-50 border border-slate-200 border-dashed rounded-2xl p-12 text-center flex flex-col items-center justify-center">
+                <VideoOff className="w-8 h-8 text-slate-300 mb-3" />
+                <p className="text-sm font-medium text-slate-500">No hay respuestas para esta pregunta todavía.</p>
+              </div>
             ) : (
-              <div style={s.listaRespuestas}>
+              <div className="flex flex-col gap-5">
                 {respuestasFiltradas.map(respuesta => (
-                  <div key={respuesta.id} style={s.respuestaCard}>
-                    <div style={s.respuestaEncabezado}>
+                  <div key={respuesta.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                    <div className="p-5 flex justify-between items-start border-b border-slate-100 bg-slate-50/50">
                       <div>
-                        <div style={s.candidatoNombre}>{nombreCandidato(respuesta)}</div>
+                        <div className="font-bold text-slate-900">{nombreCandidato(respuesta)}</div>
                         {respuesta.candidato && (
-                          <div style={s.candidatoEmail}>{respuesta.candidato.email}</div>
+                          <div className="text-xs font-medium text-slate-500 mt-0.5">{respuesta.candidato.email}</div>
                         )}
-                        <div style={s.respuestaFecha}>{formatearFecha(respuesta.grabada_en)}</div>
+                        <div className="text-[11px] text-slate-400 mt-2 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                          {formatearFecha(respuesta.grabada_en)}
+                        </div>
                       </div>
-                      <span style={{
-                        ...s.estadoBadge,
-                        background: respuesta.estado === 'completado' ? '#dcfce7' : '#f1f5f9',
-                        color: respuesta.estado === 'completado' ? '#16a34a' : '#64748b'
-                      }}>
-                        {respuesta.estado === 'completado' ? 'Con video' : 'Sin video'}
+                      <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wide flex items-center gap-1 ${
+                        respuesta.estado === 'completado' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {respuesta.estado === 'completado' ? <><Play className="w-3 h-3" /> Con video</> : 'Sin video'}
                       </span>
                     </div>
-                    {respuesta.url_video ? (
-                      <video
-                        controls
-                        style={s.videoPlayer}
-                        src={respuesta.url_video}
-                      />
-                    ) : (
-                      <div style={s.sinVideo}>
-                        Video no disponible
-                      </div>
-                    )}
+                    <div className="p-5 bg-slate-900 flex justify-center">
+                      {respuesta.url_video ? (
+                        <video
+                          controls
+                          className="w-full max-h-[400px] rounded-xl shadow-lg ring-1 ring-white/10"
+                          src={respuesta.url_video}
+                        />
+                      ) : (
+                        <div className="py-16 text-center flex flex-col items-center justify-center">
+                          <VideoOff className="w-10 h-10 text-slate-700 mb-3" />
+                          <p className="text-sm font-medium text-slate-500">Video no disponible o no grabado</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -179,32 +228,6 @@ export default function RevisarPage() {
           </div>
         </div>
       )}
-    </div>
+    </AppLayout>
   )
-}
-
-const s = {
-  centro: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' } as React.CSSProperties,
-  contenedor: { maxWidth: '1100px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' } as React.CSSProperties,
-  encabezado: { marginBottom: '1.5rem' } as React.CSSProperties,
-  volver: { fontSize: '0.75rem', color: '#64748b', textDecoration: 'none', display: 'block', marginBottom: '0.5rem' } as React.CSSProperties,
-  titulo: { fontSize: '1.5rem', fontWeight: '600', color: '#1e293b', margin: '0 0 4px' } as React.CSSProperties,
-  subtitulo: { fontSize: '0.875rem', color: '#64748b', margin: 0 } as React.CSSProperties,
-  vacio: { textAlign: 'center' as const, padding: '2rem', color: '#64748b', fontSize: '0.875rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' } as React.CSSProperties,
-  grid: { display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem' } as React.CSSProperties,
-  seccionTitulo: { fontSize: '11px', fontWeight: '500', textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.75rem' } as React.CSSProperties,
-  listaPreguntas: { display: 'flex', flexDirection: 'column' as const, gap: '0.5rem' } as React.CSSProperties,
-  preguntaItem: { display: 'flex', gap: '10px', alignItems: 'flex-start', border: '1.5px solid', borderRadius: '10px', padding: '0.875rem', cursor: 'pointer', transition: 'all 0.15s' } as React.CSSProperties,
-  preguntaNum: { display: 'inline-flex', width: '22px', height: '22px', borderRadius: '50%', background: '#e2e8f0', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '600', flexShrink: 0 } as React.CSSProperties,
-  preguntaTexto: { fontSize: '0.8rem', color: '#1e293b', lineHeight: '1.5', marginBottom: '2px' } as React.CSSProperties,
-  preguntaMeta: { fontSize: '11px', color: '#94a3b8' } as React.CSSProperties,
-  listaRespuestas: { display: 'flex', flexDirection: 'column' as const, gap: '1rem' } as React.CSSProperties,
-  respuestaCard: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', overflow: 'hidden' } as React.CSSProperties,
-  respuestaEncabezado: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' } as React.CSSProperties,
-  candidatoNombre: { fontSize: '0.875rem', fontWeight: '600', color: '#1e293b' } as React.CSSProperties,
-  candidatoEmail: { fontSize: '0.75rem', color: '#94a3b8' } as React.CSSProperties,
-  respuestaFecha: { fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' } as React.CSSProperties,
-  estadoBadge: { fontSize: '10px', padding: '2px 8px', borderRadius: '99px', fontWeight: '500', whiteSpace: 'nowrap' as const } as React.CSSProperties,
-  videoPlayer: { width: '100%', borderRadius: '8px', background: '#1e293b' } as React.CSSProperties,
-  sinVideo: { background: '#f1f5f9', borderRadius: '8px', padding: '2rem', textAlign: 'center' as const, color: '#94a3b8', fontSize: '0.875rem' } as React.CSSProperties,
 }

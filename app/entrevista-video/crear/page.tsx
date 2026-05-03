@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { getBaseUrl } from '@/lib/utils'
 
 interface Pregunta {
   id: string
@@ -31,12 +32,16 @@ export default function CrearPreguntasPage() {
   const router = useRouter()
   const entrevistaId = searchParams.get('id')
 
+  const [nombreNuevaEntrevista, setNombreNuevaEntrevista] = useState('')
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) router.push('/login')
     })
     if (entrevistaId) {
       cargarDatos()
+    } else {
+      setCargando(false)
     }
   }, [entrevistaId])
 
@@ -55,6 +60,21 @@ export default function CrearPreguntasPage() {
       .order('orden')
     setPreguntas(preguntasData || [])
     setCargando(false)
+  }
+
+  async function crearEntrevista() {
+    if (!nombreNuevaEntrevista.trim()) return
+    setGuardando(true)
+    const { data, error } = await supabase
+      .from('entrevistas_video')
+      .insert({ nombre: nombreNuevaEntrevista.trim() })
+      .select()
+      .single()
+    
+    if (!error && data) {
+      router.push(`/entrevista-video/crear?id=${data.id}`)
+    }
+    setGuardando(false)
   }
 
   async function agregarPregunta() {
@@ -80,7 +100,7 @@ export default function CrearPreguntasPage() {
   }
 
   function copiarLink(candidatoId?: string) {
-    const base = `${window.location.origin}/entrevista-video/responder?entrevista=${entrevistaId}`
+    const base = `${getBaseUrl()}/entrevista-video/responder?entrevista=${entrevistaId}`
     const url = candidatoId ? `${base}&candidato=${candidatoId}` : base
     navigator.clipboard.writeText(url)
     setLinkCopiado('copiado')
@@ -88,6 +108,35 @@ export default function CrearPreguntasPage() {
   }
 
   if (cargando) return <div style={s.centro}><p>Cargando...</p></div>
+
+  if (!entrevistaId) {
+    return (
+      <div style={s.contenedor}>
+        <div style={{ maxWidth: '400px', margin: '100px auto', textAlign: 'center' }}>
+          <a href="/entrevista-video" style={s.volver}>← Volver</a>
+          <h1 style={{ ...s.titulo, marginBottom: '20px' }}>Nueva Entrevista en Video</h1>
+          <div style={s.formulario}>
+            <div style={s.campo}>
+              <label style={s.label}>Nombre de la entrevista *</label>
+              <input 
+                style={s.input} 
+                placeholder="Ej: Entrevista técnica Senior Dev"
+                value={nombreNuevaEntrevista}
+                onChange={e => setNombreNuevaEntrevista(e.target.value)}
+              />
+            </div>
+            <button
+              style={{ ...s.botonPrimario, width: '100%', marginTop: '10px' }}
+              onClick={crearEntrevista}
+              disabled={guardando || !nombreNuevaEntrevista.trim()}
+            >
+              {guardando ? 'Creando...' : 'Comenzar a configurar'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={s.contenedor}>
@@ -180,7 +229,7 @@ export default function CrearPreguntasPage() {
             <div style={s.seccionTitulo}>Vista previa del link</div>
             <div style={s.linkBox}>
               <div style={s.linkTexto}>
-                {`${typeof window !== 'undefined' ? window.location.origin : ''}/entrevista-video/responder?entrevista=${entrevistaId}`}
+                {`${getBaseUrl()}/entrevista-video/responder?entrevista=${entrevistaId}`}
               </div>
               <div style={s.linkNota}>
                 Podés enviar este link directamente o ir a Candidatos para copiar un link personalizado por candidato.

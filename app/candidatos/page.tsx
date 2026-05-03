@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import AppLayout from '@/components/AppLayout'
+import { Plus, Check, Copy, FileText, Search, UserPlus } from 'lucide-react'
 
 interface Candidato {
   id: string
@@ -17,6 +19,7 @@ export default function CandidatosPage() {
   const [cargando, setCargando] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [linkCopiado, setLinkCopiado] = useState<string | null>(null)
+  const [filtro, setFiltro] = useState('')
   const [form, setForm] = useState({
     nombre: '',
     apellido: '',
@@ -24,8 +27,9 @@ export default function CandidatosPage() {
     documento: ''
   })
   const [guardando, setGuardando] = useState(false)
-const [nivelIcar, setNivelIcar] = useState('3')
+  const [nivelIcar, setNivelIcar] = useState('3')
   const [rotacionIcar, setRotacionIcar] = useState('si')
+
   useEffect(() => {
     cargarCandidatos()
   }, [])
@@ -109,368 +113,237 @@ const [nivelIcar, setNivelIcar] = useState('3')
     })
   }
 
+  const candidatosFiltrados = candidatos.filter(c => 
+    `${c.nombre} ${c.apellido}`.toLowerCase().includes(filtro.toLowerCase()) || 
+    c.email.toLowerCase().includes(filtro.toLowerCase()) ||
+    (c.documento && c.documento.includes(filtro))
+  )
+
   if (cargando) {
-    return <div style={s.centro}><p>Cargando candidatos...</p></div>
+    return (
+      <AppLayout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        </div>
+      </AppLayout>
+    )
   }
 
   return (
-    <div style={s.contenedor}>
-      <div style={s.encabezado}>
+    <AppLayout>
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 style={s.titulo}>Candidatos</h1>
-          <p style={s.subtitulo}>{candidatos.length} candidato{candidatos.length !== 1 ? 's' : ''} registrado{candidatos.length !== 1 ? 's' : ''}</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Candidatos</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {candidatos.length} candidato{candidatos.length !== 1 ? 's' : ''} registrado{candidatos.length !== 1 ? 's' : ''}
+          </p>
         </div>
-        <div style={s.botonesEncabezado}>
-          <a href="/panel" style={s.botonSecundario}>Ver panel</a>
-          <button style={s.botonPrimario} onClick={() => setMostrarForm(!mostrarForm)}>
-            {mostrarForm ? 'Cancelar' : '+ Nuevo candidato'}
-          </button>
-        </div>
+        <button 
+          onClick={() => setMostrarForm(!mostrarForm)}
+          className={`px-4 py-2 font-medium rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2 ${
+            mostrarForm 
+              ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' 
+              : 'bg-indigo-600 hover:bg-indigo-700 text-white border border-transparent'
+          }`}
+        >
+          {mostrarForm ? 'Cancelar' : <><UserPlus className="w-4 h-4" /> Nuevo candidato</>}
+        </button>
       </div>
 
       {mostrarForm && (
-        <div style={s.formulario}>
-          <h2 style={s.formTitulo}>Nuevo candidato</h2>
-          <div style={s.formGrid}>
-            <div style={s.campo}>
-              <label style={s.label}>Nombre *</label>
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-8 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-900 mb-6">Agregar nuevo candidato</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-slate-700">Nombre *</label>
               <input
-                style={s.input}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                 value={form.nombre}
                 onChange={e => setForm({ ...form, nombre: e.target.value })}
                 placeholder="Juan"
               />
             </div>
-            <div style={s.campo}>
-              <label style={s.label}>Apellido *</label>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-slate-700">Apellido *</label>
               <input
-                style={s.input}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                 value={form.apellido}
                 onChange={e => setForm({ ...form, apellido: e.target.value })}
                 placeholder="Pérez"
               />
             </div>
-            <div style={s.campo}>
-              <label style={s.label}>Email *</label>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-slate-700">Email *</label>
               <input
-                style={s.input}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                 type="email"
                 value={form.email}
                 onChange={e => setForm({ ...form, email: e.target.value })}
                 placeholder="juan@email.com"
               />
             </div>
-            <div style={s.campo}>
-              <label style={s.label}>Documento</label>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-slate-700">Documento</label>
               <input
-                style={s.input}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                 value={form.documento}
                 onChange={e => setForm({ ...form, documento: e.target.value })}
                 placeholder="12345678"
               />
             </div>
           </div>
-          <button
-            style={{
-              ...s.botonPrimario,
-              opacity: guardando ? 0.6 : 1
-            }}
-            onClick={guardarCandidato}
-            disabled={guardando}
-          >
-            {guardando ? 'Guardando...' : 'Guardar candidato'}
-          </button>
+          <div className="flex justify-end">
+            <button
+              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-all text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={guardarCandidato}
+              disabled={guardando || !form.nombre || !form.apellido || !form.email}
+            >
+              {guardando ? 'Guardando...' : 'Guardar candidato'}
+            </button>
+          </div>
         </div>
       )}
+
+      <div className="mb-6 relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search className="h-4 w-4 text-slate-400" />
+        </div>
+        <input
+          type="text"
+          placeholder="Buscar candidato por nombre, email o documento..."
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm"
+        />
+      </div>
 
       {candidatos.length === 0 ? (
-        <div style={s.vacio}>
-          <p>No hay candidatos todavía.</p>
-          <p>Creá el primero con el botón de arriba.</p>
+        <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col items-center justify-center">
+          <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+            <Users className="w-6 h-6 text-slate-400" />
+          </div>
+          <p className="text-slate-500 mb-4 font-medium">No hay candidatos registrados todavía.</p>
+          <button 
+            onClick={() => setMostrarForm(true)}
+            className="text-indigo-600 font-medium hover:text-indigo-700 flex items-center gap-1"
+          >
+            <Plus className="w-4 h-4" /> Crear el primer candidato
+          </button>
         </div>
       ) : (
-        <table style={s.tabla}>
-          <thead>
-            <tr>
-              <th style={s.th}>Nombre</th>
-              <th style={s.th}>Email</th>
-              <th style={s.th}>Documento</th>
-              <th style={s.th}>Registrado</th>
-              <th style={s.th}>Link de evaluación</th>
-            </tr>
-          </thead>
-          <tbody>
-            {candidatos.map(candidato => (
-              <tr key={candidato.id} style={s.tr}>
-                <td style={s.td}>
-                  {candidato.nombre} {candidato.apellido}
-                </td>
-                <td style={s.td}>{candidato.email}</td>
-                <td style={s.td}>{candidato.documento || '—'}</td>
-                <td style={s.td}>{formatearFecha(candidato.creado_en)}</td>
-                <td style={s.td}>
-                  <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '6px' }}>
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
-                      <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'bigfive' ? '#16a34a' : '#2563eb',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'bigfive')}
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/50 border-b border-slate-200">
+                  <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Candidato</th>
+                  <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Documento</th>
+                  <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Links de evaluación (Copiar)</th>
+                  <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {candidatosFiltrados.map(candidato => (
+                  <tr key={candidato.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-5 py-4">
+                      <div className="font-medium text-slate-900">{candidato.nombre} {candidato.apellido}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{candidato.email}</div>
+                      <div className="text-[10px] text-slate-400 mt-1">Registrado el {formatearFecha(candidato.creado_en)}</div>
+                    </td>
+                    <td className="px-5 py-4 text-sm text-slate-600">
+                      {candidato.documento || <span className="text-slate-300">—</span>}
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex flex-wrap gap-2 max-w-[400px]">
+                        {[
+                          { key: 'bigfive', label: 'Big Five', color: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
+                          { key: 'hexaco', label: 'HEXACO', color: 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200' },
+                          { key: 'numerico', label: 'Numérico', color: 'bg-purple-100 text-purple-700 hover:bg-purple-200' },
+                          { key: 'verbal', label: 'Verbal', color: 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200' },
+                          { key: 'integridad', label: 'Integridad', color: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' },
+                          { key: 'comercial', label: 'Comercial', color: 'bg-amber-100 text-amber-700 hover:bg-amber-200' },
+                          { key: 'sjt', label: 'SJT', color: 'bg-orange-100 text-orange-700 hover:bg-orange-200' },
+                          { key: 'tolerancia', label: 'Tolerancia', color: 'bg-sky-100 text-sky-700 hover:bg-sky-200' },
+                          { key: 'cobranzas', label: 'Cobranzas', color: 'bg-red-100 text-red-700 hover:bg-red-200' },
+                          { key: 'atencion', label: 'Atención', color: 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' },
+                          { key: 'ventas', label: 'Ventas', color: 'bg-green-100 text-green-700 hover:bg-green-200' },
+                          { key: 'detalle', label: 'Detalle', color: 'bg-stone-100 text-stone-700 hover:bg-stone-200' },
+                          { key: 'legal', label: 'Legal', color: 'bg-violet-100 text-violet-700 hover:bg-violet-200' },
+                          { key: 'estres', label: 'Estrés', color: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
+                          { key: 'creatividad', label: 'Creatividad', color: 'bg-fuchsia-100 text-fuchsia-700 hover:bg-fuchsia-200' },
+                          { key: 'problemas', label: 'Problemas', color: 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' },
+                        ].map(t => (
+                          <button
+                            key={t.key}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                              linkCopiado === candidato.id + t.key ? 'bg-green-600 text-white' : t.color
+                            }`}
+                            onClick={() => copiarLink(candidato.id, t.key)}
+                          >
+                            {linkCopiado === candidato.id + t.key ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                            {t.label}
+                          </button>
+                        ))}
+                        
+                        <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200">
+                          <select
+                            className="text-[10px] bg-transparent border-none outline-none text-slate-600 font-medium cursor-pointer"
+                            value={nivelIcar}
+                            onChange={e => setNivelIcar(e.target.value)}
+                          >
+                            <option value="1">ICAR Básico</option>
+                            <option value="2">ICAR Intermedio</option>
+                            <option value="3">ICAR Avanzado</option>
+                          </select>
+                          <div className="w-px h-3 bg-slate-300"></div>
+                          <select
+                            className="text-[10px] bg-transparent border-none outline-none text-slate-600 font-medium cursor-pointer"
+                            value={rotacionIcar}
+                            onChange={e => setRotacionIcar(e.target.value)}
+                          >
+                            <option value="si">+ Rotación</option>
+                            <option value="no">Sin rot.</option>
+                          </select>
+                          <div className="w-px h-3 bg-slate-300"></div>
+                          <button
+                            className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                              linkCopiado === candidato.id + 'icar' ? 'text-green-600' : 'text-slate-700 hover:bg-slate-200'
+                            }`}
+                            onClick={() => copiarLink(candidato.id, 'icar', { nivel: nivelIcar, rotacion: rotacionIcar === 'no' ? 'no' : undefined } as Record<string, string>)}
+                          >
+                            {linkCopiado === candidato.id + 'icar' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                            Copiar
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <a
+                        href={`/informe?candidato=${candidato.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 hover:text-purple-700 transition-colors"
+                        title="Ver Informe"
                       >
-                        {linkCopiado === candidato.id + 'bigfive' ? '✓ Copiado' : 'Big Five'}
-                      </button>
-                      <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'hexaco' ? '#16a34a' : '#0891b2',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'hexaco')}
-                      >
-                        {linkCopiado === candidato.id + 'hexaco' ? '✓ Copiado' : 'HEXACO'}
-                      </button>
-                      <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'numerico' ? '#16a34a' : '#7c3aed',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'numerico')}
-                      >
-                        {linkCopiado === candidato.id + 'numerico' ? '✓ Copiado' : 'Numérico'}
-                      </button>
-                      <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'verbal' ? '#16a34a' : '#0891b2',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'verbal')}
-                      >
-                        {linkCopiado === candidato.id + 'verbal' ? '✓ Copiado' : 'Verbal'}
-                      </button>
-                      <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'integridad' ? '#16a34a' : '#059669',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'integridad')}
-                      >
-                        {linkCopiado === candidato.id + 'integridad' ? '✓ Copiado' : 'Integridad'}
-                      </button>
-                     <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'comercial' ? '#16a34a' : '#d97706',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'comercial')}
-                      >
-                        {linkCopiado === candidato.id + 'comercial' ? '✓ Copiado' : 'Comercial'}
-                      </button>
-                      <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'sjt' ? '#16a34a' : '#b45309',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'sjt')}
-                      >
-                        {linkCopiado === candidato.id + 'sjt' ? '✓ Copiado' : 'SJT'}
-                      </button>
-                      <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'tolerancia' ? '#16a34a' : '#0891b2',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'tolerancia')}
-                      >
-                        {linkCopiado === candidato.id + 'tolerancia' ? '✓ Copiado' : 'Tolerancia'}
-                      </button>
-                      <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'cobranzas' ? '#16a34a' : '#dc2626',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'cobranzas')}
-                      >
-                        {linkCopiado === candidato.id + 'cobranzas' ? '✓ Copiado' : 'Cobranzas'}
-                      </button>
-                      <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'atencion' ? '#16a34a' : '#2563eb',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'atencion')}
-                      >
-                        {linkCopiado === candidato.id + 'atencion' ? '✓ Copiado' : 'Atención'}
-                      </button>
-                      <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'ventas' ? '#16a34a' : '#16a34a',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'ventas')}
-                      >
-                        {linkCopiado === candidato.id + 'ventas' ? '✓ Copiado' : 'Ventas'}
-                      </button>
-                      <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'detalle' ? '#16a34a' : '#444441',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'detalle')}
-                      >
-                        {linkCopiado === candidato.id + 'detalle' ? '✓ Copiado' : 'Detalle'}
-                      </button>
-                      <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'legal' ? '#16a34a' : '#534AB7',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'legal')}
-                      >
-                        {linkCopiado === candidato.id + 'legal' ? '✓ Copiado' : 'Legal'}
-                      </button>
-                      <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'estres' ? '#16a34a' : '#185FA5',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'estres')}
-                      >
-                        {linkCopiado === candidato.id + 'estres' ? '✓ Copiado' : 'Estrés'}
-                      </button>
-                      <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'creatividad' ? '#16a34a' : '#9333ea',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'creatividad')}
-                      >
-                        {linkCopiado === candidato.id + 'creatividad' ? '✓ Copiado' : 'Creatividad'}
-                      </button>
-                      <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'problemas' ? '#16a34a' : '#7c3aed',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'problemas')}
-                      >
-                        {linkCopiado === candidato.id + 'problemas' ? '✓ Copiado' : 'Problemas'}
-                      </button>
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <select
-                        style={{ fontSize: '11px', padding: '3px 6px', border: '0.5px solid #e2e8f0', borderRadius: '6px', background: '#fff', color: '#1e293b' }}
-                        value={nivelIcar}
-                        onChange={e => setNivelIcar(e.target.value)}
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <option value="1">Básico</option>
-                        <option value="2">Intermedio</option>
-                        <option value="3">Avanzado</option>
-                      </select>
-                      <select
-                        style={{ fontSize: '11px', padding: '3px 6px', border: '0.5px solid #e2e8f0', borderRadius: '6px', background: '#fff', color: '#1e293b' }}
-                        value={rotacionIcar}
-                        onChange={e => setRotacionIcar(e.target.value)}
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <option value="si">Con rotación</option>
-                        <option value="no">Sin rotación</option>
-                      </select>
-                      <button
-                        style={{
-                          ...s.botonCopiar,
-                          background: linkCopiado === candidato.id + 'icar' ? '#16a34a' : '#185FA5',
-                        }}
-                        onClick={() => copiarLink(candidato.id, 'icar', {
-                          nivel: nivelIcar,
-                          rotacion: rotacionIcar === 'no' ? 'no' : undefined
-                        } as Record<string, string>)}
-                      >
-                        {linkCopiado === candidato.id + 'icar' ? '✓ Copiado' : 'ICAR'}
-                      </button>
-                    </div>
-                  </div>
-                    
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                        <FileText className="w-4 h-4" />
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+                {candidatosFiltrados.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-8 text-center text-sm text-slate-500">
+                      No se encontraron candidatos que coincidan con la búsqueda.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
-    </div>
+    </AppLayout>
   )
 }
-
-const s = {
-  centro: {
-    display: 'flex', justifyContent: 'center',
-    alignItems: 'center', height: '100vh', fontFamily: 'sans-serif'
-  } as React.CSSProperties,
-  contenedor: {
-    maxWidth: '1000px', margin: '0 auto',
-    padding: '2rem', fontFamily: 'sans-serif'
-  } as React.CSSProperties,
-  encabezado: {
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'flex-start', marginBottom: '1.5rem'
-  } as React.CSSProperties,
-  titulo: {
-    fontSize: '1.5rem', fontWeight: '600',
-    color: '#1e293b', margin: '0 0 4px'
-  } as React.CSSProperties,
-  subtitulo: {
-    fontSize: '0.875rem', color: '#64748b', margin: 0
-  } as React.CSSProperties,
-  botonesEncabezado: {
-    display: 'flex', gap: '0.75rem', alignItems: 'center'
-  } as React.CSSProperties,
-  botonPrimario: {
-    padding: '0.5rem 1rem', background: '#2563eb', color: '#fff',
-    border: 'none', borderRadius: '8px', fontSize: '0.875rem',
-    cursor: 'pointer'
-  } as React.CSSProperties,
-  botonSecundario: {
-    padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569',
-    border: '1px solid #e2e8f0', borderRadius: '8px',
-    fontSize: '0.875rem', textDecoration: 'none'
-  } as React.CSSProperties,
-  formulario: {
-    background: '#f8fafc', border: '1px solid #e2e8f0',
-    borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem'
-  } as React.CSSProperties,
-  formTitulo: {
-    fontSize: '1rem', fontWeight: '600',
-    color: '#1e293b', margin: '0 0 1rem'
-  } as React.CSSProperties,
-  formGrid: {
-    display: 'grid', gridTemplateColumns: '1fr 1fr',
-    gap: '1rem', marginBottom: '1rem'
-  } as React.CSSProperties,
-  campo: { display: 'flex', flexDirection: 'column' as const, gap: '4px' },
-  label: { fontSize: '0.75rem', fontWeight: '500', color: '#475569' } as React.CSSProperties,
-  input: {
-    padding: '0.5rem 0.75rem', border: '1px solid #e2e8f0',
-    borderRadius: '8px', fontSize: '0.875rem', color: '#1e293b',
-    background: '#fff', outline: 'none'
-  } as React.CSSProperties,
-  vacio: {
-    textAlign: 'center' as const, padding: '3rem',
-    color: '#64748b', fontSize: '0.875rem'
-  },
-  tabla: {
-    width: '100%', borderCollapse: 'collapse' as const,
-    fontSize: '0.875rem'
-  } as React.CSSProperties,
-  th: {
-    textAlign: 'left' as const, padding: '0.75rem 1rem',
-    borderBottom: '2px solid #e2e8f0', color: '#475569',
-    fontWeight: '500', fontSize: '0.75rem', textTransform: 'uppercase' as const
-  } as React.CSSProperties,
-  tr: { borderBottom: '1px solid #f1f5f9' } as React.CSSProperties,
-  td: { padding: '0.875rem 1rem', color: '#1e293b' } as React.CSSProperties,
-  botonCopiar: {
-    padding: '0.375rem 0.75rem', color: '#fff',
-    border: 'none', borderRadius: '6px', fontSize: '0.75rem',
-    cursor: 'pointer', transition: 'background 0.2s ease'
-  } as React.CSSProperties,
-}
+// Hack for lucide-react icon fix if Users was missing from import, though I added UserPlus above
+import { Users } from 'lucide-react'

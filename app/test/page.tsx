@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -20,6 +20,7 @@ interface Respuesta {
 }
 
 import { useSearchParams } from 'next/navigation'
+import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 
 export default function TestPage() {
   const searchParams = useSearchParams()
@@ -45,6 +46,7 @@ export default function TestPage() {
   const [respuestas, setRespuestas] = useState<Respuesta[]>([])
   const [cargando, setCargando] = useState(true)
   const [finalizado, setFinalizado] = useState(false)
+  const enEvaluacion = useEvaluacionRedirect(finalizado)
   const [resultado, setResultado] = useState<Record<string, number>>({})
 
   useEffect(() => {
@@ -170,6 +172,7 @@ export default function TestPage() {
     )
   }
 
+  if (finalizado && enEvaluacion) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}><p>Cargando siguiente evaluación...</p></div>
   if (finalizado) {
     return (
       <div style={estilos.contenedor}>
@@ -188,8 +191,8 @@ export default function TestPage() {
           </p>
           <div style={estilos.contactoDetalle}>
             <p style={estilos.contactoItem}>
-              📧 <a href="mailto:seleccion@repúblicamicrofinanzas.com.uy" style={estilos.link}>
-                seleccion@repúblicamicrofinanzas.com.uy
+              📧 <a href="mailto:seleccion@republicamicrofinanzas.com.uy" style={estilos.link}>
+                seleccion@republicamicrofinanzas.com.uy
               </a>
             </p>
             <p style={estilos.contactoItem}>
