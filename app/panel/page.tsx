@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
-import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History } from 'lucide-react'
+import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
 
 interface Candidato {
@@ -115,6 +115,7 @@ export default function PanelPage() {
   const [agrupadoSeleccionado, setAgrupadoSeleccionado] = useState<CandidatoAgrupado | null>(null)
   const [sesionSeleccionada, setSesionSeleccionada] = useState<Sesion | null>(null)
   const [filtro, setFiltro] = useState('')
+  const [videosCandidato, setVideosCandidato] = useState<any[]>([])
   const [enviandoRecordatorio, setEnviandoRecordatorio] = useState<string | null>(null)
   const router = useRouter()
 
@@ -305,9 +306,19 @@ export default function PanelPage() {
             {candidatosFiltrados.map(c => (
               <div
                 key={c.id}
-                onClick={() => {
+                onClick={async () => {
                   setAgrupadoSeleccionado(c)
                   setSesionSeleccionada(c.sesiones[0]) // Seleccionar la más reciente por defecto
+                  
+                  // Cargar videos del candidato
+                  const { data: videos } = await supabase
+                    .from('respuestas_video')
+                    .select('*, preguntas_video(pregunta)')
+                    .eq('candidato_id', c.id)
+                    .order('grabada_en', { ascending: true })
+                  
+                  // @ts-ignore
+                  setVideosCandidato(videos || [])
                 }}
                 className={`p-4 rounded-xl border bg-white cursor-pointer transition-all duration-200 hover:shadow-md ${
                   agrupadoSeleccionado?.id === c.id 
@@ -417,6 +428,37 @@ export default function PanelPage() {
                     })}
                   </div>
                 </div>
+
+                {/* VIDEO ENTREVISTAS */}
+                {videosCandidato.length > 0 && (
+                  <div className="mb-8 animate-in fade-in slide-in-from-top-2 duration-500">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <Video className="w-3 h-3" />
+                      Video Entrevistas
+                    </p>
+                    <div className="space-y-4">
+                      {videosCandidato.map((vid, idx) => (
+                        <div key={vid.id} className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                          <div className="p-3 bg-white border-b border-slate-100">
+                            <div className="text-[10px] font-bold text-indigo-600 mb-0.5">PREGUNTA {idx + 1}</div>
+                            <div className="text-sm font-semibold text-slate-800">{vid.preguntas_video?.pregunta || 'Respuesta grabada'}</div>
+                          </div>
+                          <div className="p-2 bg-slate-900 aspect-video flex items-center justify-center">
+                            {vid.url_video ? (
+                              <video 
+                                src={vid.url_video} 
+                                controls 
+                                className="w-full h-full rounded-lg shadow-2xl"
+                              />
+                            ) : (
+                              <div className="text-slate-500 text-xs italic">Video no disponible</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* DETALLE DEL TEST SELECCIONADO */}
                 {sesionSeleccionada && (
