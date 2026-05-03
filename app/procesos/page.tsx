@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
-import { Plus, Check, Link as LinkIcon, Search, FileText, X, Video, Eye, Settings } from 'lucide-react'
+import { Plus, Check, Link as LinkIcon, Search, FileText, X, Video, Eye, Settings, Clock, CheckCircle2 } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
 
 const TESTS_DISPONIBLES = [
@@ -47,11 +47,31 @@ interface Proceso {
   competencias_requeridas?: { nombre: string; nivel: string }[]
 }
 
+const TEST_IDS: Record<string, string> = {
+  'a1b2c3d4-e5f6-7890-abcd-ef1234567890': 'bigfive',
+  'f6a7b8c9-d0e1-2345-fabc-456789012345': 'icar',
+  'd0e1f2a3-b4c5-6789-defa-000000000001': 'estres-laboral',
+  'e1f2a3b4-c5d6-7890-efab-111222333444': 'creatividad',
+  'e5f6a7b8-c9d0-1234-efab-345678901234': 'integridad',
+  'b2c3d4e5-f6a7-8901-bcde-f12345678901': 'hexaco',
+  'c3d4e5f6-a7b8-9012-cdef-123456789012': 'numerico',
+  'd4e5f6a7-b8c9-0123-defa-234567890123': 'verbal',
+  'a7b8c9d0-e1f2-3456-abcd-777777777777': 'sjt-ventas',
+  'e5f6a7b8-c9d0-1234-efab-555555555555': 'tolerancia-frustracion',
+  'f2a3b4c5-d6e7-8901-fabc-222333444555': 'sjt-problemas',
+  'c9d0e1f2-a3b4-5678-cdef-999999999999': 'sjt-legal',
+  'b2c3d4e5-f6a7-8901-bcde-222222222222': 'sjt-comercial',
+  'a1b2c3d4-e5f6-7890-abcd-111111111111': 'comercial',
+  'b8c9d0e1-f2a3-4567-bcde-888888888888': 'atencion-detalle',
+  'f6a7b8c9-d0e1-2345-fabc-666666666666': 'sjt-atencion',
+}
+
 interface Candidato {
   id: string
   nombre: string
   apellido: string
   email: string
+  progreso?: { completados: number; total: number; tests: string[] }
 }
 
 export default function ProcesosPage() {
@@ -158,20 +178,59 @@ export default function ProcesosPage() {
     setProcesoSeleccionado(proceso)
     setEditandoBateria(false)
 
+    // 1. Obtener todas las sesiones vinculadas a este proceso
     const { data: sesiones } = await supabase
       .from('sesiones')
-      .select('candidato_id')
+      .select('candidato_id, test_id, estado')
       .eq('proceso_id', proceso.id)
       .not('candidato_id', 'is', null)
 
-    const ids = sesiones?.map(s => s.candidato_id) || []
+    const ids = Array.from(new Set(sesiones?.map(s => s.candidato_id) || []))
 
     if (ids.length > 0) {
-      const { data } = await supabase
+      // 2. Obtener datos de los candidatos
+      const { data: candData } = await supabase
         .from('candidatos')
         .select('id, nombre, apellido, email')
         .in('id', ids)
-      setCandidatosProceso(data || [])
+      
+      // 3. Obtener respuestas de video para estos candidatos
+      const { data: respVideo } = await supabase
+        .from('respuestas_video')
+        .select('candidato_id, entrevista_id')
+        .in('candidato_id', ids)
+
+      const bateria = proceso.bateria_tests || []
+      
+      const candidatosConProgreso = (candData || []).map(c => {
+        const misSesiones = sesiones?.filter(s => s.candidato_id === c.id) || []
+        const misVideos = respVideo?.filter(rv => rv.candidato_id === c.id) || []
+        
+        const completadosLocal: string[] = []
+        
+        misSesiones.forEach(s => {
+          const key = TEST_IDS[s.test_id]
+          if (key && bateria.includes(key)) completadosLocal.push(key)
+        })
+        
+        misVideos.forEach(v => {
+          const key = `entrevista:${v.entrevista_id}`
+          if (bateria.includes(key)) completadosLocal.push(key)
+        })
+
+        const unicos = Array.from(new Set(completadosLocal))
+        
+        return {
+          ...c,
+          progreso: {
+            completados: unicos.length,
+            total: bateria.length,
+            tests: unicos
+          }
+        }
+      })
+
+      setCandidatosProceso(candidatosConProgreso)
     } else {
       setCandidatosProceso([])
     }
@@ -633,9 +692,50 @@ export default function ProcesosPage() {
                   </h4>
                   <div className="flex flex-col gap-2">
                     {candidatosProceso.map(c => (
-                      <div key={c.id} className="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg">
-                        <span className="text-sm font-medium text-slate-700">{c.nombre} {c.apellido}</span>
-                        <a href="/panel" className="text-xs font-medium text-indigo-600 hover:text-indigo-700">Ver panel →</a>
+                      <div key={c.id} className="flex justify-between items-center p-3 bg-white border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                            c.progreso && c.progreso.completados === c.progreso.total && c.progreso.total > 0
+                              ? 'bg-green-100 text-green-600'
+                              : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            {c.progreso && c.progreso.completados === c.progreso.total && c.progreso.total > 0 ? (
+                              <CheckCircle2 className="w-4 h-4" />
+                            ) : (
+                              `${c.progreso?.completados || 0}/${c.progreso?.total || 0}`
+                            )}
+                          </div>
+                          <div>
+                            <span className="text-sm font-bold text-slate-700 block">{c.nombre} {c.apellido}</span>
+                            <span className="text-[10px] text-slate-500">{c.email}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {c.progreso && c.progreso.completados === c.progreso.total && c.progreso.total > 0 ? (
+                            <span className="px-2 py-0.5 bg-green-50 text-green-600 text-[10px] font-bold rounded-full border border-green-100 uppercase tracking-wider">
+                              Completado
+                            </span>
+                          ) : (
+                            <div className="flex flex-col items-end gap-1">
+                              <div className="w-24 h-1 bg-slate-100 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-indigo-500 rounded-full" 
+                                  style={{ width: `${((c.progreso?.completados || 0) / (c.progreso?.total || 1)) * 100}%` }}
+                                />
+                              </div>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase">{c.progreso?.completados || 0} de {c.progreso?.total || 0} tests</span>
+                            </div>
+                          )}
+                          <div className="w-px h-6 bg-slate-100 mx-1"></div>
+                          <a 
+                            href={`/informe?candidato=${c.id}`} 
+                            target="_blank" 
+                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            title="Ver Informe Detallado"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </a>
+                        </div>
                       </div>
                     ))}
                   </div>
