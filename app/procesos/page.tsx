@@ -395,16 +395,8 @@ export default function ProcesosPage() {
                           <input
                             type="checkbox"
                             checked={form.bateria_tests.includes(`entrevista:${e.id}`)}
-                            onChange={e => {
-                              const key = `entrevista:${e.target.value}`
-                              const next = e.target.checked
-                                ? [...form.bateria_tests, `entrevista:${id}`] // Error in logic below, fix it
-                                : form.bateria_tests.filter(k => k !== `entrevista:${e.id}`)
-                              // Use e.id directly
-                            }}
-                            // Wait, the onChange above is wrong, let me fix it in the next thought or use a better replacement
-                            onClick={(event) => {
-                              const target = event.currentTarget as HTMLInputElement;
+                            onChange={() => {}} // Manejado por onClick para evitar conflictos con el objeto de evento
+                            onClick={() => {
                               const key = `entrevista:${e.id}`
                               if (form.bateria_tests.includes(key)) {
                                 setForm({ ...form, bateria_tests: form.bateria_tests.filter(k => k !== key) })
