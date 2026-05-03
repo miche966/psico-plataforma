@@ -56,6 +56,25 @@ const etiquetas: Record<string, string> = {
   apertura: 'Apertura'
 }
 
+const TEST_NAMES: Record<string, string> = {
+  'a1b2c3d4-e5f6-7890-abcd-ef1234567890': 'Big Five (Personalidad)',
+  'f6a7b8c9-d0e1-2345-fabc-456789012345': 'ICAR (Capacidad Cognitiva)',
+  'd0e1f2a3-b4c5-6789-defa-000000000001': 'Estrés Laboral',
+  'e1f2a3b4-c5d6-7890-efab-111222333444': 'Creatividad',
+  'e5f6a7b8-c9d0-1234-efab-345678901234': 'Integridad',
+  'b2c3d4e5-f6a7-8901-bcde-f12345678901': 'HEXACO',
+  'c3d4e5f6-a7b8-9012-cdef-123456789012': 'Razonamiento Numérico',
+  'd4e5f6a7-b8c9-0123-defa-234567890123': 'Razonamiento Verbal',
+  'a7b8c9d0-e1f2-3456-abcd-777777777777': 'SJT Ventas',
+  'e5f6a7b8-c9d0-1234-efab-555555555555': 'Tolerancia a la Frustración',
+  'f2a3b4c5-d6e7-8901-fabc-222333444555': 'SJT Resolución de Problemas',
+  'c9d0e1f2-a3b4-5678-cdef-999999999999': 'SJT Legal',
+  'b2c3d4e5-f6a7-8901-bcde-222222222222': 'SJT Comercial',
+  'a1b2c3d4-e5f6-7890-abcd-111111111111': 'Perfil Comercial',
+  'b8c9d0e1-f2a3-4567-bcde-888888888888': 'Atención al Detalle',
+  'f6a7b8c9-d0e1-2345-fabc-666666666666': 'SJT Atención al Cliente',
+}
+
 const colores: Record<string, string> = {
   extraversion: 'bg-blue-600',
   amabilidad: 'bg-green-600',
@@ -251,16 +270,18 @@ export default function PanelPage() {
                   </button>
                 </div>
 
-                {/* SELECTOR DE TESTS DEL CANDIDATO */}
                 <div className="mb-6">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tests realizados</p>
                   <div className="flex flex-wrap gap-2">
                     {agrupadoSeleccionado.sesiones.map(s => {
                       const pb = s.puntaje_bruto
-                      let label = 'Test'
-                      if (esBigFive(pb)) label = 'Psicográfico'
-                      else if (esCognitivo(pb)) label = 'Cognitivo'
-                      else label = 'Evaluación'
+                      let label = (s as any).test_id ? TEST_NAMES[(s as any).test_id] : null
+                      
+                      if (!label) {
+                        if (esBigFive(pb)) label = 'Psicográfico'
+                        else if (esCognitivo(pb)) label = 'Cognitivo'
+                        else label = 'Evaluación'
+                      }
                       
                       const isActive = sesionSeleccionada?.id === s.id
                       return (
