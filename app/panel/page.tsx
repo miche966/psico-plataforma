@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
-import { FileText, Download, X, Search, AlertTriangle } from 'lucide-react'
+import { FileText, Download, X, Search, AlertTriangle, BellRing } from 'lucide-react'
+import { getBaseUrl } from '@/lib/utils'
 
 interface Candidato {
   id: string
@@ -98,6 +99,14 @@ interface CandidatoAgrupado {
   email: string
   sesiones: Sesion[]
   ultima_fecha: string
+  proceso_id?: string
+  proceso_nombre?: string
+  proceso_cargo?: string
+  progreso?: {
+    total: number
+    completados: number
+    tests_pendientes: string[]
+  }
 }
 
 export default function PanelPage() {
@@ -106,6 +115,7 @@ export default function PanelPage() {
   const [agrupadoSeleccionado, setAgrupadoSeleccionado] = useState<CandidatoAgrupado | null>(null)
   const [sesionSeleccionada, setSesionSeleccionada] = useState<Sesion | null>(null)
   const [filtro, setFiltro] = useState('')
+  const [enviandoRecordatorio, setEnviandoRecordatorio] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -119,23 +129,28 @@ export default function PanelPage() {
   }, [])
 
   async function cargarSesiones() {
-    const { data: sesionesData, error } = await supabase
+    // 1. Cargar todas las sesiones
+    const { data: sesionesData } = await supabase
       .from('sesiones')
       .select('*')
       .order('finalizada_en', { ascending: false })
 
-    if (error) {
-      console.error(error)
-      return
-    }
+    // 2. Cargar todos los procesos (para saber la batería de tests)
+    const { data: procesosData } = await supabase
+      .from('procesos')
+      .select('id, nombre, cargo, bateria_tests')
 
+    // 3. Cargar todas las videoentrevistas respondidas
+    const { data: respuestasVideo } = await supabase
+      .from('respuestas_video')
+      .select('candidato_id, entrevista_id')
+
+    // 4. Cargar candidatos
     const { data: candidatosData } = await supabase
       .from('candidatos')
       .select('id, nombre, apellido, email')
 
     const candidatos = candidatosData || []
-    
-    // Agrupar sesiones por candidato
     const grupos: Record<string, CandidatoAgrupado> = {}
     
     sesionesData?.forEach(sesion => {
@@ -143,13 +158,41 @@ export default function PanelPage() {
       const cand = candidatos.find(c => c.id === cId)
       
       if (!grupos[cId]) {
+        const proceso = procesosData?.find(p => p.id === sesion.proceso_id)
+        
+        // Calcular progreso
+        let progreso = undefined
+        if (proceso && proceso.bateria_tests) {
+          const bateria = proceso.bateria_tests as string[]
+          const misSesiones = sesionesData?.filter(s => s.candidato_id === cId) || []
+          const misVideos = respuestasVideo?.filter(rv => rv.candidato_id === cId) || []
+          
+          const idsCompletados = [
+            ...misSesiones.map(s => (s as any).test_id).filter(Boolean),
+            ...misVideos.map(v => `entrevista:${v.entrevista_id}`)
+          ]
+          
+          const unicosCompletados = Array.from(new Set(idsCompletados))
+          const pendientes = bateria.filter(tId => !unicosCompletados.includes(tId))
+          
+          progreso = {
+            total: bateria.length,
+            completados: bateria.length - pendientes.length,
+            tests_pendientes: pendientes
+          }
+        }
+
         grupos[cId] = {
           id: cId,
           nombre: cand?.nombre || 'Evaluación',
           apellido: cand?.apellido || 'Anónima',
           email: cand?.email || '',
           sesiones: [],
-          ultima_fecha: sesion.finalizada_en
+          ultima_fecha: sesion.finalizada_en,
+          proceso_id: sesion.proceso_id,
+          proceso_nombre: proceso?.nombre,
+          proceso_cargo: proceso?.cargo,
+          progreso
         }
       }
       
@@ -174,8 +217,45 @@ export default function PanelPage() {
     })
   }
 
+  async function enviarRecordatorio(c: CandidatoAgrupado) {
+    if (!c.progreso || c.progreso.completados === c.progreso.total) return
+    if (!c.proceso_id) return
+    
+    setEnviandoRecordatorio(c.id)
+    
+    const link = `${getBaseUrl()}/evaluacion?candidato=${c.id}&proceso=${c.proceso_id}`
+
+    try {
+      const res = await fetch('/api/recordatorio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: c.email,
+          nombre: c.nombre,
+          proceso: c.proceso_cargo || c.proceso_nombre,
+          link: link,
+          pendientes: c.progreso.tests_pendientes.length
+        })
+      })
+
+      const data = await res.json()
+      
+      if (res.ok) {
+        alert(`Recordatorio enviado con éxito a ${c.nombre}.`)
+      } else {
+        alert('Hubo un error al enviar el correo. Verifica tu configuración de Resend.')
+        console.error('Error enviando recordatorio:', data.error)
+      }
+    } catch (error) {
+      console.error(error)
+      alert('Error de conexión al intentar enviar el recordatorio.')
+    } finally {
+      setEnviandoRecordatorio(null)
+    }
+  }
+
   const candidatosFiltrados = candidatosAgrupados.filter(c => 
-    `${c.nombre} ${c.apellido}`.toLowerCase().includes(filtro.toLowerCase()) || 
+    `${c.nombre} ${c.apellido} ${c.proceso_nombre} ${c.proceso_cargo}`.toLowerCase().includes(filtro.toLowerCase()) || 
     c.email.toLowerCase().includes(filtro.toLowerCase())
   )
 
@@ -206,7 +286,7 @@ export default function PanelPage() {
         </div>
         <input
           type="text"
-          placeholder="Buscar por nombre o email..."
+          placeholder="Buscar por nombre, email o proceso..."
           value={filtro}
           onChange={(e) => setFiltro(e.target.value)}
           className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm"
@@ -236,15 +316,52 @@ export default function PanelPage() {
                 }`}
               >
                 <div className="flex justify-between items-start">
-                  <div>
-                    <div className="font-bold text-slate-900">{c.nombre} {c.apellido}</div>
-                    <div className="text-xs text-slate-500 mt-0.5">{c.email || 'Sin email'}</div>
+                  <div className="flex gap-4">
+                    <div className="mt-1">
+                      {c.progreso && c.progreso.completados < c.progreso.total && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            enviarRecordatorio(c)
+                          }}
+                          disabled={enviandoRecordatorio === c.id}
+                          className={`p-2 rounded-lg transition-all ${
+                            enviandoRecordatorio === c.id
+                              ? 'bg-slate-100 text-slate-400'
+                              : 'bg-amber-50 text-amber-600 hover:bg-amber-100 hover:scale-110 shadow-sm'
+                          }`}
+                          title="Enviar recordatorio de tests pendientes"
+                        >
+                          {enviandoRecordatorio === c.id ? (
+                            <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <BellRing className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-900 leading-tight">{c.nombre} {c.apellido}</div>
+                      <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mt-1">{c.proceso_nombre || 'Proceso independiente'}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{c.email || 'Sin email'}</div>
+                    </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md border border-indigo-100 uppercase tracking-wider">
-                      {c.sesiones.length} {c.sesiones.length === 1 ? 'evaluación' : 'evaluaciones'}
+                      {c.sesiones.length} {c.sesiones.length === 1 ? 'test' : 'tests'}
                     </span>
-                    <span className="text-[10px] text-slate-400">Última: {formatearFecha(c.ultima_fecha)}</span>
+                    {c.progreso && (
+                      <div className="flex flex-col items-end gap-1 mt-1">
+                        <div className="w-16 h-1 bg-slate-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-green-500 rounded-full" 
+                            style={{ width: `${(c.progreso.completados / c.progreso.total) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-[9px] text-slate-400 font-bold">{c.progreso.completados}/{c.progreso.total} COMPLETADOS</span>
+                      </div>
+                    )}
+                    <span className="text-[9px] text-slate-300 mt-1">{formatearFecha(c.ultima_fecha)}</span>
                   </div>
                 </div>
               </div>
