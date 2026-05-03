@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
-import { Plus, Check, Link as LinkIcon, Search, FileText, X, Video, Eye, Settings, Clock, CheckCircle2 } from 'lucide-react'
+import { Plus, Check, Link as LinkIcon, Search, FileText, X, Video, Eye, Settings, Clock, CheckCircle2, BellRing } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
 
 const TESTS_DISPONIBLES = [
@@ -233,6 +233,44 @@ export default function ProcesosPage() {
       setCandidatosProceso(candidatosConProgreso)
     } else {
       setCandidatosProceso([])
+    }
+  }
+
+  const [enviandoRecordatorio, setEnviandoRecordatorio] = useState<string | null>(null)
+
+  async function enviarRecordatorio(c: Candidato) {
+    if (!c.progreso || c.progreso.completados === c.progreso.total) return
+    if (!procesoSeleccionado) return
+    
+    setEnviandoRecordatorio(c.id)
+    
+    const pendientes = (procesoSeleccionado.bateria_tests || []).filter(t => !c.progreso?.tests.includes(t))
+    const link = `${getBaseUrl()}/evaluacion?candidato=${c.id}&proceso=${procesoSeleccionado.id}`
+
+    try {
+      // Por ahora simulamos el envío, ya que falta configurar el servicio de email (ej: Resend)
+      // En una implementación real llamaríamos a una API interna
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      
+      alert(`Recordatorio enviado a ${c.nombre}. tests pendientes: ${pendientes.length}`)
+      
+      // Aquí iría el fetch a /api/enviar-email
+      /*
+      await fetch('/api/recordatorio', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: c.email,
+          nombre: c.nombre,
+          proceso: procesoSeleccionado.nombre,
+          link: link,
+          pendientes: pendientes.length
+        })
+      })
+      */
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setEnviandoRecordatorio(null)
     }
   }
 
@@ -716,14 +754,32 @@ export default function ProcesosPage() {
                               Completado
                             </span>
                           ) : (
-                            <div className="flex flex-col items-end gap-1">
-                              <div className="w-24 h-1 bg-slate-100 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-indigo-500 rounded-full" 
-                                  style={{ width: `${((c.progreso?.completados || 0) / (c.progreso?.total || 1)) * 100}%` }}
-                                />
+                            <div className="flex items-center gap-3">
+                              <div className="flex flex-col items-end gap-1">
+                                <div className="w-24 h-1 bg-slate-100 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-indigo-500 rounded-full" 
+                                    style={{ width: `${((c.progreso?.completados || 0) / (c.progreso?.total || 1)) * 100}%` }}
+                                  />
+                                </div>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase">{c.progreso?.completados || 0} de {c.progreso?.total || 0} tests</span>
                               </div>
-                              <span className="text-[9px] font-bold text-slate-400 uppercase">{c.progreso?.completados || 0} de {c.progreso?.total || 0} tests</span>
+                              <button
+                                onClick={() => enviarRecordatorio(c)}
+                                disabled={enviandoRecordatorio === c.id}
+                                className={`p-2 rounded-lg transition-all ${
+                                  enviandoRecordatorio === c.id
+                                    ? 'bg-slate-100 text-slate-400'
+                                    : 'bg-amber-50 text-amber-600 hover:bg-amber-100 hover:scale-110'
+                                }`}
+                                title="Enviar recordatorio por email"
+                              >
+                                {enviandoRecordatorio === c.id ? (
+                                  <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <BellRing className="w-4 h-4" />
+                                )}
+                              </button>
                             </div>
                           )}
                           <div className="w-px h-6 bg-slate-100 mx-1"></div>
