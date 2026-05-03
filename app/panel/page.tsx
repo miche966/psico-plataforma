@@ -72,10 +72,20 @@ const textColores: Record<string, string> = {
   apertura: 'text-orange-600'
 }
 
+interface CandidatoAgrupado {
+  id: string
+  nombre: string
+  apellido: string
+  email: string
+  sesiones: Sesion[]
+  ultima_fecha: string
+}
+
 export default function PanelPage() {
-  const [sesiones, setSesiones] = useState<Sesion[]>([])
+  const [candidatosAgrupados, setCandidatosAgrupados] = useState<CandidatoAgrupado[]>([])
   const [cargando, setCargando] = useState(true)
-  const [seleccionada, setSeleccionada] = useState<Sesion | null>(null)
+  const [agrupadoSeleccionado, setAgrupadoSeleccionado] = useState<CandidatoAgrupado | null>(null)
+  const [sesionSeleccionada, setSesionSeleccionada] = useState<Sesion | null>(null)
   const [filtro, setFiltro] = useState('')
   const router = useRouter()
 
@@ -100,27 +110,37 @@ export default function PanelPage() {
       return
     }
 
-    const candidatoIds = sesionesData
-      ?.filter(s => s.candidato_id)
-      .map(s => s.candidato_id) || []
+    const { data: candidatosData } = await supabase
+      .from('candidatos')
+      .select('id, nombre, apellido, email')
 
-    let candidatos: Candidato[] = []
+    const candidatos = candidatosData || []
+    
+    // Agrupar sesiones por candidato
+    const grupos: Record<string, CandidatoAgrupado> = {}
+    
+    sesionesData?.forEach(sesion => {
+      const cId = sesion.candidato_id || 'anonimo'
+      const cand = candidatos.find(c => c.id === cId)
+      
+      if (!grupos[cId]) {
+        grupos[cId] = {
+          id: cId,
+          nombre: cand?.nombre || 'Evaluación',
+          apellido: cand?.apellido || 'Anónima',
+          email: cand?.email || '',
+          sesiones: [],
+          ultima_fecha: sesion.finalizada_en
+        }
+      }
+      
+      grupos[cId].sesiones.push({
+        ...sesion,
+        candidato: cand
+      })
+    })
 
-    if (candidatoIds.length > 0) {
-      const { data } = await supabase
-        .from('candidatos')
-        .select('id, nombre, apellido, email')
-        .in('id', candidatoIds)
-
-      candidatos = data || []
-    }
-
-    const sesionesConCandidato = sesionesData?.map(sesion => ({
-      ...sesion,
-      candidato: candidatos.find(c => c.id === sesion.candidato_id)
-    })) || []
-
-    setSesiones(sesionesConCandidato)
+    setCandidatosAgrupados(Object.values(grupos))
     setCargando(false)
   }
 
@@ -135,16 +155,9 @@ export default function PanelPage() {
     })
   }
 
-  function nombreCandidato(sesion: Sesion) {
-    if (sesion.candidato) {
-      return `${sesion.candidato.nombre} ${sesion.candidato.apellido}`
-    }
-    return 'Evaluación anónima'
-  }
-
-  const sesionesFiltradas = sesiones.filter(s => 
-    nombreCandidato(s).toLowerCase().includes(filtro.toLowerCase()) || 
-    (s.candidato?.email || '').toLowerCase().includes(filtro.toLowerCase())
+  const candidatosFiltrados = candidatosAgrupados.filter(c => 
+    `${c.nombre} ${c.apellido}`.toLowerCase().includes(filtro.toLowerCase()) || 
+    c.email.toLowerCase().includes(filtro.toLowerCase())
   )
 
   if (cargando) {
@@ -163,13 +176,8 @@ export default function PanelPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Panel del evaluador</h1>
           <p className="text-sm text-slate-500 mt-1">
-            {sesiones.length} evaluación{sesiones.length !== 1 ? 'es' : ''} registrada{sesiones.length !== 1 ? 's' : ''}
+            {candidatosAgrupados.length} candidato{candidatosAgrupados.length !== 1 ? 's' : ''} con evaluaciones
           </p>
-        </div>
-        <div className="flex gap-3">
-          <a href="/test" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2">
-            Nueva evaluación
-          </a>
         </div>
       </div>
 
@@ -179,213 +187,193 @@ export default function PanelPage() {
         </div>
         <input
           type="text"
-          placeholder="Buscar candidato por nombre o email..."
+          placeholder="Buscar por nombre o email..."
           value={filtro}
           onChange={(e) => setFiltro(e.target.value)}
           className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm"
         />
       </div>
 
-      {sesiones.length === 0 ? (
+      {candidatosAgrupados.length === 0 ? (
         <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl shadow-sm">
           <p className="text-slate-500 mb-4">No hay evaluaciones todavía.</p>
           <a href="/candidatos" className="text-indigo-600 font-medium hover:text-indigo-700">Ir a candidatos →</a>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* LISTA DE CANDIDATOS */}
           <div className="flex flex-col gap-3">
-            {sesionesFiltradas.map(sesion => (
+            {candidatosFiltrados.map(c => (
               <div
-                key={sesion.id}
-                onClick={() => setSeleccionada(sesion)}
+                key={c.id}
+                onClick={() => {
+                  setAgrupadoSeleccionado(c)
+                  setSesionSeleccionada(c.sesiones[0]) // Seleccionar la más reciente por defecto
+                }}
                 className={`p-4 rounded-xl border bg-white cursor-pointer transition-all duration-200 hover:shadow-md ${
-                  seleccionada?.id === sesion.id 
+                  agrupadoSeleccionado?.id === c.id 
                     ? 'border-indigo-500 ring-1 ring-indigo-500/20 shadow-sm' 
                     : 'border-slate-200 hover:border-slate-300'
                 }`}
               >
-                <div className="flex justify-between items-start mb-3">
+                <div className="flex justify-between items-start">
                   <div>
-                    <div className="font-semibold text-slate-900">{nombreCandidato(sesion)}</div>
-                    {sesion.candidato && (
-                      <div className="text-xs text-slate-500 mt-0.5">{sesion.candidato.email}</div>
-                    )}
+                    <div className="font-bold text-slate-900">{c.nombre} {c.apellido}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">{c.email || 'Sin email'}</div>
                   </div>
-                  <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md">
-                    {formatearFecha(sesion.finalizada_en)}
-                  </span>
-                </div>
-                
-                <div className="flex flex-col gap-1.5">
-                  {sesion.puntaje_bruto && (() => {
-                    const pb = sesion.puntaje_bruto
-                    if (esBigFive(pb)) {
-                      return valoresNumericos(pb).map(([factor, valor]) => (
-                        <div key={factor} className="flex items-center gap-3">
-                          <span className="text-[10px] uppercase font-semibold text-slate-500 w-24 truncate">{etiquetas[factor] || factor}</span>
-                          <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${colores[factor] || 'bg-indigo-500'}`} style={{ width: `${(valor / 5) * 100}%` }} />
-                          </div>
-                          <span className="text-[10px] font-medium text-slate-500 w-6 text-right">{valor}</span>
-                        </div>
-                      ))
-                    }
-                    if (esCognitivo(pb)) {
-                      const { correctas, total, pct } = datosCognitivos(pb)
-                      return (
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] uppercase font-semibold text-slate-500 w-24 truncate">Aciertos</span>
-                          <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full bg-indigo-500" style={{ width: `${pct}%` }} />
-                          </div>
-                          <span className="text-[10px] font-medium text-slate-500 w-8 text-right">{correctas}/{total}</span>
-                        </div>
-                      )
-                    }
-                    const prom = promedioPuntaje(pb)
-                    return (
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] uppercase font-semibold text-slate-500 w-24 truncate">Promedio</span>
-                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full bg-indigo-500" style={{ width: `${Math.min((prom / 5) * 100, 100)}%` }} />
-                        </div>
-                        <span className="text-[10px] font-medium text-slate-500 w-6 text-right">{prom}</span>
-                      </div>
-                    )
-                  })()}
-
-                  {sesion.puntaje_bruto && (sesion.puntaje_bruto as any).metricas_fraude && (() => {
-                    const mf = (sesion.puntaje_bruto as any).metricas_fraude
-                    if (mf.tabSwitches > 0 || mf.copyPasteAttempts > 0) {
-                      return (
-                        <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-2.5 flex items-start gap-2">
-                          <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
-                          <div>
-                            <p className="text-xs font-bold text-red-800">Alerta Anti-Fraude</p>
-                            <p className="text-[10px] text-red-600 mt-0.5">
-                              Cambios de pestaña: {mf.tabSwitches} | Copy/paste: {mf.copyPasteAttempts}
-                            </p>
-                          </div>
-                        </div>
-                      )
-                    }
-                    return null
-                  })()}
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md border border-indigo-100 uppercase tracking-wider">
+                      {c.sesiones.length} {c.sesiones.length === 1 ? 'evaluación' : 'evaluaciones'}
+                    </span>
+                    <span className="text-[10px] text-slate-400">Última: {formatearFecha(c.ultima_fecha)}</span>
+                  </div>
                 </div>
               </div>
             ))}
-            {sesionesFiltradas.length === 0 && (
+            {candidatosFiltrados.length === 0 && (
               <div className="text-center py-8 text-slate-500 text-sm">
-                No se encontraron resultados para la búsqueda.
+                No se encontraron candidatos para la búsqueda.
               </div>
             )}
           </div>
 
+          {/* DETALLE DEL CANDIDATO SELECCIONADO */}
           <div className="sticky top-6">
-            {seleccionada ? (
+            {agrupadoSeleccionado ? (
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                <div className="flex justify-between items-start mb-6">
+                <div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-4">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900">{nombreCandidato(seleccionada)}</h2>
-                    {seleccionada.candidato && (
-                      <p className="text-sm text-slate-500 mt-0.5">{seleccionada.candidato.email}</p>
-                    )}
-                    <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                      Completado el {formatearFecha(seleccionada.finalizada_en)}
-                    </p>
+                    <h2 className="text-xl font-bold text-slate-900">{agrupadoSeleccionado.nombre} {agrupadoSeleccionado.apellido}</h2>
+                    <p className="text-sm text-slate-500">{agrupadoSeleccionado.email}</p>
                   </div>
-                  <button onClick={() => setSeleccionada(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                  <button onClick={() => setAgrupadoSeleccionado(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-                
-                <div className="flex gap-2 mb-8">
-                  <a
-                    href={`/informe?candidato=${seleccionada.candidato_id}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex-1 flex items-center justify-center gap-2 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-xl transition-colors shadow-sm"
-                  >
-                    <FileText className="w-4 h-4" />
-                    Abrir Informe Interactivo
-                  </a>
-                  <button
-                    onClick={() => generarPDF(seleccionada)}
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-xl transition-colors shadow-sm"
-                  >
-                    <Download className="w-4 h-4" />
-                    PDF Simple
-                  </button>
+
+                {/* SELECTOR DE TESTS DEL CANDIDATO */}
+                <div className="mb-6">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tests realizados</p>
+                  <div className="flex flex-wrap gap-2">
+                    {agrupadoSeleccionado.sesiones.map(s => {
+                      const pb = s.puntaje_bruto
+                      let label = 'Test'
+                      if (esBigFive(pb)) label = 'Psicográfico'
+                      else if (esCognitivo(pb)) label = 'Cognitivo'
+                      else label = 'Evaluación'
+                      
+                      const isActive = sesionSeleccionada?.id === s.id
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => setSesionSeleccionada(s)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                            isActive 
+                              ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' 
+                              : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          {label} ({formatearFecha(s.finalizada_en).split(' ')[0]})
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
 
-                <div className="space-y-5">
-                  {seleccionada.puntaje_bruto && (() => {
-                    const pb = seleccionada.puntaje_bruto
-                    if (esBigFive(pb)) {
-                      return valoresNumericos(pb).map(([factor, valor]) => {
-                        const tc = textColores[factor] || 'text-indigo-600'
-                        const bgc = colores[factor] || 'bg-indigo-600'
+                {/* DETALLE DEL TEST SELECCIONADO */}
+                {sesionSeleccionada && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center justify-between mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <div className="text-xs font-bold text-slate-700 uppercase">Resultados detallados</div>
+                      <a
+                        href={`/informe?candidato=${agrupadoSeleccionado.id}`}
+                        target="_blank"
+                        className="text-xs font-bold text-indigo-600 hover:underline"
+                      >
+                        Ver informe completo →
+                      </a>
+                    </div>
+
+                    <div className="space-y-5 mt-6">
+                      {sesionSeleccionada.puntaje_bruto && (() => {
+                        const pb = sesionSeleccionada.puntaje_bruto
+                        if (esBigFive(pb)) {
+                          return valoresNumericos(pb).map(([factor, valor]) => {
+                            const tc = textColores[factor] || 'text-indigo-600'
+                            const bgc = colores[factor] || 'bg-indigo-600'
+                            return (
+                              <div key={factor}>
+                                <div className="flex justify-between mb-1.5">
+                                  <span className="text-sm font-semibold text-slate-800">{etiquetas[factor] || factor}</span>
+                                  <span className={`text-sm font-bold ${tc}`}>{valor} / 5</span>
+                                </div>
+                                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                                  <div className={`h-full rounded-full transition-all duration-500 ease-out ${bgc}`} style={{ width: `${(valor / 5) * 100}%` }} />
+                                </div>
+                                <p className="text-xs text-slate-500 leading-relaxed">{interpretacion(factor, valor)}</p>
+                              </div>
+                            )
+                          })
+                        }
+                        if (esCognitivo(pb)) {
+                          const { correctas, total, pct } = datosCognitivos(pb)
+                          const nivel = pct >= 80 ? 'Alto' : pct >= 60 ? 'Moderado' : 'En desarrollo'
+                          const colorBg = pct >= 80 ? 'bg-green-500' : pct >= 60 ? 'bg-orange-500' : 'bg-red-500'
+                          const colorText = pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-orange-600' : 'text-red-600'
+                          
+                          return (
+                            <div>
+                              <div className="flex justify-between mb-1.5">
+                                <span className="text-sm font-semibold text-slate-800">Resultado Cognitivo</span>
+                                <span className={`text-sm font-bold ${colorText}`}>{correctas} / {total} ({pct}%)</span>
+                              </div>
+                              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                                <div className={`h-full rounded-full transition-all duration-500 ease-out ${colorBg}`} style={{ width: `${pct}%` }} />
+                              </div>
+                              <p className="text-xs text-slate-500 leading-relaxed">Desempeño detectado: {nivel}</p>
+                            </div>
+                          )
+                        }
+                        const prom = promedioPuntaje(pb)
+                        const colorBg = prom >= 4 ? 'bg-green-500' : prom >= 3 ? 'bg-orange-500' : 'bg-red-500'
+                        const colorText = prom >= 4 ? 'text-green-600' : prom >= 3 ? 'text-orange-600' : 'text-red-600'
+                        
                         return (
-                          <div key={factor}>
+                          <div>
                             <div className="flex justify-between mb-1.5">
-                              <span className="text-sm font-semibold text-slate-800">{etiquetas[factor] || factor}</span>
-                              <span className={`text-sm font-bold ${tc}`}>{valor} / 5</span>
+                              <span className="text-sm font-semibold text-slate-800">Promedio general</span>
+                              <span className={`text-sm font-bold ${colorText}`}>{prom} / 5</span>
                             </div>
                             <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                              <div className={`h-full rounded-full transition-all duration-500 ease-out ${bgc}`} style={{ width: `${(valor / 5) * 100}%` }} />
+                              <div className={`h-full rounded-full transition-all duration-500 ease-out ${colorBg}`} style={{ width: `${Math.min((prom / 5) * 100, 100)}%` }} />
                             </div>
-                            <p className="text-xs text-slate-500 leading-relaxed">{interpretacion(factor, valor)}</p>
+                            <p className="text-xs text-slate-500 leading-relaxed">
+                              {prom >= 4 ? 'Nivel alto' : prom >= 3 ? 'Nivel moderado' : 'En desarrollo'}
+                            </p>
                           </div>
                         )
-                      })
-                    }
-                    if (esCognitivo(pb)) {
-                      const { correctas, total, pct } = datosCognitivos(pb)
-                      const nivel = pct >= 80 ? 'Alto' : pct >= 60 ? 'Moderado' : 'En desarrollo'
-                      const colorBg = pct >= 80 ? 'bg-green-500' : pct >= 60 ? 'bg-orange-500' : 'bg-red-500'
-                      const colorText = pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-orange-600' : 'text-red-600'
-                      
-                      return (
-                        <div>
-                          <div className="flex justify-between mb-1.5">
-                            <span className="text-sm font-semibold text-slate-800">Resultado Cognitivo</span>
-                            <span className={`text-sm font-bold ${colorText}`}>{correctas} / {total} ({pct}%)</span>
-                          </div>
-                          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                            <div className={`h-full rounded-full transition-all duration-500 ease-out ${colorBg}`} style={{ width: `${pct}%` }} />
-                          </div>
-                          <p className="text-xs text-slate-500 leading-relaxed">Desempeño detectado: {nivel}</p>
-                        </div>
-                      )
-                    }
-                    const prom = promedioPuntaje(pb)
-                    const colorBg = prom >= 4 ? 'bg-green-500' : prom >= 3 ? 'bg-orange-500' : 'bg-red-500'
-                    const colorText = prom >= 4 ? 'text-green-600' : prom >= 3 ? 'text-orange-600' : 'text-red-600'
-                    
-                    return (
-                      <div>
-                        <div className="flex justify-between mb-1.5">
-                          <span className="text-sm font-semibold text-slate-800">Promedio general</span>
-                          <span className={`text-sm font-bold ${colorText}`}>{prom} / 5</span>
-                        </div>
-                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                          <div className={`h-full rounded-full transition-all duration-500 ease-out ${colorBg}`} style={{ width: `${Math.min((prom / 5) * 100, 100)}%` }} />
-                        </div>
-                        <p className="text-xs text-slate-500 leading-relaxed">
-                          {prom >= 4 ? 'Nivel alto' : prom >= 3 ? 'Nivel moderado' : 'En desarrollo'}
-                        </p>
-                      </div>
-                    )
-                  })()}
-                </div>
+                      })()}
+                    </div>
+
+                    <div className="mt-8 flex gap-3">
+                      <button
+                        onClick={() => generarPDF(sesionSeleccionada)}
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-slate-200"
+                      >
+                        <Download className="w-4 h-4" />
+                        Descargar PDF del test
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="bg-slate-50 border border-slate-200 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center h-64">
                 <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
                   <Search className="w-5 h-5 text-slate-400" />
                 </div>
-                <h3 className="text-sm font-medium text-slate-900 mb-1">Ninguna evaluación seleccionada</h3>
-                <p className="text-xs text-slate-500 max-w-[200px]">Selecciona una tarjeta de la lista para ver sus resultados en detalle.</p>
+                <h3 className="text-sm font-medium text-slate-900 mb-1">Ningún candidato seleccionado</h3>
+                <p className="text-xs text-slate-500 max-w-[200px]">Selecciona un postulante de la lista para ver el desglose de sus evaluaciones.</p>
               </div>
             )}
           </div>
