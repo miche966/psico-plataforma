@@ -214,25 +214,31 @@ export default function PortalCandidatoPage() {
 
   if (todosCompletados) {
     return (
-      <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6">
-        <div className="max-w-xl mx-auto bg-white rounded-3xl shadow-sm border border-slate-200 p-8 md:p-12 text-center">
-          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+      <div className="min-h-screen bg-slate-50 py-12 px-4 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-10 text-center border border-slate-100">
+          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
             <CheckCircle className="w-10 h-10" />
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
-            ¡Evaluación Completada!
-          </h1>
+          <h1 className="text-3xl font-bold text-slate-900 mb-4">¡Evaluación Completada!</h1>
           <p className="text-slate-600 mb-8 leading-relaxed">
             Gracias por tu tiempo, <span className="font-semibold text-slate-900">{candidato?.nombre}</span>. 
             Has finalizado exitosamente todas las pruebas para la posición de <span className="font-semibold text-slate-900">{proceso?.cargo}</span>.
           </p>
-          <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 text-left">
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">Próximos pasos</h3>
-            <p className="text-sm text-slate-600 mb-4">
+          
+          <div className="bg-slate-50 rounded-2xl p-6 text-left border border-slate-100">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Próximos pasos</p>
+            <p className="text-sm text-slate-600 mb-4 leading-relaxed">
               Tus resultados han sido enviados al equipo de selección para su análisis. Nos pondremos en contacto contigo a la brevedad.
             </p>
-            <div className="space-y-2 text-sm text-slate-600">
-              <p>📧 <a href="mailto:seleccion@empresa.com" className="text-indigo-600 font-medium hover:underline">seleccion@empresa.com</a></p>
+            <div className="space-y-3 pt-2 border-t border-slate-200">
+              <p className="text-sm text-slate-700 flex items-center gap-3">
+                <span className="text-lg">📧</span>
+                <a href="mailto:seleccion@republicamicrofinanzas.com.uy" className="hover:text-indigo-600 transition-colors">seleccion@republicamicrofinanzas.com.uy</a>
+              </p>
+              <p className="text-sm text-slate-700 flex items-center gap-3">
+                <span className="text-lg">💬</span>
+                <a href="https://wa.me/598092651770" className="hover:text-indigo-600 transition-colors">092 651 770</a>
+              </p>
             </div>
           </div>
         </div>
@@ -297,19 +303,21 @@ export default function PortalCandidatoPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6">
-      <div className="max-w-2xl mx-auto mb-6 p-4 bg-black text-green-400 font-mono text-[10px] rounded-xl overflow-auto border-4 border-red-500 shadow-2xl">
-        <p className="font-bold text-xs mb-2 border-b border-green-900 pb-1">DEBUG MODE — DB DATA</p>
-        <pre>{JSON.stringify({ 
-          candidato: candidato?.nombre,
-          bateria_actual: bateria,
-          completados: testsCompletados,
-          db: typeof window !== 'undefined' ? (window as any).debugInfo : 'Cargando...'
-        }, null, 2)}</pre>
-      </div>
+      {isDebug && (
+        <div className="max-w-2xl mx-auto mb-6 p-4 bg-black text-green-400 font-mono text-[10px] rounded-xl overflow-auto border-4 border-indigo-500 shadow-2xl">
+          <p className="font-bold text-xs mb-2 border-b border-green-900 pb-1">DEBUG MODE — DB DATA</p>
+          <pre>{JSON.stringify({ 
+            candidato: candidato?.nombre,
+            bateria_actual: bateria,
+            completados: testsCompletados,
+            db: typeof window !== 'undefined' ? (window as any).debugInfo : 'Cargando...'
+          }, null, 2)}</pre>
+        </div>
+      )}
       <div className="max-w-2xl mx-auto">
         <div className="mb-8 text-center">
           <div className="inline-block px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full uppercase tracking-wider mb-4 border border-indigo-100">
-            Portal del Candidato (v2)
+            Portal del Candidato
           </div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3">
             Hola, {candidato?.nombre}
