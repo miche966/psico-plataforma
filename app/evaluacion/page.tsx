@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { CheckCircle2, PlayCircle, Clock, CheckCircle } from 'lucide-react'
+import { CheckCircle2, PlayCircle, Clock, CheckCircle, Video, Camera, Mic } from 'lucide-react'
 
 const RUTAS: Record<string, string> = {
   bigfive: '/test',
@@ -78,6 +78,9 @@ export default function PortalCandidatoPage() {
   const [bateria, setBateria] = useState<string[]>([])
   const [testsCompletados, setTestsCompletados] = useState<string[]>([])
 
+  const [mostrarSetup, setMostrarSetup] = useState(false)
+  const [stream, setStream] = useState<MediaStream | null>(null)
+
   useEffect(() => {
     if (!candidatoId || !procesoId) {
       setError('Link inválido. Por favor, contacta al equipo de selección.')
@@ -87,6 +90,24 @@ export default function PortalCandidatoPage() {
 
     cargarDatosPortal()
   }, [candidatoId, procesoId])
+
+  async function activarCamara() {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      setStream(s)
+    } catch (err) {
+      console.error("Error al activar cámara:", err)
+      alert("No pudimos acceder a tu cámara o micrófono. Por favor, asegúrate de dar los permisos necesarios en tu navegador.")
+    }
+  }
+
+  function detenerCamara() {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop())
+      setStream(null)
+    }
+    setMostrarSetup(false)
+  }
 
   async function cargarDatosPortal() {
     try {
@@ -103,6 +124,12 @@ export default function PortalCandidatoPage() {
       
       const bat = proc.bateria_tests || []
       setBateria(bat)
+
+      // Determinar si mostrar setup (si es la primera vez o hay entrevistas)
+      const yaMostro = localStorage.getItem(`setup_done_${candidatoId}`)
+      if (!yaMostro) {
+        setMostrarSetup(true)
+      }
 
       // 1. Cargar desde LocalStorage
       const completadosLocal = JSON.parse(localStorage.getItem(`completados_${candidatoId}_${procesoId}`) || '[]')
@@ -191,6 +218,86 @@ export default function PortalCandidatoPage() {
       <div className="flex flex-col justify-center items-center h-screen bg-slate-50">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-4"></div>
         <p className="text-slate-500 font-medium">Preparando tu portal...</p>
+      </div>
+    )
+  }
+
+  if (mostrarSetup) {
+    return (
+      <div className="min-h-screen bg-slate-50 py-12 px-4 flex items-center justify-center">
+        <div className="max-w-2xl w-full bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
+          <div className="bg-indigo-600 p-8 text-white text-center">
+            <h1 className="text-2xl font-bold mb-2">¡Hola, {candidato?.nombre}!</h1>
+            <p className="text-indigo-100 opacity-90">Antes de comenzar, aseguremonos que tu equipo esté listo.</p>
+          </div>
+          
+          <div className="p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-indigo-600" /> Prueba de Cámara
+                </h3>
+                <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+                  Para las video-entrevistas, es importante que tu rostro esté bien iluminado y centrado en la pantalla.
+                </p>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <Mic className="w-4 h-4 text-slate-400" />
+                    <span className="text-xs font-medium text-slate-600">Micrófono detectado</span>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <Video className="w-4 h-4 text-slate-400" />
+                    <span className="text-xs font-medium text-slate-600">Cámara lista</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative group">
+                <div className="aspect-video bg-slate-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center border-4 border-slate-100">
+                  {stream ? (
+                    <video 
+                      autoPlay 
+                      muted 
+                      ref={el => { if (el) el.srcObject = stream }} 
+                      className="w-full h-full object-cover scale-x-[-1]"
+                    />
+                  ) : (
+                    <div className="text-center p-6">
+                      <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Video className="w-6 h-6 text-slate-500" />
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-medium px-4">Haz clic abajo para activar tu vista previa</p>
+                    </div>
+                  )}
+                </div>
+                {!stream && (
+                  <button 
+                    onClick={activarCamara}
+                    className="absolute inset-0 w-full h-full bg-indigo-600/10 hover:bg-indigo-600/20 transition-colors rounded-2xl flex items-center justify-center"
+                  >
+                    <span className="bg-white text-indigo-600 px-4 py-2 rounded-full text-xs font-bold shadow-md">Activar Cámara</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-10 pt-8 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+              <p className="text-xs text-slate-400 max-w-sm text-center md:text-left">
+                Al continuar, confirmas que tu equipo funciona correctamente y estás en un lugar tranquilo para realizar las pruebas.
+              </p>
+              <button
+                onClick={() => {
+                  localStorage.setItem(`setup_done_${candidatoId}`, '1')
+                  detenerCamara()
+                }}
+                className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-100 transition-all hover:-translate-y-0.5"
+              >
+                Todo funciona bien, ¡empecemos!
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }

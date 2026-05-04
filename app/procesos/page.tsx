@@ -731,9 +731,26 @@ export default function ProcesosPage() {
 
               {candidatosProceso.length > 0 && (
                 <div className="border-t border-slate-100 pt-6">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
-                    Evaluados en este proceso ({candidatosProceso.length})
-                  </h4>
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Evaluados en este proceso ({candidatosProceso.length})
+                    </h4>
+                    {candidatosProceso.some(c => (c.progreso?.completados || 0) < (c.progreso?.total || 0)) && (
+                      <button
+                        onClick={async () => {
+                          const pendientes = candidatosProceso.filter(c => (c.progreso?.completados || 0) < (c.progreso?.total || 0))
+                          if (confirm(`¿Enviar recordatorios a ${pendientes.length} candidatos pendientes?`)) {
+                            for (const c of pendientes) {
+                              await enviarRecordatorio(c)
+                            }
+                          }
+                        }}
+                        className="text-[10px] font-bold bg-amber-50 text-amber-600 px-2 py-1 rounded-lg border border-amber-100 hover:bg-amber-100 transition-all flex items-center gap-1.5 shadow-sm"
+                      >
+                        <BellRing className="w-3 h-3" /> Recordar a todos
+                      </button>
+                    )}
+                  </div>
                   <div className="flex flex-col gap-2">
                     {candidatosProceso.map(c => (
                       <div key={c.id} className="flex justify-between items-center p-3 bg-white border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors">

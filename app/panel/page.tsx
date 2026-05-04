@@ -3,9 +3,65 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import AppLayout from '@/components/AppLayout'
-import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video, CheckCircle2 } from 'lucide-react'
+import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video, CheckCircle2, Settings2, BarChart2, LayoutDashboard } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
+import GestionProcesos from '@/components/GestionProcesos'
+import Dashboard from '@/components/Dashboard'
+import AppLayout from '@/components/AppLayout'
+
+
+const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
+  'Orientación al cliente': { amabilidad: 4.5, responsabilidad: 4 },
+  'Orientación a resultados': { responsabilidad: 5, extraversion: 4 },
+  'Trabajo en equipo': { amabilidad: 5, extraversion: 4 },
+  'Adaptabilidad al cambio': { apertura: 5, neuroticismo: 1.5 },
+  'Integridad': { responsabilidad: 5, amabilidad: 4 },
+  'Iniciativa': { extraversion: 4.5, apertura: 4, responsabilidad: 4 },
+  'Liderazgo': { extraversion: 5, responsabilidad: 4.5, neuroticismo: 1.5 },
+  'Comunicación': { extraversion: 5, amabilidad: 4 },
+  'Negociación': { extraversion: 4.5, amabilidad: 3.5, responsabilidad: 4 },
+  'Planificación y organización': { responsabilidad: 5, apertura: 3.5 },
+  'Tolerancia a la presión': { neuroticismo: 1, responsabilidad: 4.5 },
+  'Pensamiento analítico': { apertura: 4.5, responsabilidad: 4 },
+  'Creatividad e innovación': { apertura: 5, extraversion: 4 },
+  'Autocontrol': { neuroticismo: 1, amabilidad: 4 },
+  'Responsabilidad': { responsabilidad: 5 }
+}
+
+function calcularMatch(puntaje: any, reqs: any[]) {
+  if (!puntaje || !reqs || reqs.length === 0) return null
+  
+  let totalMatch = 0
+  let totalComp = 0
+
+  reqs.forEach(req => {
+    const mapping = COMPETENCIAS_MAPPING[req.nombre]
+    if (!mapping) return
+
+    const valReq = req.nivel === 'A' ? 5 : req.nivel === 'B' ? 4 : req.nivel === 'C' ? 3 : 2
+    let matchComp = 0
+    let countFactores = 0
+
+    Object.entries(mapping).forEach(([factor, ideal]) => {
+      let real = puntaje[factor] || 0
+      if (factor === 'neuroticismo' && (ideal as number) < 3) {
+        real = 6 - real
+        ideal = 6 - (ideal as number)
+      }
+      const diff = Math.abs(real - (ideal as number))
+      const proximidad = Math.max(0, 1 - (diff / 3))
+      matchComp += proximidad
+      countFactores++
+    })
+
+    if (countFactores > 0) {
+      totalMatch += (matchComp / countFactores)
+      totalComp++
+    }
+  })
+
+  return totalComp > 0 ? Math.round((totalMatch / totalComp) * 100) : null
+}
 
 interface Candidato {
   id: string
@@ -16,6 +72,8 @@ interface Candidato {
 
 interface Sesion {
   id: string
+  test_id: string
+  proceso_id?: string
   finalizada_en: string
   puntaje_bruto: Record<string, unknown>
   candidato_id: string | null
@@ -55,6 +113,25 @@ const etiquetas: Record<string, string> = {
   responsabilidad: 'Responsabilidad',
   neuroticismo: 'Neuroticismo',
   apertura: 'Apertura'
+}
+
+const TEST_IDS: Record<string, string> = {
+  'a1b2c3d4-e5f6-7890-abcd-ef1234567890': 'bigfive',
+  'f6a7b8c9-d0e1-2345-fabc-456789012345': 'icar',
+  'd0e1f2a3-b4c5-6789-defa-000000000001': 'estres-laboral',
+  'e1f2a3b4-c5d6-7890-efab-111222333444': 'creatividad',
+  'e5f6a7b8-c9d0-1234-efab-345678901234': 'integridad',
+  'b2c3d4e5-f6a7-8901-bcde-f12345678901': 'hexaco',
+  'c3d4e5f6-a7b8-9012-cdef-123456789012': 'numerico',
+  'd4e5f6a7-b8c9-0123-defa-234567890123': 'verbal',
+  'a7b8c9d0-e1f2-3456-abcd-777777777777': 'sjt-ventas',
+  'e5f6a7b8-c9d0-1234-efab-555555555555': 'tolerancia-frustracion',
+  'f2a3b4c5-d6e7-8901-fabc-222333444555': 'sjt-problemas',
+  'c9d0e1f2-a3b4-5678-cdef-999999999999': 'sjt-legal',
+  'b2c3d4e5-f6a7-8901-bcde-222222222222': 'sjt-comercial',
+  'a1b2c3d4-e5f6-7890-abcd-111111111111': 'comercial',
+  'b8c9d0e1-f2a3-4567-bcde-888888888888': 'atencion-detalle',
+  'f6a7b8c9-d0e1-2345-fabc-666666666666': 'sjt-atencion',
 }
 
 const TEST_NAMES: Record<string, string> = {
@@ -102,108 +179,162 @@ interface CandidatoAgrupado {
   proceso_id?: string
   proceso_nombre?: string
   proceso_cargo?: string
+  competencias_requeridas?: any[]
+  bateria_tests?: string[]
   progreso?: {
     total: number
     completados: number
     tests_pendientes: string[]
   }
+  matchScore?: number | null
+  resumen_ia?: string | null
 }
 
-export default function PanelPage() {
-  const [candidatosAgrupados, setCandidatosAgrupados] = useState<CandidatoAgrupado[]>([])
-  const [cargando, setCargando] = useState(true)
+async function generarResumenIA(candidato: CandidatoAgrupado) {
+  try {
+    const prompt = `
+      Analiza los resultados de este candidato para un proceso de selección.
+      Datos del candidato: ${candidato.nombre} ${candidato.apellido}
+      Cargo: ${candidato.proceso_cargo}
+      
+      Resultados psicométricos (Big Five): ${JSON.stringify(candidato.sesiones.find(s => s.test_id.includes('bigfive'))?.puntaje_bruto || {})}
+      Resultados de video (Transcripciones): ${JSON.stringify(candidato.sesiones.map(s => (s as any).transcripcion).filter(Boolean))}
+      Match Score calculado: ${candidato.matchScore}%
+      
+      Redacta un resumen ejecutivo profesional de 2 párrafos. 
+      Destaca fortalezas, posibles áreas de mejora y una recomendación final de calce con el cargo.
+      Usa un tono corporativo y analítico. No uses markdown, solo texto plano.
+    `
+
+    const response = await fetch('/api/ia-summary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    })
+    const data = await response.json()
+    return data.summary
+  } catch (err) {
+    console.error("Error generando resumen:", err)
+    return "No se pudo generar el resumen en este momento."
+  }
+}
+
+
+
+export default function PanelEvaluador() {
+  const [tab, setTab] = useState<'evaluaciones' | 'gestion' | 'dashboard'>('evaluaciones')
+  const [candidatos, setCandidatos] = useState<CandidatoAgrupado[]>([])
   const [agrupadoSeleccionado, setAgrupadoSeleccionado] = useState<CandidatoAgrupado | null>(null)
   const [sesionSeleccionada, setSesionSeleccionada] = useState<Sesion | null>(null)
+  const [cargando, setCargando] = useState(true)
+  const [enviandoRecordatorio, setEnviandoRecordatorio] = useState<string | null>(null)
   const [filtro, setFiltro] = useState('')
   const [videosCandidato, setVideosCandidato] = useState<any[]>([])
-  const [enviandoRecordatorio, setEnviandoRecordatorio] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) router.push('/login')
     })
+    cargarCandidatos()
   }, [])
 
-  useEffect(() => {
-    cargarSesiones()
-  }, [])
-
-  async function cargarSesiones() {
-    // 1. Cargar todas las sesiones
+  async function cargarCandidatos() {
     const { data: sesionesData } = await supabase
       .from('sesiones')
-      .select('*')
+      .select(`
+        *,
+        candidatos (id, nombre, apellido, email),
+        procesos (id, nombre, cargo, competencias_requeridas, bateria_tests)
+      `)
+      .not('candidato_id', 'is', null)
       .order('finalizada_en', { ascending: false })
 
-    // 2. Cargar todos los procesos (para saber la batería de tests)
-    const { data: procesosData } = await supabase
-      .from('procesos')
-      .select('id, nombre, cargo, bateria_tests')
+    if (!sesionesData) { setCargando(false); return }
 
-    // 3. Cargar todas las videoentrevistas respondidas
+    // Traer respuestas de video para el progreso
+    const idsCandidatos = Array.from(new Set(sesionesData.map(s => s.candidato_id)))
     const { data: respuestasVideo } = await supabase
       .from('respuestas_video')
-      .select('candidato_id, entrevista_id')
+      .select('candidato_id, entrevista_id, pregunta_id, grabada_en')
+      .in('candidato_id', idsCandidatos as string[])
 
-    // 4. Cargar candidatos
-    const { data: candidatosData } = await supabase
-      .from('candidatos')
-      .select('id, nombre, apellido, email')
-
-    const candidatos = candidatosData || []
     const grupos: Record<string, CandidatoAgrupado> = {}
     
-    sesionesData?.forEach(sesion => {
-      const cId = sesion.candidato_id || 'anonimo'
-      const cand = candidatos.find(c => c.id === cId)
+    sesionesData.forEach((s: any) => {
+      const c = s.candidatos
+      if (!c) return
       
-      if (!grupos[cId]) {
-        const proceso = procesosData?.find(p => p.id === sesion.proceso_id)
-        
-        // Calcular progreso
-        let progreso = undefined
-        if (proceso && proceso.bateria_tests) {
-          const bateria = proceso.bateria_tests as string[]
-          const misSesiones = sesionesData?.filter(s => s.candidato_id === cId) || []
-          const misVideos = respuestasVideo?.filter(rv => rv.candidato_id === cId) || []
-          
-          const idsCompletados = [
-            ...misSesiones.map(s => (s as any).test_id).filter(Boolean),
-            ...misVideos.map(v => `entrevista:${v.entrevista_id}`)
-          ]
-          
-          const unicosCompletados = Array.from(new Set(idsCompletados))
-          const pendientes = bateria.filter(tId => !unicosCompletados.includes(tId))
-          
-          progreso = {
-            total: bateria.length,
-            completados: bateria.length - pendientes.length,
-            tests_pendientes: pendientes
-          }
-        }
-
-        grupos[cId] = {
-          id: cId,
-          nombre: cand?.nombre || 'Evaluación',
-          apellido: cand?.apellido || 'Anónima',
-          email: cand?.email || '',
+      if (!grupos[c.id]) {
+        grupos[c.id] = {
+          id: c.id,
+          nombre: c.nombre,
+          apellido: c.apellido,
+          email: c.email,
           sesiones: [],
-          ultima_fecha: sesion.finalizada_en,
-          proceso_id: sesion.proceso_id,
-          proceso_nombre: proceso?.nombre,
-          proceso_cargo: proceso?.cargo,
-          progreso
+          ultima_fecha: s.finalizada_en || s.creado_en,
+          proceso_id: s.proceso_id,
+          proceso_nombre: s.procesos?.nombre,
+          proceso_cargo: s.procesos?.cargo,
+          competencias_requeridas: s.procesos?.competencias_requeridas,
+          bateria_tests: s.procesos?.bateria_tests
         }
       }
       
-      grupos[cId].sesiones.push({
-        ...sesion,
-        candidato: cand
-      })
+      grupos[c.id].sesiones.push(s)
     })
 
-    setCandidatosAgrupados(Object.values(grupos))
+    const resultado = Object.values(grupos).map(c => {
+      const bateria = c.bateria_tests || []
+      const misVideos = respuestasVideo?.filter(rv => rv.candidato_id === c.id) || []
+      
+      // Eliminar duplicados de videos (quedarse con el último intento por pregunta)
+      const videosUnicosMap = new Map<string, any>()
+      misVideos.forEach(v => {
+        const key = `${v.entrevista_id}:${v.pregunta_id}`
+        const existente = videosUnicosMap.get(key)
+        if (!existente || new Date(v.grabada_en) > new Date(existente.grabada_en)) {
+          videosUnicosMap.set(key, v)
+        }
+      })
+      const videosFinales = Array.from(videosUnicosMap.values())
+      
+      // Identificar tests completados
+      const idsCompletados = new Set<string>()
+      c.sesiones.forEach(s => {
+        // Contamos cualquier sesión que exista como un test realizado
+        const slug = TEST_IDS[s.test_id]
+        if (slug) idsCompletados.add(slug)
+        else if (s.test_id) idsCompletados.add(s.test_id)
+      })
+      videosFinales.forEach(v => idsCompletados.add(`entrevista:${v.entrevista_id}`))
+
+      // El total es el de la batería, o el número de tests realizados si es independiente
+      const totalBateria = bateria.length
+      const completadosCount = idsCompletados.size
+
+      // Si hay batería, filtramos solo los que pertenecen a ella
+      const finalCompletados = totalBateria > 0
+        ? bateria.filter(tId => idsCompletados.has(tId)).length
+        : completadosCount
+
+      // Calcular Match Score (basado en Big Five)
+      const sesionBigFive = c.sesiones.find(s => TEST_IDS[s.test_id] === 'bigfive')
+      const matchScore = calcularMatch(sesionBigFive?.puntaje_bruto, c.competencias_requeridas || [])
+
+      return {
+        ...c,
+        sesionesVideos: videosFinales,
+        progreso: {
+          completados: finalCompletados,
+          total: totalBateria || finalCompletados || 1,
+          tests_pendientes: bateria.filter(tId => !idsCompletados.has(tId))
+        },
+        matchScore
+      }
+    })
+
+    setCandidatos(resultado)
     setCargando(false)
   }
 
@@ -255,7 +386,7 @@ export default function PanelPage() {
     }
   }
 
-  const candidatosFiltrados = candidatosAgrupados.filter(c => 
+  const candidatosFiltrados = candidatos.filter(c => 
     `${c.nombre} ${c.apellido} ${c.proceso_nombre} ${c.proceso_cargo}`.toLowerCase().includes(filtro.toLowerCase()) || 
     c.email.toLowerCase().includes(filtro.toLowerCase())
   )
@@ -272,14 +403,57 @@ export default function PanelPage() {
 
   return (
     <AppLayout>
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Panel del evaluador</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Centro de Control</h1>
           <p className="text-sm text-slate-500 mt-1">
-            {candidatosAgrupados.length} candidato{candidatosAgrupados.length !== 1 ? 's' : ''} con evaluaciones
+            Gestión inteligente de talento y procesos
           </p>
         </div>
+
+        <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-sm">
+          <button
+            onClick={() => setTab('dashboard')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              tab === 'dashboard' 
+                ? 'bg-white text-indigo-600 shadow-sm' 
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            DASHBOARD
+          </button>
+          <button
+            onClick={() => setTab('evaluaciones')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              tab === 'evaluaciones' 
+                ? 'bg-white text-indigo-600 shadow-sm' 
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <BarChart2 className="w-4 h-4" />
+            ANÁLISIS
+          </button>
+          <button
+            onClick={() => setTab('gestion')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              tab === 'gestion' 
+                ? 'bg-white text-indigo-600 shadow-sm' 
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Settings2 className="w-4 h-4" />
+            GESTIÓN PROCESOS
+          </button>
+        </div>
       </div>
+
+      {tab === 'dashboard' ? (
+        <Dashboard />
+      ) : tab === 'gestion' ? (
+        <GestionProcesos />
+      ) : (
+        <>
 
       <div className="mb-6 relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -294,7 +468,7 @@ export default function PanelPage() {
         />
       </div>
 
-      {candidatosAgrupados.length === 0 ? (
+      {candidatos.length === 0 ? (
         <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl shadow-sm">
           <p className="text-slate-500 mb-4">No hay evaluaciones todavía.</p>
           <a href="/candidatos" className="text-indigo-600 font-medium hover:text-indigo-700">Ir a candidatos →</a>
@@ -311,14 +485,23 @@ export default function PanelPage() {
                   setSesionSeleccionada(c.sesiones[0]) // Seleccionar la más reciente por defecto
                   
                   // Cargar videos del candidato
-                  const { data: videos } = await supabase
+                  const { data: vids } = await supabase
                     .from('respuestas_video')
                     .select('*, preguntas_video(pregunta)')
                     .eq('candidato_id', c.id)
                     .order('grabada_en', { ascending: true })
                   
-                  // @ts-ignore
-                  setVideosCandidato(videos || [])
+                  // Eliminar duplicados (quedarse con el último intento por pregunta)
+                  const vMap = new Map<string, any>()
+                  vids?.forEach(v => {
+                    const k = `${v.entrevista_id}:${v.pregunta_id}`
+                    const ex = vMap.get(k)
+                    if (!ex || new Date(v.grabada_en) > new Date(ex.grabada_en)) {
+                      vMap.set(k, v)
+                    }
+                  })
+                  
+                  setVideosCandidato(Array.from(vMap.values()))
                 }}
                 className={`p-4 rounded-xl border bg-white cursor-pointer transition-all duration-200 hover:shadow-md ${
                   agrupadoSeleccionado?.id === c.id 
@@ -328,22 +511,40 @@ export default function PanelPage() {
               >
                 <div className="flex gap-4 items-center w-full overflow-hidden">
                   {/* INDICADOR DE ESTADO IZQUIERDO */}
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0 border-2 ${
-                    c.progreso && c.progreso.completados === c.progreso.total && c.progreso.total > 0
-                      ? 'bg-green-50 border-green-200 text-green-600'
-                      : 'bg-slate-50 border-slate-100 text-slate-500'
-                  }`}>
-                    {c.progreso && c.progreso.completados === c.progreso.total && c.progreso.total > 0 ? (
-                      <CheckCircle2 className="w-5 h-5" />
-                    ) : (
-                      `${c.progreso?.completados || 0}/${c.progreso?.total || 0}`
+                  <div className="relative shrink-0">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border-2 ${
+                      c.progreso && c.progreso.completados === c.progreso.total && c.progreso.total > 0
+                        ? 'bg-green-50 border-green-200 text-green-600'
+                        : 'bg-slate-50 border-slate-100 text-slate-500'
+                    }`}>
+                      {c.progreso && c.progreso.completados === c.progreso.total && c.progreso.total > 0 ? (
+                        <CheckCircle2 className="w-5 h-5" />
+                      ) : (
+                        `${c.progreso?.completados || 0}/${c.progreso?.total || 0}`
+                      )}
+                    </div>
+                    {c.matchScore != null && (
+                      <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border border-white shadow-sm text-[8px] font-bold text-white ${
+                        Number(c.matchScore) >= 80 ? 'bg-emerald-500' : Number(c.matchScore) >= 60 ? 'bg-amber-500' : 'bg-slate-500'
+                      }`} title={`Match Score: ${c.matchScore}%`}>
+                        {c.matchScore}%
+                      </div>
                     )}
                   </div>
 
                   <div className="flex-1 min-w-0 pr-2">
                     <div className="font-bold text-slate-900 leading-tight truncate">{c.nombre} {c.apellido}</div>
                     <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mt-0.5 truncate">{c.proceso_nombre || 'Proceso independiente'}</div>
-                    <div className="text-xs text-slate-500 mt-0.5 truncate">{c.email || 'Sin email'}</div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-slate-500 truncate">{c.email || 'Sin email'}</span>
+                      {c.matchScore != null && (
+                        <span className={`text-[9px] font-bold px-1 rounded ${
+                          Number(c.matchScore) >= 80 ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400 bg-slate-50'
+                        }`}>
+                          {Number(c.matchScore) >= 80 ? 'PERFIL ALTO' : ''}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex flex-col items-end gap-2 shrink-0 pr-1">
@@ -421,6 +622,35 @@ export default function PanelPage() {
                   </button>
                 </div>
 
+                {/* RESUMEN EJECUTIVO IA */}
+                <div className="mb-8 p-5 bg-gradient-to-br from-indigo-50/50 to-white rounded-2xl border border-indigo-100 shadow-sm relative">
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-pulse" />
+                      <h3 className="text-[10px] font-bold text-indigo-900 uppercase tracking-widest">Resumen Ejecutivo IA</h3>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const res = await generarResumenIA(agrupadoSeleccionado)
+                        setAgrupadoSeleccionado({ ...agrupadoSeleccionado, resumen_ia: res })
+                      }}
+                      className="text-[9px] font-bold bg-indigo-600 text-white px-2 py-1 rounded-lg hover:bg-indigo-700 transition-all"
+                    >
+                      {agrupadoSeleccionado.resumen_ia ? 'Regenerar' : 'Generar Informe'}
+                    </button>
+                  </div>
+                  
+                  {agrupadoSeleccionado.resumen_ia ? (
+                    <div className="text-xs text-slate-600 leading-relaxed space-y-2 animate-in fade-in duration-500">
+                      {agrupadoSeleccionado.resumen_ia.split('\n').map((p, i) => (
+                        <p key={i}>{p}</p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 italic">Analiza todos los tests y videos para generar un resumen profesional.</p>
+                  )}
+                </div>
+
                 <div className="mb-6">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tests realizados</p>
                   <div className="flex flex-wrap gap-2">
@@ -460,22 +690,54 @@ export default function PanelPage() {
                       Video Entrevistas
                     </p>
                     <div className="space-y-4">
-                      {videosCandidato.map((vid, idx) => (
-                        <div key={vid.id} className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                          <div className="p-3 bg-white border-b border-slate-100">
-                            <div className="text-[10px] font-bold text-indigo-600 mb-0.5">PREGUNTA {idx + 1}</div>
-                            <div className="text-sm font-semibold text-slate-800">{vid.preguntas_video?.pregunta || 'Respuesta grabada'}</div>
+                      {videosCandidato.map((v, i) => (
+                        <div key={i} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                          <div className="flex justify-between items-start mb-3">
+                            <h5 className="text-sm font-bold text-slate-800">Pregunta {i + 1}: {v.preguntas_video?.pregunta}</h5>
+                            <span className="text-[10px] font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+                              {v.duracion}s
+                            </span>
                           </div>
-                          <div className="p-2 bg-slate-900 aspect-video flex items-center justify-center">
-                            {vid.url_video ? (
-                              <video 
-                                src={vid.url_video} 
-                                controls 
-                                className="w-full h-full rounded-lg shadow-2xl"
-                              />
-                            ) : (
-                              <div className="text-slate-500 text-xs italic">Video no disponible</div>
-                            )}
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <video 
+                              src={v.url_video} 
+                              controls 
+                              className="w-full aspect-video rounded-xl shadow-sm bg-black"
+                            />
+                            <div className="flex flex-col gap-3">
+                              {v.transcripcion ? (
+                                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-full overflow-auto max-h-[200px]">
+                                  <div className="flex items-center gap-2 mb-2 text-indigo-600">
+                                    <FileText className="w-4 h-4" />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Análisis de IA</span>
+                                  </div>
+                                  <p className="text-xs text-slate-600 leading-relaxed italic mb-3">"{v.transcripcion}"</p>
+                                  
+                                  {v.analisis_ia?.puntos_clave && (
+                                    <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                                      {v.analisis_ia.puntos_clave.map((p: string, idx: number) => (
+                                        <div key={idx} className="flex gap-2 text-[11px] text-slate-700">
+                                          <span className="text-indigo-500">•</span> {p}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  
+                                  {v.analisis_ia?.actitud && (
+                                    <div className="mt-3 p-2 bg-amber-50 rounded-lg border border-amber-100">
+                                      <p className="text-[10px] text-amber-700 font-medium italic">Actitud: {v.analisis_ia.actitud}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center justify-center h-full border-2 border-dashed border-slate-200 rounded-xl p-6 text-slate-400">
+                                  <div className="animate-pulse flex flex-col items-center">
+                                    <Video className="w-8 h-8 mb-2 opacity-20" />
+                                    <p className="text-xs font-medium">IA procesando transcripción...</p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -503,61 +765,79 @@ export default function PanelPage() {
                         const metricas = pb.metricas_fraude
                         const hasFraude = metricas && (metricas.tabSwitches > 0 || metricas.copyPasteAttempts > 0)
 
+                        if (!metricas) return null
+
                         return (
                           <>
-                            {hasFraude && (
-                              <div className="mb-6 bg-red-50 border border-red-100 rounded-xl p-4">
-                                <div className="flex items-center gap-2 text-red-700 font-bold text-sm mb-2">
-                                  <AlertTriangle className="w-4 h-4" />
-                                  Alerta Anti-Fraude
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                Monitoreo de Integridad
+                              </div>
+                              <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold border ${
+                                (metricas.tabSwitches || 0) > 5 || (metricas.copyPasteAttempts || 0) > 2
+                                  ? 'bg-red-50 border-red-200 text-red-600'
+                                  : (metricas.tabSwitches || 0) > 0
+                                  ? 'bg-amber-50 border-amber-200 text-amber-600'
+                                  : 'bg-green-50 border-green-200 text-green-600'
+                              }`}>
+                                {(metricas.tabSwitches || 0) > 5 || (metricas.copyPasteAttempts || 0) > 2 ? 'RIESGO ALTO' : (metricas.tabSwitches || 0) > 0 ? 'RIESGO MODERADO' : 'SIN INCIDENCIAS'}
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 mb-6">
+                              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 shadow-sm">
+                                  <Clock className="w-5 h-5" />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4 text-xs">
-                                  <div className="bg-white/50 p-2 rounded-lg border border-red-200">
-                                    <span className="text-slate-500 block mb-0.5">Cambios de pestaña</span>
-                                    <span className="text-red-700 font-bold text-base">{metricas.tabSwitches}</span>
-                                  </div>
-                                  <div className="bg-white/50 p-2 rounded-lg border border-red-200">
-                                    <span className="text-slate-500 block mb-0.5">Copy/paste</span>
-                                    <span className="text-red-700 font-bold text-base">{metricas.copyPasteAttempts}</span>
-                                  </div>
+                                <div>
+                                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Fugas de foco</div>
+                                  <div className="text-xl font-bold text-slate-800 tracking-tight">{(metricas.tabSwitches || 0)}</div>
                                 </div>
+                              </div>
+                              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 shadow-sm">
+                                  <AlertTriangle className="w-5 h-5" />
+                                </div>
+                                <div>
+                                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Intentos Copia</div>
+                                  <div className="text-xl font-bold text-slate-800 tracking-tight">{(metricas.copyPasteAttempts || 0)}</div>
+                                </div>
+                              </div>
+                            </div>
                                 
                                 {metricas.events && metricas.events.length > 0 && (
-                                  <div className="mt-4 pt-4 border-t border-red-100">
-                                    <p className="text-[10px] font-bold text-red-800 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                  <div className="mt-6 pt-6 border-t border-slate-100">
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
                                       <History className="w-3 h-3" />
-                                      Diario de incidencias
+                                      Cronología de Incidencias
                                     </p>
-                                    <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                                    <div className="space-y-3 relative before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
                                       {metricas.events.map((ev: any, idx: number) => {
-                                        const hora = new Date(ev.timestamp).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                                        let label = 'Evento'
-                                        let color = 'bg-slate-200 text-slate-600'
-                                        
-                                        if (ev.tipo === 'tab_switch' || ev.tipo === 'blur') {
-                                          label = 'Cambio de pestaña / Foco perdido'
-                                          color = 'bg-amber-100 text-amber-700 border-amber-200'
-                                        } else if (ev.tipo === 'copy_paste') {
-                                          label = 'Intento de Copy/Paste'
-                                          color = 'bg-red-100 text-red-700 border-red-200'
-                                        } else if (ev.tipo === 'context_menu') {
-                                          label = 'Click derecho (Menú contextual)'
-                                          color = 'bg-purple-100 text-purple-700 border-purple-200'
-                                        }
-
+                                        const hora = new Date(ev.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                                        const isAlert = ev.tipo === 'copy_paste' || ev.tipo === 'context_menu'
                                         return (
-                                          <div key={idx} className={`flex items-center justify-between p-2 rounded-lg border text-[10px] font-medium ${color}`}>
-                                            <span>{label}</span>
-                                            <span className="font-bold opacity-70">{hora}</span>
+                                          <div key={idx} className="relative pl-7 group">
+                                            <div className={`absolute left-0 top-1.5 w-4 h-4 rounded-full border-2 border-white shadow-sm z-10 transition-transform group-hover:scale-125 ${
+                                              isAlert ? 'bg-red-500' : 'bg-amber-500'
+                                            }`} />
+                                            <div className="flex justify-between items-baseline gap-2">
+                                              <div className="text-xs font-bold text-slate-700">
+                                                {ev.tipo === 'tab_switch' || ev.tipo === 'blur' ? 'Foco perdido / Cambio pestaña' : 
+                                                 ev.tipo === 'copy_paste' ? 'Intento de Copiar/Pegar' : 
+                                                 ev.tipo === 'context_menu' ? 'Click Derecho' : 'Evento de sistema'}
+                                              </div>
+                                              <div className="text-[9px] font-bold text-slate-400 font-mono">
+                                                {hora}
+                                              </div>
+                                            </div>
                                           </div>
                                         )
                                       })}
                                     </div>
                                   </div>
                                 )}
-                              </div>
-                            )}
-
+                            
                             {esBigFive(pb) ? valoresNumericos(pb).map(([factor, valor]) => {
                               const tc = textColores[factor] || 'text-indigo-600'
                               const bgc = colores[factor] || 'bg-indigo-600'
@@ -640,6 +920,8 @@ export default function PanelPage() {
           </div>
         </div>
       )}
+    </>
+  )}
     </AppLayout>
   )
 }

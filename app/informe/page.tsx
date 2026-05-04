@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { obtenerPercentilCognitivo, interpretarPercentil, obtenerPercentilBigFive } from '@/lib/baremos'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, AlertCircle } from 'lucide-react'
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -44,8 +44,43 @@ interface InformeState {
 const BF_KEYS = ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura']
 
 const ETQ: Record<string, string> = {
-  extraversion: 'Extraversión', amabilidad: 'Amabilidad',
-  responsabilidad: 'Responsabilidad', neuroticismo: 'Neuroticismo', apertura: 'Apertura',
+  // Personalidad
+  extraversion: 'Extraversión', amabilidad: 'Amabilidad', responsabilidad: 'Responsabilidad',
+  neuroticismo: 'Estabilidad Emocional', apertura: 'Apertura a la Experiencia',
+  honestidad_humildad: 'Honestidad y Humildad',
+  
+  // Cognitivo y Atención
+  correctas: 'Efectividad Cognitiva',
+  percentil: 'Rango Comparativo (Percentil)',
+  score: 'Puntuación Global',
+  documentos: 'Gestión Documental',
+  comparacion: 'Velocidad de Procesamiento',
+  concentracion: 'Nivel de Foco y Concentración',
+  errores_texto: 'Precisión en Datos de Texto',
+  errores_numeros: 'Precisión en Datos Numéricos',
+  metricas_fraude: 'Índice de Sinceridad Laboral',
+  
+  // Competencias Profesionales (SJT)
+  etica: 'Ética y Valores Profesionales',
+  negociacion: 'Capacidad de Negociación',
+  manejo_emocional: 'Inteligencia Emocional Aplicada',
+  tolerancia_frustracion: 'Tolerancia a la Presión',
+  comunicacion: 'Comunicación Efectiva',
+  
+  // Salud y Bienestar Laboral
+  burnout: 'Nivel de Riesgo (Burnout)',
+  equilibrio: 'Balance Vida-Trabajo',
+  relaciones: 'Relaciones Interpersonales y Clima',
+  claridad_rol: 'Percepción de Claridad de Rol',
+  nivel_estres: 'Indicador de Tensión Psicológica',
+  carga_laboral: 'Gestión de la Demanda de Trabajo',
+}
+
+const DOMINIOS = {
+  PERSONALIDAD: ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura', 'honestidad_humildad'],
+  COGNITIVO: ['correctas', 'percentil', 'score', 'documentos', 'comparacion', 'concentracion', 'errores_texto', 'errores_numeros', 'metricas_fraude'],
+  COMPETENCIAS: ['etica', 'negociacion', 'manejo_emocional', 'tolerancia_frustracion', 'comunicacion'],
+  BIENESTAR: ['burnout', 'equilibrio', 'relaciones', 'claridad_rol', 'nivel_estres', 'carga_laboral']
 }
 
 const CLR: Record<string, string> = {
@@ -93,6 +128,63 @@ const INTERP: Record<string, Record<string, string>> = {
     Alto: 'Equivale a una alta empatía combinada con susceptibilidad emocional. En el contexto laboral, son personas que generan lazos profundos y comprenden excepcionalmente bien las necesidades emocionales de clientes y compañeros. Sin embargo, pueden requerir apoyo constante, validación y pueden verse abrumados por críticas duras o situaciones de alta fricción. Su desarrollo debe enfocarse en la objetividad y en no tomar el feedback profesional como un ataque personal.',
     Moderado: 'Indica un punto medio de sensibilidad y conexión emocional. En el día a día, la persona puede conectar con las preocupaciones del equipo y mostrar empatía genuina, manteniendo al mismo tiempo un nivel suficiente de desapego para tomar decisiones racionales. Logran manejar críticas constructivas y situaciones de estrés con una resiliencia adecuada, siendo muy efectivos en roles de supervisión intermedia o servicio al cliente.',
     Bajo: 'Refleja una persona con gran independencia emocional, dureza y bajo nivel de ansiedad o empatía sentimental. En el trabajo, son resilientes ante la presión extrema, no necesitan mucha validación externa y pueden tomar decisiones difíciles (como despidos o recortes) sin inmutarse. El área de desarrollo más crítica es la conexión humana: pueden parecer fríos, distantes o carentes de apoyo emocional hacia sus colaboradores, lo que puede desmotivar a sus equipos.',
+  },
+  // Sección IV: Competencias Profesionales (SJT)
+  etica: {
+    Alto: 'Demuestra una integridad inquebrantable y un compromiso profundo con los estándares éticos. Actúa como referente de probidad y transparencia en la organización.',
+    Moderado: 'Muestra un comportamiento ético sólido y alineado con las normas corporativas, resolviendo dilemas morales de forma equilibrada y razonable.',
+    Bajo: 'Presenta dificultades para priorizar principios éticos ante presiones externas o metas personales; requiere supervisión en la toma de decisiones críticas.'
+  },
+  negociacion: {
+    Alto: 'Estratega hábil capaz de cerrar acuerdos complejos maximizando el beneficio mutuo. Domina la comunicación persuasiva y la gestión de intereses contrapuestos.',
+    Moderado: 'Posee habilidades funcionales para la negociación; logra acuerdos satisfactorios en situaciones estándar y mantiene una postura constructiva.',
+    Bajo: 'Tiende a ceder excesivamente ante la presión o adopta posturas rígidas que dificultan el consenso. Requiere formación en técnicas de persuasión.'
+  },
+  manejo_emocional: {
+    Alto: 'Elevado autocontrol y madurez emocional. Gestiona situaciones de alta tensión con serenidad, evitando que las emociones interfieran en el juicio profesional.',
+    Moderado: 'Regula sus emociones de forma adecuada en el día a día laboral, aunque puede mostrar reactividad ante crisis o niveles de estrés sostenidos.',
+    Bajo: 'Vulnerabilidad ante la presión emocional; sus estados de ánimo impactan visiblemente en su desempeño y en la relación con sus colaboradores.'
+  },
+  tolerancia_frustracion: {
+    Alto: 'Resiliencia excepcional. Transforma los obstáculos en oportunidades de aprendizaje y mantiene la motivación intacta ante los reveses operativos.',
+    Moderado: 'Acepta los contratiempos con una actitud profesional, logrando recuperarse tras un periodo razonable de ajuste ante el fracaso.',
+    Bajo: 'Baja tolerancia a los imprevistos; los errores o retrasos le generan desmotivación inmediata y pueden paralizar su capacidad de respuesta.'
+  },
+  comunicacion: {
+    Alto: 'Comunicador de impacto. Transmite ideas complejas con claridad absoluta, adaptando su discurso a distintos niveles jerárquicos y asegurando la escucha activa.',
+    Moderado: 'Se comunica de forma efectiva y clara en contextos conocidos, cumpliendo con los requerimientos de intercambio de información del puesto.',
+    Bajo: 'Dificultades para estructurar mensajes o falta de asertividad; se producen malentendidos frecuentes o falta de fluidez en la transmisión de objetivos.'
+  },
+  // Sección V: Salud y Bienestar Laboral
+  burnout: {
+    Bajo: 'Nivel óptimo de energía y compromiso. No se detectan indicadores de agotamiento crónico; el evaluado mantiene una alta reserva vital para el desempeño.',
+    Moderado: 'Muestra fatiga puntual asociada a las demandas del rol. Es necesario vigilar las pausas y la desconexión para evitar que el cansancio se vuelva crónico.',
+    Alto: 'Riesgo elevado de agotamiento. Se observan síntomas de desgaste emocional y despersonalización que requieren intervención inmediata en la gestión del rol.'
+  },
+  equilibrio: {
+    Alto: 'Logra una integración saludable entre sus responsabilidades laborales y su vida personal, lo que favorece una sostenibilidad de desempeño a largo plazo.',
+    Moderado: 'Mantiene un balance aceptable, aunque en picos de demanda el trabajo tiende a desplazar sus actividades personales de forma recurrente.',
+    Bajo: 'Desequilibrio marcado. Existe una invasión del ámbito laboral sobre el personal, lo que genera un riesgo latente de estrés y desmotivación.'
+  },
+  relaciones: {
+    Alto: 'Fomenta un clima de colaboración y confianza. Se integra con facilidad y aporta activamente al bienestar psicológico del equipo y sus pares.',
+    Moderado: 'Mantiene relaciones funcionales y cordiales en el entorno laboral, sin involucrarse profundamente en las dinámicas sociales del equipo.',
+    Bajo: 'Aislamiento o tendencia al conflicto. Su estilo de interacción puede generar fricciones o falta de cohesión en el grupo de trabajo.'
+  },
+  claridad_rol: {
+    Alto: 'Comprende perfectamente sus objetivos y el impacto de su trabajo. Opera con autonomía y seguridad al saber exactamente qué se espera de su desempeño.',
+    Moderado: 'Conoce sus funciones principales, aunque en tareas nuevas o cambios de estructura puede experimentar incertidumbre sobre sus alcances.',
+    Bajo: 'Confusión sobre las expectativas. La falta de definición de tareas le genera inseguridad operativa y dependencia constante de supervisión.'
+  },
+  nivel_estres: {
+    Bajo: 'Manejo sobresaliente de la tensión. No se percibe el entorno como amenazante, operando con calma incluso en situaciones de demanda exigente.',
+    Moderado: 'Experimenta niveles de tensión normales ante los desafíos del puesto, logrando autorregularse sin que esto afecte su salud o productividad.',
+    Alto: 'Tensión psicológica elevada. El evaluado se siente sobrepasado por las demandas, lo que puede derivar en problemas de salud y errores operativos.'
+  },
+  carga_laboral: {
+    Bajo: 'Percibe la demanda de trabajo como cómoda o incluso reducida. Tiene capacidad ociosa que podría ser aprovechada para nuevas responsabilidades.',
+    Moderado: 'La carga de trabajo se percibe como justa y equilibrada con respecto a su tiempo y capacidades, permitiendo un flujo de trabajo constante.',
+    Alto: 'Sobrecarga de tareas percibida. El volumen de trabajo supera su capacidad de respuesta en el tiempo disponible, comprometiendo la calidad.'
   }
 }
 
@@ -110,27 +202,75 @@ const REC_RGB: Record<Rec, [number, number, number]> = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function numEntries(pb: Record<string, unknown>): [string, number][] {
-  return Object.entries(pb).filter((e): e is [string, number] => typeof e[1] === 'number')
+function numEntries(pb: Record<string, unknown>): [string, any][] {
+  if (!pb) return [];
+  const data = (pb.por_factor as Record<string, any>) || pb;
+  
+  return Object.entries(data).filter(([k]) => k !== 'total' && k !== 'porcentaje' && k !== 'por_factor');
 }
 
 function avgOf(pb: Record<string, unknown>): number {
-  const vs = numEntries(pb).map(([, v]) => v)
+  const vs = numEntries(pb).map(([, v]) => {
+    if (typeof v === 'number') return v;
+    if (v && typeof v === 'object') return Number(v.correctas || v.score || 0);
+    return parseFloat(v) || 0;
+  });
   if (!vs.length) return 0
   return Math.round((vs.reduce((a, b) => a + b, 0) / vs.length) * 10) / 10
 }
 
-function isBF(pb: Record<string, unknown>) { return BF_KEYS.every(k => k in pb) }
-function isHX(pb: Record<string, unknown>) { return 'honestidad_humildad' in pb || ('emotividad' in pb && !('neuroticismo' in pb)) }
-function isPersonalidad(pb: Record<string, unknown>) { return isBF(pb) || isHX(pb) }
-function isCog(pb: Record<string, unknown>) { return 'correctas' in pb && 'total' in pb }
+function isBF(pb: Record<string, unknown> | null | undefined) { 
+  if (!pb) return false
+  const data = (pb.por_factor as Record<string, any>) || pb
+  const keys = Object.keys(data).map(k => k.toLowerCase())
+  return BF_KEYS.some(k => keys.includes(k)) 
+}
+function isHX(pb: Record<string, unknown> | null | undefined) { 
+  if (!pb) return false
+  const data = (pb.por_factor as Record<string, any>) || pb
+  const keys = Object.keys(data).map(k => k.toLowerCase())
+  return keys.includes('honestidad_humildad') || keys.includes('honestidad') || keys.includes('sinceridad')
+}
+function isPersonalidad(pb: Record<string, unknown> | null | undefined) { return isBF(pb) || isHX(pb) }
+function isCog(pb: Record<string, unknown> | null | undefined) { 
+  if (!pb) return false
+  const data = (pb.por_factor as Record<string, any>) || pb
+  const keys = Object.keys(data).map(k => k.toLowerCase())
+  const hasSubfactors = keys.includes('etica') || keys.includes('negociacion')
+  if (hasSubfactors) return false 
+  return (keys.includes('correctas') && keys.includes('total')) || keys.includes('score') || keys.includes('percentil')
+}
 
-function estimarMBTI(pb: Record<string, unknown>): string | null {
-  if (!isBF(pb)) return null;
-  const e = Number(pb.extraversion) >= 3.5 ? 'E' : 'I';
-  const n = Number(pb.apertura) >= 3.5 ? 'N' : 'S';
-  const f = Number(pb.amabilidad) >= 3.5 ? 'F' : 'T';
-  const j = Number(pb.responsabilidad) >= 3.5 ? 'J' : 'P';
+function nivelPercentil(p: number) {
+  if (p >= 85) return 'Muy Superior'
+  if (p >= 70) return 'Superior'
+  if (p >= 40) return 'Promedio'
+  if (p >= 20) return 'Bajo'
+  return 'Muy Bajo (Área de Mejora)'
+}
+
+function estimarMBTI(pb: Record<string, unknown> | null | undefined): string | null {
+  if (!pb) return null;
+  const data = (pb.por_factor as Record<string, any>) || pb;
+  
+  const getV = (key: string) => {
+    const k = Object.keys(data).find(k => k.toLowerCase() === key.toLowerCase());
+    if (!k) return null;
+    const v = data[k];
+    return typeof v === 'number' ? v : parseFloat(v as string);
+  };
+
+  const eVal = getV('extraversion');
+  const nVal = getV('apertura');
+  const fVal = getV('amabilidad');
+  const jVal = getV('responsabilidad');
+
+  if (eVal === null || nVal === null || fVal === null || jVal === null) return null;
+
+  const e = eVal >= 3.5 ? 'E' : 'I';
+  const n = nVal >= 3.5 ? 'N' : 'S';
+  const f = fVal >= 3.5 ? 'F' : 'T';
+  const j = jVal >= 3.5 ? 'J' : 'P';
   return `${e}${n}${f}${j}`;
 }
 
@@ -154,19 +294,25 @@ const MBTI_DESC: Record<string, string> = {
 };
 
 function cogData(pb: Record<string, unknown>) {
-  const c = Number(pb.correctas) || 0, t = Number(pb.total) || 1
+  const data = (pb.por_factor as Record<string, any>) || pb
+  const c = Number(data.correctas || pb.correctas) || 0
+  const t = Number(data.total || pb.total) || 16 // ICAR suele ser 16
   const pct = Math.round((c / t) * 100)
   const percentil = obtenerPercentilCognitivo(c, t)
   return { correctas: c, total: t, pct, percentil }
 }
 
-function lvl(v: number, max = 5) {
-  const p = (v / max) * 100
+function lvl(v: any) {
+  const val = typeof v === 'object' ? v.correctas || v.score || 0 : v;
+  const max = (v && typeof v === 'object' && 'total' in v) ? Number(v.total) : 5;
+  const p = (val / max) * 100
   return p >= 70 ? 'Alto' : p >= 50 ? 'Moderado' : 'Bajo'
 }
 
-function clrOf(v: number, max = 5) {
-  const p = (v / max) * 100
+function clrOf(v: any) {
+  const val = typeof v === 'object' ? v.correctas || v.score || 0 : v;
+  const max = (v && typeof v === 'object' && 'total' in v) ? Number(v.total) : 5;
+  const p = (val / max) * 100
   return p >= 70 ? '#16a34a' : p >= 50 ? '#ea580c' : '#dc2626'
 }
 
@@ -175,22 +321,37 @@ function rgbOf(v: number, max = 5): [number, number, number] {
   return p >= 70 ? [22, 163, 74] : p >= 50 ? [234, 88, 12] : [220, 38, 38]
 }
 
-function testNombre(pb: Record<string, unknown>): string {
+function testNombre(pb: Record<string, unknown>, testId?: string): string {
+  if (testId?.includes('bigfive')) return 'Big Five'
+  if (testId?.includes('hexaco')) return 'HEXACO'
+  if (testId === 'numerico') return 'Razonamiento Numérico'
+  if (testId === 'verbal') return 'Razonamiento Verbal'
+  if (testId === 'icar') return 'Capacidad Cognitiva (ICAR)'
+  
+  const data = (pb?.por_factor as Record<string, any>) || pb || {}
+  const k = Object.keys(data).join(' ').toLowerCase()
+
   if (isBF(pb)) return 'Big Five'
   if (isHX(pb)) return 'HEXACO'
-  if (isCog(pb)) return 'Test cognitivo'
-  const k = Object.keys(pb).join(' ')
+  if (k.includes('correctas') && k.includes('total')) return 'Test Cognitivo'
+  
   if (k.includes('integridad')) return 'Integridad'
   if (k.includes('frustrac') || k.includes('toleran')) return 'Tolerancia a la frustración'
   if (k.includes('cobranza')) return 'SJT Cobranzas'
-  if (k.includes('manejo_clientes') || k.includes('etica_comercial')) return 'Competencias comerciales'
-  if (k.includes('venta') || k.includes('captac')) return 'SJT Ventas'
-  if (k.includes('atencion') || k.includes('servicio')) return 'SJT Atención al cliente'
-  if (k.includes('legal') || k.includes('cumplimiento')) return 'SJT Legal'
-  if (k.includes('estres') || k.includes('agotamiento')) return 'Estrés laboral'
-  if (k.includes('creatividad') || k.includes('divergente')) return 'Creatividad'
-  if (k.includes('problema') || k.includes('resolucion')) return 'Resolución de problemas'
-  return 'Evaluación'
+  if (k.includes('cliente') || k.includes('atencion')) return 'SJT Atención al cliente'
+  if (k.includes('documentos') || k.includes('comparacion') || k.includes('concentracion')) return 'Atención al Detalle y Precisión'
+  if (k.includes('burnout') || k.includes('estres') || k.includes('carga laboral')) return 'Bienestar y Salud Laboral'
+  if (k.includes('etica') || k.includes('negociacion') || k.includes('manejo emocional')) return 'Competencias Profesionales (SJT)'
+
+  // Mapeo específico de UUIDs técnicos (como respaldo)
+  const UUID_MAP: Record<string, string> = {
+    'd0e1f2a3-b4c5-6789-defa-000000000001': 'Competencias Profesionales (SJT)',
+    'b8c9d0e1-f2a3-4567-bcde-888888888888': 'Bienestar y Salud Laboral',
+    'f3a4b5c6-d7e8-4950-a1b2-999999999999': 'Atención al Detalle y Precisión'
+  }
+  if (testId && UUID_MAP[testId]) return UUID_MAP[testId]
+
+  return testId || 'Evaluación'
 }
 
 function fmtFecha(f: string) {
@@ -289,6 +450,9 @@ export default function InformePage() {
     fundamentacion: '',
     ajusteMbti: '',
     nombreEvaluador: '',
+    fortalezas: [] as string[],
+    oportunidadesMejora: [] as string[],
+    ajusteCargo: { score: 0, analisis: '' },
   })
 
   useEffect(() => {
@@ -321,11 +485,17 @@ export default function InformePage() {
     const lista = (ses || []) as Sesion[]
     setSesiones(lista)
 
-    // Pre-poblar interpretaciones Big Five
+    // Pre-poblar interpretaciones automáticas para todas las dimensiones
     const interps: Record<string, string> = {}
-    lista.filter(s => s.puntaje_bruto && isBF(s.puntaje_bruto)).forEach(sesion => {
+    lista.forEach(sesion => {
+      if (!sesion.puntaje_bruto) return
       numEntries(sesion.puntaje_bruto).forEach(([factor, valor]) => {
-        interps[`${sesion.id}_${factor}`] = INTERP[factor]?.[lvl(valor)] ?? ''
+        const f = factor.toLowerCase()
+        const l = lvl(valor)
+        // Buscamos en el diccionario global de interpretaciones
+        if (INTERP[f]) {
+          interps[`${sesion.id}_${f}`] = INTERP[f][l] || ''
+        }
       })
     })
     setInf(prev => ({ ...prev, interpretacionPorFactor: interps }))
@@ -346,10 +516,11 @@ export default function InformePage() {
   
   const compMap = new Map()
   sesiones.filter(s => s.puntaje_bruto && !isPersonalidad(s.puntaje_bruto) && !isCog(s.puntaje_bruto)).forEach(s => {
-    const tn = testNombre(s.puntaje_bruto)
+    const tn = testNombre(s.puntaje_bruto, s.test_id)
     if (!compMap.has(tn)) compMap.set(tn, s)
   })
   const sesComp = Array.from(compMap.values()) as Sesion[]
+  const videos  = sesiones.filter(s => s.test_id === 'video' || s.transcripcion)
 
   const hasP = sesBF.length > 0 || sesHX.length > 0
   const hasC = sesCog.length > 0
@@ -387,6 +558,13 @@ export default function InformePage() {
         recomendacion: (data.recomendacion === 'reservas' ? 'con_reservas' : data.recomendacion) || prev.recomendacion,
         fundamentacion: data.fundamentacion || prev.fundamentacion,
         ajusteMbti: data.ajusteMbti || prev.ajusteMbti,
+        fortalezas: data.fortalezas || prev.fortalezas,
+        oportunidadesMejora: data.oportunidadesMejora || prev.oportunidadesMejora,
+        ajusteCargo: data.ajusteCargo || prev.ajusteCargo,
+        interpretacionPorFactor: { 
+          ...prev.interpretacionPorFactor, 
+          ...(data.interpretacionPorFactor || {}) 
+        }
       }))
       
       alert('¡Análisis generado con éxito por Gemini!')
@@ -406,6 +584,7 @@ export default function InformePage() {
         candidato,
         proceso,
         sesiones,
+        videos,
         inf,
         helpers: {
           hasP, hasC, hasK, sesBF, sesHX, sesCog, sesComp,
@@ -488,208 +667,103 @@ export default function InformePage() {
           </div>
         </div>
 
-        {/* ── 2. RESUMEN EJECUTIVO ───────────────────────────────────────────── */}
+        {/* ── 2. ANÁLISIS ESTRATÉGICO (I) ────────────────────────────────────── */}
+        <div style={s.card}>
+          <div style={s.cardHead}><span style={s.cardHeadTxt}>I. Diagnóstico Estratégico y Ajuste al Perfil</span></div>
+          <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginBottom: '1.5rem', background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <div style={{ textAlign: 'center', minWidth: '120px' }}>
+              <div style={{ fontSize: '2.8rem', fontWeight: '900', color: clrOf(inf.ajusteCargo?.score || 0, 100), lineHeight: 1 }}>{inf.ajusteCargo?.score || 0}%</div>
+              <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '4px', fontWeight: 'bold' }}>Ajuste Estimado</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={s.commentLabel}>Justificación del Ajuste al Perfil</label>
+              <textarea
+                style={{ ...s.ta, background: 'transparent', border: 'none', padding: '4px 0', fontSize: '0.95rem' }}
+                rows={3}
+                placeholder="Análisis estratégico de por qué el candidato encaja con los desafíos del cargo..."
+                value={inf.ajusteCargo?.analisis || ''}
+                onChange={e => setInf(p => ({ ...p, ajusteCargo: { ...p.ajusteCargo, analisis: e.target.value } }))}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <div style={{ background: '#f0fdf4', padding: '1.25rem', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+              <h4 style={{ color: '#16a34a', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1rem' }}>
+                <Sparkles size={18} /> Fortalezas Clave
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {(inf.fortalezas || []).map((f, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a' }} />
+                    <input
+                      style={{ background: 'transparent', border: 'none', borderBottom: '1px solid #dcfce7', width: '100%', fontSize: '0.9rem', color: '#14532d', padding: '2px 0' }}
+                      value={f}
+                      onChange={e => {
+                        const n = [...inf.fortalezas]; n[i] = e.target.value;
+                        setInf(p => ({ ...p, fortalezas: n }));
+                      }}
+                    />
+                  </div>
+                ))}
+                {(!inf.fortalezas || inf.fortalezas.length === 0) && (
+                  <p style={{ fontSize: '0.85rem', color: '#16a34a', fontStyle: 'italic', opacity: 0.7 }}>Pulse 'Generar con IA' para identificar fortalezas...</p>
+                )}
+              </div>
+            </div>
+            <div style={{ background: '#fff7ed', padding: '1.25rem', borderRadius: '12px', border: '1px solid #ffedd5' }}>
+              <h4 style={{ color: '#ea580c', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1rem' }}>
+                <AlertCircle size={18} /> Áreas de Desarrollo / Riesgos
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {(inf.oportunidadesMejora || []).map((f, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ea580c' }} />
+                    <input
+                      style={{ background: 'transparent', border: 'none', borderBottom: '1px solid #ffedd5', width: '100%', fontSize: '0.9rem', color: '#7c2d12', padding: '2px 0' }}
+                      value={f}
+                      onChange={e => {
+                        const n = [...inf.oportunidadesMejora]; n[i] = e.target.value;
+                        setInf(p => ({ ...p, oportunidadesMejora: n }));
+                      }}
+                    />
+                  </div>
+                ))}
+                {(!inf.oportunidadesMejora || inf.oportunidadesMejora.length === 0) && (
+                  <p style={{ fontSize: '0.85rem', color: '#ea580c', fontStyle: 'italic', opacity: 0.7 }}>Pulse 'Generar con IA' para identificar desafíos...</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── 3. RESUMEN EJECUTIVO ───────────────────────────────────────────── */}
         <div style={s.card}>
           <div style={s.cardHead}>
-            <span style={s.cardHeadTxt}>Resumen ejecutivo</span>
+            <span style={s.cardHeadTxt}>Análisis Integrativo Final</span>
             <span style={s.badge}>Editable</span>
           </div>
           <textarea
             style={s.ta}
-            rows={5}
-            placeholder="Síntesis del perfil del candidato: fortalezas, áreas de desarrollo y ajuste al cargo..."
+            rows={6}
+            placeholder="Síntesis profunda del perfil del candidato: integración de personalidad, cognición y potencial de éxito..."
             value={inf.resumenEjecutivo}
             onChange={e => upd('resumenEjecutivo', e.target.value)}
           />
         </div>
 
-        {/* ── 3. PERSONALIDAD ───────────────────────────────────────────────── */}
-        {hasP && (
+        {/* ── 4. I. DIAGNÓSTICO ESTRATÉGICO Y AJUSTE AL PERFIL ───────────────── */}
+        {proceso && (
           <div style={s.card}>
             <div style={s.cardHead}>
-              <span style={s.cardHeadTxt}>Perfil de personalidad</span>
-              <span style={s.badge}>Editable por factor</span>
+              <span style={s.cardHeadTxt}>I. Diagnóstico Estratégico y Ajuste al Perfil</span>
+              <span style={s.badge}>Resultados Globales</span>
             </div>
-
-            {sesBF.map((sesion, idx) => {
-              const mbti = estimarMBTI(sesion.puntaje_bruto)
-              return (
-              <div key={sesion.id}>
-                {sesBF.length > 1 && (
-                  <p style={s.sesLabel}>Big Five #{idx + 1} · {fmtFecha(sesion.finalizada_en)}</p>
-                )}
-                {numEntries(sesion.puntaje_bruto).map(([factor, valor]) => {
-                  const lv = lvl(valor)
-                  const clr = clrOf(valor)
-                  const fk = `${sesion.id}_${factor}`
-                  return (
-                    <div key={factor} style={s.factBlk}>
-                      <div style={s.factRow}>
-                        <span style={s.factName}>{ETQ[factor] || factor}</span>
-                        <span style={{ ...s.factLvl, color: clr }}>{lv} · {valor}/5</span>
-                      </div>
-                      <div style={s.barBg}>
-                        <div style={{ ...s.barFill, width: `${(valor / 5) * 100}%`, background: CLR[factor] || clr }} />
-                      </div>
-                      <textarea
-                        style={s.taFact}
-                        rows={2}
-                        value={inf.interpretacionPorFactor[fk] ?? ''}
-                        onChange={e => updFactor(fk, e.target.value)}
-                        placeholder="Interpretación del evaluador..."
-                      />
-                    </div>
-                  )
-                })}
-                {mbti && (
-                  <div style={{ ...s.factBlk, background: '#faf5ff', padding: '1rem', borderLeft: '3px solid #9333ea', marginTop: '1rem' }}>
-                    <div style={s.factRow}>
-                      <span style={{ ...s.factName, color: '#9333ea' }}>Tipología de personalidad (indicativa): {mbti}</span>
-                    </div>
-                    <p style={{ fontSize: '0.8rem', color: '#475569', margin: '6px 0 0', lineHeight: '1.4' }}>
-                      {MBTI_DESC[mbti]}
-                    </p>
-                    <label style={{ ...s.commentLabel, marginTop: '1rem', display: 'block', color: '#9333ea' }}>Ajuste de la tipología a la vacante</label>
-                    <textarea
-                      style={{ ...s.ta, borderColor: '#e9d5ff', marginTop: '0.5rem', background: 'transparent' }}
-                      rows={2}
-                      placeholder="Análisis del grado de ajuste de esta tipología al cargo..."
-                      value={inf.ajusteMbti}
-                      onChange={e => upd('ajusteMbti', e.target.value)}
-                    />
-                    <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '6px 0 0', fontStyle: 'italic' }}>
-                      Nota: Esta tipología es una estimación basada en la correlación entre el Big Five y el MBTI. No reemplaza una evaluación formal.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )})}
-
-            {sesHX.map((sesion, idx) => (
-              <div key={sesion.id}>
-                {sesHX.length > 1 && (
-                  <p style={s.sesLabel}>HEXACO #{idx + 1} · {fmtFecha(sesion.finalizada_en)}</p>
-                )}
-                {numEntries(sesion.puntaje_bruto).map(([factor, valor]) => {
-                  const lv = lvl(valor)
-                  const clr = clrOf(valor)
-                  const fk = `${sesion.id}_${factor}`
-                  return (
-                    <div key={factor} style={s.factBlk}>
-                      <div style={s.factRow}>
-                        <span style={s.factName}>{factor.replace(/_/g, ' ')}</span>
-                        <span style={{ ...s.factLvl, color: clr }}>{lv} · {valor}/5</span>
-                      </div>
-                      <div style={s.barBg}>
-                        <div style={{ ...s.barFill, width: `${(valor / 5) * 100}%`, background: '#2563eb' }} />
-                      </div>
-                      <textarea
-                        style={s.taFact}
-                        rows={2}
-                        value={inf.interpretacionPorFactor[fk] ?? ''}
-                        onChange={e => updFactor(fk, e.target.value)}
-                        placeholder="Interpretación del evaluador..."
-                      />
-                    </div>
-                  )
-                })}
-              </div>
-            ))}
-
-            <div style={s.commentWrap}>
-              <label style={s.commentLabel}>Comentario integrador de personalidad</label>
-              <textarea
-                style={s.ta}
-                rows={3}
-                placeholder="Síntesis del perfil de personalidad y relevancia para el cargo..."
-                value={inf.comentarioPersonalidad}
-                onChange={e => upd('comentarioPersonalidad', e.target.value)}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* ── 4. COGNITIVO ──────────────────────────────────────────────────── */}
-        {hasC && (
-          <div style={s.card}>
-            <div style={s.cardHead}>
-              <span style={s.cardHeadTxt}>Aptitudes cognitivas</span>
-              <span style={s.badge}>Editable</span>
-            </div>
-            {sesCog.map(sesion => {
-              const { correctas, total, pct, percentil } = cogData(sesion.puntaje_bruto)
-              const lv = interpretarPercentil(percentil)
-              const clr = clrOf(percentil, 100)
-              return (
-                <div key={sesion.id} style={s.factBlk}>
-                  <div style={s.factRow}>
-                    <span style={s.factName}>{testNombre(sesion.puntaje_bruto)}</span>
-                    <span style={{ ...s.factLvl, color: clr }}>{lv} (PC: {percentil}) · {correctas}/{total} ({pct}%)</span>
-                  </div>
-                  <div style={s.barBg}>
-                    <div style={{ ...s.barFill, width: `${percentil}%`, background: clr }} />
-                  </div>
-                </div>
-              )
-            })}
-            <div style={s.commentWrap}>
-              <label style={s.commentLabel}>Comentario sobre aptitudes cognitivas</label>
-              <textarea
-                style={s.ta}
-                rows={3}
-                placeholder="Análisis del desempeño cognitivo: razonamiento numérico, verbal, espacial..."
-                value={inf.comentarioCognitivo}
-                onChange={e => upd('comentarioCognitivo', e.target.value)}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* ── 5. COMPETENCIAS ───────────────────────────────────────────────── */}
-        {hasK && (
-          <div style={s.card}>
-            <div style={s.cardHead}>
-              <span style={s.cardHeadTxt}>Competencias conductuales</span>
-              <span style={s.badge}>Editable</span>
-            </div>
-            {sesComp.map(sesion => {
-              const avg = avgOf(sesion.puntaje_bruto)
-              const lv = lvl(avg)
-              const clr = clrOf(avg)
-              return (
-                <div key={sesion.id} style={s.factBlk}>
-                  <div style={s.factRow}>
-                    <span style={s.factName}>{testNombre(sesion.puntaje_bruto)}</span>
-                    <span style={{ ...s.factLvl, color: clr }}>{lv} · {avg}/5</span>
-                  </div>
-                  <div style={s.barBg}>
-                    <div style={{ ...s.barFill, width: `${Math.min((avg / 5) * 100, 100)}%`, background: '#2563eb' }} />
-                  </div>
-                </div>
-              )
-            })}
-            <div style={s.commentWrap}>
-              <label style={s.commentLabel}>Comentario sobre competencias conductuales</label>
-              <textarea
-                style={s.ta}
-                rows={3}
-                placeholder="Integridad, tolerancia a la frustración, habilidades comerciales, situacionales..."
-                value={inf.comentarioCompetencias}
-                onChange={e => upd('comentarioCompetencias', e.target.value)}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* ── 5.5 AJUSTE AL CARGO ───────────────────────────────────────────── */}
-        {proceso && proceso.descripcion_cargo && (
-          <div style={s.card}>
-            <div style={s.cardHead}><span style={s.cardHeadTxt}>Ajuste al cargo</span></div>
             <div style={{ padding: '1.25rem' }}>
               <div style={{ marginBottom: '1.5rem' }}>
                 <h4 style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569', margin: '0 0 0.5rem 0' }}>Misión y responsabilidades del puesto</h4>
                 <p style={{ fontSize: '0.875rem', color: '#1e293b', lineHeight: '1.5', margin: 0, whiteSpace: 'pre-wrap' }}>
-                  {proceso.descripcion_cargo}
+                  {proceso.descripcion_cargo || 'Descripción no disponible'}
                 </p>
               </div>
 
@@ -732,6 +806,220 @@ export default function InformePage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ── 5. II. PERFIL CONDUCTUAL Y PERSONALIDAD ───────────────────────── */}
+        <div style={s.card}>
+          <div style={s.cardHead}>
+            <span style={s.cardHeadTxt}>II. Perfil Conductual y Estilo de Personalidad</span>
+            <span style={s.badge}>Dimensión Conductual</span>
+          </div>
+
+          {(sesBF.length === 0 && sesHX.length === 0) ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b', fontSize: '0.9rem', fontStyle: 'italic' }}>
+              No se han detectado pruebas de personalidad (Big Five o HEXACO) finalizadas para este candidato. 
+              Si los datos existen, verifique que la sesión esté correctamente cerrada.
+            </div>
+          ) : (
+            sesBF.concat(sesHX).map((sesion) => (
+              <div key={sesion.id} style={{ marginBottom: '1.5rem' }}>
+                {numEntries(sesion.puntaje_bruto).map(([factor, valor]) => {
+                  const numVal = Number(typeof valor === 'object' ? valor.correctas || valor.score : (valor || 0))
+                  const max = (valor && typeof valor === 'object' && 'total' in valor) ? (Number(valor.total) || 5) : 5
+                  const normVal = max > 0 ? Math.round((numVal / max) * 5 * 10) / 10 : 0
+                  const lv = lvl(valor)
+                  const clr = clrOf(numVal, max)
+                  const fk = `${sesion.id}_${factor}`
+                  return (
+                    <div key={factor} style={s.factBlk}>
+                      <div style={s.factRow}>
+                        <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
+                        <span style={{ ...s.factLvl, color: clr }}>{lv} · {normVal}/5</span>
+                      </div>
+                      <div style={s.barBg}>
+                        <div style={{ ...s.barFill, width: `${(normVal / 5) * 100}%`, background: clr }} />
+                      </div>
+                      <textarea
+                        style={s.taFact}
+                        rows={2}
+                        value={inf.interpretacionPorFactor[fk] ?? ''}
+                        onChange={e => updFactor(fk, e.target.value)}
+                        placeholder="Interpretación del evaluador para este rasgo..."
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+            ))
+          )}
+          
+          {/* MBTI Section */}
+          {(sesBF.length > 0 || inf.ajusteMbti) && (
+            <div style={{ padding: '1.25rem', borderTop: '1px solid #f1f5f9' }}>
+              {(() => {
+                const mbti = sesBF[0] ? estimarMBTI(sesBF[0].puntaje_bruto) : null
+                return (
+                  <>
+                    <div style={s.factRow}>
+                      <span style={{ ...s.factName, color: '#9333ea', fontSize: '1rem' }}>Tipología Predictiva: {mbti || (inf.ajusteMbti ? 'Estimación por Perfil' : 'No determinado')}</span>
+                    </div>
+                    {mbti && (
+                      <p style={{ fontSize: '0.85rem', color: '#475569', margin: '8px 0', lineHeight: '1.5' }}>
+                        {MBTI_DESC[mbti]}
+                      </p>
+                    )}
+                    <label style={{ ...s.commentLabel, marginTop: '1rem', display: 'block', color: '#7e22ce' }}>Análisis de Ajuste de la Tipología al Cargo</label>
+                    <textarea
+                      style={{ ...s.ta, borderColor: '#e9d5ff', marginTop: '0.5rem', background: '#fff' }}
+                      rows={3}
+                      placeholder="Análisis cualitativo del grado de ajuste de esta tipología al puesto..."
+                      value={inf.ajusteMbti}
+                      onChange={e => upd('ajusteMbti', e.target.value)}
+                    />
+                  </>
+                )
+              })()}
+            </div>
+          )}
+        </div>
+
+        {/* ── 6. III. CAPACIDAD ANALÍTICA ───────────────────────────────────── */}
+        {hasC && (
+          <div style={s.card}>
+            <div style={s.cardHead}>
+              <span style={s.cardHeadTxt}>III. Capacidad Analítica y Potencial Cognitivo</span>
+              <span style={s.badge}>Métricas de Aptitud</span>
+            </div>
+            {sesCog.map((sesion) => {
+              const { correctas, total, percentil } = cogData(sesion.puntaje_bruto)
+              const normVal = Math.round((correctas / total) * 5 * 10) / 10
+              const nivel = nivelPercentil(percentil)
+              const entries = numEntries(sesion.puntaje_bruto).filter(([k]) => k !== 'correctas' && k !== 'total' && k !== 'score' && k !== 'percentil');
+              return (
+                <div key={sesion.id}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem', padding: '1.25rem' }}>
+                    <div style={{ background: '#f0f9ff', padding: '1rem', borderRadius: '8px', textAlign: 'center', border: '1px solid #bae6fd' }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0369a1' }}>{normVal}/5</div>
+                      <div style={{ fontSize: '0.7rem', color: '#0369a1', textTransform: 'uppercase', fontWeight: 'bold' }}>Efectividad Cognitiva</div>
+                    </div>
+                    <div style={{ background: '#f0f9ff', padding: '1rem', borderRadius: '8px', textAlign: 'center', border: '1px solid #bae6fd' }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0369a1' }}>P{percentil}</div>
+                      <div style={{ fontSize: '0.7rem', color: '#0369a1', textTransform: 'uppercase', fontWeight: 'bold' }}>{nivel}</div>
+                    </div>
+                  </div>
+                  {entries.map(([factor, valor]) => {
+                    const vNum = typeof valor === 'object' ? valor.correctas : valor
+                    const vMax = (valor && typeof valor === 'object' && 'total' in valor) ? Number(valor.total) : total
+                    const vNorm = Math.round((vNum / vMax) * 5 * 10) / 10
+                    return (
+                      <div key={factor} style={s.factBlk}>
+                        <div style={s.factRow}>
+                          <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
+                          <span style={{ ...s.factLvl, color: '#334155' }}>{vNorm}/5</span>
+                        </div>
+                        <div style={s.barBg}>
+                          <div style={{ ...s.barFill, width: `${(vNorm / 5) * 100}%`, background: '#0369a1' }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* ── 7. IV. COMPETENCIAS PROFESIONALES ─────────────────────────────── */}
+        {hasK && (
+          <div style={s.card}>
+            <div style={s.cardHead}>
+              <span style={s.cardHeadTxt}>IV. Competencias Profesionales</span>
+              <span style={s.badge}>Desempeño Situacional</span>
+            </div>
+            {sesComp.map((sesion) => (
+              <div key={sesion.id} style={{ marginBottom: '1.5rem' }}>
+                {numEntries(sesion.puntaje_bruto).filter(([f]) => DOMINIOS.COMPETENCIAS.includes(f)).map(([factor, valor]) => {
+                  const rawVal = typeof valor === 'object' ? (valor.correctas || valor.score || 0) : (valor || 0)
+                  const rawMax = (valor && typeof valor === 'object' && 'total' in valor) ? (Number(valor.total) || 5) : 5
+                  const numVal = Number(rawVal)
+                  const max = Number(rawMax)
+                  
+                  const normVal = (!isNaN(numVal) && max > 0) ? Math.round((numVal / max) * 5 * 10) / 10 : 0
+                  const clr = clrOf(normVal, 5)
+                  const fk = `${sesion.id}_${factor}`
+                  return (
+                    <div key={factor} style={s.factBlk}>
+                      <div style={s.factRow}>
+                        <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
+                        <span style={{ ...s.factLvl, color: clr }}>{normVal}/5</span>
+                      </div>
+                      <div style={s.barBg}>
+                        <div style={{ ...s.barFill, width: `${(normVal / 5) * 100}%`, background: clr }} />
+                      </div>
+                      <textarea
+                        style={s.taFact}
+                        rows={2}
+                        value={inf.interpretacionPorFactor[fk] ?? ''}
+                        onChange={e => updFactor(fk, e.target.value)}
+                        placeholder="Análisis cualitativo de esta competencia..."
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── 8. V. SALUD Y BIENESTAR LABORAL ──────────────────────────────── */}
+        {hasK && (
+          <div style={s.card}>
+            <div style={s.cardHead}>
+              <span style={s.cardHeadTxt}>V. Salud y Bienestar Laboral</span>
+              <span style={s.badge}>Indicadores de Riesgo</span>
+            </div>
+            {sesComp.map((sesion) => (
+              <div key={sesion.id} style={{ marginBottom: '1.5rem' }}>
+                {numEntries(sesion.puntaje_bruto).filter(([f]) => DOMINIOS.BIENESTAR.includes(f)).map(([factor, valor]) => {
+                  let rawVal = typeof valor === 'object' ? (valor.correctas || valor.score || 0) : (valor || 0)
+                  
+                  // Traducción de valores cualitativos a numéricos
+                  if (typeof rawVal === 'string') {
+                    const s = rawVal.toLowerCase().trim()
+                    if (s === 'bajo') rawVal = 1.5
+                    else if (s === 'medio') rawVal = 3.0
+                    else if (s === 'alto') rawVal = 5.0
+                  }
+
+                  const rawMax = (valor && typeof valor === 'object' && 'total' in valor) ? (Number(valor.total) || 5) : 5
+                  const numVal = Number(rawVal)
+                  const max = Number(rawMax)
+                  
+                  const normVal = (!isNaN(numVal) && max > 0) ? Math.round((numVal / max) * 5 * 10) / 10 : 0
+                  const clr = clrOf(normVal, 5)
+                  const fk = `${sesion.id}_${factor}`
+                  return (
+                    <div key={factor} style={s.factBlk}>
+                      <div style={s.factRow}>
+                        <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
+                        <span style={{ ...s.factLvl, color: clr }}>{normVal}/5</span>
+                      </div>
+                      <div style={s.barBg}>
+                        <div style={{ ...s.barFill, width: `${(normVal / 5) * 100}%`, background: clr }} />
+                      </div>
+                      <textarea
+                        style={s.taFact}
+                        rows={2}
+                        value={inf.interpretacionPorFactor[fk] ?? ''}
+                        onChange={e => updFactor(fk, e.target.value)}
+                        placeholder="Análisis de bienestar y posibles riesgos..."
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
           </div>
         )}
 

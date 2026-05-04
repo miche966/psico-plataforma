@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { GoogleGenAI } from '@google/genai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 export async function POST(req: Request) {
   try {
@@ -12,7 +12,8 @@ export async function POST(req: Request) {
       )
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
     // Preparar el prompt con toda la información disponible
     let datosCandidato = `Candidato: ${candidato.nombre} ${candidato.apellido}\n`
@@ -26,56 +27,64 @@ export async function POST(req: Request) {
 
     let resultados = '--- RESULTADOS DE LAS EVALUACIONES ---\n'
     sesiones.forEach((s: any, idx: number) => {
-      resultados += `\nEvaluación #${idx + 1}:\n`
-      Object.entries(s.puntaje_bruto || {}).forEach(([key, val]) => {
-        resultados += `- ${key}: ${val}\n`
+      resultados += `\nEvaluación #${idx + 1} (Test ID: ${s.test_id || 'Psicométrico'}):\n`
+      // Aplanamos datos para que la IA los vea bien
+      const data = (s.puntaje_bruto?.por_factor as Record<string, any>) || s.puntaje_bruto || {};
+      Object.entries(data).forEach(([key, val]) => {
+        if (typeof val === 'object' && val !== null && 'correctas' in val) {
+          resultados += `- ${key}: ${(val as any).correctas}/${(val as any).total || 5}\n`
+        } else {
+          resultados += `- ${key}: ${val}\n`
+        }
       })
+      if (s.transcripcion) {
+        resultados += `Transcripción de Video: "${s.transcripcion}"\n`
+      }
     })
 
     const prompt = `
-Actúa como un Psicólogo Laboral Senior y Evaluador de Talento B2B.
-Tu tarea es analizar los resultados de las evaluaciones psicométricas de un candidato y redactar resúmenes profesionales, directos y basados exclusivamente en la evidencia de los puntajes proporcionados.
+Actúa como un Psicólogo Laboral Senior y Evaluador de Talento B2B de élite.
+Tu tarea es analizar los resultados de las evaluaciones y las transcripciones de video de un candidato. 
 
 ${datosCandidato}
 ${resultados}
 
-Instrucciones:
-1. "resumenEjecutivo": Debe ser un párrafo de 3 a 5 oraciones que resuma el perfil del candidato, sus mayores fortalezas y sus áreas de atención o desarrollo, indicando si hace un buen "fit" (ajuste) con el puesto solicitado (si hay uno).
-2. "comentarioPersonalidad": Solo si el candidato tomó pruebas de personalidad (Big Five o HEXACO). Un párrafo de 2 a 4 oraciones analizando las implicancias de sus rasgos de personalidad en el entorno laboral. Si no tomó, devuelve "".
-3. "comentarioCognitivo": Solo si el candidato tomó pruebas cognitivas (ítems como "correctas", "total"). Un párrafo de 2 a 3 oraciones evaluando su capacidad de razonamiento numérico, lógico o verbal según sus aciertos. Si no tomó, devuelve "".
-4. "comentarioCompetencias": Solo si el candidato tomó pruebas de Situational Judgment Tests (SJT) o competencias. Un párrafo evaluando su juicio situacional o desempeño en las competencias medidas. Si no tomó, devuelve "".
-5. "recomendacion": Basado en el perfil general, decide una recomendación de contratación. DEBE ser estrictamente uno de estos tres valores: "recomendado", "con_reservas" o "no_recomendado".
-6. "fundamentacion": Un párrafo de 2 a 3 oraciones que justifique la decisión de recomendación, mencionando por qué el candidato es idóneo, qué reservas existen, o por qué no se recomienda.
-7. "ajusteMbti": Solo si hay información de cargo y prueba de personalidad. Un breve párrafo (1 o 2 oraciones) indicando cómo el perfil de personalidad del candidato se alinea específicamente con las funciones del cargo. Si no aplica, devuelve "".
+Instrucciones para un informe de CONSULTORÍA DE ÉLITE:
+1. TONO Y ESTILO: Usa un lenguaje SOBRIO, TÉCNICO y COMEDIDO. Evita adjetivos rimbombantes o exageraciones (ej. NO uses 'increíble', 'magistral', 'maravilloso', 'líder nato'). Usa términos como 'tendencia marcada', 'propensión a', 'competencia consolidada', 'área de ajuste'.
+2. OBJETIVIDAD: No infravalores ni sobrevalores. Sé estrictamente objetivo basándote en los datos. Si un resultado es bajo, descríbelo como un 'desafío operativo' o 'área de desarrollo'. Si es alto, como una 'fortaleza competitiva'.
+3. ESTRUCTURA:
+   - "resumenEjecutivo": Análisis de alto nivel (2 párrafos) integrando personalidad, cognición y potencial.
+   - "fortalezas": Lista de 3-4 puntos fuertes críticos para el cargo.
+   - "oportunidadesMejora": 2-3 áreas de desarrollo o riesgos potenciales de desempeño.
+   - "ajusteCargo": Puntuación de 0 a 100 y justificación de por qué encaja o no con los desafíos del puesto.
+   - "comentarioPersonalidad": Análisis de rasgos y cultura organizacional.
+   - "comentarioCognitivo": Agilidad mental y resolución de problemas complejos.
+   - "comentarioCompetencias": Juicio situacional y efectividad profesional.
+   - "recomendacion": "recomendado", "con_reservas" o "no_recomendado".
+   - "fundamentacion": Justificación estratégica final basada en el ajuste riesgo-beneficio.
+   - "ajusteMbti": Análisis profundo de la tipología (real o inferida) y su impacto estratégico en el rol.
+   - "interpretacionPorFactor": Descripción breve (1 frase) técnica para CADA competencia individual.
 
-La respuesta DEBE ser EXCLUSIVAMENTE un objeto JSON válido con la siguiente estructura, sin formato markdown de bloques de código y sin texto adicional antes o después:
-
+Devuelve EXCLUSIVAMENTE un JSON válido:
 {
-  "resumenEjecutivo": "texto aquí",
-  "comentarioPersonalidad": "texto aquí",
-  "comentarioCognitivo": "texto aquí",
-  "comentarioCompetencias": "texto aquí",
-  "recomendacion": "recomendado",
-  "fundamentacion": "texto aquí",
-  "ajusteMbti": "texto aquí"
+  "resumenEjecutivo": "...",
+  "fortalezas": ["...", "..."],
+  "oportunidadesMejora": ["...", "..."],
+  "ajusteCargo": { "score": 85, "analisis": "..." },
+  "comentarioPersonalidad": "...",
+  "comentarioCognitivo": "...",
+  "comentarioCompetencias": "...",
+  "recomendacion": "...",
+  "fundamentacion": "...",
+  "ajusteMbti": "...",
+  "interpretacionPorFactor": { "id_factor": "..." }
 }
 `
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        temperature: 0.2, // Baja temperatura para que sea analítico y consistente
-        responseMimeType: "application/json",
-      }
-    })
-
-    const textoRespuesta = response.text
-    if (!textoRespuesta) {
-      throw new Error('No se recibió respuesta del modelo.')
-    }
-
-    const resultado = JSON.parse(textoRespuesta)
+    const result = await model.generateContent(prompt)
+    const text = result.response.text()
+    const jsonStr = text.replace(/```json|```/g, '').trim()
+    const resultado = JSON.parse(jsonStr)
 
     return NextResponse.json(resultado)
   } catch (error: any) {

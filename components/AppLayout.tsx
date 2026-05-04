@@ -1,22 +1,28 @@
 'use client'
 
-import { ReactNode } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Users, FileText, BarChart3, Video, LogOut } from 'lucide-react'
+import { LayoutDashboard, Users, FileText, BarChart3, Video, LogOut, Bell } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [novedades, setNovedades] = useState(0)
 
-  const navItems = [
-    { href: '/panel', label: 'Panel', icon: LayoutDashboard },
-    { href: '/candidatos', label: 'Candidatos', icon: Users },
-    { href: '/procesos', label: 'Procesos', icon: FileText },
-    { href: '/estadisticas', label: 'Estadísticas', icon: BarChart3 },
-    { href: '/entrevista-video', label: 'Librería', icon: Video },
-  ]
+  useEffect(() => {
+    const checkNewResults = async () => {
+      const hace24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+      const { count } = await supabase
+        .from('sesiones')
+        .select('*', { count: 'exact', head: true })
+        .gt('finalizada_en', hace24h)
+      
+      if (count) setNovedades(count)
+    }
+    checkNewResults()
+  }, [])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -36,25 +42,43 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </Link>
         </div>
         
-        <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => {
-            const isActive = pathname.startsWith(item.href)
-            const Icon = item.icon
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
-                  isActive 
-                    ? 'bg-indigo-50 text-indigo-700 font-medium' 
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                }`}
-              >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
-                <span className="text-sm">{item.label}</span>
-              </Link>
-            )
-          })}
+        <nav className="flex-1 p-4 space-y-6">
+          {/* SECCIÓN: PLATAFORMA */}
+          <div>
+            <h4 className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Plataforma</h4>
+            <div className="space-y-1">
+              {[
+                { href: '/panel', label: 'Centro de Control', icon: LayoutDashboard },
+                { href: '/estadisticas', label: 'Estadísticas', icon: BarChart3 },
+                { href: '/candidatos', label: 'Base de Candidatos', icon: Users },
+                { href: '/entrevista-video', label: 'Librería Video', icon: Video },
+              ].map((item) => {
+                const isActive = pathname === item.href
+                const Icon = item.icon
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 ${
+                      isActive 
+                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' 
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                      <span className="text-sm font-medium">{item.label}</span>
+                    </div>
+                    {!isActive && item.href === '/panel' && novedades > 0 && (
+                      <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white shadow-sm animate-pulse">
+                        {novedades}
+                      </span>
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
         </nav>
 
         <div className="p-4 border-t border-slate-100">

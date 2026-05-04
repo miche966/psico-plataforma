@@ -18,7 +18,8 @@ export async function POST(req: Request) {
     });
 
     const mailOptions = {
-      from: `"Psico-Plataforma" <${user}>`,
+      from: `"Gestión Humana - RMSA" <${user}>`,
+      replyTo: 'gestion.humana.rmsa@gmail.com',
       to: email,
       subject: `Recordatorio: Evaluaciones pendientes para ${proceso}`,
       html: `

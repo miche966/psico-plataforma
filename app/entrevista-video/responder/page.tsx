@@ -136,14 +136,23 @@ export default function ResponderPage() {
       urlVideo = urlData.publicUrl
     }
 
-    await supabase.from('respuestas_video').insert({
+    const { data: insertData, error: insertError } = await supabase.from('respuestas_video').insert({
       pregunta_id: preguntas[preguntaActual].id,
       candidato_id: candidatoId || null,
       entrevista_id: entrevistaId,
       url_video: urlVideo,
       duracion: preguntas[preguntaActual].tiempo_respuesta,
       estado: urlVideo ? 'completado' : 'sin_video'
-    })
+    }).select('id').single()
+
+    // Disparar análisis de IA en segundo plano (sin esperar)
+    if (urlVideo && insertData) {
+      fetch('/api/analizar-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url_video: urlVideo, respuesta_id: insertData.id })
+      }).catch(err => console.error("Error disparando IA:", err))
+    }
 
     setSubiendo(false)
 
