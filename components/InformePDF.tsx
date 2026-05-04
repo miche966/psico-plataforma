@@ -74,6 +74,8 @@ const styles = StyleSheet.create({
   },
   recomendacionText: { color: 'white', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
   
+  section: { marginBottom: 20 },
+  
   footer: {
     position: 'absolute',
     bottom: 25,
@@ -104,7 +106,7 @@ const ETQ: Record<string, string> = {
   errores_texto: 'Precisión en Datos de Texto',
   errores_numeros: 'Precisión en Datos Numéricos',
   metricas_fraude: 'Índice de Sinceridad Laboral',
-  
+
   // Competencias Profesionales (SJT)
   etica: 'Ética y Valores Profesionales',
   negociacion: 'Capacidad de Negociación',
@@ -119,7 +121,7 @@ const ETQ: Record<string, string> = {
   claridad_rol: 'Percepción de Claridad de Rol',
   nivel_estres: 'Indicador de Tensión Psicológica',
   carga_laboral: 'Gestión de la Demanda de Trabajo',
-}
+};
 
 const DOMINIOS = {
   PERSONALIDAD: ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura', 'honestidad_humildad'],

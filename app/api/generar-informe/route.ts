@@ -50,8 +50,8 @@ ${datosCandidato}
 ${resultados}
 
 Instrucciones para un informe de CONSULTORÍA DE ÉLITE:
-1. TONO Y ESTILO: Usa un lenguaje SOBRIO, TÉCNICO y COMEDIDO. Evita adjetivos rimbombantes o exageraciones (ej. NO uses 'increíble', 'magistral', 'maravilloso', 'líder nato'). Usa términos como 'tendencia marcada', 'propensión a', 'competencia consolidada', 'área de ajuste'.
-2. OBJETIVIDAD: No infravalores ni sobrevalores. Sé estrictamente objetivo basándote en los datos. Si un resultado es bajo, descríbelo como un 'desafío operativo' o 'área de desarrollo'. Si es alto, como una 'fortaleza competitiva'.
+1. TONO Y ESTILO: Usa un lenguaje SOBRIO, TÉCNICO y COMEDIDO. Queda terminantemente PROHIBIDO el uso de adjetivos superlativos o lenguaje emocional. Usa terminología corporativa precisa: 'competencia consolidada', 'propensión conductual', 'área de ajuste estratégico', 'resiliencia operativa'.
+2. OBJETIVIDAD: Mantén un equilibrio neutral. Describe los hallazgos basándote estrictamente en las métricas psicométricas, tratando las debilidades como 'riesgos de desempeño' y las fortalezas como 'activos profesionales'.
 3. ESTRUCTURA:
    - "resumenEjecutivo": Análisis de alto nivel (2 párrafos) integrando personalidad, cognición y potencial.
    - "fortalezas": Lista de 3-4 puntos fuertes críticos para el cargo.
