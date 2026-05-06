@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Plus, Check, Link as LinkIcon, Search, FileText, X, Eye, Settings, Clock, CheckCircle2, BellRing, Upload, ClipboardPaste, UserPlus, Download } from 'lucide-react'
+import { Plus, Check, Link as LinkIcon, Search, FileText, X, Eye, Settings, Clock, CheckCircle2, BellRing, Upload, ClipboardPaste, UserPlus, Download, Video } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
@@ -71,6 +71,7 @@ const SLUG_TO_ID: Record<string, string> = {
   'comercial': 'a1b2c3d4-e5f6-7890-abcd-111111111111',
   'atencion-detalle': 'b8c9d0e1-f2a3-4567-bcde-888888888888',
   'sjt-atencion': 'f6a7b8c9-d0e1-2345-fabc-666666666666',
+  'sjt-cobranzas': 'e9b2c3d4-f5a6-7890-bcde-999999999999',
 }
 
 export default function GestionProcesos() {
@@ -82,9 +83,7 @@ export default function GestionProcesos() {
   const [procesoSeleccionado, setProcesoSeleccionado] = useState<Proceso | null>(null)
   const [candidatosProceso, setCandidatosProceso] = useState<Candidato[]>([])
   const [sesiones, setSesiones] = useState<any[]>([])
-  const [editandoBateria, setEditandoBateria] = useState(false)
-  const [bateriaEdit, setBateriaEdit] = useState<string[]>([])
-  const [guardandoEdicion, setGuardandoEdicion] = useState(false)
+  const [modoEdicion, setModoEdicion] = useState(false)
   const [form, setForm] = useState({ 
     nombre: '', cargo: '', descripcion: '', descripcion_cargo: '', bateria_tests: [] as string[],
     competencias_requeridas: [] as { nombre: string; nivel: string }[] 
@@ -97,6 +96,8 @@ export default function GestionProcesos() {
   const [procesandoMasivo, setProcesandoMasivo] = useState(false)
   const [tabMasivo, setTabMasivo] = useState<'archivo' | 'texto'>('archivo')
   const [textoMasivo, setTextoMasivo] = useState('')
+  const [filtroEstado, setFiltroEstado] = useState<'todos' | 'completado' | 'incompleto' | 'pendiente'>('todos')
+  const [videoRespuestas, setVideoRespuestas] = useState<any[]>([])
 
   useEffect(() => {
     cargarDatos()
@@ -234,17 +235,67 @@ export default function GestionProcesos() {
   async function guardarProceso() {
     if (!form.nombre || !form.cargo) return
     setGuardando(true)
-    const { error } = await supabase.from('procesos').insert({
-      nombre: form.nombre, cargo: form.cargo, descripcion: form.descripcion,
-      descripcion_cargo: form.descripcion_cargo, competencias_requeridas: form.competencias_requeridas,
-      activo: true, bateria_tests: form.bateria_tests
-    })
-    if (!error) {
-      setForm({ nombre: '', cargo: '', descripcion: '', descripcion_cargo: '', bateria_tests: [], competencias_requeridas: [] })
-      setMostrarForm(false)
-      cargarDatos()
+
+    if (modoEdicion && procesoSeleccionado) {
+      const { error } = await supabase
+        .from('procesos')
+        .update({
+          nombre: form.nombre,
+          cargo: form.cargo,
+          descripcion: form.descripcion,
+          descripcion_cargo: form.descripcion_cargo,
+          competencias_requeridas: form.competencias_requeridas,
+          bateria_tests: form.bateria_tests
+        })
+        .eq('id', procesoSeleccionado.id)
+
+      if (!error) {
+        setProcesoSeleccionado({ ...procesoSeleccionado, ...form })
+        setProcesos(procesos.map(p => p.id === procesoSeleccionado.id ? { ...p, ...form } : p))
+        setMostrarForm(false)
+        setModoEdicion(false)
+        alert('Proceso actualizado con éxito.')
+      } else {
+        console.error('Error al actualizar:', error)
+        alert('Hubo un error al actualizar el proceso.')
+      }
+    } else {
+      const { data, error } = await supabase
+        .from('procesos')
+        .insert({
+          nombre: form.nombre,
+          cargo: form.cargo,
+          descripcion: form.descripcion,
+          descripcion_cargo: form.descripcion_cargo,
+          competencias_requeridas: form.competencias_requeridas,
+          activo: true,
+          bateria_tests: form.bateria_tests
+        })
+        .select()
+        .single()
+
+      if (!error) {
+        setForm({ nombre: '', cargo: '', descripcion: '', descripcion_cargo: '', bateria_tests: [], competencias_requeridas: [] })
+        setMostrarForm(false)
+        cargarDatos()
+        if (data) setProcesoSeleccionado(data)
+      }
     }
     setGuardando(false)
+  }
+
+  function iniciarEdicion() {
+    if (!procesoSeleccionado) return
+    setForm({
+      nombre: procesoSeleccionado.nombre,
+      cargo: procesoSeleccionado.cargo,
+      descripcion: procesoSeleccionado.descripcion || '',
+      descripcion_cargo: procesoSeleccionado.descripcion_cargo || '',
+      bateria_tests: procesoSeleccionado.bateria_tests || [],
+      competencias_requeridas: procesoSeleccionado.competencias_requeridas || []
+    })
+    setModoEdicion(true)
+    setMostrarForm(true)
   }
 
   async function asignarCandidato(candidatoId: string) {
@@ -338,16 +389,45 @@ export default function GestionProcesos() {
     }
   }
 
-  // Identificar participantes de un proceso basado en sesiones
+  // Identificar participantes de un proceso de forma ROBUSTA
   useEffect(() => {
     if (procesoSeleccionado) {
-      const idsParticipantes = new Set(sesiones.filter(s => s.proceso_id === procesoSeleccionado.id).map(s => s.candidato_id))
-      const vinculados = candidatos.filter(c => idsParticipantes.has(c.id))
-      setCandidatosProceso(vinculados)
+      const testsAsignadosSlugs = procesoSeleccionado.bateria_tests || []
+      const testsAsignadosIds = testsAsignadosSlugs.map(slug => SLUG_TO_ID[slug] || slug)
+      
+      // 1. Obtener IDs desde las sesiones (Fuente principal de verdad)
+      const idsDesdeSesiones = sesiones
+        .filter(s => s.proceso_id === procesoSeleccionado.id)
+        .map(s => s.candidato_id)
+      
+      // 2. Obtener IDs desde videos (Solo si pertenecen a este proceso)
+      const idsDesdeVideos = videoRespuestas
+        .filter(v => (v as any).proceso_id === procesoSeleccionado.id || idsDesdeSesiones.includes(v.candidato_id))
+        .map(v => v.candidato_id)
+      
+      const todosLosIds = new Set([...idsDesdeSesiones, ...idsDesdeVideos])
+      
+      // 2. Crear la lista de participantes, incluyendo "Candidatos Virtuales" si no existen en la tabla candidatos
+      const vinculados = Array.from(todosLosIds).map(id => {
+        const real = candidatos.find(cand => cand.id === id)
+        if (real) return real
+        
+        // Si no existe el candidato real, buscamos su email en las sesiones para mostrar algo útil
+        const sesionEjemplo = sesiones.find(s => s.candidato_id === id)
+        return {
+          id,
+          nombre: sesionEjemplo?.email?.split('@')[0] || 'Candidato',
+          apellido: '(S/N)',
+          email: sesionEjemplo?.email || 'sin@email.com',
+          virtual: true
+        }
+      })
+      
+      setCandidatosProceso(vinculados as any)
     } else {
       setCandidatosProceso([])
     }
-  }, [procesoSeleccionado, sesiones, candidatos])
+  }, [procesoSeleccionado, sesiones, candidatos, videoRespuestas])
 
   async function repararVinculos() {
     if (!procesoSeleccionado) return
@@ -389,10 +469,12 @@ export default function GestionProcesos() {
       const { data: cData, error: ce } = await supabase.from('candidatos').select('id, nombre, apellido, email').order('creado_en', { ascending: false })
       const { data: eData, error: ee } = await supabase.from('entrevistas_video').select('id, nombre').order('creada_en', { ascending: false })
       const { data: sData, error: se } = await supabase.from('sesiones').select('*')
+      const { data: vData, error: ve } = await supabase.from('respuestas_video').select('candidato_id, entrevista_id')
 
       if (pe) console.error('Error Procesos:', pe)
       if (ce) console.error('Error Candidatos:', ce)
       if (se) console.error('Error Sesiones:', se)
+      if (ve) console.error('Error Video:', ve)
 
       console.log('RECUENTO:', {
         p: pData?.length || 0,
@@ -404,6 +486,7 @@ export default function GestionProcesos() {
       if (cData) setCandidatos(cData)
       if (eData) setEntrevistas(eData)
       if (sData) setSesiones(sData)
+      if (vData) setVideoRespuestas(vData)
     } catch (err) {
       console.error('Falla total:', err)
     } finally {
@@ -434,7 +517,16 @@ export default function GestionProcesos() {
             Carga Masiva
           </button>
           <button 
-            onClick={() => setMostrarForm(!mostrarForm)}
+            onClick={() => {
+              if (mostrarForm) {
+                setMostrarForm(false)
+                setModoEdicion(false)
+              } else {
+                setForm({ nombre: '', cargo: '', descripcion: '', descripcion_cargo: '', bateria_tests: [], competencias_requeridas: [] })
+                setModoEdicion(false)
+                setMostrarForm(true)
+              }
+            }}
             className={`px-4 py-2 text-sm font-bold rounded-xl shadow-sm transition-all flex items-center gap-2 ${
               mostrarForm ? 'bg-white border border-slate-200 text-slate-700' : 'bg-indigo-600 text-white hover:bg-indigo-700'
             }`}
@@ -445,7 +537,8 @@ export default function GestionProcesos() {
       </div>
 
       {mostrarForm && (
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 mb-8 shadow-xl animate-in slide-in-from-top-4 duration-300">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 mb-8 shadow-xl animate-in slide-in-from-top-4 duration-300 ring-2 ring-indigo-500/10">
+          <h2 className="text-lg font-bold text-slate-900 mb-6">{modoEdicion ? 'Editar Proceso' : 'Nuevo Proceso de Selección'}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nombre del proceso</label>
@@ -487,13 +580,40 @@ export default function GestionProcesos() {
             </div>
           </div>
 
+          <div className="space-y-2 mb-6">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Video Entrevistas</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              {entrevistas.map(e => (
+                <label key={e.id} className="flex items-center gap-2 p-2 hover:bg-white rounded-xl transition-colors cursor-pointer border border-transparent hover:border-slate-200">
+                  <input
+                    type="checkbox"
+                    checked={form.bateria_tests.includes(`entrevista:${e.id}`)}
+                    onChange={ec => {
+                      const key = `entrevista:${e.id}`
+                      const next = ec.target.checked ? [...form.bateria_tests, key] : form.bateria_tests.filter(k => k !== key)
+                      setForm({ ...form, bateria_tests: next })
+                    }}
+                    className="w-4 h-4 text-indigo-600 rounded"
+                  />
+                  <span className="text-[10px] font-bold text-slate-600 uppercase flex items-center gap-2">
+                    <Video className="w-3 h-3 text-indigo-400" />
+                    {e.nombre}
+                  </span>
+                </label>
+              ))}
+              {entrevistas.length === 0 && (
+                <p className="text-[10px] text-slate-400 italic p-2">No hay video entrevistas creadas.</p>
+              )}
+            </div>
+          </div>
+
           <div className="flex justify-end">
             <button
               onClick={guardarProceso}
               disabled={guardando || !form.nombre || !form.cargo}
               className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50"
             >
-              {guardando ? 'Guardando...' : 'Crear Proceso'}
+              {guardando ? 'Guardando...' : modoEdicion ? 'Actualizar Proceso' : 'Crear Proceso'}
             </button>
           </div>
         </div>
@@ -544,7 +664,14 @@ export default function GestionProcesos() {
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">ID: {procesoSeleccionado.id.slice(0,8)}</span>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-3">
+                  <button 
+                    onClick={iniciarEdicion}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl text-xs font-bold transition-all shadow-md"
+                  >
+                    <Settings className="w-4 h-4" />
+                    CONFIGURAR PROCESO
+                  </button>
                   <button 
                     onClick={() => {
                       const csvData = candidatosProceso.map(c => {
@@ -568,17 +695,37 @@ export default function GestionProcesos() {
                       link.click()
                       document.body.removeChild(link)
                     }}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl text-[10px] font-bold transition-all"
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl text-[10px] font-bold transition-all border border-slate-200"
                     title="Exportar lista con links para Gmail"
                   >
                     <Download className="w-3.5 h-3.5" />
                     EXPORTAR LINKS
                   </button>
-                  {/* Botones de acción del proceso si se necesitan en el futuro */}
                 </div>
               </div>
 
               <div className="space-y-8">
+                {/* BATERIA DE TESTS */}
+                <div>
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <Clock className="w-3 h-3" />
+                    Batería de tests asignada ({procesoSeleccionado.bateria_tests?.length || 0})
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {procesoSeleccionado.bateria_tests?.map(tKey => {
+                      const tInfo = [...TESTS_DISPONIBLES, ...entrevistas.map(e => ({ key: `entrevista:${e.id}`, label: `🎥 ${e.nombre}` }))].find(t => t.key === tKey)
+                      return (
+                        <span key={tKey} className="px-3 py-1.5 bg-slate-50 text-slate-600 text-[10px] rounded-xl font-bold border border-slate-100 flex items-center gap-1.5">
+                          {tInfo?.label || tKey}
+                        </span>
+                      )
+                    })}
+                    {(!procesoSeleccionado.bateria_tests || procesoSeleccionado.bateria_tests.length === 0) && (
+                      <span className="text-xs text-slate-400 italic">Sin tests asignados</span>
+                    )}
+                  </div>
+                </div>
+
                 {/* PARTICIPANTES ACTUALES */}
                 <div>
                   <div className="flex items-center justify-between mb-4">
@@ -586,18 +733,94 @@ export default function GestionProcesos() {
                       <CheckCircle2 className="w-3 h-3 text-green-500" />
                       Participantes en este proceso
                     </h4>
-                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                      {candidatosProceso.length} total
-                    </span>
+                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                      {[
+                        { id: 'todos', label: 'Todos', color: 'text-slate-600' },
+                        { id: 'completado', label: 'Comp.', color: 'text-green-600' },
+                        { id: 'incompleto', label: 'Incomp.', color: 'text-amber-600' },
+                        { id: 'pendiente', label: 'Pend.', color: 'text-slate-400' },
+                      ].map(f => (
+                        <button
+                          key={f.id}
+                          onClick={() => setFiltroEstado(f.id as any)}
+                          className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                            filtroEstado === f.id ? 'bg-white text-indigo-600 shadow-sm' : `${f.color} hover:bg-white/50`
+                          }`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   
                   {candidatosProceso.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
-                      {candidatosProceso.map(c => (
+                      {candidatosProceso
+                        .map(c => {
+                          const testsAsignadosSlugs = procesoSeleccionado?.bateria_tests || []
+                          const misSesiones = sesiones.filter(s => s.candidato_id === c.id)
+                          const misVideos = videoRespuestas.filter(v => v.candidato_id === c.id)
+                          
+                          const testsCompletadosIds = misSesiones.map(s => s.test_id)
+                          const videosCompletadosIds = misVideos.map(v => v.entrevista_id)
+                          
+                          const uniqueCompletados = new Set<string>()
+                          testsAsignadosSlugs.forEach(slug => {
+                            if (slug.startsWith('entrevista:')) {
+                              const entId = slug.split(':')[1]
+                              if (videosCompletadosIds.includes(entId)) uniqueCompletados.add(slug)
+                            } else {
+                              const id = SLUG_TO_ID[slug]
+                              // Verificación redundante para asegurar match
+                              if (testsCompletadosIds.includes(slug) || (id && testsCompletadosIds.includes(id))) {
+                                uniqueCompletados.add(slug)
+                              }
+                            }
+                          })
+                          
+                          const numCompletados = uniqueCompletados.size
+                          const totalAsignados = testsAsignadosSlugs.length
+                          
+                          let estado: 'completado' | 'incompleto' | 'pendiente' = 'pendiente'
+                          if (numCompletados === 0) estado = 'pendiente'
+                          // Si ha completado el 100% de la batería
+                          else if (numCompletados >= totalAsignados && totalAsignados > 0) estado = 'completado'
+                          else estado = 'incompleto'
+
+                          return { ...c, progreso_real: { comp: numCompletados, total: totalAsignados, estado } }
+                        })
+                        .filter(c => {
+                          if (filtroEstado === 'todos') return true
+                          return (c as any).progreso_real.estado === filtroEstado
+                        })
+                        .map(c => (
                         <div key={c.id} className="p-4 bg-white border border-slate-200 rounded-2xl flex justify-between items-center group hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-500/5 transition-all">
                           <div className="min-w-0">
-                            <p className="text-sm font-bold text-slate-800 truncate">{c.nombre} {c.apellido}</p>
-                            <p className="text-[10px] text-slate-500 truncate">{c.email}</p>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-sm font-bold text-slate-800 truncate">{c.nombre} {c.apellido}</p>
+                              <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
+                                c.progreso_real.estado === 'completado' ? 'bg-green-100 text-green-700' :
+                                c.progreso_real.estado === 'incompleto' ? 'bg-amber-100 text-amber-700' :
+                                'bg-slate-100 text-slate-500'
+                              }`}>
+                                {c.progreso_real.estado}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 truncate mb-2">{c.email}</p>
+                            
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full transition-all duration-500 ${
+                                    c.progreso_real.estado === 'completado' ? 'bg-green-500' : 'bg-indigo-500'
+                                  }`} 
+                                  style={{ width: `${(c.progreso_real.comp / c.progreso_real.total) * 100}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">
+                                {c.progreso_real.comp}/{c.progreso_real.total}
+                              </span>
+                            </div>
                           </div>
                           <div className="flex items-center gap-1 shrink-0 ml-4">
                             <button 

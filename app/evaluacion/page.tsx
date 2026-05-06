@@ -134,11 +134,12 @@ export default function PortalCandidatoPage() {
       // 1. Cargar desde LocalStorage
       const completadosLocal = JSON.parse(localStorage.getItem(`completados_${candidatoId}_${procesoId}`) || '[]')
       
-      // 2. Cargar desde DB (Sesiones de Tests) - Relaxed filter
+      // 2. Cargar desde DB (Sesiones de Tests) - Filtered by process to avoid cross-contamination
       const { data: sesiones, error: errSes } = await supabase
         .from('sesiones')
         .select('test_id, estado')
         .eq('candidato_id', candidatoId)
+        .eq('proceso_id', procesoId)
       
       if (errSes) console.error('Error DB Sesiones:', errSes)
 

@@ -220,6 +220,28 @@ export const InformePDF = ({ data }: any) => {
               )) : <Text style={{ fontSize: 8, color: '#64748b' }}>Pendiente de análisis...</Text>}
             </View>
           </View>
+
+          {/* Sincronización Matriz Soft Skills en PDF */}
+          <View style={{ marginTop: 15, backgroundColor: '#f5f3ff', padding: 12, borderRadius: 8, border: '1px solid #ddd6fe' }}>
+            <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#7c3aed', marginBottom: 8, textTransform: 'uppercase' }}>✦ Matriz de Potencial Conductual (Soft Skills)</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flex: 1, backgroundColor: 'white', padding: 8, borderRadius: 4, alignItems: 'center' }}>
+                <Text style={{ fontSize: 6, color: '#6d28d9', fontWeight: 'bold', marginBottom: 2 }}>LIDERAZGO</Text>
+                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#7c3aed' }}>{inf.liderazgo}%</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: 'white', padding: 8, borderRadius: 4, alignItems: 'center' }}>
+                <Text style={{ fontSize: 6, color: '#c2410c', fontWeight: 'bold', marginBottom: 2 }}>ADAPTABILIDAD</Text>
+                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#ea580c' }}>{inf.adaptabilidad}%</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: 'white', padding: 8, borderRadius: 4, alignItems: 'center' }}>
+                <Text style={{ fontSize: 6, color: '#991b1b', fontWeight: 'bold', marginBottom: 2 }}>RESILIENCIA</Text>
+                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#dc2626' }}>{inf.resiliencia}%</Text>
+              </View>
+            </View>
+            <Text style={{ fontSize: 6.5, color: '#6d28d9', marginTop: 6, fontStyle: 'italic', textAlign: 'center' }}>
+              * Análisis integrativo basado en personalidad, competencias y evidencias conductuales.
+            </Text>
+          </View>
         </View>
 
         {/* Resumen Ejecutivo IA */}
@@ -237,7 +259,7 @@ export const InformePDF = ({ data }: any) => {
             {videos.map((v: any, idx: number) => (
               <View key={idx} style={{ marginBottom: 8 }}>
                 <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#6d28d9' }}>Pregunta {idx + 1}:</Text>
-                <Text style={styles.aiText}>"{v.transcripcion.slice(0, 200)}..."</Text>
+                <Text style={styles.aiText}>"{v.transcripcion ? v.transcripcion.slice(0, 200) + '...' : 'Sin transcripción disponible.'}"</Text>
                 {v.analisis_ia?.actitud && (
                   <Text style={{ fontSize: 8, color: '#7c3aed', marginTop: 2 }}>Observación: {v.analisis_ia.actitud}</Text>
                 )}

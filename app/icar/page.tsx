@@ -117,6 +117,7 @@ export default function IcarPage() {
   const [finalizado, setFinalizado] = useState(false)
   const enEvaluacion = useEvaluacionRedirect(finalizado)
   const [nombreCandidato, setNombreCandidato] = useState('')
+  const [startTime] = useState(new Date().toISOString())
   const [tiempoRestante, setTiempoRestante] = useState(60)
   const [seleccionada, setSeleccionada] = useState<string | null>(null)
   const searchParams = useSearchParams()
@@ -201,7 +202,7 @@ export default function IcarPage() {
       test_id: 'f6a7b8c9-d0e1-2345-fabc-456789012345',
       candidato_id: candidatoId || null,
       estado: 'finalizado',
-      iniciada_en: new Date().toISOString(),
+      iniciada_en: startTime,
       finalizada_en: new Date().toISOString(),
       puntaje_bruto: resultado
     }).select().single()

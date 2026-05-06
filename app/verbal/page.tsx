@@ -1,9 +1,10 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
+import { useProctoring } from '@/hooks/useProctoring'
 
 interface Item {
   id: string

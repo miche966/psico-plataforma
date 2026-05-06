@@ -7,8 +7,9 @@ Transformar la plataforma en un sistema de precisión psicométrica con informes
 
 ## 🛠️ Ecosistema de Arneses Activo
 - [x] **AGENTS.md**: Reglas de oro y restricciones de estilo.
-- [ ] **PROGRESS.md**: (Este archivo) Memoria contextual y seguimiento.
-- [ ] **scripts/validate-harness.js**: Validador automático de integridad de informes.
+- [x] **PROGRESS.md**: Memoria contextual y seguimiento.
+- [x] **scripts/validate-harness.js**: Validador automático de integridad de informes.
+- [x] **.husky/pre-push**: Candado de seguridad automático antes de cada despliegue.
 
 ## 🏆 Hitos Alcanzados (Logs de Estabilidad)
 ### 2024-05-04 | Estabilización de Informe y Despliegue

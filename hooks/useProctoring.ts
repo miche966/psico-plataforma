@@ -45,8 +45,10 @@ export function useProctoring() {
         if (lastBlurTime.current) {
           const outTime = Math.floor((Date.now() - lastBlurTime.current) / 1000)
           setMetricas(prev => ({ ...prev, timeOutOfFocus: prev.timeOutOfFocus + outTime }))
-          // Actualizamos el último evento de tab_switch con la duración si fue el último
           lastBlurTime.current = null
+          
+          // Alerta disuasoria al regresar
+          alert("Atención: El sistema ha detectado que has salido de la ventana del test. Toda actividad inusual queda registrada para el equipo de selección. Por favor, mantente en la pestaña hasta finalizar.")
         }
       }
     }

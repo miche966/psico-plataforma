@@ -1,4 +1,5 @@
 'use client'
+// Cache bust: 2026-05-05 01:36
 
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -21,6 +22,8 @@ interface Proceso {
 
 interface Sesion {
   id: string
+  test_id?: string
+  transcripcion?: string
   puntaje_bruto: Record<string, unknown>
   finalizada_en: string
 }
@@ -37,6 +40,12 @@ interface InformeState {
   fundamentacion: string
   ajusteMbti: string
   nombreEvaluador: string
+  fortalezas: string[]
+  oportunidadesMejora: string[]
+  ajusteCargo: { score: number; analisis: string }
+  liderazgo: number
+  adaptabilidad: number
+  resiliencia: number
 }
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -309,11 +318,11 @@ function lvl(v: any) {
   return p >= 70 ? 'Alto' : p >= 50 ? 'Moderado' : 'Bajo'
 }
 
-function clrOf(v: any) {
+function clrOf(v: any, maxVal?: number) {
   const val = typeof v === 'object' ? v.correctas || v.score || 0 : v;
-  const max = (v && typeof v === 'object' && 'total' in v) ? Number(v.total) : 5;
+  const max = maxVal || ((v && typeof v === 'object' && 'total' in v) ? Number(v.total) : 5);
   const p = (val / max) * 100
-  return p >= 70 ? '#16a34a' : p >= 50 ? '#ea580c' : '#dc2626'
+  return p >= 75 ? '#16a34a' : p >= 50 ? '#ea580c' : '#dc2626'
 }
 
 function rgbOf(v: number, max = 5): [number, number, number] {
@@ -453,6 +462,9 @@ export default function InformePage() {
     fortalezas: [] as string[],
     oportunidadesMejora: [] as string[],
     ajusteCargo: { score: 0, analisis: '' },
+    liderazgo: 0,
+    adaptabilidad: 0,
+    resiliencia: 0
   })
 
   useEffect(() => {
@@ -498,6 +510,17 @@ export default function InformePage() {
         }
       })
     })
+    // Calcular Soft Skills si hay Big Five
+    const sesionBF = lista.find(s => s.puntaje_bruto && isBF(s.puntaje_bruto))
+    if (sesionBF) {
+      const pb = sesionBF.puntaje_bruto as any
+      const e = Number(pb.extraversion || 0), a = Number(pb.amabilidad || 0), r = Number(pb.responsabilidad || 0), n = Number(pb.neuroticismo || 0), ap = Number(pb.apertura || 0)
+      const lid = Math.round(((e * 0.6) + (r * 0.4)) * 20)
+      const adp = Math.round(((ap * 0.6) + (a * 0.4)) * 20)
+      const res = Math.round(((5 - n) * 0.7 + (r * 0.3)) * 20)
+      setInf(prev => ({ ...prev, liderazgo: lid, adaptabilidad: adp, resiliencia: res }))
+    }
+
     setInf(prev => ({ ...prev, interpretacionPorFactor: interps }))
     setCargando(false)
   }
@@ -564,7 +587,10 @@ export default function InformePage() {
         interpretacionPorFactor: { 
           ...prev.interpretacionPorFactor, 
           ...(data.interpretacionPorFactor || {}) 
-        }
+        },
+        liderazgo: data.liderazgo || prev.liderazgo,
+        adaptabilidad: data.adaptabilidad || prev.adaptabilidad,
+        resiliencia: data.resiliencia || prev.resiliencia
       }))
       
       alert('¡Análisis generado con éxito por Gemini!')
@@ -735,6 +761,30 @@ export default function InformePage() {
               </div>
             </div>
           </div>
+
+          {/* Nueva Matriz de Soft Skills en Informe Individual */}
+          <div style={{ marginTop: '1.5rem', background: '#f5f3ff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #ddd6fe' }}>
+            <h4 style={{ color: '#7c3aed', margin: '0 0 1rem 0', fontSize: '0.9rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              ✦ Matriz de Potencial Conductual (Soft Skills)
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+              <div style={{ textAlign: 'center', background: 'white', padding: '10px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.65rem', color: '#6d28d9', fontWeight: 'bold', marginBottom: '4px' }}>LIDERAZGO</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#7c3aed' }}>{inf.liderazgo}%</div>
+              </div>
+              <div style={{ textAlign: 'center', background: 'white', padding: '10px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.65rem', color: '#c2410c', fontWeight: 'bold', marginBottom: '4px' }}>ADAPTABILIDAD</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#ea580c' }}>{inf.adaptabilidad}%</div>
+              </div>
+              <div style={{ textAlign: 'center', background: 'white', padding: '10px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.65rem', color: '#991b1b', fontWeight: 'bold', marginBottom: '4px' }}>RESILIENCIA</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#dc2626' }}>{inf.resiliencia}%</div>
+              </div>
+            </div>
+            <p style={{ fontSize: '0.75rem', color: '#6d28d9', marginTop: '10px', fontStyle: 'italic', textAlign: 'center' }}>
+              * Análisis integrativo basado en personalidad, competencias y evidencias conductuales.
+            </p>
+          </div>
         </div>
 
         {/* ── 3. RESUMEN EJECUTIVO ───────────────────────────────────────────── */}
@@ -829,7 +879,7 @@ export default function InformePage() {
                   const max = (valor && typeof valor === 'object' && 'total' in valor) ? (Number(valor.total) || 5) : 5
                   const normVal = max > 0 ? Math.round((numVal / max) * 5 * 10) / 10 : 0
                   const lv = lvl(valor)
-                  const clr = clrOf(numVal, max)
+                  const clr = clrOf(normVal)
                   const fk = `${sesion.id}_${factor}`
                   return (
                     <div key={factor} style={s.factBlk}>
@@ -946,7 +996,7 @@ export default function InformePage() {
                   const max = Number(rawMax)
                   
                   const normVal = (!isNaN(numVal) && max > 0) ? Math.round((numVal / max) * 5 * 10) / 10 : 0
-                  const clr = clrOf(normVal, 5)
+                  const clr = clrOf(normVal)
                   const fk = `${sesion.id}_${factor}`
                   return (
                     <div key={factor} style={s.factBlk}>
@@ -997,7 +1047,7 @@ export default function InformePage() {
                   const max = Number(rawMax)
                   
                   const normVal = (!isNaN(numVal) && max > 0) ? Math.round((numVal / max) * 5 * 10) / 10 : 0
-                  const clr = clrOf(normVal, 5)
+                  const clr = clrOf(normVal)
                   const fk = `${sesion.id}_${factor}`
                   return (
                     <div key={factor} style={s.factBlk}>

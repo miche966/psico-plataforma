@@ -20,18 +20,23 @@ export async function POST(req: Request) {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
     const prompt = `
-      Eres un experto en reclutamiento y selección. 
+      Actúa como un experto en Reclutamiento y Selección de élite. 
       Analiza este video de un candidato respondiendo a una pregunta de entrevista.
       
-      Tareas:
-      1. Transcribe exactamente lo que dice.
-      2. Evalúa su actitud (seguridad, claridad, entusiasmo).
-      3. Resume su respuesta en 3 puntos clave.
+      Instrucciones de Redacción:
+      - Usa un tono PROFESIONAL y TÉCNICO.
+      - Evita clichés y maximalismos (no uses "increíble", "excelente", etc. a menos que sea estrictamente necesario por la evidencia).
+      - Describe la actitud de forma objetiva y conductual.
       
-      Devuelve el resultado en formato JSON con la siguiente estructura:
+      Tareas:
+      1. Transcribe con la mayor fidelidad posible lo que dice el candidato.
+      2. Evalúa su actitud conductual (seguridad gestual, claridad narrativa, nivel de energía).
+      3. Resume su respuesta en 3 puntos clave de valor organizacional.
+      
+      Devuelve el resultado EXCLUSIVAMENTE en formato JSON:
       {
         "transcripcion": "texto completo...",
-        "actitud": "descripción...",
+        "actitud": "Análisis conductual sobrio y profesional...",
         "puntos_clave": ["punto 1", "punto 2", "punto 3"]
       }
     `

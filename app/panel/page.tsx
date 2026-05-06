@@ -224,6 +224,8 @@ async function generarResumenIA(candidato: CandidatoAgrupado) {
 export default function PanelEvaluador() {
   const [tab, setTab] = useState<'evaluaciones' | 'gestion' | 'dashboard'>('evaluaciones')
   const [candidatos, setCandidatos] = useState<CandidatoAgrupado[]>([])
+  const [procesos, setProcesos] = useState<any[]>([])
+  const [procesoSeleccionadoId, setProcesoSeleccionadoId] = useState<string>('todos')
   const [agrupadoSeleccionado, setAgrupadoSeleccionado] = useState<CandidatoAgrupado | null>(null)
   const [sesionSeleccionada, setSesionSeleccionada] = useState<Sesion | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -236,10 +238,35 @@ export default function PanelEvaluador() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) router.push('/login')
     })
-    cargarCandidatos()
+    cargarDatos()
   }, [])
 
+  async function cargarDatos() {
+    setCargando(true)
+    await Promise.all([
+      cargarProcesos(),
+      cargarCandidatos()
+    ])
+    setCargando(false)
+  }
+
+  async function cargarProcesos() {
+    const { data } = await supabase.from('procesos').select('*').order('creado_at', { ascending: false })
+    if (data) setProcesos(data)
+  }
+
   async function cargarCandidatos() {
+    // 1. Obtener todas las vinculaciones Proceso-Candidato
+    const { data: vinculos } = await supabase
+      .from('candidatos_procesos')
+      .select(`
+        candidato_id,
+        proceso_id,
+        procesos (id, nombre, cargo, competencias_requeridas, bateria_tests),
+        candidatos (id, nombre, apellido, email)
+      `)
+
+    // 2. Obtener todas las sesiones (Históricas y actuales)
     const { data: sesionesData } = await supabase
       .from('sesiones')
       .select(`
@@ -247,84 +274,98 @@ export default function PanelEvaluador() {
         candidatos (id, nombre, apellido, email),
         procesos (id, nombre, cargo, competencias_requeridas, bateria_tests)
       `)
-      .not('candidato_id', 'is', null)
       .order('finalizada_en', { ascending: false })
 
-    if (!sesionesData) { setCargando(false); return }
-
-    // Traer respuestas de video para el progreso
-    const idsCandidatos = Array.from(new Set(sesionesData.map(s => s.candidato_id)))
+    // 3. Obtener respuestas de video
     const { data: respuestasVideo } = await supabase
       .from('respuestas_video')
       .select('candidato_id, entrevista_id, pregunta_id, grabada_en')
-      .in('candidato_id', idsCandidatos as string[])
 
     const grupos: Record<string, CandidatoAgrupado> = {}
-    
-    sesionesData.forEach((s: any) => {
+
+    // A. CARGAR ASIGNADOS (Los que están en la tarjeta del proceso)
+    vinculos?.forEach((v: any) => {
+      const c = v.candidatos
+      const p = v.procesos
+      if (!c || !p) return
+
+      const key = `${c.id}:${p.id}`
+      if (!grupos[key]) {
+        grupos[key] = {
+          id: c.id,
+          nombre: c.nombre,
+          apellido: c.apellido,
+          email: c.email,
+          sesiones: [],
+          ultima_fecha: new Date().toISOString(),
+          proceso_id: p.id,
+          proceso_nombre: p.nombre,
+          proceso_cargo: p.cargo,
+          competencias_requeridas: p.competencias_requeridas,
+          bateria_tests: p.bateria_tests
+        }
+      }
+    })
+
+    // B. CARGAR HISTÓRICOS (Los que tienen sesiones pero quizás no están vinculados)
+    sesionesData?.forEach((s: any) => {
       const c = s.candidatos
       if (!c) return
-      
-      if (!grupos[c.id]) {
-        grupos[c.id] = {
+
+      const pId = s.proceso_id || 'independiente'
+      const key = `${c.id}:${pId}`
+
+      if (!grupos[key]) {
+        grupos[key] = {
           id: c.id,
           nombre: c.nombre,
           apellido: c.apellido,
           email: c.email,
           sesiones: [],
           ultima_fecha: s.finalizada_en || s.creado_en,
-          proceso_id: s.proceso_id,
-          proceso_nombre: s.procesos?.nombre,
-          proceso_cargo: s.procesos?.cargo,
+          proceso_id: s.proceso_id || undefined,
+          proceso_nombre: s.procesos?.nombre || 'Evaluación Independiente',
+          proceso_cargo: s.procesos?.cargo || 'Sin cargo asignado',
           competencias_requeridas: s.procesos?.competencias_requeridas,
           bateria_tests: s.procesos?.bateria_tests
         }
       }
-      
-      grupos[c.id].sesiones.push(s)
+      grupos[key].sesiones.push(s)
+      if (s.finalizada_en && new Date(s.finalizada_en) > new Date(grupos[key].ultima_fecha)) {
+        grupos[key].ultima_fecha = s.finalizada_en
+      }
     })
 
     const resultado = Object.values(grupos).map(c => {
       const bateria = c.bateria_tests || []
       const misVideos = respuestasVideo?.filter(rv => rv.candidato_id === c.id) || []
       
-      // Eliminar duplicados de videos (quedarse con el último intento por pregunta)
       const videosUnicosMap = new Map<string, any>()
       misVideos.forEach(v => {
-        const key = `${v.entrevista_id}:${v.pregunta_id}`
-        const existente = videosUnicosMap.get(key)
-        if (!existente || new Date(v.grabada_en) > new Date(existente.grabada_en)) {
-          videosUnicosMap.set(key, v)
+        const k = `${v.entrevista_id}:${v.pregunta_id}`
+        const ex = videosUnicosMap.get(k)
+        if (!ex || new Date(v.grabada_en) > new Date(ex.grabada_en)) {
+          videosUnicosMap.set(k, v)
         }
       })
-      const videosFinales = Array.from(videosUnicosMap.values())
-      
-      // Identificar tests completados
+
       const idsCompletados = new Set<string>()
       c.sesiones.forEach(s => {
-        // Contamos cualquier sesión que exista como un test realizado
-        const slug = TEST_IDS[s.test_id]
+        const slug = TEST_IDS[s.test_id] || s.test_id
         if (slug) idsCompletados.add(slug)
-        else if (s.test_id) idsCompletados.add(s.test_id)
       })
-      videosFinales.forEach(v => idsCompletados.add(`entrevista:${v.entrevista_id}`))
+      Array.from(videosUnicosMap.values()).forEach(v => idsCompletados.add(`entrevista:${v.entrevista_id}`))
 
-      // El total es el de la batería, o el número de tests realizados si es independiente
       const totalBateria = bateria.length
-      const completadosCount = idsCompletados.size
-
-      // Si hay batería, filtramos solo los que pertenecen a ella
       const finalCompletados = totalBateria > 0
         ? bateria.filter(tId => idsCompletados.has(tId)).length
-        : completadosCount
+        : idsCompletados.size
 
-      // Calcular Match Score (basado en Big Five)
       const sesionBigFive = c.sesiones.find(s => TEST_IDS[s.test_id] === 'bigfive')
       const matchScore = calcularMatch(sesionBigFive?.puntaje_bruto, c.competencias_requeridas || [])
 
       return {
         ...c,
-        sesionesVideos: videosFinales,
         progreso: {
           completados: finalCompletados,
           total: totalBateria || finalCompletados || 1,
@@ -335,7 +376,6 @@ export default function PanelEvaluador() {
     })
 
     setCandidatos(resultado)
-    setCargando(false)
   }
 
   function formatearFecha(fecha: string) {
@@ -386,10 +426,16 @@ export default function PanelEvaluador() {
     }
   }
 
-  const candidatosFiltrados = candidatos.filter(c => 
-    `${c.nombre} ${c.apellido} ${c.proceso_nombre} ${c.proceso_cargo}`.toLowerCase().includes(filtro.toLowerCase()) || 
-    c.email.toLowerCase().includes(filtro.toLowerCase())
-  )
+  const candidatosFiltrados = candidatos.filter(c => {
+    // 1. Filtro estricto por proceso (Regla de Oro)
+    if (procesoSeleccionadoId !== 'todos') {
+      if (c.proceso_id !== procesoSeleccionadoId) return false
+    }
+
+    // 2. Filtro por búsqueda de texto
+    const searchStr = `${c.nombre} ${c.apellido} ${c.email} ${c.proceso_nombre}`.toLowerCase()
+    return searchStr.includes(filtro.toLowerCase())
+  })
 
   if (cargando) {
     return (
@@ -455,17 +501,34 @@ export default function PanelEvaluador() {
       ) : (
         <>
 
-      <div className="mb-6 relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search className="h-4 w-4 text-slate-400" />
+      {/* BARRA DE HERRAMIENTAS: BUSCADOR + FILTRO POR PROCESO */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-3 mb-6 shadow-sm flex flex-col md:flex-row gap-4 items-center">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre, email o cargo..."
+            value={filtro}
+            onChange={(e) => setFiltro(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+          />
         </div>
-        <input
-          type="text"
-          placeholder="Buscar por nombre, email o proceso..."
-          value={filtro}
-          onChange={(e) => setFiltro(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm"
-        />
+
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <Settings2 className="w-4 h-4 text-slate-400" />
+          <select
+            value={procesoSeleccionadoId}
+            onChange={(e) => setProcesoSeleccionadoId(e.target.value)}
+            className="flex-1 md:w-64 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium text-slate-700"
+          >
+            <option value="todos">Todos los procesos</option>
+            {procesos.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.nombre} ({p.cargo})
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {candidatos.length === 0 ? (
@@ -475,23 +538,20 @@ export default function PanelEvaluador() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          {/* LISTA DE CANDIDATOS */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 h-[calc(100vh-220px)] overflow-y-auto pr-2 custom-scrollbar-visible">
             {candidatosFiltrados.map(c => (
               <div
-                key={c.id}
+                key={`${c.id}-${c.proceso_id || 'ind'}`}
                 onClick={async () => {
                   setAgrupadoSeleccionado(c)
-                  setSesionSeleccionada(c.sesiones[0]) // Seleccionar la más reciente por defecto
+                  setSesionSeleccionada(c.sesiones[0])
                   
-                  // Cargar videos del candidato
                   const { data: vids } = await supabase
                     .from('respuestas_video')
                     .select('*, preguntas_video(pregunta)')
                     .eq('candidato_id', c.id)
                     .order('grabada_en', { ascending: true })
                   
-                  // Eliminar duplicados (quedarse con el último intento por pregunta)
                   const vMap = new Map<string, any>()
                   vids?.forEach(v => {
                     const k = `${v.entrevista_id}:${v.pregunta_id}`
@@ -537,13 +597,6 @@ export default function PanelEvaluador() {
                     <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mt-0.5 truncate">{c.proceso_nombre || 'Proceso independiente'}</div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-xs text-slate-500 truncate">{c.email || 'Sin email'}</span>
-                      {c.matchScore != null && (
-                        <span className={`text-[9px] font-bold px-1 rounded ${
-                          Number(c.matchScore) >= 80 ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400 bg-slate-50'
-                        }`}>
-                          {Number(c.matchScore) >= 80 ? 'PERFIL ALTO' : ''}
-                        </span>
-                      )}
                     </div>
                   </div>
 
@@ -551,68 +604,34 @@ export default function PanelEvaluador() {
                     <div className="flex items-center gap-1.5">
                       {c.progreso && c.progreso.completados < c.progreso.total && (
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            enviarRecordatorio(c)
-                          }}
+                          onClick={(e) => { e.stopPropagation(); enviarRecordatorio(c); }}
                           disabled={enviandoRecordatorio === c.id}
-                          className={`p-1.5 rounded-lg transition-all ${
-                            enviandoRecordatorio === c.id
-                              ? 'bg-slate-100 text-slate-400'
-                              : 'bg-amber-50 text-amber-600 hover:bg-amber-100 hover:scale-110 shadow-sm border border-amber-100'
-                          }`}
-                          title="Enviar recordatorio"
+                          className="p-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg transition-all border border-amber-100"
                         >
-                          {enviandoRecordatorio === c.id ? (
-                            <div className="w-3.5 h-3.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <BellRing className="w-3.5 h-3.5" />
-                          )}
+                          <BellRing className="w-3.5 h-3.5" />
                         </button>
                       )}
-                      <a
-                        href={`/informe?candidato=${c.id}`}
-                        target="_blank"
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-all border border-indigo-100 shadow-sm"
-                        title="Ver informe"
-                      >
+                      <a href={`/informe?candidato=${c.id}`} target="_blank" onClick={(e) => e.stopPropagation()} className="p-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg border border-indigo-100">
                         <FileText className="w-3.5 h-3.5" />
                       </a>
-                    </div>
-
-                    <div className="flex flex-col items-end">
-                      <span className="text-[9px] font-bold bg-slate-50 text-slate-400 px-1.5 py-0.5 rounded border border-slate-100 uppercase tracking-tighter mb-1">
-                        {c.sesiones.length} {c.sesiones.length === 1 ? 'TEST' : 'TESTS'}
-                      </span>
-                      {c.progreso && (
-                        <div className="flex flex-col items-end gap-0.5">
-                          <div className="w-14 h-1 bg-slate-100 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-green-500 rounded-full transition-all duration-700" 
-                              style={{ width: `${(c.progreso.completados / c.progreso.total) * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">{c.progreso.completados}/{c.progreso.total} COMP.</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
               </div>
             ))}
-            {candidatosFiltrados.length === 0 && (
-              <div className="text-center py-8 text-slate-500 text-sm">
-                No se encontraron candidatos para la búsqueda.
-              </div>
-            )}
           </div>
 
-          {/* DETALLE DEL CANDIDATO SELECCIONADO */}
-          <div className="sticky top-6">
+          {/* DETALLE DEL CANDIDATO SELECCIONADO CON SCROLL INDEPENDIENTE */}
+          <div className="sticky top-0 h-[calc(100vh-220px)] flex flex-col">
+            <style jsx>{`
+              .custom-scrollbar-visible::-webkit-scrollbar { width: 6px; }
+              .custom-scrollbar-visible::-webkit-scrollbar-track { background: #f1f5f9; }
+              .custom-scrollbar-visible::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+            `}</style>
             {agrupadoSeleccionado ? (
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                <div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-4">
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-xl flex flex-col h-full overflow-hidden border-indigo-100">
+                {/* CABEZAL FIJO */}
+                <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-white z-20 shrink-0">
                   <div>
                     <h2 className="text-xl font-bold text-slate-900">{agrupadoSeleccionado.nombre} {agrupadoSeleccionado.apellido}</h2>
                     <p className="text-sm text-slate-500">{agrupadoSeleccionado.email}</p>
@@ -622,299 +641,129 @@ export default function PanelEvaluador() {
                   </button>
                 </div>
 
-                {/* RESUMEN EJECUTIVO IA */}
-                <div className="mb-8 p-5 bg-gradient-to-br from-indigo-50/50 to-white rounded-2xl border border-indigo-100 shadow-sm relative">
-                  <div className="flex justify-between items-center mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-pulse" />
-                      <h3 className="text-[10px] font-bold text-indigo-900 uppercase tracking-widest">Resumen Ejecutivo IA</h3>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        const res = await generarResumenIA(agrupadoSeleccionado)
-                        setAgrupadoSeleccionado({ ...agrupadoSeleccionado, resumen_ia: res })
-                      }}
-                      className="text-[9px] font-bold bg-indigo-600 text-white px-2 py-1 rounded-lg hover:bg-indigo-700 transition-all"
-                    >
-                      {agrupadoSeleccionado.resumen_ia ? 'Regenerar' : 'Generar Informe'}
-                    </button>
-                  </div>
-                  
-                  {agrupadoSeleccionado.resumen_ia ? (
-                    <div className="text-xs text-slate-600 leading-relaxed space-y-2 animate-in fade-in duration-500">
-                      {agrupadoSeleccionado.resumen_ia.split('\n').map((p, i) => (
-                        <p key={i}>{p}</p>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-[10px] text-slate-400 italic">Analiza todos los tests y videos para generar un resumen profesional.</p>
-                  )}
-                </div>
-
-                <div className="mb-6">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tests realizados</p>
-                  <div className="flex flex-wrap gap-2">
-                    {agrupadoSeleccionado.sesiones.map(s => {
-                      const pb = s.puntaje_bruto
-                      let label = (s as any).test_id ? TEST_NAMES[(s as any).test_id] : null
-                      
-                      if (!label) {
-                        if (esBigFive(pb)) label = 'Psicográfico'
-                        else if (esCognitivo(pb)) label = 'Cognitivo'
-                        else label = 'Evaluación'
-                      }
-                      
-                      const isActive = sesionSeleccionada?.id === s.id
-                      return (
-                        <button
-                          key={s.id}
-                          onClick={() => setSesionSeleccionada(s)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                            isActive 
-                              ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' 
-                              : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                          }`}
-                        >
-                          {label} ({formatearFecha(s.finalizada_en).split(' ')[0]})
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* VIDEO ENTREVISTAS */}
-                {videosCandidato.length > 0 && (
-                  <div className="mb-8 animate-in fade-in slide-in-from-top-2 duration-500">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                      <Video className="w-3 h-3" />
-                      Video Entrevistas
-                    </p>
-                    <div className="space-y-4">
-                      {videosCandidato.map((v, i) => (
-                        <div key={i} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                          <div className="flex justify-between items-start mb-3">
-                            <h5 className="text-sm font-bold text-slate-800">Pregunta {i + 1}: {v.preguntas_video?.pregunta}</h5>
-                            <span className="text-[10px] font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
-                              {v.duracion}s
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <video 
-                              src={v.url_video} 
-                              controls 
-                              className="w-full aspect-video rounded-xl shadow-sm bg-black"
-                            />
-                            <div className="flex flex-col gap-3">
-                              {v.transcripcion ? (
-                                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm h-full overflow-auto max-h-[200px]">
-                                  <div className="flex items-center gap-2 mb-2 text-indigo-600">
-                                    <FileText className="w-4 h-4" />
-                                    <span className="text-[10px] font-bold uppercase tracking-wider">Análisis de IA</span>
-                                  </div>
-                                  <p className="text-xs text-slate-600 leading-relaxed italic mb-3">"{v.transcripcion}"</p>
-                                  
-                                  {v.analisis_ia?.puntos_clave && (
-                                    <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                                      {v.analisis_ia.puntos_clave.map((p: string, idx: number) => (
-                                        <div key={idx} className="flex gap-2 text-[11px] text-slate-700">
-                                          <span className="text-indigo-500">•</span> {p}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                  
-                                  {v.analisis_ia?.actitud && (
-                                    <div className="mt-3 p-2 bg-amber-50 rounded-lg border border-amber-100">
-                                      <p className="text-[10px] text-amber-700 font-medium italic">Actitud: {v.analisis_ia.actitud}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="flex flex-col items-center justify-center h-full border-2 border-dashed border-slate-200 rounded-xl p-6 text-slate-400">
-                                  <div className="animate-pulse flex flex-col items-center">
-                                    <Video className="w-8 h-8 mb-2 opacity-20" />
-                                    <p className="text-xs font-medium">IA procesando transcripción...</p>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* DETALLE DEL TEST SELECCIONADO */}
-                {sesionSeleccionada && (
-                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="flex items-center justify-between mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <div className="text-xs font-bold text-slate-700 uppercase">Resultados detallados</div>
-                      <a
-                        href={`/informe?candidato=${agrupadoSeleccionado.id}`}
-                        target="_blank"
-                        className="text-xs font-bold text-indigo-600 hover:underline"
+                {/* CONTENIDO DESPLAZABLE */}
+                <div className="flex-1 overflow-y-scroll p-6 custom-scrollbar-visible">
+                  {/* RESUMEN EJECUTIVO IA */}
+                  <div className="mb-8 p-5 bg-gradient-to-br from-indigo-50/50 to-white rounded-2xl border border-indigo-100 shadow-sm relative">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-pulse" />
+                        <h3 className="text-[10px] font-bold text-indigo-900 uppercase tracking-widest">Resumen Ejecutivo IA</h3>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          const res = await generarResumenIA(agrupadoSeleccionado)
+                          setAgrupadoSeleccionado({ ...agrupadoSeleccionado, resumen_ia: res })
+                        }}
+                        className="text-[9px] font-bold bg-indigo-600 text-white px-2 py-1 rounded-lg hover:bg-indigo-700 transition-all"
                       >
-                        Ver informe completo →
-                      </a>
+                        {agrupadoSeleccionado.resumen_ia ? 'Regenerar' : 'Generar Informe'}
+                      </button>
                     </div>
+                    {agrupadoSeleccionado.resumen_ia ? (
+                      <div className="text-xs text-slate-600 leading-relaxed space-y-2">{agrupadoSeleccionado.resumen_ia}</div>
+                    ) : (
+                      <p className="text-[10px] text-slate-400 italic">Analiza todos los tests y videos para generar un resumen profesional.</p>
+                    )}
+                  </div>
 
-                    <div className="space-y-5 mt-6">
+                  <div className="mb-6">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tests realizados</p>
+                    <div className="flex flex-wrap gap-2">
+                      {agrupadoSeleccionado.sesiones.map(s => {
+                        const pb = s.puntaje_bruto
+                        let label = (s as any).test_id ? TEST_NAMES[(s as any).test_id] : null
+                        if (!label) {
+                          if (esBigFive(pb)) label = 'Psicográfico'
+                          else if (esCognitivo(pb)) label = 'Cognitivo'
+                          else label = 'Evaluación'
+                        }
+                        const isActive = sesionSeleccionada?.id === s.id
+                        return (
+                          <button key={s.id} onClick={() => setSesionSeleccionada(s)} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isActive ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'}`}>
+                            {label} ({formatearFecha(s.finalizada_en).split(' ')[0]})
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* VIDEO ENTREVISTAS */}
+                  {videosCandidato.length > 0 && (
+                    <div className="mb-8">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <Video className="w-3 h-3" /> Video Entrevistas
+                      </p>
+                      <div className="space-y-4">
+                        {videosCandidato.map((v, i) => (
+                          <div key={i} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                            <h5 className="text-sm font-bold text-slate-800 mb-3">Pregunta {i + 1}: {v.preguntas_video?.pregunta}</h5>
+                            <video src={v.url_video} controls className="w-full aspect-video rounded-xl shadow-sm bg-black mb-3" />
+                            {v.transcripcion && <div className="bg-white p-3 rounded-xl border border-slate-200 text-[11px] text-slate-600 italic">"{v.transcripcion}"</div>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* RESULTADOS DETALLADOS DEL TEST */}
+                  {sesionSeleccionada && (
+                    <div className="mt-8 pt-8 border-t border-slate-100 animate-in fade-in duration-500">
+                      <div className="flex items-center justify-between mb-6">
+                        <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Resultados del Test</h4>
+                        <a href={`/informe?candidato=${agrupadoSeleccionado.id}`} target="_blank" className="text-[10px] font-bold text-indigo-600 hover:underline">Ver Informe Completo →</a>
+                      </div>
+
                       {sesionSeleccionada.puntaje_bruto && (() => {
                         const pb = sesionSeleccionada.puntaje_bruto as any
                         const metricas = pb.metricas_fraude
-                        const hasFraude = metricas && (metricas.tabSwitches > 0 || metricas.copyPasteAttempts > 0)
-
-                        if (!metricas) return null
-
                         return (
-                          <>
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                <AlertTriangle className="w-3.5 h-3.5" />
-                                Monitoreo de Integridad
+                          <div className="space-y-6">
+                            {/* MÉTRICAS DE FRAUDE */}
+                            {metricas && (
+                              <div className="grid grid-cols-2 gap-3 mb-6">
+                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                  <p className="text-[8px] font-bold text-slate-400 uppercase">Fugas de Foco</p>
+                                  <p className="text-lg font-bold text-slate-800">{metricas.tabSwitches || 0}</p>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                  <p className="text-[8px] font-bold text-slate-400 uppercase">Copia/Pega</p>
+                                  <p className="text-lg font-bold text-slate-800">{metricas.copyPasteAttempts || 0}</p>
+                                </div>
                               </div>
-                              <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold border ${
-                                (metricas.tabSwitches || 0) > 5 || (metricas.copyPasteAttempts || 0) > 2
-                                  ? 'bg-red-50 border-red-200 text-red-600'
-                                  : (metricas.tabSwitches || 0) > 0
-                                  ? 'bg-amber-50 border-amber-200 text-amber-600'
-                                  : 'bg-green-50 border-green-200 text-green-600'
-                              }`}>
-                                {(metricas.tabSwitches || 0) > 5 || (metricas.copyPasteAttempts || 0) > 2 ? 'RIESGO ALTO' : (metricas.tabSwitches || 0) > 0 ? 'RIESGO MODERADO' : 'SIN INCIDENCIAS'}
-                              </div>
-                            </div>
+                            )}
 
-                            <div className="grid grid-cols-2 gap-3 mb-6">
-                              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 shadow-sm">
-                                  <Clock className="w-5 h-5" />
+                            {/* GRÁFICOS BIG FIVE */}
+                            {esBigFive(pb) ? valoresNumericos(pb).map(([factor, valor]) => (
+                              <div key={factor}>
+                                <div className="flex justify-between mb-1">
+                                  <span className="text-xs font-bold text-slate-700">{etiquetas[factor] || factor}</span>
+                                  <span className="text-xs font-bold text-indigo-600">{valor} / 5</span>
                                 </div>
-                                <div>
-                                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Fugas de foco</div>
-                                  <div className="text-xl font-bold text-slate-800 tracking-tight">{(metricas.tabSwitches || 0)}</div>
-                                </div>
-                              </div>
-                              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 shadow-sm">
-                                  <AlertTriangle className="w-5 h-5" />
-                                </div>
-                                <div>
-                                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Intentos Copia</div>
-                                  <div className="text-xl font-bold text-slate-800 tracking-tight">{(metricas.copyPasteAttempts || 0)}</div>
+                                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                  <div className={`h-full ${colores[factor] || 'bg-indigo-500'}`} style={{ width: `${(valor / 5) * 100}%` }} />
                                 </div>
                               </div>
-                            </div>
-                                
-                                {metricas.events && metricas.events.length > 0 && (
-                                  <div className="mt-6 pt-6 border-t border-slate-100">
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                      <History className="w-3 h-3" />
-                                      Cronología de Incidencias
-                                    </p>
-                                    <div className="space-y-3 relative before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-                                      {metricas.events.map((ev: any, idx: number) => {
-                                        const hora = new Date(ev.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                                        const isAlert = ev.tipo === 'copy_paste' || ev.tipo === 'context_menu'
-                                        return (
-                                          <div key={idx} className="relative pl-7 group">
-                                            <div className={`absolute left-0 top-1.5 w-4 h-4 rounded-full border-2 border-white shadow-sm z-10 transition-transform group-hover:scale-125 ${
-                                              isAlert ? 'bg-red-500' : 'bg-amber-500'
-                                            }`} />
-                                            <div className="flex justify-between items-baseline gap-2">
-                                              <div className="text-xs font-bold text-slate-700">
-                                                {ev.tipo === 'tab_switch' || ev.tipo === 'blur' ? 'Foco perdido / Cambio pestaña' : 
-                                                 ev.tipo === 'copy_paste' ? 'Intento de Copiar/Pegar' : 
-                                                 ev.tipo === 'context_menu' ? 'Click Derecho' : 'Evento de sistema'}
-                                              </div>
-                                              <div className="text-[9px] font-bold text-slate-400 font-mono">
-                                                {hora}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        )
-                                      })}
-                                    </div>
-                                  </div>
-                                )}
-                            
-                            {esBigFive(pb) ? valoresNumericos(pb).map(([factor, valor]) => {
-                              const tc = textColores[factor] || 'text-indigo-600'
-                              const bgc = colores[factor] || 'bg-indigo-600'
-                              return (
-                                <div key={factor}>
-                                  <div className="flex justify-between mb-1.5">
-                                    <span className="text-sm font-semibold text-slate-800">{etiquetas[factor] || factor}</span>
-                                    <span className={`text-sm font-bold ${tc}`}>{valor} / 5</span>
-                                  </div>
-                                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                                    <div className={`h-full rounded-full transition-all duration-500 ease-out ${bgc}`} style={{ width: `${(valor / 5) * 100}%` }} />
-                                  </div>
-                                  <p className="text-xs text-slate-500 leading-relaxed">{interpretacion(factor, valor)}</p>
-                                </div>
-                              )
-                            }) : esCognitivo(pb) ? (() => {
-                              const { correctas, total, pct } = datosCognitivos(pb)
-                              const nivel = pct >= 80 ? 'Alto' : pct >= 60 ? 'Moderado' : 'En desarrollo'
-                              const colorBg = pct >= 80 ? 'bg-green-500' : pct >= 60 ? 'bg-orange-500' : 'bg-red-500'
-                              const colorText = pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-orange-600' : 'text-red-600'
-                              
-                              return (
-                                <div>
-                                  <div className="flex justify-between mb-1.5">
-                                    <span className="text-sm font-semibold text-slate-800">Resultado Cognitivo</span>
-                                    <span className={`text-sm font-bold ${colorText}`}>{correctas} / {total} ({pct}%)</span>
-                                  </div>
-                                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                                    <div className={`h-full rounded-full transition-all duration-500 ease-out ${colorBg}`} style={{ width: `${pct}%` }} />
-                                  </div>
-                                  <p className="text-xs text-slate-500 leading-relaxed">Desempeño detectado: {nivel}</p>
-                                </div>
-                              )
-                            })() : (() => {
-                              const prom = promedioPuntaje(pb)
-                              const colorBg = prom >= 4 ? 'bg-green-500' : prom >= 3 ? 'bg-orange-500' : 'bg-red-500'
-                              const colorText = prom >= 4 ? 'text-green-600' : prom >= 3 ? 'text-orange-600' : 'text-red-600'
-                              
-                              return (
-                                <div>
-                                  <div className="flex justify-between mb-1.5">
-                                    <span className="text-sm font-semibold text-slate-800">Promedio general</span>
-                                    <span className={`text-sm font-bold ${colorText}`}>{prom} / 5</span>
-                                  </div>
-                                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                                    <div className={`h-full rounded-full transition-all duration-500 ease-out ${colorBg}`} style={{ width: `${Math.min((prom / 5) * 100, 100)}%` }} />
-                                  </div>
-                                  <p className="text-xs text-slate-500 leading-relaxed">
-                                    {prom >= 4 ? 'Nivel alto' : prom >= 3 ? 'Nivel moderado' : 'En desarrollo'}
-                                  </p>
-                                </div>
-                              )
-                            })()}
-                          </>
+                            )) : (
+                              <div className="bg-slate-50 p-4 rounded-xl text-center">
+                                <p className="text-xs text-slate-500">Puntaje General: <span className="font-bold text-slate-800">{promedioPuntaje(pb)} / 5</span></p>
+                              </div>
+                            )}
+                          </div>
                         )
                       })()}
-                    </div>
 
-                    <div className="mt-8 flex gap-3">
-                      <button
-                        onClick={() => generarPDF(sesionSeleccionada)}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-slate-200"
-                      >
-                        <Download className="w-4 h-4" />
-                        Descargar PDF del test
+                      <button onClick={() => generarPDF(sesionSeleccionada)} className="w-full mt-8 flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all">
+                        <Download className="w-4 h-4" /> Descargar PDF
                       </button>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             ) : (
-              <div className="bg-slate-50 border border-slate-200 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center h-64">
-                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
-                  <Search className="w-5 h-5 text-slate-400" />
-                </div>
-                <h3 className="text-sm font-medium text-slate-900 mb-1">Ningún candidato seleccionado</h3>
-                <p className="text-xs text-slate-500 max-w-[200px]">Selecciona un postulante de la lista para ver el desglose de sus evaluaciones.</p>
+              <div className="bg-slate-50 border border-slate-200 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center h-full">
+                <Search className="w-8 h-8 text-slate-300 mb-2" />
+                <p className="text-xs text-slate-500">Selecciona un candidato para analizar</p>
               </div>
             )}
           </div>

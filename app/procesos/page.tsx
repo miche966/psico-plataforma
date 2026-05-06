@@ -82,9 +82,7 @@ export default function ProcesosPage() {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [procesoSeleccionado, setProcesoSeleccionado] = useState<Proceso | null>(null)
   const [candidatosProceso, setCandidatosProceso] = useState<Candidato[]>([])
-  const [editandoBateria, setEditandoBateria] = useState(false)
-  const [bateriaEdit, setBateriaEdit] = useState<string[]>([])
-  const [guardandoEdicion, setGuardandoEdicion] = useState(false)
+  const [modoEdicion, setModoEdicion] = useState(false)
   const [form, setForm] = useState({ 
     nombre: '', cargo: '', descripcion: '', descripcion_cargo: '', bateria_tests: [] as string[],
     competencias_requeridas: [] as { nombre: string; nivel: string }[] 
@@ -137,46 +135,71 @@ export default function ProcesosPage() {
     if (!form.nombre || !form.cargo) return
     setGuardando(true)
 
-    const { error } = await supabase
-      .from('procesos')
-      .insert({
-        nombre: form.nombre,
-        cargo: form.cargo,
-        descripcion: form.descripcion,
-        descripcion_cargo: form.descripcion_cargo,
-        competencias_requeridas: form.competencias_requeridas,
-        activo: true,
-        bateria_tests: form.bateria_tests
-      })
+    if (modoEdicion && procesoSeleccionado) {
+      const { error } = await supabase
+        .from('procesos')
+        .update({
+          nombre: form.nombre,
+          cargo: form.cargo,
+          descripcion: form.descripcion,
+          descripcion_cargo: form.descripcion_cargo,
+          competencias_requeridas: form.competencias_requeridas,
+          bateria_tests: form.bateria_tests
+        })
+        .eq('id', procesoSeleccionado.id)
 
-    if (!error) {
-      setForm({ nombre: '', cargo: '', descripcion: '', descripcion_cargo: '', bateria_tests: [], competencias_requeridas: [] })
-      setMostrarForm(false)
-      cargarDatos()
+      if (!error) {
+        setProcesoSeleccionado({ ...procesoSeleccionado, ...form })
+        setProcesos(procesos.map(p => p.id === procesoSeleccionado.id ? { ...p, ...form } : p))
+        setMostrarForm(false)
+        setModoEdicion(false)
+        alert('Proceso actualizado con éxito.')
+      } else {
+        console.error('Error al actualizar:', error)
+        alert('Hubo un error al actualizar el proceso.')
+      }
+    } else {
+      const { data, error } = await supabase
+        .from('procesos')
+        .insert({
+          nombre: form.nombre,
+          cargo: form.cargo,
+          descripcion: form.descripcion,
+          descripcion_cargo: form.descripcion_cargo,
+          competencias_requeridas: form.competencias_requeridas,
+          activo: true,
+          bateria_tests: form.bateria_tests
+        })
+        .select()
+        .single()
+
+      if (!error && data) {
+        setForm({ nombre: '', cargo: '', descripcion: '', descripcion_cargo: '', bateria_tests: [], competencias_requeridas: [] })
+        setMostrarForm(false)
+        cargarDatos()
+        setProcesoSeleccionado(data)
+        setCandidatosProceso([]) 
+      }
     }
     setGuardando(false)
   }
 
-  async function guardarEdicionBateria() {
+  function iniciarEdicion() {
     if (!procesoSeleccionado) return
-    setGuardandoEdicion(true)
-
-    const { error } = await supabase
-      .from('procesos')
-      .update({ bateria_tests: bateriaEdit })
-      .eq('id', procesoSeleccionado.id)
-
-    if (!error) {
-      setProcesoSeleccionado({ ...procesoSeleccionado, bateria_tests: bateriaEdit })
-      setProcesos(procesos.map(p => p.id === procesoSeleccionado.id ? { ...p, bateria_tests: bateriaEdit } : p))
-      setEditandoBateria(false)
-    }
-    setGuardandoEdicion(false)
+    setForm({
+      nombre: procesoSeleccionado.nombre,
+      cargo: procesoSeleccionado.cargo,
+      descripcion: procesoSeleccionado.descripcion || '',
+      descripcion_cargo: procesoSeleccionado.descripcion_cargo || '',
+      bateria_tests: procesoSeleccionado.bateria_tests || [],
+      competencias_requeridas: procesoSeleccionado.competencias_requeridas || []
+    })
+    setModoEdicion(true)
+    setMostrarForm(true)
   }
 
   async function verCandidatosProceso(proceso: Proceso) {
     setProcesoSeleccionado(proceso)
-    setEditandoBateria(false)
 
     // 1. Obtener todas las sesiones vinculadas a este proceso
     const { data: sesiones } = await supabase
@@ -339,7 +362,16 @@ export default function ProcesosPage() {
           </p>
         </div>
         <button 
-          onClick={() => setMostrarForm(!mostrarForm)}
+          onClick={() => {
+            if (mostrarForm) {
+              setMostrarForm(false)
+              setModoEdicion(false)
+            } else {
+              setForm({ nombre: '', cargo: '', descripcion: '', descripcion_cargo: '', bateria_tests: [], competencias_requeridas: [] })
+              setModoEdicion(false)
+              setMostrarForm(true)
+            }
+          }}
           className={`px-4 py-2 font-medium rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2 ${
             mostrarForm 
               ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' 
@@ -351,8 +383,8 @@ export default function ProcesosPage() {
       </div>
 
       {mostrarForm && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-8 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-900 mb-6">Nuevo proceso de selección</h2>
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-8 shadow-sm ring-1 ring-indigo-500/10">
+          <h2 className="text-lg font-bold text-slate-900 mb-6">{modoEdicion ? 'Editar proceso de selección' : 'Nuevo proceso de selección'}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-slate-700">Nombre del proceso *</label>
@@ -533,7 +565,7 @@ export default function ProcesosPage() {
               onClick={guardarProceso}
               disabled={guardando || !form.nombre || !form.cargo}
             >
-              {guardando ? 'Guardando...' : 'Guardar proceso'}
+              {guardando ? 'Guardando...' : modoEdicion ? 'Actualizar proceso' : 'Guardar proceso'}
             </button>
           </div>
         </div>
@@ -611,84 +643,13 @@ export default function ProcesosPage() {
                 <div className="flex justify-between items-center mb-3">
                   <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Batería de tests ({procesoSeleccionado.bateria_tests?.length || 0})</h4>
                   <button
-                    onClick={() => {
-                      setEditandoBateria(!editandoBateria)
-                      setBateriaEdit(procesoSeleccionado.bateria_tests || [])
-                    }}
-                    className="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+                    onClick={iniciarEdicion}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-xs font-bold transition-all border border-indigo-100"
                   >
-                    {editandoBateria ? 'Cancelar' : 'Editar tests'}
+                    <Settings className="w-3.5 h-3.5" /> Configurar Proceso
                   </button>
                 </div>
                 
-                {editandoBateria ? (
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
-                    <div>
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Tests Psicometricos</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {TESTS_DISPONIBLES.map(t => (
-                          <label key={t.key} className="flex items-center gap-2 cursor-pointer hover:bg-white p-1 rounded-md transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={bateriaEdit.includes(t.key)}
-                              onChange={e => {
-                                const next = e.target.checked
-                                  ? [...bateriaEdit, t.key]
-                                  : bateriaEdit.filter(k => k !== t.key)
-                                setBateriaEdit(next)
-                              }}
-                              className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-600 cursor-pointer"
-                            />
-                            <span className="text-[10px] font-medium text-slate-700 truncate">{t.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-200">
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Videoentrevistas</h4>
-                      <div className="grid grid-cols-1 gap-2">
-                        {entrevistas.map(e => {
-                          const key = `entrevista:${e.id}`
-                          return (
-                            <div key={e.id} className="flex items-center justify-between gap-2 bg-white p-1.5 rounded-lg border border-slate-100">
-                              <label className="flex items-center gap-2 cursor-pointer flex-1">
-                                <input
-                                  type="checkbox"
-                                  checked={bateriaEdit.includes(key)}
-                                  onChange={e => {
-                                    const next = e.target.checked
-                                      ? [...bateriaEdit, key]
-                                      : bateriaEdit.filter(k => k !== key)
-                                    setBateriaEdit(next)
-                                  }}
-                                  className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-600 cursor-pointer"
-                                />
-                                <span className="text-[10px] font-medium text-slate-700 truncate">🎥 {e.nombre}</span>
-                              </label>
-                              <button 
-                                onClick={(ev) => { ev.preventDefault(); verPreviewEntrevista(e.id, e.nombre) }}
-                                className="p-1 text-slate-400 hover:text-indigo-600 transition-colors"
-                              >
-                                <Eye className="w-3 h-3" />
-                              </button>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end pt-2">
-                      <button
-                        onClick={guardarEdicionBateria}
-                        disabled={guardandoEdicion}
-                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50"
-                      >
-                        {guardandoEdicion ? 'Guardando...' : 'Guardar batería'}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
                   <div className="flex flex-wrap gap-1.5">
                     {procesoSeleccionado.bateria_tests?.map(tKey => {
                       const tInfo = [...TESTS_DISPONIBLES, ...entrevistas.map(e => ({ key: `entrevista:${e.id}`, label: `🎥 ${e.nombre}` }))].find(t => t.key === tKey)
@@ -702,7 +663,6 @@ export default function ProcesosPage() {
                       <span className="text-xs text-slate-400">Sin tests asignados</span>
                     )}
                   </div>
-                )}
               </div>
 
               <div className="mb-8">

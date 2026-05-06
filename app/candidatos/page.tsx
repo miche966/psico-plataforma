@@ -20,6 +20,8 @@ export default function CandidatosPage() {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [linkCopiado, setLinkCopiado] = useState<string | null>(null)
   const [filtro, setFiltro] = useState('')
+  const [filtroEstado, setFiltroEstado] = useState<'todos' | 'completado' | 'incompleto' | 'pendiente'>('todos')
+  const [sesionesCount, setSesionesCount] = useState<Record<string, number>>({})
   const [form, setForm] = useState({
     nombre: '',
     apellido: '',
@@ -45,6 +47,17 @@ export default function CandidatosPage() {
       return
     }
 
+    // Cargar conteo de sesiones para cada candidato
+    const { data: sData } = await supabase
+      .from('sesiones')
+      .select('candidato_id')
+    
+    const counts: Record<string, number> = {}
+    sData?.forEach(s => {
+      counts[s.candidato_id] = (counts[s.candidato_id] || 0) + 1
+    })
+
+    setSesionesCount(counts)
     setCandidatos(data || [])
     setCargando(false)
   }
@@ -113,11 +126,22 @@ export default function CandidatosPage() {
     })
   }
 
-  const candidatosFiltrados = candidatos.filter(c => 
-    `${c.nombre} ${c.apellido}`.toLowerCase().includes(filtro.toLowerCase()) || 
-    c.email.toLowerCase().includes(filtro.toLowerCase()) ||
-    (c.documento && c.documento.includes(filtro))
-  )
+  const candidatosFiltrados = candidatos.filter(c => {
+    const searchMatch = `${c.nombre} ${c.apellido}`.toLowerCase().includes(filtro.toLowerCase()) || 
+      c.email.toLowerCase().includes(filtro.toLowerCase()) ||
+      (c.documento && c.documento.includes(filtro))
+    
+    if (!searchMatch) return false
+
+    const count = sesionesCount[c.id] || 0
+    let estado: 'completado' | 'incompleto' | 'pendiente' = 'pendiente'
+    if (count === 0) estado = 'pendiente'
+    else if (count >= 3) estado = 'completado'
+    else estado = 'incompleto'
+
+    if (filtroEstado === 'todos') return true
+    return estado === filtroEstado
+  })
 
   if (cargando) {
     return (
@@ -217,6 +241,25 @@ export default function CandidatosPage() {
         />
       </div>
 
+      <div className="flex items-center gap-2 mb-6">
+        {[
+          { id: 'todos', label: 'Todos', color: 'bg-slate-100 text-slate-600' },
+          { id: 'completado', label: 'Completados (+3 tests)', color: 'bg-green-100 text-green-700' },
+          { id: 'incompleto', label: 'En Proceso (1-2 tests)', color: 'bg-amber-100 text-amber-700' },
+          { id: 'pendiente', label: 'Sin Iniciar (0 tests)', color: 'bg-slate-100 text-slate-400' },
+        ].map(f => (
+          <button
+            key={f.id}
+            onClick={() => setFiltroEstado(f.id as any)}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${
+              filtroEstado === f.id ? 'border-indigo-500 ring-2 ring-indigo-500/10 bg-indigo-50 text-indigo-700' : 'border-transparent bg-white hover:bg-slate-50 text-slate-500'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       {candidatos.length === 0 ? (
         <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col items-center justify-center">
           <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-4">
@@ -246,9 +289,19 @@ export default function CandidatosPage() {
                 {candidatosFiltrados.map(candidato => (
                   <tr key={candidato.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-5 py-4">
-                      <div className="font-medium text-slate-900">{candidato.nombre} {candidato.apellido}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="font-medium text-slate-900">{candidato.nombre} {candidato.apellido}</div>
+                        <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
+                          (sesionesCount[candidato.id] || 0) >= 3 ? 'bg-green-100 text-green-700' :
+                          (sesionesCount[candidato.id] || 0) > 0 ? 'bg-amber-100 text-amber-700' :
+                          'bg-slate-100 text-slate-400'
+                        }`}>
+                          {(sesionesCount[candidato.id] || 0) === 0 ? 'Pendiente' : 
+                           (sesionesCount[candidato.id] || 0) >= 3 ? 'Completado' : 'Incompleto'}
+                        </span>
+                      </div>
                       <div className="text-xs text-slate-500 mt-0.5">{candidato.email}</div>
-                      <div className="text-[10px] text-slate-400 mt-1">Registrado el {formatearFecha(candidato.creado_en)}</div>
+                      <div className="text-[10px] text-slate-400 mt-1">Registrado el {formatearFecha(candidato.creado_en)} • {(sesionesCount[candidato.id] || 0)} tests realizados</div>
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-600">
                       {candidato.documento || <span className="text-slate-300">—</span>}
