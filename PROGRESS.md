@@ -17,6 +17,7 @@ Transformar la plataforma en un sistema de precisión psicométrica con informes
 - **Normalización de Fraude:** Implementado motor en `parseVal` para convertir eventos de proctoring en puntajes técnicos (0-5) para el Índice de Sinceridad Laboral.
 - **Inferencia de Percentiles:** Añadida lógica de cálculo automático de percentiles basada en efectividad cuando el dato falta en la base de datos.
 - **Blindaje Anti-NaN v2:** Eliminada redundancia en la inversión de métricas en la UI para asegurar la integridad de los resultados visuales.
+- **Índice de Potencial Automático:** Mejorado `calcAjuste` para proporcionar un puntaje de fallback cuando no hay requerimientos de cargo, evitando puntajes en 0% para candidatos con buenos resultados.
 
 ## 🚧 Tareas Pendientes y Objetivos Inmediatos
 1. [ ] **Validación Automática:** Crear script que detecte palabras rimbombantes y errores de tipado antes de cada push.

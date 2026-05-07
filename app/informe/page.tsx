@@ -146,12 +146,49 @@ const s = {
 
 // Helpers de lógica y cálculo
 function calcAjuste(reqs: any[], sesiones: any[]) {
-  if (!reqs || reqs.length === 0) return null
+  // Si no hay requerimientos, calculamos un Índice de Potencial General basado en todos los datos
+  if (!reqs || reqs.length === 0) {
+    const todosLosFactores: Record<string, number> = {}
+    
+    sesiones.forEach(s => {
+      const scan = (obj: any) => {
+        if (!obj || typeof obj !== 'object') return
+        Object.entries(obj).forEach(([k, v]) => {
+          const key = k.toLowerCase()
+          // Evitamos claves técnicas o de sistema
+          if (['total', 'correctas', 'score', 'percentil', 'events', 'tabswitches', 'copypasteattempts', 'timeoutoffocus'].includes(key)) return
+          
+          if (!todosLosFactores.hasOwnProperty(key)) {
+            let val = 0
+            if (typeof v === 'object' && v !== null && 'correctas' in v) {
+              val = (Number(v.correctas) / (Number(v.total) || 1)) * 5
+            } else if (typeof v === 'number') {
+              val = v
+            } else if (typeof v === 'string') {
+              const s = v.toLowerCase()
+              if (s === 'alto') val = 5
+              else if (s === 'medio') val = 3
+              else if (s === 'bajo') val = 1.5
+            }
+            todosLosFactores[key] = val
+          }
+          if (key === 'por_factor' || key === 'por_subtipo') scan(v)
+        })
+      }
+      scan(s.puntaje_bruto)
+    })
+
+    const vals = Object.values(todosLosFactores)
+    if (vals.length === 0) return null
+    
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length
+    return { general: Math.round((avg / 5) * 100), detalles: [] }
+  }
   
   const scores: number[] = []
   const detalles = reqs.map(r => {
     // Buscar el valor más reciente para esta competencia
-    let valorCandidato = -1 // -1 indica que no se ha encontrado valor aún
+    let valorCandidato = -1 
     for (const s of sesiones) {
       if (!s.puntaje_bruto || valorCandidato !== -1) continue
       
@@ -160,9 +197,9 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
         Object.entries(obj).forEach(([f, v]: any) => {
           if (valorCandidato !== -1) return
           if (f.toLowerCase() === r.competencia.toLowerCase()) {
-            valorCandidato = typeof v === 'object' ? (v.correctas / (v.total || 1)) * 5 : Number(v)
+            valorCandidato = (typeof v === 'object' && v !== null && 'correctas' in v) ? (v.correctas / (v.total || 1)) * 5 : Number(v)
           }
-          if (f === 'por_factor' && typeof v === 'object') buscar(v)
+          if ((f === 'por_factor' || f === 'por_subtipo') && typeof v === 'object') buscar(v)
         })
       }
       buscar(s.puntaje_bruto)
