@@ -1,0 +1,17 @@
+# 📈 Progreso y Estado del Sistema: [NOMBRE_DEL_PROYECTO]
+
+## 🎯 Objetivo General
+[Describe la meta final del proyecto aquí.]
+
+## 🛠️ Ecosistema de Arneses Activo
+- [ ] **AGENTS.md**: Reglas de oro.
+- [ ] **PROGRESS.md**: Seguimiento de estado.
+- [ ] **scripts/validate-harness.js**: Validador automático.
+
+## 🏆 Hitos Alcanzados
+- [FECHA] | [DESCRIPCIÓN DEL HITO]
+
+## 🚧 Tareas Pendientes
+1. [ ] Configurar entorno base.
+2. [ ] Implementar primer módulo crítico.
+3. [ ] Realizar auditoría de calidad.

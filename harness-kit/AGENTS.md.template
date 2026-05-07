@@ -1,0 +1,20 @@
+# 🛡️ Arnés de Ingeniería: [NOMBRE_DEL_PROYECTO]
+
+Este documento define las reglas de oro y el marco de control para el desarrollo de este proyecto.
+
+## 🏛️ Filosofía del Proyecto
+[Define aquí el tono y objetivo del proyecto. Ej: Consultoría de Élite, SaaS de Alta Disponibilidad, etc.]
+
+### 1. Reglas de Redacción y Estilo
+- **Tono:** [Ej: Técnico, cercano, sobrio...]
+- **Restricciones:** [Ej: Prohibido usar palabras rimbombantes, evitar pasivas...]
+
+### 2. Blindaje de Datos
+- **Validación:** Ninguna respuesta debe mostrar jamás valores nulos o errores no manejados.
+- **Protocolo:** [Define cómo se validan los datos críticos.]
+
+## 🚀 Checkpoints de Despliegue
+Antes de intentar un despliegue, el agente DEBE:
+1. Ejecutar los tests locales.
+2. Correr el script de validación de arnés.
+3. Verificar que la documentación esté al día.

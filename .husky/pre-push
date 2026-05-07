@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Iniciando Auditoría de Seguridad Pre-Push..."
+npm run build && node scripts/validate-harness.js
