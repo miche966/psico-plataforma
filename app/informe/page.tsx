@@ -149,14 +149,21 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
   // Si no hay requerimientos, calculamos un Índice de Potencial General basado en todos los datos
   if (!reqs || reqs.length === 0) {
     const todosLosFactores: Record<string, number> = {}
+    const factoresValidos = [...DOMINIOS.COGNITIVO, ...DOMINIOS.COMPETENCIAS]
+    const clavesSistema = ['correctas', 'total', 'score', 'percentil', 'metricas_fraude', 'porcentaje', 'nivel_maximo', 'promedio_general']
     
     sesiones.forEach(s => {
       const scan = (obj: any) => {
         if (!obj || typeof obj !== 'object') return
         Object.entries(obj).forEach(([k, v]) => {
           const key = k.toLowerCase()
-          // Evitamos claves técnicas o de sistema
-          if (['total', 'correctas', 'score', 'percentil', 'events', 'tabswitches', 'copypasteattempts', 'timeoutoffocus'].includes(key)) return
+          if (clavesSistema.includes(key)) return
+          
+          // Solo incluimos factores que pertenezcan a los dominios profesionales/cognitivos
+          if (!factoresValidos.includes(key)) {
+            if (key === 'por_factor' || key === 'por_subtipo') scan(v)
+            return
+          }
           
           if (!todosLosFactores.hasOwnProperty(key)) {
             let val = 0
@@ -165,14 +172,15 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
             } else if (typeof v === 'number') {
               val = v
             } else if (typeof v === 'string') {
-              const s = v.toLowerCase()
-              if (s === 'alto') val = 5
-              else if (s === 'medio') val = 3
-              else if (s === 'bajo') val = 1.5
+              const str = v.toLowerCase()
+              if (str === 'alto') val = 5
+              else if (str === 'medio') val = 3
+              else if (str === 'bajo') val = 1.5
             }
+            // Aseguramos que el valor esté en escala 0-5
+            if (val > 5) val = 5
             todosLosFactores[key] = val
           }
-          if (key === 'por_factor' || key === 'por_subtipo') scan(v)
         })
       }
       scan(s.puntaje_bruto)
@@ -181,7 +189,13 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
     const vals = Object.values(todosLosFactores)
     if (vals.length === 0) return null
     
-    const avg = vals.reduce((a, b) => a + b, 0) / vals.length
+    // Tratamiento de ceros en perfiles de alto desempeño
+    const avgPreliminar = vals.reduce((a, b) => a + b, 0) / vals.length
+    const finalVals = (avgPreliminar > 3 && vals.length > 5) 
+      ? vals.map(v => v === 0 ? 1.5 : v) 
+      : vals
+
+    const avg = finalVals.reduce((a, b) => a + b, 0) / finalVals.length
     return { general: Math.round((avg / 5) * 100), detalles: [] }
   }
   
@@ -475,22 +489,63 @@ function InformePageContent() {
       const rawRes = data.informe || data
       
       if (rawRes && !data.error) {
-        // Humanizador de factores técnicos
+        // Humanizador de factores técnicos mejorado (más flexible)
         const humanizar = (t: string) => {
           if (!t || typeof t !== 'string') return t
           let limpio = t
           Object.entries(ETQ).forEach(([key, label]) => {
-            const regex = new RegExp(`\\b${key}\\b`, 'gi')
+            const variant = key.replace(/_/g, '[\\s\\-_]')
+            const regex = new RegExp(`['"]?${variant}['"]?`, 'gi')
             limpio = limpio.replace(regex, label)
           })
+          
+          // Filtro de palabras rimbombantes y tecnicismos de tests
+          const prohibidas: Record<string, string> = {
+            'superior': 'destacado',
+            'excelente': 'sólido',
+            'extraordinario': 'notable',
+            'maravilloso': 'positivo',
+            'increíble': 'relevante',
+            'magnífico': 'adecuado',
+            'DASS-21': 'los indicadores de equilibrio emocional',
+            'DASS21': 'los indicadores de equilibrio emocional',
+            'MBTI': 'el perfil conductual',
+            'ICAR': 'la capacidad cognitiva',
+            'SJT': 'el juicio situacional',
+            'discurso inferido': 'la comunicación observada',
+            'inferido': 'observado'
+          }
+          Object.entries(prohibidas).forEach(([mal, bien]) => {
+            const regex = new RegExp(`\\b${mal}\\b`, 'gi')
+            limpio = limpio.replace(regex, bien)
+          })
+          
           return limpio
         }
+
+        // Calculamos el score matemático real para asegurar consistencia
+        const resAjuste = calcAjuste(proceso?.competencias_requeridas, sesiones)
+        const scoreFijo = resAjuste?.general || 0
+        
+        // Determinamos el dictamen por regla de negocio fija (no subjetiva)
+        let recomendacionFija: Rec = 'no_recomendado'
+        if (scoreFijo >= 85) recomendacionFija = 'recomendado'
+        else if (scoreFijo >= 70) recomendacionFija = 'con_reservas'
 
         const nuevoInforme = {
           ...rawRes,
           fundamentacion: humanizar(rawRes.fundamentacion),
           fortalezas: (rawRes.fortalezas || []).map((f: string) => humanizar(f)),
-          areasDesarrollo: (rawRes.areasDesarrollo || []).map((f: string) => humanizar(f))
+          areasDesarrollo: (rawRes.areasDesarrollo || []).map((f: string) => humanizar(f)),
+          interpretacionPorFactor: Object.fromEntries(
+            Object.entries(rawRes.interpretacionPorFactor || {}).map(([k, v]) => [k, humanizar(v as string)])
+          ),
+          // BLINDAJE: Sobreescribimos lo que diga la IA con nuestra matemática fija
+          ajusteCargo: {
+            score: scoreFijo,
+            analisis: humanizar(rawRes.ajusteCargo?.analisis || rawRes.fundamentacion || '')
+          },
+          recomendacion: recomendacionFija
         }
 
         setInf(prev => ({
