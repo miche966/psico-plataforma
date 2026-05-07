@@ -472,14 +472,30 @@ function InformePageContent() {
       })
       const data = await res.json()
       
-      // La API devuelve el objeto directamente o bajo la clave 'informe'
-      const nuevoInforme = data.informe || data
+      const rawRes = data.informe || data
       
-      if (nuevoInforme && !data.error) {
+      if (rawRes && !data.error) {
+        // Humanizador de factores técnicos
+        const humanizar = (t: string) => {
+          if (!t || typeof t !== 'string') return t
+          let limpio = t
+          Object.entries(ETQ).forEach(([key, label]) => {
+            const regex = new RegExp(`\\b${key}\\b`, 'gi')
+            limpio = limpio.replace(regex, label)
+          })
+          return limpio
+        }
+
+        const nuevoInforme = {
+          ...rawRes,
+          fundamentacion: humanizar(rawRes.fundamentacion),
+          fortalezas: (rawRes.fortalezas || []).map((f: string) => humanizar(f)),
+          areasDesarrollo: (rawRes.areasDesarrollo || []).map((f: string) => humanizar(f))
+        }
+
         setInf(prev => ({
           ...prev,
           ...nuevoInforme,
-          // Preservamos las métricas de auditoría que la IA no debe sobrescribir
           alertasTab: prev.alertasTab,
           alertasCopia: prev.alertasCopia,
           confianza: prev.confianza,
