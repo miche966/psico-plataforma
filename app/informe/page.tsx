@@ -401,8 +401,10 @@ function InformePageContent() {
       val = Number(v) || 0
     }
 
-    // Inversión lógica para factores de error (Precisión)
-    if (key?.toLowerCase().includes('errores')) {
+    // Inversión lógica selectiva:
+    // - errores_texto: Mide errores cometidos (Menos es mejor -> Invertir)
+    // - errores_numeros: Mide errores detectados/hallazgos (Más es mejor -> No invertir)
+    if (key?.toLowerCase() === 'errores_texto') {
       val = Math.max(0, 5 - val)
     }
 
@@ -895,13 +897,13 @@ function InformePageContent() {
                 const normVal = Math.min(5.0, Math.max(0, parseVal(valor, factor)))
                 const clr = clrOf(normVal)
                 const fk = `${sesionId}_${factor.toLowerCase()}`
-                const descSugerida = `El candidato muestra un nivel de ${normVal.toFixed(1)}/5 en ${ETQ[factor.toLowerCase()] || factor}.`
+                const descSugerida = `El candidato muestra un nivel de ${Number(normVal.toFixed(1))}/5 en ${ETQ[factor.toLowerCase()] || factor}.`
 
                 return (
                   <div key={factor} style={s.factBlk}>
                     <div style={s.factRow}>
                       <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
-                      <span style={{ ...s.factLvl, color: clr }}>{normVal.toFixed(1)}/5</span>
+                      <span style={{ ...s.factLvl, color: clr }}>{Number(normVal.toFixed(1))}/5</span>
                     </div>
                     <div style={s.barBg}><div style={{ ...s.barFill, width: `${(normVal/5)*100}%`, background: clr }} /></div>
                     <textarea style={s.taFact} rows={4} value={inf.interpretacionPorFactor?.[fk] || descSugerida} onChange={(e) => updFactor(fk, e.target.value)} />
@@ -961,7 +963,7 @@ function InformePageContent() {
                 <div key={sesion.id} style={{ padding: '1.25rem' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                     <div style={{ background: '#f0f9ff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #bae6fd' }}>
-                      <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#0369a1' }}>{normVal.toFixed(1)}/5</div>
+                      <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#0369a1' }}>{Number(normVal.toFixed(1))}/5</div>
                       <div style={{ fontSize: '0.75rem', color: '#0369a1', textTransform: 'uppercase', fontWeight: '800' }}>Efectividad Cognitiva</div>
                     </div>
                     <div style={{ background: '#f0f9ff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #bae6fd' }}>
@@ -1011,7 +1013,10 @@ function InformePageContent() {
 
                     return (
                       <div key={factor} style={s.factBlk}>
-                        <div style={s.factRow}><span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span><span style={{...s.factLvl, color:'#0369a1'}}>{vNorm.toFixed(1)}/5</span></div>
+                        <div style={s.factRow}>
+                        <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
+                        <span style={{...s.factLvl, color:'#0369a1'}}>{Number(vNorm.toFixed(1))}/5</span>
+                      </div>
                         <div style={s.barBg}><div style={{...s.barFill, width:`${(vNorm/5)*100}%`, background:'#0369a1'}} /></div>
                         <textarea style={s.taFact} rows={4} value={inf.interpretacionPorFactor?.[fk] || descSugerida} onChange={(e) => updFactor(fk, e.target.value)} />
                       </div>
@@ -1091,7 +1096,7 @@ function InformePageContent() {
                   <div key={factor} style={s.factBlk}>
                     <div style={s.factRow}>
                       <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
-                      <span style={{...s.factLvl, color:clr}}>{normVal.toFixed(1)}/5</span>
+                      <span style={{...s.factLvl, color:clr}}>{Number(normVal.toFixed(1))}/5</span>
                     </div>
                     <div style={s.barBg}><div style={{...s.barFill, width:`${(normVal/5)*100}%`, background:clr}} /></div>
                     <textarea style={s.taFact} rows={4} value={inf.interpretacionPorFactor?.[fk] || descSugerida} onChange={(e) => updFactor(fk, e.target.value)} />
@@ -1111,10 +1116,7 @@ function InformePageContent() {
             </div>
             <div style={{ padding: '0 1.25rem' }}>
               {getFactoresUnicos(DOMINIOS.BIENESTAR).map(([factor, { valor, sesionId }]) => {
-                const numVal = parseVal(valor)
-                const max = (valor && typeof valor === 'object' && 'total' in valor) ? (Number(valor.total) || 5) : 5
-                const rawNorm = max > 0 ? Math.round((numVal / max) * 5 * 10) / 10 : 0
-                const normVal = isNaN(rawNorm) ? 0 : rawNorm
+                const normVal = parseVal(valor, factor)
                 const clr = clrOf(normVal)
                 const fk = `${sesionId}_${factor.toLowerCase()}`
 
@@ -1168,7 +1170,7 @@ function InformePageContent() {
                   <div key={factor} style={s.factBlk}>
                     <div style={s.factRow}>
                       <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
-                      <span style={{...s.factLvl, color:clr}}>{normVal.toFixed(1)}/5</span>
+                      <span style={{...s.factLvl, color:clr}}>{Number(normVal.toFixed(1))}/5</span>
                     </div>
                     <div style={s.barBg}><div style={{...s.barFill, width:`${(normVal/5)*100}%`, background:clr}} /></div>
                     <textarea style={s.taFact} rows={4} value={inf.interpretacionPorFactor?.[fk] || descSugerida} onChange={(e) => updFactor(fk, e.target.value)} />
