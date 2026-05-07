@@ -177,9 +177,14 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
               else if (str === 'medio') val = 3
               else if (str === 'bajo') val = 1.5
             }
-            // Aseguramos que el valor esté en escala 0-5
-            if (val > 5) val = 5
-            todosLosFactores[key] = val
+            // Aseguramos que el valor esté en escala 0-5 y no se desborde
+            let finalVal = val
+            if (finalVal > 5) {
+              // Si es muy alto (ej: 12.5 o 25), probablemente es una escala distinta, normalizamos
+              if (finalVal <= 25) finalVal = (finalVal / 25) * 5
+              else if (finalVal <= 100) finalVal = (finalVal / 100) * 5
+            }
+            todosLosFactores[key] = Math.min(5, finalVal)
           }
         })
       }
@@ -353,22 +358,61 @@ function InformePageContent() {
   }
 
   // Helpers de lógica
+  // --- GUARDIÁN DE DATOS (Saneamiento Global) ---
+  const sanitizarPuntajes = (datos: any): any => {
+    if (!datos) return datos
+    const nuevo = JSON.parse(JSON.stringify(datos))
+    
+    const limpiar = (obj: any) => {
+      if (!obj || typeof obj !== 'object') return
+      Object.entries(obj).forEach(([k, v]) => {
+        if (typeof v === 'number' && v > 5) {
+          if (v <= 25) obj[k] = Math.min(5, (v / 25) * 5)
+          else if (v <= 100) obj[k] = Math.min(5, (v / 100) * 5)
+          else obj[k] = 5
+        } else if (typeof v === 'object') {
+          limpiar(v)
+        }
+      })
+    }
+    
+    limpiar(nuevo)
+    return nuevo
+  }
+
   const parseVal = (v: any, key?: string) => {
+    let val = 0
     if (typeof v === 'object' && v !== null) {
       if (key?.toLowerCase() === 'metricas_fraude') {
         const alertas = (v.events?.length || 0) + (v.tabSwitches || 0) + (v.copyPasteAttempts || 0)
-        return Math.max(0, 5 - (alertas * 0.5))
+        val = Math.max(0, 5 - (alertas * 0.5))
+      } else if ('correctas' in v && 'total' in v) {
+        val = (Number(v.correctas) / (Number(v.total) || 1)) * 5
+      } else {
+        val = Number(v.correctas || v.score) || 0
       }
-      if ('correctas' in v && 'total' in v) return (Number(v.correctas) / (Number(v.total) || 1)) * 5
-      return Number(v.correctas || v.score) || 0
-    }
-    if (typeof v === 'string') {
+    } else if (typeof v === 'string') {
       const s = v.toLowerCase().trim()
-      if (s === 'alto') return 5
-      if (s === 'medio') return 3
-      if (s === 'bajo') return 1.5
+      if (s === 'alto') val = 5
+      else if (s === 'medio') val = 3
+      else if (s === 'bajo') val = 1.5
+      else val = Number(v) || 0
+    } else {
+      val = Number(v) || 0
     }
-    return Number(v) || 0
+
+    // Inversión lógica para factores de error (Precisión)
+    if (key?.toLowerCase().includes('errores')) {
+      val = Math.max(0, 5 - val)
+    }
+
+    // Normalización Final de Seguridad
+    if (val > 5) {
+      if (val <= 25) val = (val / 25) * 5
+      else if (val <= 100) val = (val / 100) * 5
+      else val = 5
+    }
+    return Math.min(5, Math.max(0, val))
   }
 
   const clrOf = (v: number) => {
@@ -499,7 +543,7 @@ function InformePageContent() {
             limpio = limpio.replace(regex, label)
           })
           
-          // Filtro de palabras rimbombantes y tecnicismos de tests
+          // Filtro de palabras rimbombantes y tecnicismos (humanización agresiva)
           const prohibidas: Record<string, string> = {
             'superior': 'destacado',
             'excelente': 'sólido',
@@ -507,16 +551,17 @@ function InformePageContent() {
             'maravilloso': 'positivo',
             'increíble': 'relevante',
             'magnífico': 'adecuado',
-            'DASS-21': 'los indicadores de equilibrio emocional',
-            'DASS21': 'los indicadores de equilibrio emocional',
-            'MBTI': 'el perfil conductual',
-            'ICAR': 'la capacidad cognitiva',
-            'SJT': 'el juicio situacional',
-            'discurso inferido': 'la comunicación observada',
-            'inferido': 'observado'
+            'decisiones objetiva': 'decisiones objetivas',
+            'DASS-21': 'equilibrio emocional',
+            'DASS21': 'equilibrio emocional',
+            'MBTI': 'perfil conductual',
+            'ICAR': 'capacidad cognitiva',
+            'SJT': 'juicio situacional',
+            'discurso inferido': 'comunicación observada'
           }
           Object.entries(prohibidas).forEach(([mal, bien]) => {
-            const regex = new RegExp(`\\b${mal}\\b`, 'gi')
+            // Regex más agresivo para capturar variaciones y puntuación
+            const regex = new RegExp(mal, 'gi')
             limpio = limpio.replace(regex, bien)
           })
           
@@ -818,12 +863,6 @@ function InformePageContent() {
 
             <div style={{ padding: '0 1.25rem' }}>
               {getFactoresUnicos(DOMINIOS.PERSONALIDAD).map(([factor, { valor, sesionId }]) => {
-                const numVal = parseVal(valor)
-                const max = (valor && typeof valor === 'object' && 'total' in valor) ? (Number(valor.total) || 5) : 5
-                const rawNorm = max > 0 ? Math.round((numVal / max) * 5 * 10) / 10 : 0
-                const normVal = isNaN(rawNorm) ? 0 : rawNorm
-                const clr = clrOf(normVal)
-                const fk = `${sesionId}_${factor.toLowerCase()}`
 
                 const narrativas: Record<string, any> = {
                   etica: {
@@ -853,14 +892,16 @@ function InformePageContent() {
                   }
                 };
 
-                const cat = normVal >= 4.5 ? 'alto' : normVal >= 3.0 ? 'medio' : 'bajo';
-                const descSugerida = narrativas[factor.toLowerCase()]?.[cat] || 'Muestra un perfil equilibrado acorde a las demandas profesionales.';
+                const normVal = Math.min(5.0, Math.max(0, parseVal(valor, factor)))
+                const clr = clrOf(normVal)
+                const fk = `${sesionId}_${factor.toLowerCase()}`
+                const descSugerida = `El candidato muestra un nivel de ${normVal.toFixed(1)}/5 en ${ETQ[factor.toLowerCase()] || factor}.`
 
                 return (
                   <div key={factor} style={s.factBlk}>
                     <div style={s.factRow}>
                       <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
-                      <span style={{ ...s.factLvl, color: clr }}>{normVal}/5</span>
+                      <span style={{ ...s.factLvl, color: clr }}>{normVal.toFixed(1)}/5</span>
                     </div>
                     <div style={s.barBg}><div style={{ ...s.barFill, width: `${(normVal/5)*100}%`, background: clr }} /></div>
                     <textarea style={s.taFact} rows={4} value={inf.interpretacionPorFactor?.[fk] || descSugerida} onChange={(e) => updFactor(fk, e.target.value)} />
@@ -920,7 +961,7 @@ function InformePageContent() {
                 <div key={sesion.id} style={{ padding: '1.25rem' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                     <div style={{ background: '#f0f9ff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #bae6fd' }}>
-                      <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#0369a1' }}>{normVal}/5</div>
+                      <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#0369a1' }}>{normVal.toFixed(1)}/5</div>
                       <div style={{ fontSize: '0.75rem', color: '#0369a1', textTransform: 'uppercase', fontWeight: '800' }}>Efectividad Cognitiva</div>
                     </div>
                     <div style={{ background: '#f0f9ff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #bae6fd' }}>
@@ -929,13 +970,7 @@ function InformePageContent() {
                     </div>
                   </div>
                   {getFactoresUnicos(DOMINIOS.COGNITIVO).filter(([k]) => !['correctas','total','score','percentil'].includes(k)).map(([factor, { valor, sesionId }]) => {
-                    const hasStructure = (valor && typeof valor === 'object' && 'correctas' in valor)
-                    let vNum = hasStructure ? valor.correctas : parseVal(valor, factor)
-                    let vMax = hasStructure ? (Number(valor.total) || 5) : 5
-                    
-                    // Eliminamos la inversión manual ya que parseVal maneja el fraude de forma nativa
-                    const rawNorm = Math.round((vNum / vMax) * 5 * 10) / 10
-                    const vNorm = isNaN(rawNorm) ? 0 : rawNorm
+                    const vNorm = parseVal(valor, factor)
                     const fk = `${sesionId}_${factor.toLowerCase()}`
                     
                     const narrativas: Record<string, any> = {
@@ -976,7 +1011,7 @@ function InformePageContent() {
 
                     return (
                       <div key={factor} style={s.factBlk}>
-                        <div style={s.factRow}><span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span><span style={{...s.factLvl, color:'#0369a1'}}>{vNorm}/5</span></div>
+                        <div style={s.factRow}><span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span><span style={{...s.factLvl, color:'#0369a1'}}>{vNorm.toFixed(1)}/5</span></div>
                         <div style={s.barBg}><div style={{...s.barFill, width:`${(vNorm/5)*100}%`, background:'#0369a1'}} /></div>
                         <textarea style={s.taFact} rows={4} value={inf.interpretacionPorFactor?.[fk] || descSugerida} onChange={(e) => updFactor(fk, e.target.value)} />
                       </div>
@@ -997,10 +1032,7 @@ function InformePageContent() {
             </div>
             <div style={{ padding: '0 1.25rem' }}>
               {getFactoresUnicos(DOMINIOS.COMPETENCIAS).map(([factor, { valor, sesionId }]) => {
-                const numVal = parseVal(valor)
-                const max = (valor && typeof valor === 'object' && 'total' in valor) ? (Number(valor.total) || 5) : 5
-                const rawNorm = max > 0 ? Math.round((numVal / max) * 5 * 10) / 10 : 0
-                const normVal = isNaN(rawNorm) ? 0 : rawNorm
+                const normVal = parseVal(valor, factor)
                 const clr = clrOf(normVal)
                 const fk = `${sesionId}_${factor.toLowerCase()}`
 
@@ -1057,7 +1089,10 @@ function InformePageContent() {
 
                 return (
                   <div key={factor} style={s.factBlk}>
-                    <div style={s.factRow}><span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span><span style={{...s.factLvl, color:clr}}>{normVal}/5</span></div>
+                    <div style={s.factRow}>
+                      <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
+                      <span style={{...s.factLvl, color:clr}}>{normVal.toFixed(1)}/5</span>
+                    </div>
                     <div style={s.barBg}><div style={{...s.barFill, width:`${(normVal/5)*100}%`, background:clr}} /></div>
                     <textarea style={s.taFact} rows={4} value={inf.interpretacionPorFactor?.[fk] || descSugerida} onChange={(e) => updFactor(fk, e.target.value)} />
                   </div>
@@ -1131,7 +1166,10 @@ function InformePageContent() {
 
                 return (
                   <div key={factor} style={s.factBlk}>
-                    <div style={s.factRow}><span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span><span style={{...s.factLvl, color:clr}}>{normVal}/5</span></div>
+                    <div style={s.factRow}>
+                      <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
+                      <span style={{...s.factLvl, color:clr}}>{normVal.toFixed(1)}/5</span>
+                    </div>
                     <div style={s.barBg}><div style={{...s.barFill, width:`${(normVal/5)*100}%`, background:clr}} /></div>
                     <textarea style={s.taFact} rows={4} value={inf.interpretacionPorFactor?.[fk] || descSugerida} onChange={(e) => updFactor(fk, e.target.value)} />
                   </div>
@@ -1167,6 +1205,11 @@ function InformePageContent() {
             <label style={s.commentLabel}>Nombre del Evaluador Responsable</label>
             <input style={{ ...s.ta, padding: '0.75rem' }} value={inf.nombreEvaluador} onChange={e => upd('nombreEvaluador', e.target.value)} />
           </div>
+        </div>
+        {/* ── PIE DE INFORME (AUDITORÍA) ────────────────────────────────── */}
+        <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: 0.5, fontSize: '0.7rem' }}>
+          <span>PsicoPlataforma © 2026 - Informe de Auditoría Rigurosa</span>
+          <span style={{ fontWeight: 'bold', color: '#0369a1' }}>ENGINE_V4.0_STABLE</span>
         </div>
       </div>
     </div>
