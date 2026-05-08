@@ -124,9 +124,9 @@ Instrucciones de Redacción:
    - "liderazgo", "adaptabilidad", "resiliencia": Puntuaciones de 0 a 100.
    - MÉTRICAS DE FRAUDE: Menciónalo sutilmente en 'oportunidadesMejora' si aplica.
    - RESULTADOS CLÍNICOS (DASS-21): Si aplica, incluye 'ALERTAS DE BIENESTAR'.
-`
 
 Devuelve EXCLUSIVAMENTE un JSON válido:
+`
 {
   "resumenEjecutivo": "...",
   "fortalezas": ["...", "..."],
