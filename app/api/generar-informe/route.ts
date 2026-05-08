@@ -126,7 +126,6 @@ Instrucciones de Redacción:
    - RESULTADOS CLÍNICOS (DASS-21): Si aplica, incluye 'ALERTAS DE BIENESTAR'.
 
 Devuelve EXCLUSIVAMENTE un JSON válido:
-`
 {
   "resumenEjecutivo": "...",
   "fortalezas": ["...", "..."],
