@@ -33,6 +33,7 @@ export default function CrearPreguntasPage() {
   const entrevistaId = searchParams.get('id')
 
   const [nombreNuevaEntrevista, setNombreNuevaEntrevista] = useState('')
+  const [editandoPreguntaId, setEditandoPreguntaId] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -52,6 +53,7 @@ export default function CrearPreguntasPage() {
       .eq('id', entrevistaId)
       .single()
     setEntrevista(entrevistaData)
+    if (entrevistaData) setNombreNuevaEntrevista(entrevistaData.nombre)
 
     const { data: preguntasData } = await supabase
       .from('preguntas_video')
@@ -77,26 +79,62 @@ export default function CrearPreguntasPage() {
     setGuardando(false)
   }
 
-  async function agregarPregunta() {
+  async function actualizarNombreEntrevista() {
+    if (!entrevistaId || !nombreNuevaEntrevista.trim()) return
+    setGuardando(true)
+    await supabase
+      .from('entrevistas_video')
+      .update({ nombre: nombreNuevaEntrevista.trim() })
+      .eq('id', entrevistaId)
+    setEntrevista(prev => prev ? { ...prev, nombre: nombreNuevaEntrevista.trim() } : null)
+    setGuardando(false)
+    alert('Nombre actualizado')
+  }
+
+  async function guardarPregunta() {
     if (!nuevaPregunta.trim() || !entrevistaId) return
     setGuardando(true)
-    const { error } = await supabase.from('preguntas_video').insert({
-      entrevista_id: entrevistaId,
-      orden: preguntas.length + 1,
-      pregunta: nuevaPregunta.trim(),
-      tiempo_preparacion: parseInt(tiempoPrep),
-      tiempo_respuesta: parseInt(tiempoResp)
-    })
-    if (!error) {
-      setNuevaPregunta('')
-      cargarDatos()
+
+    if (editandoPreguntaId) {
+      // Actualizar existente
+      await supabase.from('preguntas_video')
+        .update({
+          pregunta: nuevaPregunta.trim(),
+          tiempo_preparacion: parseInt(tiempoPrep),
+          tiempo_respuesta: parseInt(tiempoResp)
+        })
+        .eq('id', editandoPreguntaId)
+      setEditandoPreguntaId(null)
+    } else {
+      // Insertar nueva
+      await supabase.from('preguntas_video').insert({
+        entrevista_id: entrevistaId,
+        orden: preguntas.length + 1,
+        pregunta: nuevaPregunta.trim(),
+        tiempo_preparacion: parseInt(tiempoPrep),
+        tiempo_respuesta: parseInt(tiempoResp)
+      })
     }
+
+    setNuevaPregunta('')
+    setTiempoPrep('30')
+    setTiempoResp('60')
+    cargarDatos()
     setGuardando(false)
   }
 
   async function eliminarPregunta(id: string) {
+    if (!confirm('¿Eliminar esta pregunta?')) return
     await supabase.from('preguntas_video').delete().eq('id', id)
     cargarDatos()
+  }
+
+  function iniciarEdicion(p: Pregunta) {
+    setEditandoPreguntaId(p.id)
+    setNuevaPregunta(p.pregunta)
+    setTiempoPrep(p.tiempo_preparacion.toString())
+    setTiempoResp(p.tiempo_respuesta.toString())
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function copiarLink(candidatoId?: string) {
@@ -143,7 +181,15 @@ export default function CrearPreguntasPage() {
       <div style={s.encabezado}>
         <div>
           <a href="/entrevista-video" style={s.volver}>← Volver a entrevistas</a>
-          <h1 style={s.titulo}>{entrevista?.nombre}</h1>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <input 
+              style={{ ...s.titulo, border: 'none', background: 'none', borderBottom: '1px dashed #cbd5e1', outline: 'none', padding: '2px 0' }}
+              value={nombreNuevaEntrevista}
+              onChange={e => setNombreNuevaEntrevista(e.target.value)}
+              onBlur={actualizarNombreEntrevista}
+            />
+            <span style={{ fontSize: '10px', color: '#94a3b8' }}>(clic para renombrar)</span>
+          </div>
           <p style={s.subtitulo}>{preguntas.length} pregunta{preguntas.length !== 1 ? 's' : ''} configurada{preguntas.length !== 1 ? 's' : ''}</p>
         </div>
         <button
@@ -165,7 +211,7 @@ export default function CrearPreguntasPage() {
           ) : (
             <div style={s.listaPreguntas}>
               {preguntas.map((pregunta, index) => (
-                <div key={pregunta.id} style={s.preguntaCard}>
+                <div key={pregunta.id} style={{ ...s.preguntaCard, border: editandoPreguntaId === pregunta.id ? '1px solid #2563eb' : '1px solid #e2e8f0' }}>
                   <div style={s.preguntaNum}>{index + 1}</div>
                   <div style={s.preguntaContenido}>
                     <div style={s.preguntaTexto}>{pregunta.pregunta}</div>
@@ -173,12 +219,22 @@ export default function CrearPreguntasPage() {
                       Preparación: {pregunta.tiempo_preparacion}s · Respuesta: {pregunta.tiempo_respuesta}s
                     </div>
                   </div>
-                  <button
-                    style={s.botonEliminar}
-                    onClick={() => eliminarPregunta(pregunta.id)}
-                  >
-                    ✕
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      style={{ ...s.botonEliminar, color: '#64748b' }}
+                      onClick={() => iniciarEdicion(pregunta)}
+                      title="Editar pregunta"
+                    >
+                      ✎
+                    </button>
+                    <button
+                      style={s.botonEliminar}
+                      onClick={() => eliminarPregunta(pregunta.id)}
+                      title="Eliminar pregunta"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -186,7 +242,7 @@ export default function CrearPreguntasPage() {
         </div>
 
         <div>
-          <div style={s.seccionTitulo}>Agregar pregunta</div>
+          <div style={s.seccionTitulo}>{editandoPreguntaId ? 'Editando pregunta' : 'Agregar pregunta'}</div>
           <div style={s.formulario}>
             <div style={s.campo}>
               <label style={s.label}>Pregunta *</label>
@@ -194,7 +250,7 @@ export default function CrearPreguntasPage() {
                 style={{ ...s.input, minHeight: '100px', resize: 'vertical' as const }}
                 value={nuevaPregunta}
                 onChange={e => setNuevaPregunta(e.target.value)}
-                placeholder="Ej: Contanos sobre tu experiencia en atención al cliente y cómo manejaste una situación difícil."
+                placeholder="Ej: Contanos sobre tu experiencia en atención al cliente..."
               />
             </div>
             <div style={s.dosCols}>
@@ -216,13 +272,23 @@ export default function CrearPreguntasPage() {
                 </select>
               </div>
             </div>
-            <button
-              style={{ ...s.botonPrimario, width: '100%', opacity: guardando ? 0.7 : 1 }}
-              onClick={agregarPregunta}
-              disabled={guardando || !nuevaPregunta.trim()}
-            >
-              {guardando ? 'Guardando...' : '+ Agregar pregunta'}
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {editandoPreguntaId && (
+                <button
+                  style={{ ...s.botonPrimario, background: '#f1f5f9', color: '#475569', flex: 1 }}
+                  onClick={() => { setEditandoPreguntaId(null); setNuevaPregunta(''); }}
+                >
+                  Cancelar
+                </button>
+              )}
+              <button
+                style={{ ...s.botonPrimario, flex: 2, opacity: guardando ? 0.7 : 1 }}
+                onClick={guardarPregunta}
+                disabled={guardando || !nuevaPregunta.trim()}
+              >
+                {guardando ? 'Guardando...' : editandoPreguntaId ? 'Actualizar pregunta' : '+ Agregar pregunta'}
+              </button>
+            </div>
           </div>
 
           <div style={{ marginTop: '1rem' }}>
@@ -230,9 +296,6 @@ export default function CrearPreguntasPage() {
             <div style={s.linkBox}>
               <div style={s.linkTexto}>
                 {`${getBaseUrl()}/entrevista-video/responder?entrevista=${entrevistaId}`}
-              </div>
-              <div style={s.linkNota}>
-                Podés enviar este link directamente o ir a Candidatos para copiar un link personalizado por candidato.
               </div>
             </div>
           </div>
