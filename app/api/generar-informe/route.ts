@@ -119,10 +119,10 @@ Instrucciones de Redacción:
    - "recomendacion": "${dictamenFinal}"
    - "fundamentacion": Argumentación final que REFUERCE el dictamen de "${dictamenHumano}".
    - "interpretacionPorFactor": Una frase sencilla para cada factor.
-`
    - "liderazgo", "adaptabilidad", "resiliencia": Puntuaciones de 0 a 100.
    - MÉTRICAS DE FRAUDE: Menciónalo sutilmente en 'oportunidadesMejora' si aplica.
    - RESULTADOS CLÍNICOS (DASS-21): Si aplica, incluye 'ALERTAS DE BIENESTAR'.
+`
 
 Devuelve EXCLUSIVAMENTE un JSON válido:
 {
