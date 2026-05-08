@@ -133,7 +133,13 @@ export const InformePDF = ({ data }: any) => {
         return tid.includes('bienestar') || tid.includes('estres') || tid.includes('dass21');
       }),
       sesBF: filter(DOMINIOS.PERSONALIDAD),
-      sesCog: filter(DOMINIOS.COGNITIVO),
+      sesCog: sesiones.filter((s: any) => {
+        const tid = s.test_id?.toLowerCase() || ''
+        if (tid.includes('dass21') || tid.includes('estres')) return false
+        const pb = s.puntaje_bruto || {};
+        const keys = Object.keys(pb).map(k => k.toLowerCase());
+        return keys.some(k => DOMINIOS.COGNITIVO.includes(k)) || (pb.por_factor && Object.keys(pb.por_factor).some(k => DOMINIOS.COGNITIVO.includes(k.toLowerCase())));
+      }),
       sesComp: filter(DOMINIOS.COMPETENCIAS, 'sjt-'),
       sesBien: filter(DOMINIOS.BIENESTAR, 'bienestar') // Simplified for now
     };
@@ -281,12 +287,25 @@ export const InformePDF = ({ data }: any) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>V. Capacidad Analítica y Cognitiva</Text>
             {sesCog.length > 0 && (() => {
-              const sesion = [...sesCog].sort((a, b) => new Date(b.finalizada_en || 0).getTime() - new Date(a.finalizada_en || 0).getTime())[0];
-              const pb = sesion.puntaje_bruto || {};
-              const corr = Number(pb.correctas || 0);
-              const tot = Number(pb.total || 1);
-              const perc = Number(pb.percentil || 0);
-              const normVal = Math.round((corr / tot) * 5 * 10) / 10;
+              let sumaCorrectas = 0
+              let sumaTotal = 0
+              let sumaPercentil = 0
+              
+              sesCog.forEach((s: any) => {
+                const pb = s.puntaje_bruto || {};
+                const corr = Number(pb.correctas || 0);
+                const tot = Number(pb.total || 1);
+                let perc = Number(pb.percentil);
+                if (isNaN(perc) || !pb.hasOwnProperty('percentil')) {
+                  perc = Math.round((corr / tot) * 100);
+                }
+                sumaCorrectas += corr;
+                sumaTotal += tot;
+                sumaPercentil += perc;
+              });
+
+              const normVal = sumaTotal > 0 ? Math.round((sumaCorrectas / sumaTotal) * 5 * 10) / 10 : 0;
+              const perc = Math.round(sumaPercentil / sesCog.length);
               
               return (
                 <View>

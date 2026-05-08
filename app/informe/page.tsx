@@ -453,7 +453,11 @@ function InformePageContent() {
 
   const sesBF = sesiones.filter(s => s.puntaje_bruto && (Object.keys(s.puntaje_bruto).some(k => DOMINIOS.PERSONALIDAD.includes(k.toLowerCase())) || (s.puntaje_bruto.por_factor && Object.keys(s.puntaje_bruto.por_factor).some(k => DOMINIOS.PERSONALIDAD.includes(k.toLowerCase())))))
   const sesHX = sesiones.filter(s => s.test_id === 'hexaco') // HEXACO usually has a specific test_id but we can leave it for now or expand it
-  const sesCog = sesiones.filter(s => s.puntaje_bruto && (Object.keys(s.puntaje_bruto).some(k => DOMINIOS.COGNITIVO.includes(k.toLowerCase())) || (s.puntaje_bruto.por_factor && Object.keys(s.puntaje_bruto.por_factor).some(k => DOMINIOS.COGNITIVO.includes(k.toLowerCase())))))
+  const sesCog = sesiones.filter(s => {
+    const tid = s.test_id?.toLowerCase() || ''
+    if (tid.includes('dass21') || tid.includes('estres')) return false
+    return s.puntaje_bruto && (Object.keys(s.puntaje_bruto).some(k => DOMINIOS.COGNITIVO.includes(k.toLowerCase())) || (s.puntaje_bruto.por_factor && Object.keys(s.puntaje_bruto.por_factor).some(k => DOMINIOS.COGNITIVO.includes(k.toLowerCase()))))
+  })
   const sesComp = sesiones.filter(s => {
     const tid = s.test_id?.toLowerCase() || ''
     return tid.startsWith('sjt-') || (s.puntaje_bruto && (Object.keys(s.puntaje_bruto).some(k => DOMINIOS.COMPETENCIAS.includes(k.toLowerCase())) || (s.puntaje_bruto.por_factor && Object.keys(s.puntaje_bruto.por_factor).some(k => DOMINIOS.COMPETENCIAS.includes(k.toLowerCase())))))
@@ -958,13 +962,24 @@ function InformePageContent() {
               <span style={s.badge}>Métricas de Aptitud</span>
             </div>
             {sesCog.length > 0 && (() => {
-              const sesion = sesCog[0] // Usar la más reciente para métricas generales
-              const { correctas, total, percentil } = cogData(sesion.puntaje_bruto)
-              const rawNorm = total > 0 ? Math.round((correctas / total) * 5 * 10) / 10 : 0
-              const normVal = isNaN(rawNorm) ? 0 : rawNorm
+              // Calculamos el promedio de todos los tests cognitivos/aptitud
+              let sumaCorrectas = 0
+              let sumaTotal = 0
+              let sumaPercentil = 0
+              
+              sesCog.forEach(s => {
+                const { correctas, total, percentil } = cogData(s.puntaje_bruto)
+                sumaCorrectas += correctas
+                sumaTotal += total
+                sumaPercentil += percentil
+              })
+
+              const normVal = sumaTotal > 0 ? Math.round((sumaCorrectas / sumaTotal) * 5 * 10) / 10 : 0
+              const percentil = Math.round(sumaPercentil / sesCog.length)
               const nivel = nivelPercentil(percentil)
+              
               return (
-                <div key={sesion.id} style={{ padding: '1.25rem' }}>
+                <div key="cog-agregado" style={{ padding: '1.25rem' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                     <div style={{ background: '#f0f9ff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #bae6fd' }}>
                       <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#0369a1' }}>{Number(normVal.toFixed(1))}/5</div>
