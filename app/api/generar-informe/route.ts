@@ -43,33 +43,30 @@ export async function POST(req: Request) {
     })
 
     const prompt = `
-Actúa como un Psicólogo Laboral Senior y Evaluador de Talento B2B de élite.
-Tu tarea es analizar los resultados de las evaluaciones y las transcripciones de video de un candidato. 
+Actúa como un Líder de Talento con mucha experiencia, alguien que sabe leer a las personas y lo explica de forma sencilla, cercana y humana.
+Tu tarea es analizar los resultados de las evaluaciones y las transcripciones de video de un candidato.
 
 ${datosCandidato}
 ${resultados}
 
-Instrucciones para un informe de CONSULTORÍA DE ÉLITE:
-1. TONO Y ESTILO: Usa un lenguaje PROFESIONAL, SOBRIO y SUTIL. Evita cualquier rastro de lenguaje publicitario o exagerado.
-2. ELIMINACIÓN DE MAXIMALISMOS: No uses palabras que impliquen perfección o extremos.
-3. ENFOQUE HUMANO-CONSULTOR: Escribe como si fueras un socio senior explicando a otro socio los matices del candidato.
-4. ANÁLISIS DEL DISCURSO (CRÍTICO): Analiza la calidad narrativa en las transcripciones. Evalúa:
-   - Coherencia y estructura de las ideas.
-   - Vocabulario (¿Es técnico, es limitado, es adecuado para el nivel jerárquico?).
-   - Seguridad y fluidez (deducida por la estructura de las frases).
-   - Capacidad de síntesis vs. dispersión.
-5. ESTRUCTURA Y CONTENIDO:
-   - "resumenEjecutivo": 2 párrafos integrativos. Debe incluir un análisis del DISCURSO del candidato como evidencia de su profesionalismo.
-   - "fortalezas": 3-4 puntos destacados con sobriedad. Incluye al menos una fortaleza comunicacional o discursiva.
-   - "oportunidadesMejora": 2-3 áreas de riesgo redactadas con elegancia técnica.
-   - "ajusteCargo": Puntuación (0-100) y análisis del encaje riesgo-beneficio basado en evidencias.
-   - "comentarioPersonalidad": Propensiones conductuales y estilo relacional.
-   - "comentarioCognitivo": Procesamiento de información y agilidad mental.
-   - "comentarioCompetencias": Efectividad operativa y juicio profesional.
+Instrucciones de Redacción (CRÍTICAS):
+1. TONO HUMANO Y CERCANO: Escribe de forma natural, como si me estuvieras contando sobre el candidato en un café. Evita sonar como un informe técnico o una IA.
+2. SIN TERMINOLOGÍA TÉCNICA: Prohibido usar palabras como "neuroticismo", "extraversión", "apertura", "mbti", "percentiles" o nombres de tests específicos (DASS-21, etc.). Traduce todo a lenguaje común (ej: "su forma de relacionarse", "cómo maneja el estrés", "su capacidad de aprendizaje").
+3. CERO MAXIMALISMOS: No uses palabras exageradas como "excepcional", "extraordinario", "perfecto", "impecable" o "insuperable". Usa términos realistas y matizados como "buen desempeño", "adecuado", "fluido", "consistente".
+4. ANÁLISIS DEL DISCURSO: Fíjate en cómo habla en el video. ¿Es claro al expresarse? ¿Se nota seguro? ¿Tiene un vocabulario acorde al puesto? Cuéntamelo con palabras simples.
+5. ENFOQUE EN MATICES: No busques la perfección. Busca entender qué es lo que mejor hace y dónde podría tener dificultades, explicándolo con empatía.
+6. ESTRUCTURA:
+   - "resumenEjecutivo": 2 párrafos cortos y directos que me digan quién es esta persona.
+   - "fortalezas": 3 puntos claros en lenguaje cotidiano.
+   - "oportunidadesMejora": 2 puntos de cuidado explicados con sutileza y realismo.
+   - "ajusteCargo": Puntuación (0-100) y un comentario breve de por qué encaja o no.
+   - "comentarioPersonalidad": Cómo es su carácter y forma de ser.
+   - "comentarioCognitivo": Cómo piensa y resuelve problemas en el día a día.
+   - "comentarioCompetencias": Qué tan efectivo es trabajando.
    - "recomendacion": "recomendado", "con_reservas" o "no_recomendado".
-   - "fundamentacion": Argumentación técnica final. Debe ser comedida y equilibrada e integrar la evidencia del discurso en video.
-   - "ajusteMbti": Análisis tipológico matizado.
-   - "interpretacionPorFactor": Objeto que DEBE contener una descripción técnica de una frase para CADA factor recibido en los resultados (ej: "normas", "honestidad", "promedio_general", etc.). No omitas ninguno.
+   - "fundamentacion": El porqué final de tu decisión, explicado de forma clara y sin vueltas.
+   - "ajusteMbti": No menciones letras (como ENFJ). Explica su estilo de personalidad de forma descriptiva.
+   - "interpretacionPorFactor": Objeto con una frase CERCANA para cada factor recibido.
    - "liderazgo", "adaptabilidad", "resiliencia": Puntuaciones de 0 a 100.
    - MÉTRICAS DE FRAUDE: Menciónalo sutilmente en 'oportunidadesMejora' si aplica.
    - RESULTADOS CLÍNICOS (DASS-21): Si aplica, incluye 'ALERTAS DE BIENESTAR'.
