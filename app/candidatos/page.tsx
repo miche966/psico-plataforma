@@ -11,6 +11,10 @@ interface Candidato {
   apellido: string
   email: string
   documento: string
+  edad?: number
+  sexo?: string
+  formacion?: string
+  profesion?: string
   creado_en: string
 }
 
@@ -23,10 +27,14 @@ export default function CandidatosPage() {
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'completado' | 'incompleto' | 'pendiente'>('todos')
   const [sesionesCount, setSesionesCount] = useState<Record<string, number>>({})
   const [form, setForm] = useState({
-    nombre: '',
-    apellido: '',
+    nombres: '',
+    apellidos: '',
     email: '',
-    documento: ''
+    documento: '',
+    edad: '',
+    sexo: '',
+    formacion: '',
+    profesion: ''
   })
   const [guardando, setGuardando] = useState(false)
   const [nivelIcar, setNivelIcar] = useState('3')
@@ -63,17 +71,21 @@ export default function CandidatosPage() {
   }
 
   async function guardarCandidato() {
-    if (!form.nombre || !form.apellido || !form.email) return
+    if (!form.nombres || !form.apellidos || !form.email || !form.documento) return
 
     setGuardando(true)
 
     const { error } = await supabase
       .from('candidatos')
       .insert({
-        nombre: form.nombre,
-        apellido: form.apellido,
+        nombre: form.nombres,
+        apellido: form.apellidos,
         email: form.email,
-        documento: form.documento
+        documento: form.documento,
+        edad: parseInt(form.edad) || null,
+        sexo: form.sexo,
+        formacion: form.formacion,
+        profesion: form.profesion
       })
 
     if (error) {
@@ -82,7 +94,7 @@ export default function CandidatosPage() {
       return
     }
 
-    setForm({ nombre: '', apellido: '', email: '', documento: '' })
+    setForm({ nombres: '', apellidos: '', email: '', documento: '', edad: '', sexo: '', formacion: '', profesion: '' })
     setMostrarForm(false)
     setGuardando(false)
     cargarCandidatos()
@@ -177,23 +189,32 @@ export default function CandidatosPage() {
       {mostrarForm && (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-8 shadow-sm">
           <h2 className="text-lg font-bold text-slate-900 mb-6">Agregar nuevo candidato</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">Nombre *</label>
+              <label className="text-sm font-medium text-slate-700">Nombres *</label>
               <input
                 className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                value={form.nombre}
-                onChange={e => setForm({ ...form, nombre: e.target.value })}
+                value={form.nombres}
+                onChange={e => setForm({ ...form, nombres: e.target.value })}
                 placeholder="Juan"
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">Apellido *</label>
+              <label className="text-sm font-medium text-slate-700">Apellidos *</label>
               <input
                 className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                value={form.apellido}
-                onChange={e => setForm({ ...form, apellido: e.target.value })}
+                value={form.apellidos}
+                onChange={e => setForm({ ...form, apellidos: e.target.value })}
                 placeholder="Pérez"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-slate-700">Documento *</label>
+              <input
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                value={form.documento}
+                onChange={e => setForm({ ...form, documento: e.target.value })}
+                placeholder="12345678"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -207,12 +228,44 @@ export default function CandidatosPage() {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">Documento</label>
+              <label className="text-sm font-medium text-slate-700">Edad</label>
+              <input
+                type="number"
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                value={form.edad}
+                onChange={e => setForm({ ...form, edad: e.target.value })}
+                placeholder="25"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-slate-700">Sexo</label>
+              <select
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                value={form.sexo}
+                onChange={e => setForm({ ...form, sexo: e.target.value })}
+              >
+                <option value="">Selecciona...</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Femenino">Femenino</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-slate-700">Formación</label>
               <input
                 className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                value={form.documento}
-                onChange={e => setForm({ ...form, documento: e.target.value })}
-                placeholder="12345678"
+                value={form.formacion}
+                onChange={e => setForm({ ...form, formacion: e.target.value })}
+                placeholder="Ej: Licenciatura"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-slate-700">Profesión</label>
+              <input
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                value={form.profesion}
+                onChange={e => setForm({ ...form, profesion: e.target.value })}
+                placeholder="Ej: Contador"
               />
             </div>
           </div>
@@ -301,6 +354,11 @@ export default function CandidatosPage() {
                         </span>
                       </div>
                       <div className="text-xs text-slate-500 mt-0.5">{candidato.email}</div>
+                      <div className="flex gap-2 mt-1">
+                        {candidato.edad && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">{candidato.edad} años</span>}
+                        {candidato.sexo && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">{candidato.sexo}</span>}
+                        {candidato.profesion && <span className="text-[10px] bg-indigo-50 px-1.5 py-0.5 rounded text-indigo-600">{candidato.profesion}</span>}
+                      </div>
                       <div className="text-[10px] text-slate-400 mt-1">Registrado el {formatearFecha(candidato.creado_en)} • {(sesionesCount[candidato.id] || 0)} tests realizados</div>
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-600">

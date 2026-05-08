@@ -19,10 +19,14 @@ export default function UnirsePage() {
   const [error, setError] = useState<string | null>(null)
   
   const [form, setForm] = useState({
-    nombre: '',
-    apellido: '',
+    nombres: '',
+    apellidos: '',
     email: '',
     documento: '',
+    edad: '',
+    sexo: '',
+    formacion: '',
+    profesion: '',
     procesoId: ''
   })
 
@@ -50,7 +54,7 @@ export default function UnirsePage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.nombre || !form.apellido || !form.email || !form.procesoId) {
+    if (!form.nombres || !form.apellidos || !form.email || !form.documento || !form.procesoId || !form.edad || !form.sexo) {
       setError('Por favor, completa todos los campos obligatorios.')
       return
     }
@@ -63,10 +67,14 @@ export default function UnirsePage() {
       const { data: candidato, error: candError } = await supabase
         .from('candidatos')
         .insert({
-          nombre: form.nombre,
-          apellido: form.apellido,
+          nombre: form.nombres,
+          apellido: form.apellidos,
           email: form.email,
-          documento: form.documento
+          documento: form.documento,
+          edad: parseInt(form.edad),
+          sexo: form.sexo,
+          formacion: form.formacion,
+          profesion: form.profesion
         })
         .select()
         .single()
@@ -80,7 +88,7 @@ export default function UnirsePage() {
     } catch (err: any) {
       console.error('Error en registro:', err)
       if (err.code === '23505') {
-        setError('Este correo electrónico ya está registrado para una evaluación.')
+        setError('Este correo electrónico o documento ya está registrado para una evaluación.')
       } else {
         setError('Hubo un problema al procesar tu registro. Por favor, intenta de nuevo.')
       }
@@ -139,47 +147,106 @@ export default function UnirsePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Nombre *</label>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Nombres *</label>
                 <input
                   required
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
-                  value={form.nombre}
-                  onChange={e => setForm({ ...form, nombre: e.target.value })}
+                  value={form.nombres}
+                  onChange={e => setForm({ ...form, nombres: e.target.value })}
                   placeholder="Ej: Franco"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Apellido *</label>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Apellidos *</label>
                 <input
                   required
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
-                  value={form.apellido}
-                  onChange={e => setForm({ ...form, apellido: e.target.value })}
+                  value={form.apellidos}
+                  onChange={e => setForm({ ...form, apellidos: e.target.value })}
                   placeholder="Ej: Rodríguez"
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Correo Electrónico *</label>
-              <input
-                required
-                type="email"
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
-                value={form.email}
-                onChange={e => setForm({ ...form, email: e.target.value })}
-                placeholder="ejemplo@correo.com"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Edad *</label>
+                <input
+                  required
+                  type="number"
+                  min="18"
+                  max="99"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
+                  value={form.edad}
+                  onChange={e => setForm({ ...form, edad: e.target.value })}
+                  placeholder="Ej: 25"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Sexo *</label>
+                <div className="relative">
+                  <select
+                    required
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                    value={form.sexo}
+                    onChange={e => setForm({ ...form, sexo: e.target.value })}
+                  >
+                    <option value="">Selecciona...</option>
+                    <option value="Masculino">Masculino</option>
+                    <option value="Femenino">Femenino</option>
+                    <option value="Otro">Otro / No binario</option>
+                    <option value="Prefiero no decirlo">Prefiero no decirlo</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+                    <ChevronRight className="w-4 h-4 rotate-90" />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Documento de Identidad (Opcional)</label>
-              <input
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
-                value={form.documento}
-                onChange={e => setForm({ ...form, documento: e.target.value })}
-                placeholder="DNI / Cédula"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Correo Electrónico *</label>
+                <input
+                  required
+                  type="email"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
+                  value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
+                  placeholder="ejemplo@correo.com"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Documento de Identidad *</label>
+                <input
+                  required
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
+                  value={form.documento}
+                  onChange={e => setForm({ ...form, documento: e.target.value })}
+                  placeholder="DNI / Cédula"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Formación Académica</label>
+                <input
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
+                  value={form.formacion}
+                  onChange={e => setForm({ ...form, formacion: e.target.value })}
+                  placeholder="Ej: Lic. en Psicología"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Profesión / Trabajo Actual</label>
+                <input
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
+                  value={form.profesion}
+                  onChange={e => setForm({ ...form, profesion: e.target.value })}
+                  placeholder="Ej: Reclutador IT"
+                />
+              </div>
             </div>
 
             <div className="space-y-1.5">

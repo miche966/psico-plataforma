@@ -702,6 +702,8 @@ function InformePageContent() {
           <div style={s.grid}>
             <div style={s.item}><span style={s.label}>Nombre Completo</span><div style={s.value}>{candidato.nombre} {candidato.apellido}</div></div>
             <div style={s.item}><span style={s.label}>Documento</span><div style={s.value}>{candidato.documento || 'No provisto'}</div></div>
+            <div style={s.item}><span style={s.label}>Edad</span><div style={s.value}>{candidato.edad || '—'} años</div></div>
+            <div style={s.item}><span style={s.label}>Sexo</span><div style={s.value}>{candidato.sexo || '—'}</div></div>
             <div style={s.item}><span style={s.label}>Email</span><div style={s.value}>{candidato.email}</div></div>
             {proceso && (
               <>
@@ -709,6 +711,8 @@ function InformePageContent() {
                 <div style={s.item}><span style={s.label}>Cargo</span><div style={s.value}>{proceso.cargo}</div></div>
               </>
             )}
+            <div style={s.item}><span style={s.label}>Formación</span><div style={s.value}>{candidato.formacion || '—'}</div></div>
+            <div style={s.item}><span style={s.label}>Profesión</span><div style={s.value}>{candidato.profesion || '—'}</div></div>
           </div>
         </div>
         {/* ── 2. DIAGNÓSTICO ESTRATÉGICO ────────────────────────────────────── */}
