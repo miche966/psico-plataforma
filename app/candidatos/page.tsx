@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import AppLayout from '@/components/AppLayout'
-import { Plus, Check, Copy, FileText, Search, UserPlus } from 'lucide-react'
+import { Plus, Check, Copy, FileText, Search, UserPlus, RotateCcw } from 'lucide-react'
 
 interface Candidato {
   id: string
@@ -26,6 +26,7 @@ export default function CandidatosPage() {
   const [filtro, setFiltro] = useState('')
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'completado' | 'incompleto' | 'pendiente'>('todos')
   const [sesionesCount, setSesionesCount] = useState<Record<string, number>>({})
+  const [reseteando, setReseteando] = useState<string | null>(null)
   const [form, setForm] = useState({
     nombres: '',
     apellidos: '',
@@ -55,7 +56,6 @@ export default function CandidatosPage() {
       return
     }
 
-    // Cargar conteo de sesiones para cada candidato
     const { data: sData } = await supabase
       .from('sesiones')
       .select('candidato_id')
@@ -68,6 +68,30 @@ export default function CandidatosPage() {
     setSesionesCount(counts)
     setCandidatos(data || [])
     setCargando(false)
+  }
+
+  async function resetearSesiones(candidatoId: string, nombre: string) {
+    if (!confirm(`¿Quieres habilitar a ${nombre} para que pueda continuar sus respuestas? \n\nEsto reseteará el estado de sus evaluaciones finalizadas a 'en progreso'.`)) {
+      return
+    }
+
+    setReseteando(candidatoId)
+    try {
+      const { error } = await supabase
+        .from('sesiones')
+        .update({ 
+          estado: 'en_progreso',
+          finalizada_en: null
+        })
+        .eq('candidato_id', candidatoId)
+      
+      if (error) throw error
+      alert(`Sesiones de ${nombre} habilitadas con éxito. Ya puede volver a entrar al link.`)
+    } catch (err: any) {
+      alert('Error al resetear: ' + err.message)
+    } finally {
+      setReseteando(null)
+    }
   }
 
   async function guardarCandidato() {
@@ -428,7 +452,19 @@ export default function CandidatosPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-right">
+                    <td className="px-5 py-4 text-right flex justify-end gap-2">
+                      <button
+                        onClick={() => resetearSesiones(candidato.id, `${candidato.nombre} ${candidato.apellido}`)}
+                        disabled={reseteando === candidato.id || (sesionesCount[candidato.id] || 0) === 0}
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
+                          (sesionesCount[candidato.id] || 0) === 0 
+                            ? 'bg-slate-50 text-slate-300 cursor-not-allowed' 
+                            : 'bg-amber-50 text-amber-600 hover:bg-amber-100 hover:text-amber-700'
+                        }`}
+                        title="Habilitar para continuar (Resetear sesión)"
+                      >
+                        <RotateCcw className={`w-4 h-4 ${reseteando === candidato.id ? 'animate-spin' : ''}`} />
+                      </button>
                       <a
                         href={`/informe?candidato=${candidato.id}`}
                         target="_blank"
