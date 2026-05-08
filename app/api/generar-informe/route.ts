@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     // Preparar el prompt con toda la información disponible
     let datosCandidato = `Candidato: ${candidato.nombre} ${candidato.apellido}\n`
@@ -25,20 +25,22 @@ export async function POST(req: Request) {
       }
     }
 
-    let resultados = '--- RESULTADOS DE LAS EVALUACIONES ---\n'
+    let resultados = '--- RESULTADOS CLAVE ---\n'
     sesiones.forEach((s: any, idx: number) => {
-      resultados += `\nEvaluación #${idx + 1} (Test ID: ${s.test_id || 'Psicométrico'}):\n`
-      // Aplanamos datos para que la IA los vea bien
+      if (s.estado !== 'finalizado') return;
+      resultados += `\nPrueba: ${s.test_id?.split('-')[0] || 'Aptitud'}\n`
       const data = (s.puntaje_bruto?.por_factor as Record<string, any>) || s.puntaje_bruto || {};
       Object.entries(data).forEach(([key, val]) => {
-        if (typeof val === 'object' && val !== null && 'correctas' in val) {
-          resultados += `- ${key}: ${(val as any).correctas}/${(val as any).total || 5}\n`
-        } else {
-          resultados += `- ${key}: ${val}\n`
+        // Solo enviamos lo importante para ahorrar tiempo de procesamiento
+        if (['total', 'porcentaje', 'nivel_maximo', 'metricas_fraude'].includes(key.toLowerCase())) return;
+        if (typeof val === 'number') {
+          resultados += `- ${key}: ${val}/5\n`
+        } else if (typeof val === 'object' && val !== null && 'correctas' in val) {
+          resultados += `- ${key}: ${val.correctas}/${val.total || 5}\n`
         }
       })
       if (s.transcripcion) {
-        resultados += `Transcripción de Video: "${s.transcripcion}"\n`
+        resultados += `Discurso: "${s.transcripcion.slice(0, 500)}..."\n` // Recortar si es muy larga
       }
     })
 

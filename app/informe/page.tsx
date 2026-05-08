@@ -534,6 +534,11 @@ function InformePageContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidato, proceso, sesiones, videos, actual: inf })
       })
+
+      if (!res.ok) {
+        throw new Error(`Servidor Vercel respondió con código ${res.status}. Esto suele ser un Timeout (10s) o un error de configuración.`);
+      }
+
       const data = await res.json()
       
       const rawRes = data.informe || data
@@ -610,9 +615,9 @@ function InformePageContent() {
       } else if (data.error) {
         alert('Error IA: ' + data.error)
       }
-    } catch (e) {
-      console.error(e)
-      alert('Error de conexión con el motor de IA')
+    } catch (err: any) {
+      console.error(err)
+      alert(`Error de conexión: ${err.message || 'Error desconocido'}. Revisa la consola para más detalles.`)
     } finally {
       setGenerating(false)
     }
