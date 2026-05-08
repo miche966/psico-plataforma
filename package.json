@@ -10,6 +10,8 @@
     "prepare": "husky install"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1045.0",
+    "@aws-sdk/lib-storage": "^3.1045.0",
     "@google/genai": "^1.50.1",
     "@google/generative-ai": "^0.24.1",
     "@react-pdf/renderer": "^4.5.1",

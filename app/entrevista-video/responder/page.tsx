@@ -133,16 +133,46 @@ export default function ResponderPage() {
     const blob = new Blob(chunksRef.current, { type: 'video/webm' })
     const fileName = `${entrevistaId}/${candidatoId || 'anonimo'}/${preguntas[preguntaActual].id}_${Date.now()}.webm`
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('videos-entrevista')
-      .upload(fileName, blob, { contentType: 'video/webm' })
-
     let urlVideo = null
-    if (!uploadError && uploadData) {
-      const { data: urlData } = supabase.storage
-        .from('videos-entrevista')
-        .getPublicUrl(fileName)
-      urlVideo = urlData.publicUrl
+
+    try {
+      // 1. Obtener URL firmada de Cloudflare R2
+      const resPresigned = await fetch('/api/r2-presigned', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName, contentType: 'video/webm' })
+      })
+      
+      const { signedUrl, publicUrl, error: r2Error } = await resPresigned.json()
+
+      if (signedUrl) {
+        // 2. Subir directamente a R2
+        const uploadRes = await fetch(signedUrl, {
+          method: 'PUT',
+          body: blob,
+          headers: { 'Content-Type': 'video/webm' }
+        })
+
+        if (uploadRes.ok) {
+          urlVideo = publicUrl
+        }
+      }
+
+      // Si R2 falla o no está configurado, intentar Supabase como respaldo (opcional)
+      if (!urlVideo) {
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('videos-entrevista')
+          .upload(fileName, blob, { contentType: 'video/webm' })
+
+        if (!uploadError && uploadData) {
+          const { data: urlData } = supabase.storage
+            .from('videos-entrevista')
+            .getPublicUrl(fileName)
+          urlVideo = urlData.publicUrl
+        }
+      }
+    } catch (err) {
+      console.error("Error en subida R2/Supabase:", err)
     }
 
     const { data: insertData, error: insertError } = await supabase.from('respuestas_video').insert({
