@@ -147,20 +147,21 @@ Devuelve EXCLUSIVAMENTE un JSON válido:
     console.log(`[AUDITORÍA IA] Iniciando generación para: ${candidato.nombre} ${candidato.apellido}`)
     console.log(`[AUDITORÍA IA] Factores enviados:`, sesiones.map((s: any) => Object.keys(s.puntaje_bruto?.por_factor || s.puntaje_bruto || {})).flat())
 
-    const result = await model.generateContent(prompt)
-    const text = result.response.text()
-    
-    // Log de la respuesta cruda para detectar truncamientos o errores de formato
-    console.log(`[AUDITORÍA IA] Respuesta cruda recibida (primeros 500 chars):`, text.slice(0, 500))
-
-    const jsonStr = text.replace(/```json|```/g, '').trim()
     let resultado: any;
-    
     try {
+      console.log(`[IA] Enviando prompt (${prompt.length} caracteres)...`)
+      const result = await model.generateContent(prompt)
+      const response = await result.response
+      const text = response.text()
+      
+      console.log(`[IA] Respuesta recibida (${text.length} caracteres)`)
+
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      const jsonStr = jsonMatch ? jsonMatch[0] : text
       resultado = JSON.parse(jsonStr)
-    } catch (parseError: any) {
-      console.error(`[CRÍTICO] Error de parseo JSON de la IA. Contenido:`, jsonStr)
-      throw new Error(`La IA devolvió un formato inválido: ${parseError.message}`)
+    } catch (error: any) {
+      console.error('[IA] Error en llamada a la API o parseo:', error)
+      throw new Error(`Error en la generación por IA: ${error.message}`)
     }
 
     // Validación de Integridad: ¿Están todos los factores?
