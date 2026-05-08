@@ -42,6 +42,57 @@ export async function POST(req: Request) {
       }
     })
 
+    // --- LÓGICA DE BLINDAJE MATEMÁTICO (Sincronización con el UI) ---
+    const DOMINIOS_PROF = ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura', 'honestidad_humildad', 'honestidad', 'normas', 'promedio_general', 'etica', 'negociacion', 'manejo_emocional', 'tolerancia_frustracion', 'comunicacion', 'liderazgo', 'trabajo_equipo', 'adaptabilidad', 'resolucion_problemas', 'correctas', 'score', 'documentos', 'comparacion', 'concentracion', 'errores_texto', 'errores_numeros'];
+    
+    let scoreMatematico = 0;
+    const reqs = proceso?.competencias_requeridas || [];
+    
+    if (reqs.length === 0) {
+      const factores: number[] = [];
+      sesiones.forEach((s: any) => {
+        const scan = (obj: any) => {
+          if (!obj || typeof obj !== 'object') return;
+          Object.entries(obj).forEach(([k, v]) => {
+            const key = k.toLowerCase();
+            if (DOMINIOS_PROF.includes(key)) {
+              let val = 0;
+              if (typeof v === 'object' && v !== null && 'correctas' in v) val = (v.correctas / (v.total || 1)) * 5;
+              else if (typeof v === 'number') val = v;
+              if (val > 5) val = (val <= 100) ? (val / 100) * 5 : 5;
+              factores.push(val);
+            }
+            if (key === 'por_factor') scan(v);
+          });
+        };
+        scan(s.puntaje_bruto);
+      });
+      if (factores.length > 0) {
+        const avg = factores.reduce((a, b) => a + b, 0) / factores.length;
+        scoreMatematico = Math.round((avg / 5) * 100);
+      }
+    } else {
+      const pcts: number[] = [];
+      reqs.forEach((r: any) => {
+        let valCand = 0;
+        sesiones.forEach((s: any) => {
+          const buscar = (obj: any) => {
+            if (!obj || typeof obj !== 'object') return;
+            Object.entries(obj).forEach(([f, v]: any) => {
+              if (f.toLowerCase() === r.competencia.toLowerCase()) valCand = (v?.correctas ? (v.correctas/v.total)*5 : v) || 0;
+              if (f === 'por_factor') buscar(v);
+            });
+          };
+          buscar(s.puntaje_bruto);
+        });
+        pcts.push(Math.min(100, Math.round((valCand / r.nivel) * 100)));
+      });
+      scoreMatematico = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
+    }
+
+    const dictamenFinal = scoreMatematico >= 85 ? 'recomendado' : scoreMatematico >= 70 ? 'con_reservas' : 'no_recommended';
+    const dictamenHumano = dictamenFinal === 'recomendado' ? 'RECOMENDADO' : dictamenFinal === 'con_reservas' ? 'RECOMENDADO CON RESERVAS' : 'NO RECOMENDADO';
+
     const prompt = `
 Actúa como un Líder de Talento con mucha experiencia, alguien que sabe leer a las personas y lo explica de forma sencilla, cercana y humana.
 Tu tarea es analizar los resultados de las evaluaciones y las transcripciones de video de un candidato.
@@ -49,24 +100,26 @@ Tu tarea es analizar los resultados de las evaluaciones y las transcripciones de
 ${datosCandidato}
 ${resultados}
 
-Instrucciones de Redacción (CRÍTICAS):
-1. TONO HUMANO Y CERCANO: Escribe de forma natural, como si me estuvieras contando sobre el candidato en un café. Evita sonar como un informe técnico o una IA.
-2. SIN TERMINOLOGÍA TÉCNICA: Prohibido usar palabras como "neuroticismo", "extraversión", "apertura", "mbti", "percentiles" o nombres de tests específicos (DASS-21, etc.). Traduce todo a lenguaje común (ej: "su forma de relacionarse", "cómo maneja el estrés", "su capacidad de aprendizaje").
-3. CERO MAXIMALISMOS: No uses palabras exageradas como "excepcional", "extraordinario", "perfecto", "impecable" o "insuperable". Usa términos realistas y matizados como "buen desempeño", "adecuado", "fluido", "consistente".
-4. ANÁLISIS DEL DISCURSO: Fíjate en cómo habla en el video. ¿Es claro al expresarse? ¿Se nota seguro? ¿Tiene un vocabulario acorde al puesto? Cuéntamelo con palabras simples.
-5. ENFOQUE EN MATICES: No busques la perfección. Busca entender qué es lo que mejor hace y dónde podría tener dificultades, explicándolo con empatía.
-6. ESTRUCTURA:
-   - "resumenEjecutivo": 2 párrafos cortos y directos que me digan quién es esta persona.
-   - "fortalezas": 3 puntos claros en lenguaje cotidiano.
-   - "oportunidadesMejora": 2 puntos de cuidado explicados con sutileza y realismo.
-   - "ajusteCargo": Puntuación (0-100) y un comentario breve de por qué encaja o no.
-   - "comentarioPersonalidad": Cómo es su carácter y forma de ser.
-   - "comentarioCognitivo": Cómo piensa y resuelve problemas en el día a día.
-   - "comentarioCompetencias": Qué tan efectivo es trabajando.
-   - "recomendacion": "recomendado", "con_reservas" o "no_recomendado".
-   - "fundamentacion": El porqué final de tu decisión, explicado de forma clara y sin vueltas.
-   - "ajusteMbti": No menciones letras (como ENFJ). Explica su estilo de personalidad de forma descriptiva.
-   - "interpretacionPorFactor": Objeto con una frase CERCANA para cada factor recibido.
+DIRECTIVA CRÍTICA DE CONSISTENCIA:
+El sistema matemático ya ha calculado el Dictamen Final basándose en los baremos de la empresa:
+- PUNTAJE DE AJUSTE: ${scoreMatematico}/100
+- DICTAMEN OBLIGATORIO: ${dictamenHumano}
+
+Debes redactar todo el informe de forma que sea COHERENTE con este dictamen de "${dictamenHumano}". No puedes contradecir esta decisión en tu argumentación. Si el dictamen es "${dictamenHumano}", tu fundamentación y resumen deben explicar por qué se llegó a esa conclusión de forma positiva y profesional.
+
+Instrucciones de Redacción:
+1. TONO HUMANO Y CERCANO: Escribe de forma natural, como si me estuvieras contando sobre el candidato en un café.
+2. SIN TERMINOLOGÍA TÉCNICA: No uses palabras técnicas. Traduce todo a lenguaje común.
+3. CERO MAXIMALISMOS: Usa términos realistas y matizados.
+4. ESTRUCTURA:
+   - "resumenEjecutivo": 2 párrafos que sustenten el dictamen de "${dictamenHumano}".
+   - "fortalezas": 3 puntos claros.
+   - "oportunidadesMejora": 2 puntos explicados con realismo.
+   - "ajusteCargo": { "score": ${scoreMatematico}, "analisis": "Breve explicación de por qué es ${dictamenHumano}" }
+   - "recomendacion": "${dictamenFinal}"
+   - "fundamentacion": Argumentación final que REFUERCE el dictamen de "${dictamenHumano}".
+   - "interpretacionPorFactor": Una frase sencilla para cada factor.
+`
    - "liderazgo", "adaptabilidad", "resiliencia": Puntuaciones de 0 a 100.
    - MÉTRICAS DE FRAUDE: Menciónalo sutilmente en 'oportunidadesMejora' si aplica.
    - RESULTADOS CLÍNICOS (DASS-21): Si aplica, incluye 'ALERTAS DE BIENESTAR'.
