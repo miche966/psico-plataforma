@@ -89,12 +89,17 @@ export async function POST(req: Request) {
       reqs.forEach((r: any) => {
         let valCand = 0;
         sesiones.forEach((s: any) => {
+          const FACTORES_NEGATIVOS = ['neuroticismo', 'nivel_estres', 'carga_laboral', 'burnout', 'errores_texto', 'errores_numeros', 'tabswitches', 'copypasteattempts', 'alerta'];
           const buscar = (obj: any) => {
             if (!obj || typeof obj !== 'object' || valCand !== 0) return;
             Object.entries(obj).forEach(([f, v]: any) => {
               if (valCand !== 0) return;
               if (f?.toLowerCase()?.trim() === r.competencia?.toLowerCase()?.trim()) {
-                valCand = (v?.correctas ? (v.correctas/v.total)*5 : (typeof v === 'number' ? v : 0)) || 0;
+                let val = (v?.correctas ? (v.correctas/v.total)*5 : (typeof v === 'number' ? v : 0)) || 0;
+                if (FACTORES_NEGATIVOS.includes(f.toLowerCase())) {
+                  val = Math.max(0, 5 - val);
+                }
+                valCand = val;
               }
               if (typeof v === 'object' && v !== null) buscar(v);
             });

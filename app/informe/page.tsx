@@ -204,6 +204,8 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
     return { general: Math.round((avg / 5) * 100), detalles: [] }
   }
   
+  const FACTORES_NEGATIVOS = ['neuroticismo', 'nivel_estres', 'carga_laboral', 'burnout', 'errores_texto', 'errores_numeros', 'tabswitches', 'copypasteattempts', 'alerta'];
+
   const scores: number[] = []
   const detalles = reqs.map(r => {
     // Buscar el valor más reciente para esta competencia
@@ -216,7 +218,12 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
         Object.entries(obj).forEach(([f, v]: any) => {
           if (valorCandidato !== -1) return
           if (f?.toLowerCase()?.trim() === r.competencia?.toLowerCase()?.trim()) {
-            valorCandidato = (typeof v === 'object' && v !== null && 'correctas' in v) ? (v.correctas / (v.total || 1)) * 5 : Number(v)
+            let val = (typeof v === 'object' && v !== null && 'correctas' in v) ? (v.correctas / (v.total || 1)) * 5 : Number(v)
+            // Aplicar inversión si es factor negativo
+            if (FACTORES_NEGATIVOS.includes(f.toLowerCase())) {
+              val = Math.max(0, 5 - val)
+            }
+            valorCandidato = val
           }
           if (typeof v === 'object' && v !== null) buscar(v) // Recursión universal
         })
