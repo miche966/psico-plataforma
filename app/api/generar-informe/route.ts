@@ -32,7 +32,7 @@ export async function POST(req: Request) {
       const data = (s.puntaje_bruto?.por_factor as Record<string, any>) || s.puntaje_bruto || {};
       Object.entries(data).forEach(([key, val]) => {
         // Solo enviamos lo importante para ahorrar tiempo de procesamiento
-        if (['total', 'porcentaje', 'nivel_maximo', 'metricas_fraude'].includes(key.toLowerCase())) return;
+        if (['total', 'porcentaje', 'nivel_maximo', 'metricas_fraude'].includes(key?.toLowerCase())) return;
         if (typeof val === 'number') {
           resultados += `- ${key}: ${val}/5\n`
         } else if (typeof val === 'object' && val !== null && 'correctas' in val) {
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
         const scan = (obj: any) => {
           if (!obj || typeof obj !== 'object') return;
           Object.entries(obj).forEach(([k, v]) => {
-            const key = k.toLowerCase();
+            const key = k?.toLowerCase() || '';
             if (DOMINIOS_PROF.includes(key)) {
               let val = 0;
               if (typeof v === 'object' && v !== null && 'correctas' in v) val = (v.correctas / (v.total || 1)) * 5;
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
           const buscar = (obj: any) => {
             if (!obj || typeof obj !== 'object') return;
             Object.entries(obj).forEach(([f, v]: any) => {
-              if (f.toLowerCase() === r.competencia.toLowerCase()) valCand = (v?.correctas ? (v.correctas/v.total)*5 : v) || 0;
+              if (f?.toLowerCase() === r.competencia?.toLowerCase()) valCand = (v?.correctas ? (v.correctas/v.total)*5 : v) || 0;
               if (f === 'por_factor') buscar(v);
             });
           };
@@ -169,7 +169,7 @@ Devuelve EXCLUSIVAMENTE un JSON válido:
       .filter(f => f !== 'total' && f !== 'porcentaje' && f !== 'por_factor')
     
     const factoresRecibidos = Object.keys(resultado.interpretacionPorFactor || {})
-    const faltantes = factoresEnviados.filter(f => !factoresRecibidos.includes(f.toLowerCase()))
+    const faltantes = factoresEnviados.filter(f => !factoresRecibidos.includes(f?.toLowerCase() || ''))
 
     if (faltantes.length > 0) {
       console.warn(`[ADVERTENCIA IA] Factores omitidos por la IA:`, faltantes)
