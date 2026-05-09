@@ -358,20 +358,26 @@ function InformePageContent() {
         const resAjuste = calcAjuste(procData?.competencias_requeridas || [], lista)
         autoAjuste = (resAjuste && resAjuste.general > 0) ? resAjuste.general : 0
         
-        // Si el ajuste sigue siendo 0 (por falta de requisitos), calculamos un promedio general de factores (Omnisciente)
         if (autoAjuste === 0) {
+          console.log("DEBUG: Iniciando fallback omnisciente para Avril...");
           const todosLosFactores: number[] = []
-          lista.forEach(s => {
+          lista.forEach((s, idx) => {
+            console.log(`DEBUG: Analizando sesión ${idx + 1}:`, s.test_id, s.puntaje_bruto);
             const scan = (obj: any) => {
               if (!obj || typeof obj !== 'object') return
               Object.entries(obj).forEach(([k, v]) => {
-                if (typeof v === 'number') {
-                  let val = v
+                const valNum = parseFloat(String(v))
+                if (!isNaN(valNum)) {
+                  let val = valNum
                   if (val > 5 && val <= 100) val = (val / 100) * 5
-                  if (val > 0 && val <= 5) todosLosFactores.push(val)
+                  if (val > 0 && val <= 5) {
+                    console.log(`  > Factor Detectado: ${k} = ${val} (Original: ${v})`);
+                    todosLosFactores.push(val)
+                  }
                 } 
                 else if (typeof v === 'object' && v !== null && 'correctas' in v) {
-                  const score = ((v as any).correctas / ((v as any).total || 1)) * 5
+                  const score = (Number((v as any).correctas) / (Number((v as any).total) || 1)) * 5
+                  console.log(`  > Puntaje Detectado (Objeto): ${k} = ${score}`);
                   todosLosFactores.push(score)
                 }
                 else if (typeof v === 'object') scan(v)
@@ -382,6 +388,9 @@ function InformePageContent() {
           if (todosLosFactores.length > 0) {
             const avg = todosLosFactores.reduce((a, b) => a + b, 0) / todosLosFactores.length
             autoAjuste = Math.round((avg / 5) * 100)
+            console.log(`DEBUG: AutoAjuste Final Calculado: ${autoAjuste}% basado en ${todosLosFactores.length} factores.`);
+          } else {
+            console.warn("DEBUG: No se detectó ningún factor numérico en ninguna sesión.");
           }
         }
       }
