@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.0-pro' });
 
     // Preparar el prompt con toda la información disponible
     let datosCandidato = `Candidato: ${candidato.nombre} ${candidato.apellido}\n`
