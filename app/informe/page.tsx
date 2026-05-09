@@ -164,13 +164,14 @@ const s = {
 
 // Helpers de lógica y cálculo
 function calcAjuste(reqs: any[], sesiones: any[]) {
-  // Si no hay requerimientos, calculamos un promedio general omnisciente basado en todos los datos detectados
-  if (!reqs || reqs.length === 0) {
+  // Si no hay requerimientos (o están vacíos), calculamos un promedio general omnisciente
+  if (!reqs || reqs.length === 0 || (reqs.length === 1 && !reqs[0]?.competencia)) {
     const todosLosFactores: number[] = []
+    const CLAVES_IGNORAR = ['total', 'correctas', 'porcentaje', 'id', 'created_at', 'proceso_id', 'candidato_id', 'finalizada_en', 'iniciada_en', 'nivel_maximo']
+    
     sesiones.forEach(s => {
       const scan = (obj: any) => {
         if (!obj || typeof obj !== 'object') return
-        const CLAVES_IGNORAR = ['total', 'correctas', 'porcentaje', 'id', 'created_at', 'proceso_id', 'candidato_id', 'finalizada_en', 'iniciada_en', 'nivel_maximo']
         Object.entries(obj).forEach(([k, v]) => {
           const key = k.toLowerCase().trim()
           if (CLAVES_IGNORAR.includes(key)) return
@@ -178,10 +179,8 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
           const valNum = parseFloat(String(v))
           if (!isNaN(valNum)) {
             let val = valNum
-            // Escalado Inteligente
             if (val > 5 && val <= 20) val = (val / 20) * 5
             else if (val > 20 && val <= 100) val = (val / 100) * 5
-            
             if (val > 0 && val <= 5) todosLosFactores.push(val)
           } 
           else if (typeof v === 'object' && v !== null && 'correctas' in v) {
@@ -366,19 +365,21 @@ function InformePageContent() {
             const avg = todosLosFactores.reduce((a, b) => a + b, 0) / todosLosFactores.length
             autoAjuste = Math.round((avg / 5) * 100)
             console.log(`DEBUG: AutoAjuste Final Calculado: ${autoAjuste}% basado en ${todosLosFactores.length} factores.`);
-          } else {
-            console.warn("DEBUG: No se detectó ningún factor numérico en ninguna sesión.");
           }
         }
       }
 
+      // ACTUALIZACIÓN CRÍTICA: Forzar el valor en el estado
       setInf(prev => ({ 
         ...prev, 
         alertasTab: aTab, 
         alertasCopia: aCopia, 
         confianza, 
         tiempoPromedio: tiempoFinal,
-        ajusteCargo: { score: autoAjuste, analisis: '' }
+        ajusteCargo: { 
+          score: autoAjuste, 
+          analisis: prev.ajusteCargo?.analisis || '' 
+        }
       }))
 
     } catch (e) {

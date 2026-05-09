@@ -82,8 +82,8 @@ export async function POST(req: Request) {
     // Lista de factores válidos para el promedio de respaldo
     const FACTORES_VALIDOS = ['amabilidad', 'responsabilidad', 'extraversion', 'apertura', 'neuroticismo', 'etica', 'negociacion', 'empatia', 'comunicacion'];
 
-    if (reqs.length === 0) {
-      console.log("[IA] No hay requerimientos, calculando promedio general omnisciente depurado...");
+    if (reqs.length === 0 || (reqs.length === 1 && !reqs[0]?.competencia)) {
+      console.log("[IA] No hay requerimientos (o vacíos), calculando promedio general omnisciente depurado...");
       const factores: number[] = [];
       const CLAVES_IGNORAR = ['total', 'correctas', 'porcentaje', 'id', 'created_at', 'proceso_id', 'candidato_id', 'finalizada_en', 'iniciada_en', 'nivel_maximo'];
       
