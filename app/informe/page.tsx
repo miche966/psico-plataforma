@@ -358,14 +358,22 @@ function InformePageContent() {
         const resAjuste = calcAjuste(procData?.competencias_requeridas || [], lista)
         autoAjuste = (resAjuste && resAjuste.general > 0) ? resAjuste.general : 0
         
-        // Si el ajuste sigue siendo 0 (por falta de requisitos), calculamos un promedio general de factores
+        // Si el ajuste sigue siendo 0 (por falta de requisitos), calculamos un promedio general de factores (Omnisciente)
         if (autoAjuste === 0) {
           const todosLosFactores: number[] = []
           lista.forEach(s => {
             const scan = (obj: any) => {
               if (!obj || typeof obj !== 'object') return
               Object.entries(obj).forEach(([k, v]) => {
-                if (typeof v === 'number' && v <= 5) todosLosFactores.push(v)
+                if (typeof v === 'number') {
+                  let val = v
+                  if (val > 5 && val <= 100) val = (val / 100) * 5
+                  if (val > 0 && val <= 5) todosLosFactores.push(val)
+                } 
+                else if (typeof v === 'object' && v !== null && 'correctas' in v) {
+                  const score = ((v as any).correctas / ((v as any).total || 1)) * 5
+                  todosLosFactores.push(score)
+                }
                 else if (typeof v === 'object') scan(v)
               })
             }

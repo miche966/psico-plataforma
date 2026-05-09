@@ -83,22 +83,20 @@ export async function POST(req: Request) {
     const FACTORES_VALIDOS = ['amabilidad', 'responsabilidad', 'extraversion', 'apertura', 'neuroticismo', 'etica', 'negociacion', 'empatia', 'comunicacion'];
 
     if (reqs.length === 0) {
-      console.log("[IA] No hay requerimientos, calculando promedio general...");
+      console.log("[IA] No hay requerimientos, calculando promedio general omnisciente...");
       const factores: number[] = [];
       sesiones.forEach((s: any) => {
         const scan = (obj: any) => {
           if (!obj || typeof obj !== 'object') return;
           Object.entries(obj).forEach(([k, v]) => {
-            const key = k?.toLowerCase() || '';
-            if (FACTORES_VALIDOS.includes(key) || typeof v === 'number') {
-              let val = 0;
-              if (typeof v === 'object' && v !== null && 'correctas' in v) val = (v.correctas / (v.total || 1)) * 5;
-              else if (typeof v === 'number') val = v;
-              
-              if (val > 0) {
-                if (val > 5) val = (val <= 100) ? (val / 100) * 5 : 5;
-                factores.push(val);
-              }
+            if (typeof v === 'number') {
+              let val = v;
+              if (val > 5 && val <= 100) val = (val / 100) * 5;
+              if (val > 0 && val <= 5) factores.push(val);
+            } 
+            else if (typeof v === 'object' && v !== null && 'correctas' in v) {
+              const score = ((v as any).correctas / ((v as any).total || 1)) * 5;
+              factores.push(score);
             }
             if (typeof v === 'object') scan(v);
           });
