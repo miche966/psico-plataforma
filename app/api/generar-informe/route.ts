@@ -83,16 +83,23 @@ export async function POST(req: Request) {
     const FACTORES_VALIDOS = ['amabilidad', 'responsabilidad', 'extraversion', 'apertura', 'neuroticismo', 'etica', 'negociacion', 'empatia', 'comunicacion'];
 
     if (reqs.length === 0) {
-      console.log("[IA] No hay requerimientos, calculando promedio general omnisciente...");
+      console.log("[IA] No hay requerimientos, calculando promedio general omnisciente depurado...");
       const factores: number[] = [];
+      const CLAVES_IGNORAR = ['total', 'correctas', 'porcentaje', 'id', 'created_at', 'proceso_id', 'candidato_id', 'finalizada_en', 'iniciada_en', 'nivel_maximo'];
+      
       sesiones.forEach((s: any) => {
         const scan = (obj: any) => {
           if (!obj || typeof obj !== 'object') return;
           Object.entries(obj).forEach(([k, v]) => {
+            const key = k.toLowerCase().trim();
+            if (CLAVES_IGNORAR.includes(key)) return;
+
             const valNum = parseFloat(String(v));
             if (!isNaN(valNum)) {
               let val = valNum;
-              if (val > 5 && val <= 100) val = (val / 100) * 5;
+              if (val > 5 && val <= 20) val = (val / 20) * 5;
+              else if (val > 20 && val <= 100) val = (val / 100) * 5;
+              
               if (val > 0 && val <= 5) factores.push(val);
             } 
             else if (typeof v === 'object' && v !== null && 'correctas' in v) {

@@ -170,11 +170,18 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
     sesiones.forEach(s => {
       const scan = (obj: any) => {
         if (!obj || typeof obj !== 'object') return
+        const CLAVES_IGNORAR = ['total', 'correctas', 'porcentaje', 'id', 'created_at', 'proceso_id', 'candidato_id', 'finalizada_en', 'iniciada_en', 'nivel_maximo']
         Object.entries(obj).forEach(([k, v]) => {
+          const key = k.toLowerCase().trim()
+          if (CLAVES_IGNORAR.includes(key)) return
+
           const valNum = parseFloat(String(v))
           if (!isNaN(valNum)) {
             let val = valNum
-            if (val > 5 && val <= 100) val = (val / 100) * 5
+            // Escalado Inteligente
+            if (val > 5 && val <= 20) val = (val / 20) * 5
+            else if (val > 20 && val <= 100) val = (val / 100) * 5
+            
             if (val > 0 && val <= 5) todosLosFactores.push(val)
           } 
           else if (typeof v === 'object' && v !== null && 'correctas' in v) {
