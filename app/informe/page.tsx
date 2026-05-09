@@ -324,9 +324,6 @@ function InformePageContent() {
       const confianza = totalAlertas > 0 ? Math.max(0, 100 - Math.round(avgAlertas * 10)) : 100
       const tiempoFinal = sTime > 0 ? Math.round(tDur / sTime) : 15
 
-      // Recuperar Informe Existente o Inicializar
-      const { data: rep } = await supabase.from('informes_psicometricos').select('*').eq('candidato_id', id).single()
-      
       // Cálculo automático de ajuste inicial con fallback si no hay datos de proceso
       let autoAjuste = 0
       if (lista.length > 0) {
@@ -353,29 +350,15 @@ function InformePageContent() {
         }
       }
 
-      if (rep) {
-        const contenido = rep.contenido as InformeState
-        setInf({ 
-          ...contenido, 
-          alertasTab: aTab, 
-          alertasCopia: aCopia, 
-          confianza, 
-          tiempoPromedio: tiempoFinal,
-          ajusteCargo: {
-            score: contenido.ajusteCargo?.score ?? autoAjuste,
-            analisis: contenido.ajusteCargo?.analisis ?? ''
-          }
-        })
-      } else {
-        setInf(prev => ({ 
-          ...prev, 
-          alertasTab: aTab, 
-          alertasCopia: aCopia, 
-          confianza, 
-          tiempoPromedio: tiempoFinal,
-          ajusteCargo: { score: autoAjuste, analisis: '' }
-        }))
-      }
+      setInf(prev => ({ 
+        ...prev, 
+        alertasTab: aTab, 
+        alertasCopia: aCopia, 
+        confianza, 
+        tiempoPromedio: tiempoFinal,
+        ajusteCargo: { score: autoAjuste, analisis: '' }
+      }))
+
     } catch (e) {
       console.error(e)
     } finally {
