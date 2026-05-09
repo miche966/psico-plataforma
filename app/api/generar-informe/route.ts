@@ -13,7 +13,17 @@ export async function POST(req: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite-001' })
+    
+    let model;
+    try {
+      model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      // Prueba rápida
+      await model.generateContent('ping');
+    } catch (e) {
+      console.warn("Gemini 2.0 Flash falló, intentando con 2.5 Flash...");
+      model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    }
+    
 
     // Preparar el prompt con toda la información disponible
     let datosCandidato = `Candidato: ${candidato.nombre} ${candidato.apellido}\n`
