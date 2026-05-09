@@ -61,6 +61,24 @@ export async function POST(req: Request) {
     let scoreMatematico = 0;
     const reqs = proceso?.competencias_requeridas || [];
     
+    const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
+      'Orientación al cliente': { amabilidad: 4.5, responsabilidad: 4 },
+      'Orientación a resultados': { responsabilidad: 5, extraversion: 4 },
+      'Trabajo en equipo': { amabilidad: 5, extraversion: 4 },
+      'Adaptabilidad al cambio': { apertura: 5, neuroticismo: 1.5 },
+      'Integridad': { responsabilidad: 5, amabilidad: 4 },
+      'Iniciativa': { extraversion: 4.5, apertura: 4, responsabilidad: 4 },
+      'Liderazgo': { extraversion: 5, responsabilidad: 4.5, neuroticismo: 1.5 },
+      'Comunicación': { extraversion: 5, amabilidad: 4 },
+      'Negociación': { extraversion: 4.5, amabilidad: 3.5, responsabilidad: 4 },
+      'Planificación y organización': { responsabilidad: 5, apertura: 3.5 },
+      'Tolerancia a la presión': { neuroticismo: 1, responsabilidad: 4.5 },
+      'Pensamiento analítico': { apertura: 4.5, responsabilidad: 4 },
+      'Creatividad e innovación': { apertura: 5, extraversion: 4 },
+      'Autocontrol': { neuroticismo: 1, amabilidad: 4 },
+      'Responsabilidad': { responsabilidad: 5 }
+    };
+
     if (reqs.length === 0) {
       const factores: number[] = [];
       sesiones.forEach((s: any) => {
@@ -75,7 +93,7 @@ export async function POST(req: Request) {
               if (val > 5) val = (val <= 100) ? (val / 100) * 5 : 5;
               factores.push(val);
             }
-            if (key === 'por_factor') scan(v);
+            if (typeof v === 'object') scan(v);
           });
         };
         scan(s.puntaje_bruto);
@@ -88,17 +106,20 @@ export async function POST(req: Request) {
       const pcts: number[] = [];
       reqs.forEach((r: any) => {
         let valCand = 0;
+        const mapping = COMPETENCIAS_MAPPING[r.competencia];
+        
         sesiones.forEach((s: any) => {
-          const FACTORES_NEGATIVOS = ['neuroticismo', 'nivel_estres', 'carga_laboral', 'burnout', 'errores_texto', 'errores_numeros', 'tabswitches', 'copypasteattempts', 'alerta'];
           const buscar = (obj: any) => {
             if (!obj || typeof obj !== 'object' || valCand !== 0) return;
             Object.entries(obj).forEach(([f, v]: any) => {
               if (valCand !== 0) return;
-              if (f?.toLowerCase()?.trim() === r.competencia?.toLowerCase()?.trim()) {
+              const keyNormalizada = f?.toLowerCase()?.trim();
+              
+              if (keyNormalizada === r.competencia?.toLowerCase()?.trim()) {
+                valCand = (v?.correctas ? (v.correctas/v.total)*5 : (typeof v === 'number' ? v : 0)) || 0;
+              } else if (mapping && mapping[keyNormalizada as keyof typeof mapping]) {
                 let val = (v?.correctas ? (v.correctas/v.total)*5 : (typeof v === 'number' ? v : 0)) || 0;
-                if (FACTORES_NEGATIVOS.includes(f.toLowerCase())) {
-                  val = Math.max(0, 5 - val);
-                }
+                if (keyNormalizada === 'neuroticismo' && (mapping[keyNormalizada] || 0) < 3) val = 6 - val;
                 valCand = val;
               }
               if (typeof v === 'object' && v !== null) buscar(v);

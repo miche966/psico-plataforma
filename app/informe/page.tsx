@@ -6,7 +6,25 @@ import { supabase } from '@/lib/supabase'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { InformePDF } from '@/components/InformePDF'
 import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, FileText, Download, User, Briefcase, Calendar, Target, Award, ShieldAlert, Clock, ChevronRight, Sparkles, BrainCircuit, Activity, Info } from 'lucide-react'
+
+const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
+  'Orientación al cliente': { amabilidad: 4.5, responsabilidad: 4 },
+  'Orientación a resultados': { responsabilidad: 5, extraversion: 4 },
+  'Trabajo en equipo': { amabilidad: 5, extraversion: 4 },
+  'Adaptabilidad al cambio': { apertura: 5, neuroticismo: 1.5 },
+  'Integridad': { responsabilidad: 5, amabilidad: 4 },
+  'Iniciativa': { extraversion: 4.5, apertura: 4, responsabilidad: 4 },
+  'Liderazgo': { extraversion: 5, responsabilidad: 4.5, neuroticismo: 1.5 },
+  'Comunicación': { extraversion: 5, amabilidad: 4 },
+  'Negociación': { extraversion: 4.5, amabilidad: 3.5, responsabilidad: 4 },
+  'Planificación y organización': { responsabilidad: 5, apertura: 3.5 },
+  'Tolerancia a la presión': { neuroticismo: 1, responsabilidad: 4.5 },
+  'Pensamiento analítico': { apertura: 4.5, responsabilidad: 4 },
+  'Creatividad e innovación': { apertura: 5, extraversion: 4 },
+  'Autocontrol': { neuroticismo: 1, amabilidad: 4 },
+  'Responsabilidad': { responsabilidad: 5 }
+}
 
 // Tipos base
 type Rec = 'recomendado' | 'con_reservas' | 'no_recomendado'
@@ -210,6 +228,8 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
   const detalles = reqs.map(r => {
     // Buscar el valor más reciente para esta competencia
     let valorCandidato = -1 
+    const mapping = COMPETENCIAS_MAPPING[r.competencia]
+    
     for (const s of sesiones) {
       if (!s.puntaje_bruto || valorCandidato !== -1) continue
       
@@ -217,15 +237,23 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
         if (!obj || typeof obj !== 'object' || valorCandidato !== -1) return
         Object.entries(obj).forEach(([f, v]: any) => {
           if (valorCandidato !== -1) return
-          if (f?.toLowerCase()?.trim() === r.competencia?.toLowerCase()?.trim()) {
+          const keyNormalizada = f?.toLowerCase()?.trim()
+          
+          // Caso 1: Coincidencia directa
+          if (keyNormalizada === r.competencia?.toLowerCase()?.trim()) {
+            valorCandidato = (typeof v === 'object' && v !== null && 'correctas' in v) ? (v.correctas / (v.total || 1)) * 5 : Number(v)
+          } 
+          // Caso 2: Coincidencia a través de mapeo (Big Five)
+          else if (mapping && mapping[keyNormalizada as keyof typeof mapping]) {
             let val = (typeof v === 'object' && v !== null && 'correctas' in v) ? (v.correctas / (v.total || 1)) * 5 : Number(v)
-            // Aplicar inversión si es factor negativo
-            if (FACTORES_NEGATIVOS.includes(f.toLowerCase())) {
-              val = Math.max(0, 5 - val)
+            // Si es neuroticismo y el mapeo es bajo, invertimos
+            if (keyNormalizada === 'neuroticismo' && (mapping[keyNormalizada] || 0) < 3) {
+              val = 6 - val
             }
             valorCandidato = val
           }
-          if (typeof v === 'object' && v !== null) buscar(v) // Recursión universal
+
+          if (typeof v === 'object' && v !== null) buscar(v)
         })
       }
       buscar(s.puntaje_bruto)
