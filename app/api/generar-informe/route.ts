@@ -79,19 +79,26 @@ export async function POST(req: Request) {
       'Responsabilidad': { responsabilidad: 5 }
     };
 
+    // Lista de factores válidos para el promedio de respaldo
+    const FACTORES_VALIDOS = ['amabilidad', 'responsabilidad', 'extraversion', 'apertura', 'neuroticismo', 'etica', 'negociacion', 'empatia', 'comunicacion'];
+
     if (reqs.length === 0) {
+      console.log("[IA] No hay requerimientos, calculando promedio general...");
       const factores: number[] = [];
       sesiones.forEach((s: any) => {
         const scan = (obj: any) => {
           if (!obj || typeof obj !== 'object') return;
           Object.entries(obj).forEach(([k, v]) => {
             const key = k?.toLowerCase() || '';
-            if (DOMINIOS_PROF.includes(key)) {
+            if (FACTORES_VALIDOS.includes(key) || typeof v === 'number') {
               let val = 0;
               if (typeof v === 'object' && v !== null && 'correctas' in v) val = (v.correctas / (v.total || 1)) * 5;
               else if (typeof v === 'number') val = v;
-              if (val > 5) val = (val <= 100) ? (val / 100) * 5 : 5;
-              factores.push(val);
+              
+              if (val > 0) {
+                if (val > 5) val = (val <= 100) ? (val / 100) * 5 : 5;
+                factores.push(val);
+              }
             }
             if (typeof v === 'object') scan(v);
           });
@@ -103,6 +110,7 @@ export async function POST(req: Request) {
         scoreMatematico = Math.round((avg / 5) * 100);
       }
     } else {
+      console.log(`[IA] Calculando ajuste para ${reqs.length} competencias...`);
       const pcts: number[] = [];
       reqs.forEach((r: any) => {
         let valCand = 0;
@@ -117,9 +125,9 @@ export async function POST(req: Request) {
               
               if (keyNormalizada === r.competencia?.toLowerCase()?.trim()) {
                 valCand = (v?.correctas ? (v.correctas/v.total)*5 : (typeof v === 'number' ? v : 0)) || 0;
-              } else if (mapping && mapping[keyNormalizada as keyof typeof mapping]) {
+              } else if (mapping && (mapping as any)[keyNormalizada]) {
                 let val = (v?.correctas ? (v.correctas/v.total)*5 : (typeof v === 'number' ? v : 0)) || 0;
-                if (keyNormalizada === 'neuroticismo' && (mapping[keyNormalizada] || 0) < 3) val = 6 - val;
+                if (keyNormalizada === 'neuroticismo' && ((mapping as any)[keyNormalizada] || 0) < 3) val = 6 - val;
                 valCand = val;
               }
               if (typeof v === 'object' && v !== null) buscar(v);
@@ -127,10 +135,12 @@ export async function POST(req: Request) {
           };
           buscar(s.puntaje_bruto);
         });
-        pcts.push(Math.min(100, Math.round((valCand / r.nivel) * 100)));
+        const p = Math.min(100, Math.round((valCand / (r.nivel || 3)) * 100));
+        pcts.push(p);
       });
-      scoreMatematico = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
+      scoreMatematico = pcts.length > 0 ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0;
     }
+    console.log(`[IA] Score Matematico Final: ${scoreMatematico}%`);
 
     const dictamenFinal = scoreMatematico >= 85 ? 'recomendado' : scoreMatematico >= 70 ? 'con_reservas' : 'no_recommended';
     const dictamenHumano = dictamenFinal === 'recomendado' ? 'RECOMENDADO' : dictamenFinal === 'con_reservas' ? 'RECOMENDADO CON RESERVAS' : 'NO RECOMENDADO';
