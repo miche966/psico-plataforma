@@ -90,10 +90,13 @@ export async function POST(req: Request) {
         let valCand = 0;
         sesiones.forEach((s: any) => {
           const buscar = (obj: any) => {
-            if (!obj || typeof obj !== 'object') return;
+            if (!obj || typeof obj !== 'object' || valCand !== 0) return;
             Object.entries(obj).forEach(([f, v]: any) => {
-              if (f?.toLowerCase() === r.competencia?.toLowerCase()) valCand = (v?.correctas ? (v.correctas/v.total)*5 : v) || 0;
-              if (f === 'por_factor') buscar(v);
+              if (valCand !== 0) return;
+              if (f?.toLowerCase()?.trim() === r.competencia?.toLowerCase()?.trim()) {
+                valCand = (v?.correctas ? (v.correctas/v.total)*5 : (typeof v === 'number' ? v : 0)) || 0;
+              }
+              if (typeof v === 'object' && v !== null) buscar(v);
             });
           };
           buscar(s.puntaje_bruto);

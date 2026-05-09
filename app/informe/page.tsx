@@ -215,10 +215,10 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
         if (!obj || typeof obj !== 'object' || valorCandidato !== -1) return
         Object.entries(obj).forEach(([f, v]: any) => {
           if (valorCandidato !== -1) return
-          if (f?.toLowerCase() === r.competencia?.toLowerCase()) {
+          if (f?.toLowerCase()?.trim() === r.competencia?.toLowerCase()?.trim()) {
             valorCandidato = (typeof v === 'object' && v !== null && 'correctas' in v) ? (v.correctas / (v.total || 1)) * 5 : Number(v)
           }
-          if ((f === 'por_factor' || f === 'por_subtipo') && typeof v === 'object') buscar(v)
+          if (typeof v === 'object' && v !== null) buscar(v) // Recursión universal
         })
       }
       buscar(s.puntaje_bruto)
