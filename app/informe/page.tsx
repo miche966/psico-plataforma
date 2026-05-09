@@ -164,61 +164,31 @@ const s = {
 
 // Helpers de lógica y cálculo
 function calcAjuste(reqs: any[], sesiones: any[]) {
-  // Si no hay requerimientos, calculamos un Índice de Potencial General basado en todos los datos
+  // Si no hay requerimientos, calculamos un promedio general omnisciente basado en todos los datos detectados
   if (!reqs || reqs.length === 0) {
-    const todosLosFactores: Record<string, number> = {}
-    const factoresValidos = [...DOMINIOS.COGNITIVO, ...DOMINIOS.COMPETENCIAS]
-    const clavesSistema = ['correctas', 'total', 'score', 'percentil', 'metricas_fraude', 'porcentaje', 'nivel_maximo', 'promedio_general']
-    
+    const todosLosFactores: number[] = []
     sesiones.forEach(s => {
       const scan = (obj: any) => {
         if (!obj || typeof obj !== 'object') return
         Object.entries(obj).forEach(([k, v]) => {
-          const key = k.toLowerCase()
-          if (clavesSistema.includes(key)) return
-          
-          // Solo incluimos factores que pertenezcan a los dominios profesionales/cognitivos
-          if (!factoresValidos.includes(key)) {
-            if (key === 'por_factor' || key === 'por_subtipo') scan(v)
-            return
+          const valNum = parseFloat(String(v))
+          if (!isNaN(valNum)) {
+            let val = valNum
+            if (val > 5 && val <= 100) val = (val / 100) * 5
+            if (val > 0 && val <= 5) todosLosFactores.push(val)
+          } 
+          else if (typeof v === 'object' && v !== null && 'correctas' in v) {
+            const score = (Number((v as any).correctas) / (Number((v as any).total) || 1)) * 5
+            todosLosFactores.push(score)
           }
-          
-          if (!todosLosFactores.hasOwnProperty(key)) {
-            let val = 0
-            if (typeof v === 'object' && v !== null && 'correctas' in v) {
-              val = (Number(v.correctas) / (Number(v.total) || 1)) * 5
-            } else if (typeof v === 'number') {
-              val = v
-            } else if (typeof v === 'string') {
-              const str = v.toLowerCase()
-              if (str === 'alto') val = 5
-              else if (str === 'medio') val = 3
-              else if (str === 'bajo') val = 1.5
-            }
-            // Aseguramos que el valor esté en escala 0-5 y no se desborde
-            let finalVal = val
-            if (finalVal > 5) {
-              // Si es muy alto (ej: 12.5 o 25), probablemente es una escala distinta, normalizamos
-              if (finalVal <= 25) finalVal = (finalVal / 25) * 5
-              else if (finalVal <= 100) finalVal = (finalVal / 100) * 5
-            }
-            todosLosFactores[key] = Math.min(5, finalVal)
-          }
+          else if (typeof v === 'object') scan(v)
         })
       }
       scan(s.puntaje_bruto)
     })
-
-    const vals = Object.values(todosLosFactores)
-    if (vals.length === 0) return null
     
-    // Tratamiento de ceros en perfiles de alto desempeño
-    const avgPreliminar = vals.reduce((a, b) => a + b, 0) / vals.length
-    const finalVals = (avgPreliminar > 3 && vals.length > 5) 
-      ? vals.map(v => v === 0 ? 1.5 : v) 
-      : vals
-
-    const avg = finalVals.reduce((a, b) => a + b, 0) / finalVals.length
+    if (todosLosFactores.length === 0) return { general: 0, detalles: [] }
+    const avg = todosLosFactores.reduce((a, b) => a + b, 0) / todosLosFactores.length
     return { general: Math.round((avg / 5) * 100), detalles: [] }
   }
   
