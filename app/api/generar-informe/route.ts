@@ -13,30 +13,7 @@ export async function POST(req: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-    
-    // SISTEMA DE AUTODETECCIÓN DE MODELO (FALLBACK)
-    const modelosCandidatos = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro', 'gemini-pro']
-    let model = null
-    let errorUltimo = ''
-
-    for (const nombreModelo of modelosCandidatos) {
-      try {
-        console.log(`[IA] Probando modelo: ${nombreModelo}...`)
-        const tempModel = genAI.getGenerativeModel({ model: nombreModelo })
-        // Prueba rápida de salud del modelo
-        await tempModel.generateContent('ping')
-        model = tempModel
-        console.log(`[IA] MODELO SELECCIONADO: ${nombreModelo}`)
-        break
-      } catch (err: any) {
-        errorUltimo = err.message
-        console.warn(`[IA] Modelo ${nombreModelo} no disponible: ${err.message}`)
-      }
-    }
-
-    if (!model) {
-      throw new Error(`Ningún modelo de Gemini está disponible para tu llave de API. Error último: ${errorUltimo}`)
-    }
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite-001' })
 
     // Preparar el prompt con toda la información disponible
     let datosCandidato = `Candidato: ${candidato.nombre} ${candidato.apellido}\n`
