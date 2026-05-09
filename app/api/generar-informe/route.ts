@@ -89,13 +89,14 @@ export async function POST(req: Request) {
         const scan = (obj: any) => {
           if (!obj || typeof obj !== 'object') return;
           Object.entries(obj).forEach(([k, v]) => {
-            if (typeof v === 'number') {
-              let val = v;
+            const valNum = parseFloat(String(v));
+            if (!isNaN(valNum)) {
+              let val = valNum;
               if (val > 5 && val <= 100) val = (val / 100) * 5;
               if (val > 0 && val <= 5) factores.push(val);
             } 
             else if (typeof v === 'object' && v !== null && 'correctas' in v) {
-              const score = ((v as any).correctas / ((v as any).total || 1)) * 5;
+              const score = (Number((v as any).correctas) / (Number((v as any).total) || 1)) * 5;
               factores.push(score);
             }
             if (typeof v === 'object') scan(v);
@@ -138,40 +139,27 @@ export async function POST(req: Request) {
       });
       scoreMatematico = pcts.length > 0 ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0;
     }
-    console.log(`[IA] Score Matematico Final: ${scoreMatematico}%`);
 
-    const dictamenFinal = scoreMatematico >= 85 ? 'recomendado' : scoreMatematico >= 70 ? 'con_reservas' : 'no_recommended';
+    const dictamenFinal = scoreMatematico >= 85 ? 'recomendado' : scoreMatematico >= 70 ? 'con_reservas' : 'no_recomendado';
     const dictamenHumano = dictamenFinal === 'recomendado' ? 'RECOMENDADO' : dictamenFinal === 'con_reservas' ? 'RECOMENDADO CON RESERVAS' : 'NO RECOMENDADO';
 
     const prompt = `
-Actúa como un Líder de Talento con mucha experiencia, alguien que sabe leer a las personas y lo explica de forma sencilla, cercana y humana.
-Tu tarea es analizar los resultados de las evaluaciones y las transcripciones de video de un candidato.
-
-${datosCandidato}
-${resultados}
-
-DIRECTIVA CRÍTICA DE CONSISTENCIA:
-El sistema matemático ya ha calculado el Dictamen Final basándose en los baremos de la empresa:
 - PUNTAJE DE AJUSTE: ${scoreMatematico}/100
 - DICTAMEN OBLIGATORIO: ${dictamenHumano}
 
-Debes redactar todo el informe de forma que sea COHERENTE con este dictamen de "${dictamenHumano}". No puedes contradecir esta decisión en tu argumentación. Si el dictamen es "${dictamenHumano}", tu fundamentación y resumen deben explicar por qué se llegó a esa conclusión de forma positiva y profesional.
+Debes redactar el informe con un tono EJECUTIVO, SOBRIO y FORMAL. 
+Prohibido usar lenguaje coloquial, maximalismos o rellenos innecesarios.
 
 Instrucciones de Redacción:
-1. TONO HUMANO Y CERCANO: Escribe de forma natural, como si me estuvieras contando sobre el candidato en un café.
-2. SIN TERMINOLOGÍA TÉCNICA: No uses palabras técnicas. Traduce todo a lenguaje común.
-3. CERO MAXIMALISMOS: Usa términos realistas y matizados.
-4. ESTRUCTURA:
-   - "resumenEjecutivo": 2 párrafos que sustenten el dictamen de "${dictamenHumano}".
-   - "fortalezas": 3 puntos claros.
-   - "oportunidadesMejora": 2 puntos explicados con realismo.
-   - "ajusteCargo": { "score": ${scoreMatematico}, "analisis": "Breve explicación de por qué es ${dictamenHumano}" }
+1. TONO: Profesional, analítico y corporativo.
+2. CONCISIÓN: Evita adjetivos exagerados. Ve directo al grano.
+3. ESTRUCTURA:
+   - "resumenEjecutivo": 2 párrafos técnicos y estratégicos que sustenten el dictamen.
+   - "fortalezas": 3 competencias destacadas observadas.
+   - "oportunidadesMejora": 2 puntos de desarrollo crítico explicados con sobriedad.
+   - "ajusteCargo": { "score": ${scoreMatematico}, "analisis": "Justificación técnica del ajuste." }
    - "recomendacion": "${dictamenFinal}"
-   - "fundamentacion": Argumentación final que REFUERCE el dictamen de "${dictamenHumano}".
-   - "interpretacionPorFactor": Una frase sencilla para cada factor.
-   - "liderazgo", "adaptabilidad", "resiliencia": Puntuaciones de 0 a 100.
-   - MÉTRICAS DE FRAUDE: Menciónalo sutilmente en 'oportunidadesMejora' si aplica.
-   - RESULTADOS CLÍNICOS (DASS-21): Si aplica, incluye 'ALERTAS DE BIENESTAR'.
+   - "fundamentacion": Síntesis final de la aptitud del candidato.
 
 Devuelve EXCLUSIVAMENTE un JSON válido:
 {
