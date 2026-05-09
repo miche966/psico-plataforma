@@ -35,14 +35,15 @@ export async function POST(req: Request) {
       }
     }
 
-    let resultados = '--- RESULTADOS CLAVE ---\n'
+    let resultados = '--- RESULTADOS DETALLADOS DE EVALUACIÓN ---\n'
     sesiones.forEach((s: any, idx: number) => {
-      if (s.estado !== 'finalizado') return;
-      resultados += `\nPrueba: ${s.test_id?.split('-')[0] || 'Aptitud'}\n`
+      // Incluimos la sesión siempre que tenga algún dato de puntaje, sin importar el estado
       const data = (s.puntaje_bruto?.por_factor as Record<string, any>) || s.puntaje_bruto || {};
+      if (Object.keys(data).length === 0 && !s.transcripcion) return;
+
+      resultados += `\n[PRUEBA]: ${s.test_id?.toUpperCase() || 'EVALUACIÓN'}\n`
       Object.entries(data).forEach(([key, val]) => {
-        // Solo enviamos lo importante para ahorrar tiempo de procesamiento
-        if (['total', 'porcentaje', 'nivel_maximo', 'metricas_fraude'].includes(key?.toLowerCase())) return;
+        if (['total', 'porcentaje', 'nivel_maximo', 'metricas_fraude', 'por_factor', 'por_subtipo'].includes(key?.toLowerCase())) return;
         if (typeof val === 'number') {
           resultados += `- ${key}: ${val}/5\n`
         } else if (typeof val === 'object' && val !== null && 'correctas' in val) {
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
         }
       })
       if (s.transcripcion) {
-        resultados += `Discurso: "${s.transcripcion.slice(0, 500)}..."\n` // Recortar si es muy larga
+        resultados += `COMENTARIOS/ENTREVISTA: "${s.transcripcion.slice(0, 800)}"\n`
       }
     })
 
