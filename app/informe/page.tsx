@@ -369,18 +369,21 @@ function InformePageContent() {
         }
       }
 
-      // ACTUALIZACIÓN CRÍTICA: Forzar el valor en el estado
-      setInf(prev => ({ 
-        ...prev, 
-        alertasTab: aTab, 
-        alertasCopia: aCopia, 
-        confianza, 
-        tiempoPromedio: tiempoFinal,
-        ajusteCargo: { 
-          score: autoAjuste, 
-          analisis: prev.ajusteCargo?.analisis || '' 
-        }
-      }))
+      // ACTUALIZACIÓN CRÍTICA: Forzar el valor en el estado y asegurar persistencia
+      setInf(prev => {
+        const finalScore = autoAjuste > 0 ? autoAjuste : prev.ajusteCargo?.score || 0;
+        return { 
+          ...prev, 
+          alertasTab: aTab, 
+          alertasCopia: aCopia, 
+          confianza, 
+          tiempoPromedio: tiempoFinal,
+          ajusteCargo: { 
+            score: finalScore, 
+            analisis: prev.ajusteCargo?.analisis || '' 
+          }
+        };
+      })
 
     } catch (e) {
       console.error(e)
@@ -611,15 +614,9 @@ function InformePageContent() {
           return limpio
         }
 
-        // Calculamos el score matemático real para asegurar consistencia
-        const resAjuste = calcAjuste(proceso?.competencias_requeridas, sesiones)
-        const scoreFijo = resAjuste?.general || 0
+        // BLINDAJE: Recuperamos el score que el Frontend ya calculó con éxito (ej: 61%)
+        const scoreFrontend = inf.ajusteCargo?.score || 0;
         
-        // Determinamos el dictamen por regla de negocio fija (no subjetiva)
-        let recomendacionFija: Rec = 'no_recomendado'
-        if (scoreFijo >= 85) recomendacionFija = 'recomendado'
-        else if (scoreFijo >= 70) recomendacionFija = 'con_reservas'
-
         const nuevoInforme = {
           ...rawRes,
           fundamentacion: humanizar(rawRes.fundamentacion),
@@ -628,12 +625,11 @@ function InformePageContent() {
           interpretacionPorFactor: Object.fromEntries(
             Object.entries(rawRes.interpretacionPorFactor || {}).map(([k, v]) => [k, humanizar(v as string)])
           ),
-          // BLINDAJE: Sobreescribimos lo que diga la IA con nuestra matemática fija
           ajusteCargo: {
-            score: scoreFijo,
+            score: scoreFrontend, // Mantenemos el 61% original
             analisis: humanizar(rawRes.ajusteCargo?.analisis || rawRes.fundamentacion || '')
           },
-          recomendacion: recomendacionFija
+          recomendacion: scoreFrontend >= 85 ? 'recomendado' : scoreFrontend >= 70 ? 'con_reservas' : 'no_recomendado'
         }
 
         setInf(prev => ({
