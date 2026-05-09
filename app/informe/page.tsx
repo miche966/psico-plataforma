@@ -320,11 +320,30 @@ function InformePageContent() {
       // Recuperar Informe Existente o Inicializar
       const { data: rep } = await supabase.from('informes_psicometricos').select('*').eq('candidato_id', id).single()
       
-      // Cálculo automático de ajuste inicial si hay requerimientos en el proceso
+      // Cálculo automático de ajuste inicial con fallback si no hay datos de proceso
       let autoAjuste = 0
-      if (procData && procData.competencias_requeridas && lista.length > 0) {
-        const resAjuste = calcAjuste(procData.competencias_requeridas, lista)
-        autoAjuste = resAjuste ? resAjuste.general : 0
+      if (lista.length > 0) {
+        const resAjuste = calcAjuste(procData?.competencias_requeridas || [], lista)
+        autoAjuste = (resAjuste && resAjuste.general > 0) ? resAjuste.general : 0
+        
+        // Si el ajuste sigue siendo 0 (por falta de requisitos), calculamos un promedio general de factores
+        if (autoAjuste === 0) {
+          const todosLosFactores: number[] = []
+          lista.forEach(s => {
+            const scan = (obj: any) => {
+              if (!obj || typeof obj !== 'object') return
+              Object.entries(obj).forEach(([k, v]) => {
+                if (typeof v === 'number' && v <= 5) todosLosFactores.push(v)
+                else if (typeof v === 'object') scan(v)
+              })
+            }
+            scan(s.puntaje_bruto)
+          })
+          if (todosLosFactores.length > 0) {
+            const avg = todosLosFactores.reduce((a, b) => a + b, 0) / todosLosFactores.length
+            autoAjuste = Math.round((avg / 5) * 100)
+          }
+        }
       }
 
       if (rep) {
