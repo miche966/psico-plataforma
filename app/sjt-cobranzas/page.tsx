@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -26,6 +26,7 @@ export default function SjtCobranzasPage() {
   const [seleccionada, setSeleccionada] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
+  const procesoId = searchParams.get('proceso')
 
   useEffect(() => {
     cargarItems()
@@ -86,8 +87,9 @@ export default function SjtCobranzasPage() {
     const resultado = { correctas, total: todosLosItems.length, porcentaje: Math.round((correctas / todosLosItems.length) * 100), por_factor: porFactor }
     setFinalizado(true)
     const { data: sesion, error } = await supabase.from('sesiones').insert({
-      test_id: 'e5f6a7b8-c9d0-1234-efab-555555555555',
+      test_id: 'b2c3d4e5-f6a7-8901-bcde-222222222222',
       candidato_id: candidatoId || null,
+      proceso_id: procesoId || null,
       estado: 'finalizado',
       iniciada_en: new Date().toISOString(),
       finalizada_en: new Date().toISOString(),

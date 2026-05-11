@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -32,6 +32,7 @@ export default function HexacoPage() {
   const [nombreCandidato, setNombreCandidato] = useState('')
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
+  const procesoId = searchParams.get('proceso')
   const [tiempoInicio] = useState(() => Date.now())
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0)
 
@@ -118,6 +119,7 @@ export default function HexacoPage() {
       .insert({
         test_id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
         candidato_id: candidatoId || null,
+        proceso_id: procesoId || null,
         estado: 'finalizado',
         iniciada_en: new Date().toISOString(),
         finalizada_en: new Date().toISOString(),

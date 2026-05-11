@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -26,6 +26,7 @@ export default function SjtAtencionPage() {
   const [seleccionada, setSeleccionada] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
+  const procesoId = searchParams.get('proceso')
 
   useEffect(() => {
     cargarItems()
@@ -88,6 +89,7 @@ export default function SjtAtencionPage() {
     const { data: sesion, error } = await supabase.from('sesiones').insert({
       test_id: 'f6a7b8c9-d0e1-2345-fabc-666666666666',
       candidato_id: candidatoId || null,
+      proceso_id: procesoId || null,
       estado: 'finalizado',
       iniciada_en: new Date().toISOString(),
       finalizada_en: new Date().toISOString(),

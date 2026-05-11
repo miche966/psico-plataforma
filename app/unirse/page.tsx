@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { UserPlus, ChevronRight, CheckCircle2, AlertCircle, Building2 } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 
 interface Proceso {
   id: string
@@ -11,8 +12,29 @@ interface Proceso {
   cargo: string
 }
 
+const SLUG_TO_ID: Record<string, string> = {
+  'bigfive': 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  'icar': 'f6a7b8c9-d0e1-2345-fabc-456789012345',
+  'estres-laboral': 'd0e1f2a3-b4c5-6789-defa-000000000001',
+  'creatividad': 'e1f2a3b4-c5d6-7890-efab-111222333444',
+  'integridad': 'e5f6a7b8-c9d0-1234-efab-345678901234',
+  'hexaco': 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+  'numerico': 'c3d4e5f6-a7b8-9012-cdef-123456789012',
+  'verbal': 'd4e5f6a7-b8c9-0123-defa-234567890123',
+  'sjt-ventas': 'a7b8c9d0-e1f2-3456-abcd-777777777777',
+  'tolerancia-frustracion': 'e5f6a7b8-c9d0-1234-efab-555555555555',
+  'sjt-problemas': 'f2a3b4c5-d6e7-8901-fabc-222333444555',
+  'sjt-legal': 'c9d0e1f2-a3b4-5678-cdef-999999999999',
+  'sjt-comercial': 'b2c3d4e5-f6a7-8901-bcde-222222222222',
+  'comercial': 'a1b2c3d4-e5f6-7890-abcd-111111111111',
+  'atencion-detalle': 'b8c9d0e1-f2a3-4567-bcde-888888888888',
+  'sjt-atencion': 'f6a7b8c9-d0e1-2345-fabc-666666666666',
+  'dass21': '7a8b9c0d-e1f2-4356-abcd-999999999999',
+}
+
 export default function UnirsePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [procesos, setProcesos] = useState<Proceso[]>([])
   const [cargando, setCargando] = useState(true)
   const [enviando, setEnviando] = useState(false)
@@ -32,7 +54,11 @@ export default function UnirsePage() {
 
   useEffect(() => {
     cargarProcesos()
-  }, [])
+    const pId = searchParams.get('proceso')
+    if (pId) {
+      setForm(prev => ({ ...prev, procesoId: pId }))
+    }
+  }, [searchParams])
 
   async function cargarProcesos() {
     try {
@@ -81,8 +107,23 @@ export default function UnirsePage() {
 
       if (candError) throw candError
 
-      // 2. Redirigir a la evaluación vinculada al proceso
-      // La ruta /evaluacion se encarga de crear las sesiones si no existen
+      // 2. Crear el vínculo inicial con el proceso (Sesión pendiente)
+      const proceso = procesos.find(p => p.id === form.procesoId)
+      if (proceso) {
+        const slugPrimerTest = proceso.bateria_tests?.[0] || 'bigfive'
+        let testIdFinal = slugPrimerTest
+        if (slugPrimerTest.startsWith('entrevista:')) testIdFinal = slugPrimerTest.split(':')[1]
+        else if (SLUG_TO_ID[slugPrimerTest]) testIdFinal = SLUG_TO_ID[slugPrimerTest]
+
+        await supabase.from('sesiones').insert({
+          candidato_id: candidato.id,
+          proceso_id: form.procesoId,
+          test_id: testIdFinal,
+          estado: 'pendiente'
+        })
+      }
+
+      // 3. Redirigir a la evaluación
       router.push(`/evaluacion?candidato=${candidato.id}&proceso=${form.procesoId}`)
       
     } catch (err: any) {

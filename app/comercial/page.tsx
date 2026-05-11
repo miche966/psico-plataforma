@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -30,6 +30,7 @@ export default function ComercialPage() {
   const [nombreCandidato, setNombreCandidato] = useState('')
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
+  const procesoId = searchParams.get('proceso')
   const [tiempoInicio] = useState(() => Date.now())
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0)
 
@@ -92,6 +93,7 @@ export default function ComercialPage() {
     const { data: sesion, error } = await supabase.from('sesiones').insert({
       test_id: 'a1b2c3d4-e5f6-7890-abcd-111111111111',
       candidato_id: candidatoId || null,
+      proceso_id: procesoId || null,
       estado: 'finalizado',
       iniciada_en: new Date().toISOString(),
       finalizada_en: new Date().toISOString(),

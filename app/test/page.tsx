@@ -26,6 +26,7 @@ export default function TestPage() {
   const metricasFraude = useProctoring()
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
+  const procesoId = searchParams.get('proceso')
   const [nombreCandidato, setNombreCandidato] = useState<string>('')
   const [tiempoInicio] = useState(() => Date.now())
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0)
@@ -96,6 +97,7 @@ export default function TestPage() {
     const { data: sesion, error: errorSesion } = await supabase.from('sesiones').insert({
       test_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
       candidato_id: candidatoId || null,
+      proceso_id: procesoId || null,
       estado: 'finalizado',
       iniciada_en: new Date(tiempoInicio).toISOString(),
       finalizada_en: new Date().toISOString(),

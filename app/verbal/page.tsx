@@ -28,6 +28,7 @@ export default function VerbalPage() {
   const [seleccionada, setSeleccionada] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
+  const procesoId = searchParams.get('proceso')
 
   useEffect(() => {
     cargarItems()
@@ -106,6 +107,7 @@ export default function VerbalPage() {
       .insert({
         test_id: 'd4e5f6a7-b8c9-0123-defa-234567890123',
         candidato_id: candidatoId || null,
+        proceso_id: procesoId || null,
         estado: 'finalizado',
         iniciada_en: new Date().toISOString(),
         finalizada_en: new Date().toISOString(),

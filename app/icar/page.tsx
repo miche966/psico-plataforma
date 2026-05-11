@@ -162,6 +162,7 @@ export default function IcarPage() {
   const [seleccionada, setSeleccionada] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
+  const procesoId = searchParams.get('proceso')
   const nivelMax = parseInt(searchParams.get('nivel') || '3')
   const sinRotacion = searchParams.get('rotacion') === 'no'
 
@@ -241,6 +242,7 @@ export default function IcarPage() {
     const { data: sesion, error } = await supabase.from('sesiones').insert({
       test_id: 'f6a7b8c9-d0e1-2345-fabc-456789012345',
       candidato_id: candidatoId || null,
+      proceso_id: procesoId || null,
       estado: 'finalizado',
       iniciada_en: startTime,
       finalizada_en: new Date().toISOString(),

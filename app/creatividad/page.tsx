@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -30,6 +30,7 @@ export default function CreatividadPage() {
   const [nombreCandidato, setNombreCandidato] = useState('')
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
+  const procesoId = searchParams.get('proceso')
   const [tiempoInicio] = useState(() => Date.now())
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0)
 
@@ -93,6 +94,7 @@ export default function CreatividadPage() {
     const { data: sesion, error } = await supabase.from('sesiones').insert({
       test_id: 'e1f2a3b4-c5d6-7890-efab-111222333444',
       candidato_id: candidatoId || null,
+      proceso_id: procesoId || null,
       estado: 'finalizado',
       iniciada_en: new Date().toISOString(),
       finalizada_en: new Date().toISOString(),

@@ -26,6 +26,7 @@ export default function Dass21Page() {
   const metricasFraude = useProctoring()
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
+  const procesoId = searchParams.get('proceso')
   const [nombreCandidato, setNombreCandidato] = useState<string>('')
   const [tiempoInicio] = useState(() => Date.now())
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0)
@@ -98,6 +99,7 @@ export default function Dass21Page() {
     const { data: sesion, error: errorSesion } = await supabase.from('sesiones').insert({
       test_id: DASS21_TEST_ID,
       candidato_id: candidatoId || null,
+      proceso_id: procesoId || null,
       estado: 'finalizado',
       iniciada_en: new Date(tiempoInicio).toISOString(),
       finalizada_en: new Date().toISOString(),

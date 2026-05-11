@@ -28,6 +28,7 @@ export default function NumericoPage() {
   const [seleccionada, setSeleccionada] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
+  const procesoId = searchParams.get('proceso')
 
   useEffect(() => {
     cargarItems()
@@ -106,6 +107,7 @@ export default function NumericoPage() {
       .insert({
         test_id: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
         candidato_id: candidatoId || null,
+        proceso_id: procesoId || null,
         estado: 'finalizado',
         iniciada_en: new Date().toISOString(),
         finalizada_en: new Date().toISOString(),
