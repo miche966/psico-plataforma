@@ -51,8 +51,19 @@ interface InformeState {
 
 const ETQ: Record<string, string> = {
   // Personalidad y Probidad
-  extraversion: 'Extraversión', amabilidad: 'Amabilidad', responsabilidad: 'Responsabilidad',
-  neuroticismo: 'Estabilidad Emocional', apertura: 'Apertura a la Experiencia',
+  extraversion: 'Extraversión', 
+  'extraversión y energía social': 'Extraversión',
+  'extraversión': 'Extraversión',
+  amabilidad: 'Amabilidad',
+  'amabilidad y cooperación': 'Amabilidad',
+  responsabilidad: 'Responsabilidad',
+  'responsabilidad y organización': 'Responsabilidad',
+  neuroticismo: 'Estabilidad Emocional',
+  'neuroticismo y ajuste': 'Estabilidad Emocional',
+  'estabilidad emocional': 'Estabilidad Emocional',
+  apertura: 'Apertura a la Experiencia',
+  'apertura a la experiencia': 'Apertura a la Experiencia',
+  'apertura y curiosidad': 'Apertura a la Experiencia',
   honestidad_humildad: 'Honestidad y Humildad',
   honestidad: 'Sinceridad y Franqueza',
   normas: 'Apego a Normas y Ética',
@@ -417,14 +428,16 @@ function InformePageContent() {
 
   const parseVal = (v: any, key?: string) => {
     let val = 0
+    const k = key?.toLowerCase().trim() || ''
+    
     if (typeof v === 'object' && v !== null) {
-      if (key?.toLowerCase() === 'metricas_fraude') {
+      if (k === 'metricas_fraude') {
         const alertas = (v.events?.length || 0) + (v.tabSwitches || 0) + (v.copyPasteAttempts || 0)
         val = Math.max(0, 5 - (alertas * 0.5))
       } else if ('correctas' in v && 'total' in v) {
         val = (Number(v.correctas) / (Number(v.total) || 1)) * 5
       } else {
-        val = Number(v.correctas || v.score) || 0
+        val = Number(v.correctas || v.score || v.promedio || 0)
       }
     } else if (typeof v === 'string') {
       const s = v.toLowerCase().trim()
@@ -436,14 +449,16 @@ function InformePageContent() {
       val = Number(v) || 0
     }
 
-    // Inversión lógica selectiva:
-    // - errores_texto: Mide errores cometidos (Menos es mejor -> Invertir)
-    // - errores_numeros: Mide errores detectados/hallazgos (Más es mejor -> No invertir)
-    if (key?.toLowerCase() === 'errores_texto') {
+    // Inversión lógica selectiva (Escala 1-5):
+    if (k === 'neuroticismo' || k === 'nivel_estres' || k === 'burnout') {
+      val = Math.max(0, 6 - val)
+    }
+    // Inversión lógica para escalas 0-5:
+    if (k === 'errores_texto') {
       val = Math.max(0, 5 - val)
     }
 
-    // Normalización Final de Seguridad
+    // Normalización Final de Seguridad (Escala 0-5)
     if (val > 5) {
       if (val <= 25) val = (val / 25) * 5
       else if (val <= 100) val = (val / 100) * 5
@@ -521,32 +536,36 @@ function InformePageContent() {
   }
 
   function getFactoresUnicos(dominio: string[]) {
-    const mapa = new Map<string, { valor: any, sesionId: string, testId: string }>()
+    const mapa = new Map<string, { valor: any, sesionId: string, testId: string, acc: number }>()
     
     // Ordenar sesiones por fecha (más reciente primero)
     const sesionesOrd = [...sesiones].sort((a, b) => {
-      const dA = new Date(a.finalizada_en || a.iniciada_en || 0).getTime()
-      const dB = new Date(b.finalizada_en || b.iniciada_en || 0).getTime()
-      return dB - dA
+      const dA = new Date(b.finalizada_en || b.iniciada_en || b.created_at || 0).getTime()
+      const dB = new Date(a.finalizada_en || a.iniciada_en || a.created_at || 0).getTime()
+      return dA - dB
     })
 
     sesionesOrd.forEach(s => {
-      if (!s.puntaje_bruto) return
+      const pb = s.puntaje_bruto || {}
       const escanear = (obj: any) => {
         if (!obj || typeof obj !== 'object') return
         Object.entries(obj).forEach(([f, v]: any) => {
-          const key = f.toLowerCase()
+          const key = f.toLowerCase().trim()
           if (dominio.includes(key)) {
             const vNum = parseVal(v, key)
-            if (!mapa.has(key)) {
-              const acc = (v && typeof v === 'object' && 'correctas' in v) ? (v.correctas / (v.total || 1)) : (Number(vNum) / 5)
-              mapa.set(key, { valor: v, sesionId: s.id, testId: s.test_id, acc } as any)
+            // Si el factor no está o el valor actual es 0 y el nuevo es > 0, actualizamos
+            if (!mapa.has(key) || (mapa.get(key)!.acc === 0 && vNum > 0)) {
+              const acc = (v && typeof v === 'object' && 'correctas' in v) ? (v.correctas / (v.total || 1)) * 5 : vNum
+              mapa.set(key, { valor: v, sesionId: s.id, testId: s.test_id, acc })
             }
           }
-          if (f === 'por_factor' && typeof v === 'object') escanear(v)
+          // Escaneo recursivo para estructuras anidadas (ej: por_factor, resultados, etc.)
+          if (typeof v === 'object' && v !== null && !['metricas_fraude'].includes(key)) {
+            escanear(v)
+          }
         })
       }
-      escanear(s.puntaje_bruto)
+      escanear(pb)
     })
     return Array.from(mapa.entries())
   }
@@ -774,7 +793,7 @@ function InformePageContent() {
                 <label style={s.commentLabel}>Justificación del Ajuste al Perfil</label>
                 <textarea
                   style={{ ...s.ta, minHeight: '120px' }}
-                  value={inf.ajusteCargo?.analisis}
+                  value={inf.ajusteCargo?.analisis || ''}
                   onChange={e => setInf(p => ({ ...p, ajusteCargo: { ...p.ajusteCargo, analisis: e.target.value } }))}
                   placeholder="Explique por qué el candidato se ajusta o no a la posición..."
                 />
@@ -891,54 +910,70 @@ function InformePageContent() {
             style={s.ta}
             rows={6}
             placeholder="Síntesis profunda del perfil..."
-            value={inf.resumenEjecutivo}
+            value={inf.resumenEjecutivo || ''}
             onChange={e => upd('resumenEjecutivo', e.target.value)}
           />
         </div>
 
-        {/* ── II. PERSONALIDAD Y CONDUCTA ───────────────────────────────────── */}
+        {/* ── II. EVALUACIÓN PSICOMÉTRICA POR TÉCNICA (PERSONALIDAD) ────────── */}
         {hasP && (
           <div style={s.card}>
             <div style={s.cardHead}>
-              <span style={s.cardHeadTxt}>II. Perfil Conductual y Personalidad</span>
-              <span style={s.badge}>Dimensión Conductual</span>
+              <span style={s.cardHeadTxt}>II. Evaluación Psicométrica por Técnica (Personalidad)</span>
+              <span style={s.badge}>Dimensiones del Big Five</span>
             </div>
 
             <div style={{ padding: '0 1.25rem' }}>
               {getFactoresUnicos(DOMINIOS.PERSONALIDAD).map(([factor, { valor, sesionId }]) => {
 
                 const narrativas: Record<string, any> = {
-                  etica: {
-                    alto: 'Presenta una estructura moral sólida y una alineación natural con marcos normativos de alta exigencia. Es un perfil que prioriza la transparencia y la rectitud incluso bajo niveles extremos de presión, lo que garantiza una gestión de riesgo nulo para la organización. Su compromiso con la honestidad no es reactivo, sino un valor intrínseco que actúa como un pilar de confianza para el equipo, asegurando que los procesos internos se mantengan íntegros y proyecten una imagen institucional de máxima seriedad.',
-                    medio: 'Demuestra un comportamiento íntegro alineado con los estándares de convivencia y legalidad organizacional. Respeta las reglas establecidas y valora la transparencia en el trato diario, mostrando un criterio equilibrado entre la practicidad que requiere el negocio y la observancia de las normas vigentes. Es un perfil confiable que se adapta bien a entornos estructurados y que mantiene una conducta profesional predecible y ética en sus interacciones habituales.',
-                    bajo: 'Muestra una tendencia a flexibilizar normas en favor de resultados inmediatos o situaciones de conveniencia personal. En entornos de alta regulación o manejo de recursos críticos, este perfil requiere una supervisión cercana y una definición muy clara de los marcos de cumplimiento para evitar sesgos en la toma de decisiones que puedan comprometer la imagen institucional. Se recomienda reforzar la cultura de integridad mediante auditorías frecuentes y metas basadas en procesos, no solo en resultados.'
-                  },
-                  responsabilidad: {
-                    alto: 'Es un perfil de máxima confiabilidad operativa y autoliderazgo. Se caracteriza por un compromiso intrínseco con la excelencia de sus entregables y una gestión rigurosa de los cronogramas. No se limita a cumplir con sus asignaciones, sino que asume una propiedad total sobre los resultados finales, mostrando una autodisciplina que elimina la necesidad de microgestión. Es un activo clave para proyectos que demandan autonomía, rigor técnico y un sentido de urgencia constante para el éxito del área.',
-                    medio: 'Cumple de manera consistente con sus compromisos laborales y mantiene un nivel de organización funcional acorde a las demandas del puesto. Es capaz de gestionar sus prioridades con autonomía en condiciones estándar, asegurando que el flujo de trabajo se mantenga estable y los objetivos se alcancen en los tiempos previstos. Responde bien a metas claras y a una supervisión de apoyo que le permita validar sus avances periódicamente.',
-                    bajo: 'Suele presentar inconsistencias en el seguimiento de tareas a largo plazo o en el rigor de los detalles técnicos finales. Su desempeño tiende a ser reactivo a la presión externa, por lo que se beneficia de entornos con metas de muy corto plazo y una estructura de reporte frecuente para evitar la procrastinación. Requiere de un líder que establezca sistemas de control de calidad intermedios para asegurar que la productividad no decaiga ante la falta de supervisión directa.'
-                  },
-                  estabilidad: {
-                    alto: 'Posee una madurez emocional superior que le permite procesar el estrés, la incertidumbre y la frustración de manera constructiva. Actúa como un regulador emocional natural en situaciones de crisis, manteniendo la objetividad analítica y evitando que las emociones nublen su juicio técnico. Su presencia aporta serenidad al equipo, facilitando la toma de decisiones críticas en entornos de alta volatilidad donde otros perfiles podrían verse desbordados por la presión situacional.',
-                    medio: 'Muestra un equilibrio emocional saludable y una gestión profesional de sus reacciones en el entorno laboral. Logra manejar las presiones cotidianas con tranquilidad, aunque ante picos de demanda extrema o conflictos interpersonales agudos podría requerir espacios de descarga para mantener su enfoque. Su respuesta es predecible y estable, lo que facilita una convivencia armónica y una productividad constante sin grandes fluctuaciones anímicas.',
-                    bajo: 'Tiende a verse afectado significativamente por el clima del entorno, la incertidumbre o las críticas constructivas, lo que genera fluctuaciones marcadas en su rendimiento. En periodos de alta tensión, su capacidad de análisis y ejecución podría verse mermada por el estrés, por lo que requiere un ambiente de trabajo que priorice la seguridad psicológica y una validación constante de su desempeño para evitar que la inseguridad emocional bloquee su capacidad operativa.'
+                  extraversion: {
+                    alto: 'Posee una energía social e interpersonal sobresaliente, lo que le permite actuar como un catalizador positivo dentro de los equipos de trabajo. Se destaca por su asertividad y capacidad para dinamizar entornos colaborativos, siendo especialmente efectivo en roles que demandan negociación, liderazgo de proyectos y una comunicación persuasiva orientada al impacto institucional.',
+                    medio: 'Demuestra un equilibrio funcional entre la interacción social y la autonomía en sus tareas. Es capaz de integrarse con fluidez a dinámicas grupales cuando el objetivo lo requiere, manteniendo un estilo comunicativo profesional y eficiente que facilita la coordinación diaria sin comprometer su capacidad de enfoque individual.',
+                    bajo: 'Muestra una preferencia por entornos de trabajo más estructurados y reflexivos, donde prime el análisis individual sobre la interacción constante. Su mayor potencial reside en tareas que requieran una concentración profunda y un procesamiento autónomo de la información, lejos de entornos con alta estimulación social.'
                   },
                   amabilidad: {
-                    alto: 'Es un facilitador de alto nivel para las relaciones interpersonales y la cohesión de la cultura interna. Su enfoque genuino en la armonía y la colaboración fomenta la sinergia grupal y la resolución pacífica de conflictos complejos. Su presencia suele elevar el bienestar del equipo, convirtiéndose en un puente de comunicación vital que facilita la integración de nuevas ideas y el apoyo mutuo, factores que impactan directamente en la retención del talento y el compromiso colectivo.',
-                    medio: 'Mantiene una actitud colaborativa, respetuosa y profesional, integrándose con naturalidad a equipos de trabajo diversos. Valora el buen trato y la cortesía institucional, logrando un balance efectivo entre la asertividad necesaria para el cumplimiento de objetivos y la calidez humana que requiere la colaboración diaria. Es un perfil que contribuye activamente a mantener un clima laboral positivo y estable a largo plazo.',
-                    bajo: 'Prioriza el pragmatismo, la lógica fría y los resultados objetivos por sobre las dinámicas interpersonales o el clima emocional del grupo. Su comunicación suele ser extremadamente directo y, en ocasiones, percibida como distante o poco empática por sus pares. Si bien es altamente eficiente en tareas técnicas individuales, requiere ser gestionado en entornos que demanden consenso o negociación para evitar fricciones que puedan afectar la cohesión del equipo de trabajo.'
+                    alto: 'Destaca por su excepcional disposición cooperativa y su orientación genuina hacia el apoyo al equipo. Es un perfil que prioriza la armonía y la sinergia organizacional, actuando como un mediador natural en situaciones de conflicto y fortaleciendo el tejido interpersonal de la empresa mediante una actitud de escucha activa y empatía.',
+                    medio: 'Mantiene una actitud colaborativa y respetuosa, alineada con los estándares de profesionalismo de la organización. Logra interactuar constructivamente con sus pares, defendiendo su criterio técnico con asertividad pero manteniendo siempre un tono conciliador que favorece la estabilidad del clima laboral.',
+                    bajo: 'Prioriza el pragmatismo y el cumplimiento de objetivos objetivos sobre las dinámicas de grupo. Su estilo tiende a ser más individualista y directo, lo que resulta eficiente en entornos de alta exigencia técnica o competitiva, aunque podría requerir acompañamiento en tareas que demanden alto consenso.'
+                  },
+                  responsabilidad: {
+                    alto: 'Es un perfil de alta confiabilidad estratégica, caracterizado por un rigor excepcional en la organización de sus tareas y un fuerte compromiso con la excelencia de sus entregables. Su capacidad de autogestión y su enfoque meticuloso aseguran que los proyectos bajo su cargo se ejecuten con precisión técnica y dentro de los plazos establecidos.',
+                    medio: 'Demuestra una organización funcional de su flujo de trabajo, cumpliendo de manera consistente con sus responsabilidades profesionales. Es capaz de gestionar prioridades con autonomía y responde positivamente a marcos de trabajo predefinidos, manteniendo un estándar de calidad estable en sus funciones cotidianas.',
+                    bajo: 'Su desempeño es más óptimo en entornos con objetivos de corto plazo y una supervisión cercana que le brinde estructura. Podría presentar dificultades en la planificación de proyectos complejos a largo plazo, por lo que se beneficia de herramientas de gestión del tiempo y metas diarias claras.'
+                  },
+                  neuroticismo: {
+                    alto: 'Muestra una madurez emocional y una resiliencia sobresalientes frente a la presión y la incertidumbre. Su capacidad para mantener la objetividad analítica bajo estrés actúa como un factor de estabilidad para el equipo, permitiéndole tomar decisiones equilibradas en momentos de crisis sin que las emociones interfieran en el resultado técnico.',
+                    medio: 'Gestiona sus reacciones emocionales de forma profesional y equilibrada ante las demandas laborales habituales. Mantiene un rendimiento constante y un trato estable con sus colaboradores, mostrando una capacidad de ajuste adecuada a las variaciones normales de la carga de trabajo y el clima organizacional.',
+                    bajo: 'Su umbral de tolerancia a la frustración tiende a ser limitado, pudiendo presentar fluctuaciones en su rendimiento ante climas de alta tensión o cambios imprevistos. Se recomienda un entorno de trabajo que brinde seguridad psicológica y una retroalimentación frecuente que refuerce su confianza y estabilidad operativa.'
                   },
                   apertura: {
-                    alto: 'Destaca por una curiosidad intelectual insaciable y una apertura total a paradigmas disruptivos y nuevas tecnologías. Es un perfil que abraza el cambio no como un obstáculo, sino como una oportunidad estratégica de aprendizaje. Su capacidad para conectar ideas diversas y proponer soluciones creativas a problemas convencionales lo convierte en un motor de innovación fundamental para proyectos que busquen la mejora continua y la ventaja competitiva.',
-                    medio: 'Muestra una receptividad adecuada hacia el aprendizaje continuo y la actualización de procesos operativos. Se adapta bien a los cambios tecnológicos o metodológicos siempre que se le presente un marco lógico y beneficios claros, manteniendo un equilibrio saludable entre el respeto por las prácticas que ya han demostrado ser exitosas y la exploración prudente de nuevas alternativas para optimizar su propio rendimiento.',
-                    bajo: 'Presenta una marcada preferencia por entornos estables, métodos tradicionales y rutinas predecibles. Le resulta difícil salir de su zona de confort operativa y puede mostrar una resistencia pasiva ante cambios súbitos que no perciba como estrictamente necesarios. Su mayor valor reside en puestos que requieren un rigor metodológico extremo, constancia y donde la adherencia a procesos probados sea un factor crítico de éxito.'
+                    alto: 'Se caracteriza por una curiosidad intelectual activa y una apertura excepcional hacia la innovación y el aprendizaje continuo. Es un agente de cambio natural que busca constantemente optimizar procesos y aplicar soluciones creativas para problemas convencionales, aportando una visión fresca y estratégica a la organización.',
+                    medio: 'Muestra una receptividad adecuada hacia el cambio y la actualización de sus competencias técnicas. Se adapta con solvencia a nuevas metodologías cuando percibe un beneficio claro para su operativa, manteniendo un equilibrio saludable entre la innovación necesaria y los métodos de trabajo probados.',
+                    bajo: 'Muestra una marcada preferencia por los procedimientos establecidos y las rutinas predecibles. Su mayor valor reside en funciones que requieran un seguimiento riguroso de normativas y donde la constancia operativa y la especialización en tareas conocidas sean factores clave de éxito para el área.'
+                  },
+                  normas: {
+                    alto: 'Presenta una estructura moral sólida y una alineación consistente con marcos normativos de alta exigencia. Es un perfil que prioriza la transparencia y la rectitud incluso bajo niveles significativos de presión, lo que contribuye a una gestión de riesgo controlada para la organización.',
+                    medio: 'Demuestra un comportamiento íntegro alineado con los estándares de convivencia y legalidad organizacional. Respeta las reglas establecidas y valora la transparencia en el trato diario, mostrando un criterio equilibrado.',
+                    bajo: 'Podría mostrar tendencia a priorizar resultados inmediatos sobre ciertos marcos normativos. Se recomienda una definición clara de los lineamientos de cumplimiento y una supervisión periódica.'
+                  },
+                  honestidad: {
+                    alto: 'Se destaca por su franqueza y una comunicación transparente. Su estilo facilita la construcción de confianza y la obtención de retroalimentación constructiva, siendo un perfil orientado a la claridad institucional.',
+                    medio: 'Mantiene una comunicación equilibrada y profesional. Es capaz de ser sincero en sus planteamientos manteniendo las formas institucionales, logrando transmitir información relevante de manera asertiva.',
+                    bajo: 'En ocasiones podría reservar información para evitar tensiones situacionales. Se sugiere fomentar un canal de comunicación abierto y validar la información relevante mediante indicadores objetivos.'
+                  },
+                  promedio_general: {
+                    alto: 'El perfil proyecta una integridad global destacada. Sus valores personales se manifiestan en una conducta profesional coherente en las dimensiones evaluadas, favoreciendo una alineación sólida.',
+                    medio: 'Posee un nivel de probidad acorde a las expectativas corporativas habituales. Su comportamiento es predecible dentro de los marcos éticos estándar, mostrando un juicio moral funcional.',
+                    bajo: 'Se observan áreas de mejora en su juicio ético que requieren atención. Se recomienda un periodo de acompañamiento inicial y una comunicación clara de los valores corporativos.'
                   }
                 };
 
                 const normVal = Math.min(5.0, Math.max(0, parseVal(valor, factor)))
                 const clr = clrOf(normVal)
                 const fk = `${sesionId}_${factor.toLowerCase()}`
-                const descSugerida = `El candidato muestra un nivel de ${Number(normVal.toFixed(1))}/5 en ${ETQ[factor.toLowerCase()] || factor}.`
+                const cat = normVal >= 4.5 ? 'alto' : normVal >= 3.0 ? 'medio' : 'bajo'
+                const descSugerida = narrativas[factor.toLowerCase()]?.[cat] || `El candidato muestra un nivel de ${Number(normVal.toFixed(1))}/5 en ${ETQ[factor.toLowerCase()] || factor}.`
 
                 return (
                   <div key={factor} style={s.factBlk}>
@@ -946,7 +981,7 @@ function InformePageContent() {
                       <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
                       <span style={{ ...s.factLvl, color: clr }}>{Number(normVal.toFixed(1))}/5</span>
                     </div>
-                    <div style={s.barBg}><div style={{ ...s.barFill, width: `${(normVal/5)*100}%`, background: clr }} /></div>
+                    <div style={s.barBg}><div style={{ ...s.barFill, width: `${(normVal / 5) * 100}%`, background: clr }} /></div>
                     <textarea style={s.taFact} rows={4} value={inf.interpretacionPorFactor?.[fk] || descSugerida} onChange={(e) => updFactor(fk, e.target.value)} />
                   </div>
                 )
@@ -977,7 +1012,7 @@ function InformePageContent() {
                   <textarea 
                     style={{ ...s.ta, fontSize: '0.85rem' }} 
                     rows={3} 
-                    value={inf.ajusteMbti} 
+                    value={inf.ajusteMbti || ''} 
                     onChange={e => upd('ajusteMbti', e.target.value)}
                     placeholder="Analice cómo este tipo de personalidad se desempeña en las tareas específicas del puesto..."
                   />
@@ -1023,40 +1058,40 @@ function InformePageContent() {
                       <div style={{ fontSize: '0.75rem', color: '#0369a1', textTransform: 'uppercase', fontWeight: '800' }}>{nivel}</div>
                     </div>
                   </div>
-                  {getFactoresUnicos(DOMINIOS.COGNITIVO).filter(([k]) => !['correctas','total','score','percentil'].includes(k)).map(([factor, { valor, sesionId }]) => {
+                  {getFactoresUnicos(DOMINIOS.COGNITIVO).filter(([k]) => !['correctas', 'total', 'score', 'percentil'].includes(k)).map(([factor, { valor, sesionId }]) => {
                     const vNorm = parseVal(valor, factor)
                     const fk = `${sesionId}_${factor.toLowerCase()}`
-                    
+
                     const narrativas: Record<string, any> = {
                       documentos: {
-                        alto: 'Muestra una agudeza excepcional en el manejo de registros y procesos administrativos. Su capacidad para detectar inconsistencias en grandes volúmenes de datos garantiza un flujo documental libre de errores operativos, lo que se traduce en una gestión administrativa de alta precisión y confiabilidad para la organización.',
-                        medio: 'Posee una destreza adecuada para la organización y revisión de documentos técnicos. Mantiene un estándar de orden constante, logrando procesar información con seguridad y criterio, lo que asegura que los procesos de soporte administrativo se ejecuten sin contratiempos significativos.',
-                        bajo: 'Presenta dificultades para mantener el rigor sistemático en la gestión de archivos o datos. Su rendimiento en tareas de control administrativo tiende a ser variable, por lo que requiere herramientas de soporte, listas de verificación o una supervisión final para garantizar la integridad de los registros.'
+                        alto: 'Muestra una agudeza destacada en el manejo de registros y procesos administrativos. Su capacidad para identificar inconsistencias en volúmenes de datos favorece un flujo documental con mínima incidencia de errores, lo que se traduce en una gestión administrativa precisa y confiable para la organización.',
+                        medio: 'Posee una destreza adecuada para la organización y revisión de documentos técnicos. Mantiene un estándar de orden constante, logrando procesar información con seguridad y criterio, lo que facilita que los procesos de soporte administrativo se ejecuten sin contratiempos.',
+                        bajo: 'Podría presentar dificultades para mantener el rigor sistemático en la gestión de archivos o datos. Su rendimiento en tareas de control administrativo tiende a ser variable, por lo que se beneficia del uso de listas de verificación o una revisión final para asegurar la integridad de los registros.'
                       },
                       comparacion: {
-                        alto: 'Su velocidad de procesamiento y reconocimiento de patrones es superior. Logra identificar diferencias sutiles y errores de transcripción con una rapidez que optimiza los tiempos de respuesta del área. Es un perfil altamente eficiente en tareas que demandan una validación cruzada constante y ágil.',
-                        medio: 'Demuestra una agilidad mental acorde a las exigencias operativas habituales. Es capaz de contrastar información y detectar errores evidentes de manera eficiente, manteniendo un ritmo de trabajo estable que equilibra correctamente la velocidad con la precisión técnica.',
-                        bajo: 'Tiende a procesar la comparación de datos de forma lenta o con omisiones ante la presión de tiempo. Le resulta difícil mantener la exactitud cuando se le exige rapidez, por lo que se desempeña mejor en tareas que no dependen de una respuesta inmediata o que permiten una revisión pausada.'
+                        alto: 'Su velocidad de procesamiento y reconocimiento de patrones es destacada. Logra identificar diferencias y errores de transcripción con una agilidad que optimiza los tiempos de respuesta del área, siendo un perfil eficiente en tareas que demandan validación de datos.',
+                        medio: 'Demuestra una agilidad mental acorde a las exigencias operativas habituales. Es capaz de contrastar información y detectar errores de manera eficiente, manteniendo un ritmo de trabajo estable que equilibra la velocidad con la precisión técnica.',
+                        bajo: 'Tiende a procesar la comparación de datos de forma más pausada ante la presión de tiempo. Su exactitud mejora en tareas que no dependen de una respuesta inmediata o que permiten una revisión detallada de la información.'
                       },
                       concentracion: {
-                        alto: 'Posee una capacidad de atención sostenida admirable, incluso en entornos con altos niveles de interferencia. Su foco se mantiene imperturbable durante periodos prolongados, lo que le permite finalizar tareas complejas con un estándar de calidad homogéneo y sin degradación del rendimiento por fatiga mental.',
-                        medio: 'Mantiene un nivel de atención estable durante la jornada laboral. Logra abstraerse de las distracciones comunes de la oficina para cumplir con sus objetivos, aunque podría presentar leves bajas en su precisión ante tareas extremadamente monótonas o tras periodos muy largos de actividad ininterrumpida.',
-                        bajo: 'Su umbral de atención es limitado y se ve fácilmente afectado por estímulos externos o pensamientos intrusivos. Requiere pausas frecuentes o entornos de trabajo muy controlados y silenciosos para poder mantener la calidad operativa, ya que el riesgo de errores por distracción es latente.'
+                        alto: 'Posee una capacidad de atención sostenida consistente, incluso en entornos con interferencias. Su foco se mantiene estable durante periodos prolongados, lo que le permite finalizar tareas complejas con un estándar de calidad homogéneo y regular.',
+                        medio: 'Mantiene un nivel de atención funcional durante la jornada laboral. Logra enfocarse en sus objetivos a pesar de las distracciones comunes, aunque podría presentar leves bajas en su precisión ante tareas monótonas o tras periodos largos de actividad ininterrumpida.',
+                        bajo: 'Su umbral de atención tiende a ser variable y puede verse afectado por estímulos externos. Se recomienda un entorno de trabajo organizado y pausas programadas para mantener la calidad operativa y reducir el riesgo de errores por distracción.'
                       },
                       errores_texto: {
-                        alto: 'Presenta un "ojo clínico" para la detección de anomalías sintácticas, ortográficas o de redacción. Su intervención en reportes y comunicaciones asegura una imagen institucional impecable, eliminando cualquier riesgo de malentendidos o falta de profesionalismo en la palabra escrita.',
-                        medio: 'Es capaz de producir y revisar textos con un nivel de corrección profesional adecuado. Detecta los errores más comunes y mantiene una coherencia narrativa lógica, asegurando que las comunicaciones internas y externas cumplan con los estándares básicos de calidad de la organización.',
-                        bajo: 'Muestra una tendencia a la omisión de errores en la redacción o revisión de informes. Su falta de agudeza en este sentido puede derivar en documentos con inconsistencias, por lo que su trabajo escrito requiere una edición final por parte de un tercero o el uso riguroso de correctores automatizados.'
+                        alto: 'Presenta una agudeza visual y analítica para la detección de anomalías en textos y reportes. Su intervención contribuye a una imagen institucional profesional, reduciendo significativamente el riesgo de malentendidos en la comunicación escrita.',
+                        medio: 'Es capaz de producir y revisar textos con un nivel de corrección profesional adecuado. Detecta los errores comunes y mantiene una coherencia narrativa lógica, asegurando que las comunicaciones cumplan con los estándares de calidad de la organización.',
+                        bajo: 'Muestra una tendencia a la omisión de errores en la redacción o revisión de informes. Se sugiere el uso de herramientas de corrección automatizada o una revisión final por un tercero para asegurar la consistencia de los documentos escritos.'
                       },
                       errores_numeros: {
-                        alto: 'Su precisión en el manejo de cifras y cálculos es de nivel experto. Detecta de inmediato descuadres contables o errores de carga de datos numéricos, aportando una capa de seguridad crítica en procesos financieros, estadísticos o de facturación donde el margen de error debe ser cero.',
-                        medio: 'Maneja la información cuantitativa con seguridad y criterio. Logra realizar cálculos y transcripciones numéricas con una tasa de error muy baja en condiciones normales de trabajo, contribuyendo a la estabilidad de los reportes de gestión del área.',
-                        bajo: 'Vulnerabilidad ante la fatiga numérica; tiende a trasponer cifras o cometer errores de cálculo básico cuando maneja volúmenes moderados de datos. Su desempeño en esta área debe ser validado doblemente para evitar impactos en la contabilidad o en los indicadores de rendimiento.'
+                        alto: 'Su precisión en el manejo de cifras y cálculos es destacada. Logra identificar descuadres o errores de carga de datos numéricos con facilidad, aportando seguridad en procesos financieros, estadísticos o de facturación que requieran alta exactitud.',
+                        medio: 'Maneja la información cuantitativa con seguridad y criterio. Realiza cálculos y transcripciones numéricas con una tasa de error baja en condiciones normales, contribuyendo a la estabilidad de los reportes de gestión del área.',
+                        bajo: 'Puede presentar vulnerabilidad ante la fatiga numérica, tendiendo a cometer errores de transcripción cuando maneja volúmenes moderados de datos. Se recomienda una validación secundaria en tareas que impliquen indicadores críticos.'
                       },
                       metricas_fraude: {
-                        alto: 'El perfil muestra una transparencia absoluta en su autoevaluación. No se detectan sesgos de deseabilidad social, lo que otorga una validez técnica muy alta a todos los resultados del informe. Sus respuestas reflejan una autopercepción realista y honesta, facilitando una integración genuina a la cultura organizacional.',
-                        medio: 'Sus resultados son coherentes y muestran un ajuste realista entre la imagen profesional que desea proyectar y sus características reales. Mantiene un nivel de franqueza adecuado que permite confiar en la validez general de la evaluación, sin distorsiones significativas del perfil.',
-                        bajo: 'Se observa una marcada tendencia a proyectar una imagen idealizada, lo que podría indicar una baja autocrítica o un intento deliberado de manipulación de la prueba. Los resultados de este informe deben cruzarse cuidadosamente con una entrevista por competencias para validar la veracidad de los rasgos declarados.'
+                        alto: 'El perfil muestra una transparencia notable en su autoevaluación. No se detectan sesgos significativos de deseabilidad social, lo que aporta una validez técnica consistente a los resultados del informe y refleja una autopercepción honesta.',
+                        medio: 'Sus resultados son coherentes y muestran un ajuste profesional entre la imagen que desea proyectar y sus características. Mantiene un nivel de franqueza que permite confiar en la validez general de la evaluación.',
+                        bajo: 'Se observa una tendencia a proyectar una imagen idealizada, lo que podría indicar una autocrítica limitada. Se recomienda validar estos resultados mediante una entrevista por competencias para profundizar en la veracidad de los rasgos declarados.'
                       }
                     };
 
@@ -1248,7 +1283,7 @@ function InformePageContent() {
           </div>
           <div style={{ padding: '0 1.25rem 1.25rem' }}>
             <label style={s.commentLabel}>Argumentación Técnica del Dictamen</label>
-            <textarea style={{ ...s.ta, minHeight: '120px' }} value={inf.fundamentacion} onChange={e => upd('fundamentacion', e.target.value)} placeholder="Fundamente su recomendación basándose en las evidencias psicométricas..." />
+            <textarea style={{ ...s.ta, minHeight: '120px' }} value={inf.fundamentacion || ''} onChange={e => upd('fundamentacion', e.target.value)} placeholder="Fundamente su recomendación basándose en las evidencias psicométricas..." />
           </div>
         </div>
 
@@ -1257,7 +1292,7 @@ function InformePageContent() {
           <div style={s.cardHead}><span style={s.cardHeadTxt}>Validación del Informe</span></div>
           <div style={{ padding: '1.25rem' }}>
             <label style={s.commentLabel}>Nombre del Evaluador Responsable</label>
-            <input style={{ ...s.ta, padding: '0.75rem' }} value={inf.nombreEvaluador} onChange={e => upd('nombreEvaluador', e.target.value)} />
+            <input style={{ ...s.ta, padding: '0.75rem' }} value={inf.nombreEvaluador || ''} onChange={e => upd('nombreEvaluador', e.target.value)} />
           </div>
         </div>
         {/* ── PIE DE INFORME (AUDITORÍA) ────────────────────────────────── */}

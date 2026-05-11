@@ -468,19 +468,32 @@ export default function GestionProcesos() {
       if (slugPrimerTest.startsWith('entrevista:')) testIdFinal = slugPrimerTest.split(':')[1]
       else if (SLUG_TO_ID[slugPrimerTest]) testIdFinal = SLUG_TO_ID[slugPrimerTest]
 
-      // Vincular a TODOS los candidatos que no tengan proceso_id o que estén huérfanos
-      const sesionesNuevas = candidatos.map(c => ({
-        candidato_id: c.id,
-        proceso_id: procesoSeleccionado.id,
-        test_id: testIdFinal,
-        estado: 'pendiente'
-      }))
-
-      const { error } = await supabase
+      // 1. Obtener sesiones actuales de este proceso para evitar duplicados manualmente
+      const { data: actuales } = await supabase
         .from('sesiones')
-        .upsert(sesionesNuevas, { onConflict: 'candidato_id,proceso_id' })
+        .select('candidato_id')
+        .eq('proceso_id', procesoSeleccionado.id)
+        .eq('test_id', testIdFinal)
       
-      if (error) throw error
+      const idsConSesion = new Set(actuales?.map(s => s.candidato_id) || [])
+
+      // 2. Filtrar candidatos que realmente no tienen vínculo
+      const sesionesNuevas = candidatos
+        .filter(c => !idsConSesion.has(c.id))
+        .map(c => ({
+          candidato_id: c.id,
+          proceso_id: procesoSeleccionado.id,
+          test_id: testIdFinal,
+          estado: 'pendiente'
+        }))
+
+      if (sesionesNuevas.length > 0) {
+        const { error } = await supabase
+          .from('sesiones')
+          .insert(sesionesNuevas)
+        
+        if (error) throw error
+      }
       
       await cargarDatos()
       alert('¡Vínculos restaurados con éxito!')

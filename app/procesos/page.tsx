@@ -115,13 +115,13 @@ export default function ProcesosPage() {
     // Intento con ordenamiento
     let { data: entrevistasData, error: entError } = await supabase
       .from('entrevistas_video')
-      .select('id, nombre')
-      .order('created_at', { ascending: false })
+      .select('*')
+      .order('creada_en', { ascending: false })
 
     // Fallback si falla el ordenamiento
     if (entError) {
       console.warn('Fallo ordenamiento de entrevistas, reintentando simple...');
-      const { data: simpleData } = await supabase.from('entrevistas_video').select('id, nombre')
+      const { data: simpleData } = await supabase.from('entrevistas_video').select('*')
       entrevistasData = simpleData
     }
 

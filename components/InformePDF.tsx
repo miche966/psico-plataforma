@@ -57,8 +57,19 @@ const styles = StyleSheet.create({
 
 const ETQ: Record<string, string> = {
   // Personalidad y Probidad
-  extraversion: 'Extraversión', amabilidad: 'Amabilidad', responsabilidad: 'Responsabilidad',
-  neuroticismo: 'Estabilidad Emocional', apertura: 'Apertura a la Experiencia',
+  extraversion: 'Extraversión', 
+  'extraversión y energía social': 'Extraversión',
+  'extraversión': 'Extraversión',
+  amabilidad: 'Amabilidad',
+  'amabilidad y cooperación': 'Amabilidad',
+  responsabilidad: 'Responsabilidad',
+  'responsabilidad y organización': 'Responsabilidad',
+  neuroticismo: 'Estabilidad Emocional',
+  'neuroticismo y ajuste': 'Estabilidad Emocional',
+  'estabilidad emocional': 'Estabilidad Emocional',
+  apertura: 'Apertura a la Experiencia',
+  'apertura a la experiencia': 'Apertura a la Experiencia',
+  'apertura y curiosidad': 'Apertura a la Experiencia',
   honestidad_humildad: 'Honestidad y Humildad',
   honestidad: 'Sinceridad y Franqueza',
   normas: 'Apego a Normas y Ética',
@@ -164,14 +175,27 @@ export const InformePDF = ({ data }: any) => {
     });
 
     return Array.from(mapa.entries()).map(([factor, { valor, sid }]) => {
-      let vNum = typeof valor === 'object' ? valor.correctas || valor.score : valor;
+      let vNum = typeof valor === 'object' && valor !== null ? (valor.correctas || valor.score || valor.valor || 0) : valor;
       if (typeof vNum === 'string') {
         const s = vNum.toLowerCase().trim();
-        vNum = s === 'alto' ? 5 : s === 'medio' ? 3 : 1.5;
+        vNum = s === 'alto' ? 5 : s === 'medio' ? 3 : s === 'bajo' ? 1.5 : (Number(vNum) || 0);
       }
+      
+      const k = factor.toLowerCase().trim();
+      let finalV = Number(vNum);
       const max = (valor && typeof valor === 'object' && 'total' in valor) ? Number(valor.total) || 5 : 5;
-      const rawVNorm = Math.round((Number(vNum) / max) * 5 * 10) / 10;
-      const vNorm = isNaN(rawVNorm) ? 0 : rawVNorm;
+      
+      // Normalización a escala 5
+      finalV = (finalV / max) * 5;
+
+      // Inversión lógica
+      if (['neuroticismo', 'nivel_estres', 'burnout'].includes(k)) {
+        finalV = Math.max(0, 6 - finalV);
+      } else if (k === 'errores_texto') {
+        finalV = Math.max(0, 5 - finalV);
+      }
+
+      const vNorm = Math.round(Math.min(5, Math.max(0, finalV)) * 10) / 10;
       const clr = clrOf(vNorm);
       const fk = `${sid}_${factor}`;
 
@@ -278,14 +302,14 @@ export const InformePDF = ({ data }: any) => {
 
         {hasP && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>IV. Perfil Conductual y Personalidad</Text>
+            <Text style={styles.sectionTitle}>IV. Evaluación Psicométrica por Técnica (Personalidad)</Text>
             {renderFactores(DOMINIOS.PERSONALIDAD, sesBF)}
           </View>
         )}
 
         {hasC && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>V. Capacidad Analítica y Cognitiva</Text>
+            <Text style={styles.sectionTitle}>V. Evaluación Psicométrica por Técnica (Cognitivo y Atención)</Text>
             {sesCog.length > 0 && (() => {
               let sumaCorrectas = 0
               let sumaTotal = 0
@@ -330,14 +354,14 @@ export const InformePDF = ({ data }: any) => {
 
         {hasK && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>VI. Competencias Profesionales</Text>
+            <Text style={styles.sectionTitle}>VI. Evaluación Psicométrica por Técnica (Competencias)</Text>
             {renderFactores(DOMINIOS.COMPETENCIAS, sesComp)}
           </View>
         )}
 
         {hasV && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>VII. Salud y Bienestar Laboral</Text>
+            <Text style={styles.sectionTitle}>VII. Evaluación Psicométrica por Técnica (Bienestar)</Text>
             {renderFactores(DOMINIOS.BIENESTAR, sesBien)}
           </View>
         )}

@@ -183,8 +183,8 @@ export default function Dashboard() {
               <MousePointer2 className="w-4 h-4 text-indigo-500" />
               Actividad Semanal (Completados)
             </h3>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-[300px] w-full" style={{ minWidth: 0 }}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <AreaChart data={datos.actividad}>
                   <defs>
                     <linearGradient id="colorAct" x1="0" y1="0" x2="0" y2="1">
@@ -211,8 +211,8 @@ export default function Dashboard() {
               <Smartphone className="w-4 h-4 text-indigo-500" />
               Origen de Sesión
             </h3>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-[200px] w-full" style={{ minWidth: 0 }}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <PieChart>
                   <Pie
                     data={datos.dispositivos}
@@ -247,8 +247,8 @@ export default function Dashboard() {
           {/* TOP PROCESOS */}
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
             <h3 className="text-sm font-bold text-slate-800 mb-6">Top Procesos con más Tráfico</h3>
-            <div className="h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-[250px] w-full" style={{ minWidth: 0 }}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart data={datos.porProceso} layout="vertical">
                   <XAxis type="number" hide />
                   <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{fontSize: 10, fill: '#64748b', fontWeight: 'bold'}} />

@@ -151,39 +151,42 @@ export async function POST(req: Request) {
     const dictamenHumano = dictamenFinal === 'recomendado' ? 'RECOMENDADO' : dictamenFinal === 'con_reservas' ? 'RECOMENDADO CON RESERVAS' : 'NO RECOMENDADO';
 
     const prompt = `
-- PUNTAJE DE AJUSTE: ${scoreMatematico}/100
-- DICTAMEN OBLIGATORIO: ${dictamenHumano}
+Contexto de Evaluación:
+${datosCandidato}
 
-Debes redactar el informe con un tono EJECUTIVO, SOBRIO y FORMAL. 
+Resultados de Pruebas:
+${resultados}
+
+Datos Técnicos de Ajuste:
+- PUNTAJE DE AJUSTE CALCULADO: ${scoreMatematico}/100
+- DICTAMEN TÉCNICO: ${dictamenHumano}
+
+Instrucciones de Redacción (Estilo de Consultoría Estratégica):
+Debes redactar el informe con un tono EJECUTIVO, SOBRIO y ANALÍTICO. 
 Prohibido usar lenguaje coloquial, maximalismos o rellenos innecesarios.
+No repitas frases como "El candidato obtuvo un puntaje de..." o "La recomendación es...". El lector ya ve esos datos en las gráficas.
 
-Instrucciones de Redacción:
-1. TONO: Profesional, analítico y corporativo.
-2. CONCISIÓN: Evita adjetivos exagerados. Ve directo al grano.
-3. ESTRUCTURA:
-   - "resumenEjecutivo": 2 párrafos técnicos y estratégicos que sustenten el dictamen.
-   - "fortalezas": 3 competencias destacadas observadas.
-   - "oportunidadesMejora": 2 puntos de desarrollo crítico explicados con sobriedad.
-   - "ajusteCargo": { "score": ${scoreMatematico}, "analisis": "Justificación técnica del ajuste." }
-   - "recomendacion": "${dictamenFinal}"
-   - "fundamentacion": Síntesis final de la aptitud del candidato.
+Estructura de Contenido:
+1. "resumenEjecutivo": Síntesis estratégica para la toma de decisiones. Debe explicar el VALOR que el candidato aporta a la organización y su proyección en el cargo en 2 párrafos técnicos.
+2. "fortalezas": 3 competencias críticas observadas que representan una ventaja competitiva para la vacante.
+3. "oportunidadesMejora": 2 áreas de desarrollo que requieren atención para optimizar su desempeño, descritas de forma profesional.
+4. "ajusteCargo": { 
+      "score": ${scoreMatematico}, 
+      "analisis": "Análisis profundo del grado de ajuste a la vacante. Compara el perfil conductual y cognitivo del candidato contra los desafíos específicos del cargo (${proceso?.cargo || 'la posición'}). Identifica alineaciones críticas y posibles brechas operativas. Evita describir el proceso, describe la IDONEIDAD." 
+   }
+5. "fundamentacion": Argumentación técnica final que justifica la decisión de contratación o descarte basándose en la probabilidad de éxito en el puesto.
+6. "ajusteMbti": Análisis cualitativo de cómo su tipo de personalidad influye en su desempeño diario en este cargo específico.
 
-Devuelve EXCLUSIVAMENTE un JSON válido:
+Devuelve EXCLUSIVAMENTE un JSON válido con esta estructura exacta:
 {
   "resumenEjecutivo": "...",
   "fortalezas": ["...", "..."],
   "oportunidadesMejora": ["...", "..."],
-  "ajusteCargo": { "score": 85, "analisis": "..." },
-  "comentarioPersonalidad": "...",
-  "comentarioCognitivo": "...",
-  "comentarioCompetencias": "...",
-  "recomendacion": "...",
+  "ajusteCargo": { "score": ${scoreMatematico}, "analisis": "..." },
+  "recomendacion": "${dictamenFinal}",
   "fundamentacion": "...",
   "ajusteMbti": "...",
-  "interpretacionPorFactor": { "id_factor": "..." },
-  "liderazgo": 85,
-  "adaptabilidad": 90,
-  "resiliencia": 80
+  "interpretacionPorFactor": { "id_factor": "..." }
 }
 `
 

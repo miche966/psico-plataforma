@@ -262,7 +262,7 @@ export default function PanelEvaluador() {
   }
 
   async function cargarProcesos() {
-    const { data } = await supabase.from('procesos').select('*').order('creado_at', { ascending: false })
+    const { data } = await supabase.from('procesos').select('*').order('creado_en', { ascending: false })
     if (data) setProcesos(data)
   }
 
@@ -275,7 +275,7 @@ export default function PanelEvaluador() {
         proceso_id,
         procesos (id, nombre, cargo, competencias_requeridas, bateria_tests),
         candidatos (id, nombre, apellido, email),
-        created_at
+        creado_en
       `)
 
     // 2. Obtener todas las sesiones (Históricas y actuales)
@@ -311,7 +311,7 @@ export default function PanelEvaluador() {
           apellido: c.apellido,
           email: c.email,
           sesiones: [],
-          ultima_fecha: v.created_at || '',
+          ultima_fecha: v.creado_en || '',
           proceso_id: p.id,
           proceso_nombre: p.nombre,
           proceso_cargo: p.cargo,
@@ -800,43 +800,36 @@ export default function PanelEvaluador() {
                   </div>
 
                   <div className="mb-6">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tests realizados</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Historial de Evaluaciones (Test por Test)</p>
                     <div className="flex flex-wrap gap-2">
-                      {(() => {
-                        const vtos = new Set()
-                        return agrupadoSeleccionado.sesiones
-                          .filter(s => {
-                            if (vtos.has(s.test_id)) return false
-                            vtos.add(s.test_id)
-                            return true
-                          })
-                          .map(s => {
-                            const pb = s.puntaje_bruto
-                            let label = (s as any).test_id ? TEST_NAMES[(s as any).test_id] : null
-                            if (!label) {
-                              if (esBigFive(pb)) label = 'Psicográfico'
-                              else if (esCognitivo(pb)) label = 'Cognitivo'
-                              else label = 'Evaluación'
-                            }
-                            const isActive = sesionSeleccionada?.id === s.id
-                            return (
-                              <button 
-                                key={s.id} 
-                                onClick={() => setSesionSeleccionada(s)} 
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                                  isActive 
-                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' 
-                                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                                }`}
-                              >
-                                {label}
-                                {agrupadoSeleccionado.sesiones.filter(x => x.test_id === s.test_id).length > 1 && (
-                                  <span className="ml-1 opacity-50 text-[10px]">(Reciente)</span>
-                                )}
-                              </button>
-                            )
-                          })
-                      })()}
+                      {agrupadoSeleccionado.sesiones
+                        .sort((a, b) => new Date(b.finalizada_en || 0).getTime() - new Date(a.finalizada_en || 0).getTime())
+                        .map((s, idx) => {
+                          const pb = s.puntaje_bruto
+                          let label = (s as any).test_id ? TEST_NAMES[(s as any).test_id] : null
+                          if (!label) {
+                            if (esBigFive(pb)) label = 'Psicográfico'
+                            else if (esCognitivo(pb)) label = 'Cognitivo'
+                            else label = 'Evaluación'
+                          }
+                          const isActive = sesionSeleccionada?.id === s.id
+                          const fecha = s.finalizada_en ? new Date(s.finalizada_en).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) : 'S/F'
+                          
+                          return (
+                            <button 
+                              key={s.id} 
+                              onClick={() => setSesionSeleccionada(s)} 
+                              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border flex flex-col items-start gap-0.5 ${
+                                isActive 
+                                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' 
+                                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                              }`}
+                            >
+                              <span className="truncate max-w-[120px]">{label}</span>
+                              <span className={`text-[9px] ${isActive ? 'text-indigo-200' : 'text-slate-400'}`}>{fecha}</span>
+                            </button>
+                          )
+                        })}
                     </div>
                   </div>
 
@@ -896,22 +889,58 @@ export default function PanelEvaluador() {
                               </div>
                             )}
 
-                            {/* GRÁFICOS BIG FIVE */}
+                            {/* GRÁFICOS Y RESULTADOS ESPECÍFICOS */}
                             {esBigFive(pb) ? valoresNumericos(pb).map(([factor, valor]) => (
-                              <div key={factor}>
-                                <div className="flex justify-between mb-1">
+                              <div key={factor} className="space-y-1.5 p-3 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                                <div className="flex justify-between items-center">
                                   <span className="text-xs font-bold text-slate-700">{etiquetas[factor] || factor}</span>
-                                  <span className="text-xs font-bold text-indigo-600">{valor} / 5</span>
+                                  <span className="text-xs font-black text-indigo-600">{valor} / 5</span>
                                 </div>
                                 <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                  <div className={`h-full ${colores[factor] || 'bg-indigo-500'}`} style={{ width: `${(valor / 5) * 100}%` }} />
+                                  <div className={`h-full ${colores[factor] || 'bg-indigo-500'} transition-all duration-700`} style={{ width: `${(valor / 5) * 100}%` }} />
                                 </div>
+                                <p className="text-[10px] text-slate-500 leading-relaxed italic">
+                                  {interpretacion(factor, valor)}
+                                </p>
                               </div>
-                            )) : (
-                              <div className="bg-slate-50 p-4 rounded-xl text-center">
-                                <p className="text-xs text-slate-500">Puntaje General: <span className="font-bold text-slate-800">{promedioPuntaje(pb)} / 5</span></p>
-                              </div>
-                            )}
+                            )) : esCognitivo(pb) ? (() => {
+                              const { correctas, total, pct } = datosCognitivos(pb)
+                              const nivel = pct >= 80 ? 'Superior' : pct >= 60 ? 'Promedio' : 'Bajo'
+                              const colorBg = pct >= 80 ? 'bg-emerald-500' : pct >= 60 ? 'bg-amber-500' : 'bg-rose-500'
+                              const colorText = pct >= 80 ? 'text-emerald-600' : pct >= 60 ? 'text-amber-600' : 'text-rose-600'
+                              
+                              return (
+                                <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                                  <div className="flex justify-between items-center mb-3">
+                                    <span className="text-xs font-bold text-slate-700">Efectividad Cognitiva</span>
+                                    <span className={`text-xs font-black ${colorText}`}>{correctas} / {total} ({pct}%)</span>
+                                  </div>
+                                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden mb-3">
+                                    <div className={`h-full ${colorBg} transition-all duration-1000`} style={{ width: `${pct}%` }} />
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-1.5 h-1.5 rounded-full ${colorBg}`} />
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nivel {nivel}</span>
+                                  </div>
+                                </div>
+                              )
+                            })() : (() => {
+                              const prom = promedioPuntaje(pb)
+                              const colorBg = prom >= 4 ? 'bg-indigo-500' : prom >= 3 ? 'bg-indigo-400' : 'bg-indigo-300'
+                              
+                              return (
+                                <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                                  <div className="flex justify-between items-center mb-3">
+                                    <span className="text-xs font-bold text-slate-700">Puntaje General</span>
+                                    <span className="text-xs font-black text-indigo-600">{prom} / 5</span>
+                                  </div>
+                                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden mb-2">
+                                    <div className={`h-full ${colorBg} transition-all duration-1000`} style={{ width: `${(prom / 5) * 100}%` }} />
+                                  </div>
+                                  <p className="text-[10px] text-slate-400 italic">Desglose de competencia situacional</p>
+                                </div>
+                              )
+                            })()}
                           </div>
                         )
                       })()}
