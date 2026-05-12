@@ -14,16 +14,6 @@ export async function POST(req: Request) {
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
     
-    let model;
-    try {
-      model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-      // Prueba rápida
-      await model.generateContent('ping');
-    } catch (e) {
-      console.warn("Gemini 2.0 Flash falló, intentando con 2.5 Flash...");
-      model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    }
-    
 
     // Preparar el prompt con toda la información disponible
     let datosCandidato = `Candidato: ${candidato.nombre} ${candidato.apellido}\n`
@@ -161,21 +151,23 @@ Datos Técnicos de Ajuste:
 - PUNTAJE DE AJUSTE CALCULADO: ${scoreMatematico}/100
 - DICTAMEN TÉCNICO: ${dictamenHumano}
 
-Instrucciones de Redacción (Estilo de Consultoría Estratégica):
-Debes redactar el informe con un tono EJECUTIVO, SOBRIO y ANALÍTICO. 
-Prohibido usar lenguaje coloquial, maximalismos o rellenos innecesarios.
-No repitas frases como "El candidato obtuvo un puntaje de..." o "La recomendación es...". El lector ya ve esos datos en las gráficas.
+Instrucciones de Redacción (Estilo de Consultoría Estratégica - AGENTE HUMANO):
+Eres un Agente de Diagnóstico Psicodiagnóstico de alta gama. Debes adherirte estrictamente a estos criterios:
+- Tono: Profesional, ejecutivo y humanista. Evita reduccionismos técnicos.
+- Prohibición de Maximalismos: NO uses palabras como "inquebrantable", "total", "absoluto", "guardián", "perfecto", "siempre" o "nunca".
+- Alternativas: Usa "coherente", "consistente", "sólido", "sintonía con el rol", "adecuación a la dinámica".
+- Riqueza Informativa: Cada frase debe aportar valor analítico sobre la arquitectura conductual del candidato (cómo procesa y cómo impacta en la organización).
 
 Estructura de Contenido:
-1. "resumenEjecutivo": Síntesis estratégica para la toma de decisiones. Debe explicar el VALOR que el candidato aporta a la organización y su proyección en el cargo en 2 párrafos técnicos.
-2. "fortalezas": 3 competencias críticas observadas que representan una ventaja competitiva para la vacante.
-3. "oportunidadesMejora": 2 áreas de desarrollo que requieren atención para optimizar su desempeño, descritas de forma profesional.
+1. "resumenEjecutivo": Síntesis estratégica. Explica el VALOR del candidato y su proyección en el cargo en 2 párrafos técnicos.
+2. "fortalezas": 3 competencias críticas que representan una ventaja competitiva.
+3. "oportunidadesMejora": 2 áreas de desarrollo descritas de forma profesional.
 4. "ajusteCargo": { 
       "score": ${scoreMatematico}, 
-      "analisis": "Análisis profundo del grado de ajuste a la vacante. Compara el perfil conductual y cognitivo del candidato contra los desafíos específicos del cargo (${proceso?.cargo || 'la posición'}). Identifica alineaciones críticas y posibles brechas operativas. Evita describir el proceso, describe la IDONEIDAD." 
+      "analisis": "Análisis profundo de idoneidad. Compara el perfil contra los desafíos de '${proceso?.cargo || 'la posición'}'. Identifica sintonía profesional y posibles brechas operativas." 
    }
-5. "fundamentacion": Argumentación técnica final que justifica la decisión de contratación o descarte basándose en la probabilidad de éxito en el puesto.
-6. "ajusteMbti": Análisis cualitativo de cómo su tipo de personalidad influye en su desempeño diario en este cargo específico.
+5. "fundamentacion": Argumentación técnica que justifica la recomendación basada en la probabilidad de éxito.
+6. "ajusteMbti": Cómo su perfil conductual influye en su desempeño diario en este cargo específico.
 
 Devuelve EXCLUSIVAMENTE un JSON válido con esta estructura exacta:
 {
@@ -194,20 +186,38 @@ Devuelve EXCLUSIVAMENTE un JSON válido con esta estructura exacta:
     console.log(`[AUDITORÍA IA] Factores enviados:`, sesiones.map((s: any) => Object.keys(s.puntaje_bruto?.por_factor || s.puntaje_bruto || {})).flat())
 
     let resultado: any;
-    try {
-      console.log(`[IA] Enviando prompt (${prompt.length} caracteres)...`)
-      const result = await model.generateContent(prompt)
-      const response = await result.response
-      const text = response.text()
-      
-      console.log(`[IA] Respuesta recibida (${text.length} caracteres)`)
+    let errorFinal: any = null;
 
-      const jsonMatch = text.match(/\{[\s\S]*\}/)
-      const jsonStr = jsonMatch ? jsonMatch[0] : text
-      resultado = JSON.parse(jsonStr)
-    } catch (error: any) {
-      console.error('[IA] Error en llamada a la API o parseo:', error)
-      throw new Error(`Error en la generación por IA: ${error.message}`)
+    // --- ARNES DE SEGURIDAD PARA MODELOS EXPERIMENTALES ---
+    const modelosAProbar = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-pro-latest'];
+    
+    for (const modelName of modelosAProbar) {
+      try {
+        console.log(`[IA] Intentando con modelo experimental: ${modelName}...`);
+        const modelInstance = genAI.getGenerativeModel({ model: modelName });
+        const result = await modelInstance.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+        
+        console.log(`[IA] ÉXITO con ${modelName} (${text.length} caracteres)`);
+
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        const jsonStr = jsonMatch ? jsonMatch[0] : text;
+        resultado = JSON.parse(jsonStr);
+        
+        if (resultado) {
+          errorFinal = null;
+          break; 
+        }
+      } catch (error: any) {
+        console.warn(`[IA] Falló ${modelName}:`, error.message);
+        errorFinal = error;
+        continue; 
+      }
+    }
+
+    if (!resultado && errorFinal) {
+      throw new Error(`Ningún modelo de IA respondió correctamente: ${errorFinal.message}`);
     }
 
     // Validación de Integridad: ¿Están todos los factores?
