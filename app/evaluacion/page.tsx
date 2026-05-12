@@ -187,6 +187,16 @@ export default function PortalCandidatoPage() {
   }
 
   function iniciarTest(testKey: string) {
+    // Validación de seguridad: No permitir iniciar si hay tests previos pendientes
+    const index = bateria.indexOf(testKey);
+    if (index > 0) {
+      const previosPendientes = bateria.slice(0, index).filter(t => !testsCompletados.includes(t));
+      if (previosPendientes.length > 0) {
+        alert("Por favor, completa los ejercicios anteriores antes de continuar con este.");
+        return;
+      }
+    }
+
     localStorage.setItem(`last_started_${candidatoId}_${procesoId}`, testKey)
 
     if (testKey.startsWith('entrevista:')) {
@@ -468,7 +478,10 @@ export default function PortalCandidatoPage() {
               const esEntrevista = testKey.startsWith('entrevista:')
               const testInfo = NOMBRES_TESTS[testKey] || { nombre: esEntrevista ? 'Entrevista en Video' : testKey, duracion: esEntrevista ? 'Varía' : '15 min' }
               const completado = testsCompletados.includes(testKey)
-              const esSiguiente = !completado && (index === 0 || testsCompletados.includes(bateria[index-1]))
+              
+              // Lógica de Siguiente: Solo si es el primero o si TODOS los anteriores están completos
+              const anterioresCompletos = bateria.slice(0, index).every(t => testsCompletados.includes(t))
+              const esSiguiente = !completado && anterioresCompletos
 
               return (
                 <div key={testKey} className={`p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors rounded-2xl ${esSiguiente ? 'bg-indigo-50/30' : 'hover:bg-slate-50'}`}>
