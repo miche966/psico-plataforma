@@ -775,10 +775,10 @@ MATRIZ DE POTENCIAL CONDUCTUAL:
 • Comunicación: ${inf.comunicacion}/100
 
 FORTALEZAS CLAVE:
-${(inf.fortalezas || []).filter(f => f.trim() !== '').map(f => `• ${f}`).join('\n') || 'No definidas'}
+${(inf.fortalezas || []).map(f => typeof f === 'object' ? `• ${f.tendencia || f.competencia}: ${f.mecanismo}. Impacto: ${f.impacto_organizacional}` : `• ${f}`).join('\n') || 'No definidas'}
 
 OPORTUNIDADES DE MEJORA:
-${(inf.oportunidadesMejora || []).filter(o => o.trim() !== '').map(o => `• ${o}`).join('\n') || 'No definidas'}
+${(inf.oportunidadesMejora || []).map(o => typeof o === 'object' ? `• ${o.tendencia || o.competencia}: ${o.mecanismo}. Impacto: ${o.impacto_organizacional}` : `• ${o}`).join('\n') || 'No definidas'}
 
 --------------------------------------------------
 3. FUNDAMENTACIÓN TÉCNICA
@@ -950,9 +950,14 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a' }} />
                       <input
                         style={{ background: 'transparent', border: 'none', borderBottom: '1px solid #dcfce7', width: '100%', fontSize: '0.9rem', color: '#14532d', padding: '2px 0' }}
-                        value={f}
+                        value={typeof f === 'object' ? `${f.tendencia || f.competencia} - ${f.mecanismo}` : f}
                         onChange={e => {
-                          const n = [...inf.fortalezas]; n[i] = e.target.value;
+                          const n = [...inf.fortalezas]; 
+                          if (typeof f === 'object') {
+                            n[i] = { ...f, tendencia: e.target.value };
+                          } else {
+                            n[i] = e.target.value;
+                          }
                           setInf(p => ({ ...p, fortalezas: n }));
                         }}
                       />
@@ -968,9 +973,14 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ea580c' }} />
                       <input
                         style={{ background: 'transparent', border: 'none', borderBottom: '1px solid #ffedd5', width: '100%', fontSize: '0.9rem', color: '#7c2d12', padding: '2px 0' }}
-                        value={f}
+                        value={typeof f === 'object' ? `${f.tendencia || f.competencia} - ${f.mecanismo}` : f}
                         onChange={e => {
-                          const n = [...inf.oportunidadesMejora]; n[i] = e.target.value;
+                          const n = [...inf.oportunidadesMejora];
+                          if (typeof f === 'object') {
+                            n[i] = { ...f, tendencia: e.target.value };
+                          } else {
+                            n[i] = e.target.value;
+                          }
                           setInf(p => ({ ...p, oportunidadesMejora: n }));
                         }}
                       />

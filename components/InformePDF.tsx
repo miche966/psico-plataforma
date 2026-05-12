@@ -244,14 +244,34 @@ export const InformePDF = ({ data }: any) => {
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 5 }}>
             <View style={{ flex: 1, backgroundColor: '#f0fdf4', padding: 8, borderRadius: 6, border: '1px solid #bbf7d0' }}>
               <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#16a34a', marginBottom: 4 }}>FORTALEZAS CLAVE</Text>
-              {(inf.fortalezas || []).map((f: string, i: number) => (
-                <Text key={i} style={{ fontSize: 7, color: '#14532d', marginBottom: 2 }}>• {f}</Text>
+              {(inf.fortalezas || []).map((f: any, i: number) => (
+                <View key={i} style={{ marginBottom: 4 }}>
+                  {typeof f === 'object' ? (
+                    <>
+                      <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#14532d' }}>• {f.tendencia || f.competencia || 'Fortaleza'}</Text>
+                      <Text style={{ fontSize: 6, color: '#166534', marginLeft: 6 }}>Mecanismo: {f.mecanismo || 'No especificado'}</Text>
+                      <Text style={{ fontSize: 6, color: '#166534', marginLeft: 6 }}>Impacto: {f.impacto_organizacional || f.impacto || 'No especificado'}</Text>
+                    </>
+                  ) : (
+                    <Text style={{ fontSize: 7, color: '#14532d' }}>• {f}</Text>
+                  )}
+                </View>
               ))}
             </View>
             <View style={{ flex: 1, backgroundColor: '#fff7ed', padding: 8, borderRadius: 6, border: '1px solid #ffedd5' }}>
               <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#ea580c', marginBottom: 4 }}>ÁREAS DE DESARROLLO</Text>
-              {(inf.oportunidadesMejora || []).map((f: string, i: number) => (
-                <Text key={i} style={{ fontSize: 7, color: '#7c2d12', marginBottom: 2 }}>• {f}</Text>
+              {(inf.oportunidadesMejora || []).map((f: any, i: number) => (
+                <View key={i} style={{ marginBottom: 4 }}>
+                  {typeof f === 'object' ? (
+                    <>
+                      <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#7c2d12' }}>• {f.tendencia || f.competencia || 'Área de mejora'}</Text>
+                      <Text style={{ fontSize: 6, color: '#9a3412', marginLeft: 6 }}>Mecanismo: {f.mecanismo || 'No especificado'}</Text>
+                      <Text style={{ fontSize: 6, color: '#9a3412', marginLeft: 6 }}>Impacto: {f.impacto_organizacional || f.impacto || 'No especificado'}</Text>
+                    </>
+                  ) : (
+                    <Text style={{ fontSize: 7, color: '#7c2d12' }}>• {f}</Text>
+                  )}
+                </View>
               ))}
             </View>
           </View>
