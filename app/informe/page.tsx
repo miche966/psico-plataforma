@@ -52,7 +52,7 @@ interface InformeState {
 }
 
 const ETQ: Record<string, string> = {
-  // Personalidad y Probidad
+  // Personalidad e Integridad
   extraversion: 'Extraversión', 
   'extraversión y energía social': 'Extraversión',
   'extraversión': 'Extraversión',
@@ -69,7 +69,7 @@ const ETQ: Record<string, string> = {
   honestidad_humildad: 'Honestidad y Humildad',
   honestidad: 'Sinceridad y Franqueza',
   normas: 'Apego a Normas y Ética',
-  promedio_general: 'Índice de Probidad General',
+  promedio_general: 'Índice de Integridad Personal',
   
   // Cognitivo y Atención
   correctas: 'Efectividad Cognitiva',
@@ -85,7 +85,7 @@ const ETQ: Record<string, string> = {
   // Competencias Profesionales (SJT)
   etica: 'Ética y Valores Profesionales',
   negociacion: 'Capacidad de Negociación',
-  manejo_emocional: 'Inteligencia Emocional Aplicada',
+  manejo_emocional: 'Inteligencia Emocional',
   tolerancia_frustracion: 'Tolerancia a la Presión',
   comunicacion: 'Comunicación Efectiva',
   liderazgo: 'Liderazgo Estratégico',
@@ -600,44 +600,61 @@ function InformePageContent() {
       const rawRes = data.informe || data
       
       if (rawRes && !data.error) {
-        // Humanizador de factores técnicos mejorado (más flexible)
+        // Humanizador de factores técnicos y tono profesional (Consultoría)
         const humanizar = (t: string) => {
           if (!t || typeof t !== 'string') return t
           let limpio = t
+
+          // 1. Filtro de nombre: reemplaza el nombre del evaluado por "El candidato"
+          if (candidato?.nombre) {
+            const nombreEscaped = candidato.nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const regexNombre = new RegExp(nombreEscaped, 'gi')
+            limpio = limpio.replace(regexNombre, 'El candidato')
+          }
+
+          // 2. Normalización de factores técnicos (ETQ)
           Object.entries(ETQ).forEach(([key, label]) => {
             const variant = key.replace(/_/g, '[\\s\\-_]')
             const regex = new RegExp(`['"]?${variant}['"]?`, 'gi')
             limpio = limpio.replace(regex, label)
           })
-          
-          // Filtro de palabras rimbombantes y tecnicismos (humanización agresiva)
+
+          // 3. Eliminación de maximalismos y lenguaje informal
           const prohibidas: Record<string, string> = {
-            'superior': 'destacado',
-            'excelente': 'sólido',
-            'extraordinario': 'notable',
-            'maravilloso': 'positivo',
-            'increíble': 'relevante',
-            'magnífico': 'adecuado',
-            'excepcional': 'destacado',
-            'sobresaliente': 'notable',
-            'inquebrantable': 'consistente',
-            'agudo': 'claro',
-            'aguda': 'clara',
+            'arquitectura conductual': 'enfoque profesional',
+            'arquitectura': 'estilo de comportamiento',
+            'eficiencia cognitiva': 'efectividad operativa',
+            'recurso': 'profesional',
+            'un recurso': 'un perfil',
+            'como recurso': 'como profesional',
             'profunda adherencia': 'adherencia consistente',
             'manejo excepcional': 'manejo efectivo',
             'inteligencia emocional': 'estabilidad emocional',
             'IE aplicada': 'gestión de emociones',
             'apego a normas y ética': 'sentido ético',
+            'solvencia': 'adecuación',
+            'destacada': 'notable',
+            'consistente': 'clara',
+            'excepcional': 'destacada',
+            'sobresaliente': 'notable',
+            'superior': 'destacado',
+            'dominio superior': 'manejo adecuado',
+            'capacidad superior': 'capacidad clara',
+            'resiliencia excepcional': 'resiliencia consistente',
+            'adherencia inquebrantable': 'adherencia consistente',
             'decisiones objetiva': 'decisiones objetivas',
             'DASS-21': 'equilibrio emocional',
             'DASS21': 'equilibrio emocional',
             'MBTI': 'perfil conductual',
             'ICAR': 'capacidad cognitiva',
             'SJT': 'juicio situacional',
-            'discurso inferido': 'comunicación observada'
+            'discurso inferido': 'comunicación observada',
+            'magnífico': 'adecuado',
+            'maravilloso': 'positivo',
+            'increíble': 'relevante'
           }
+          
           Object.entries(prohibidas).forEach(([mal, bien]) => {
-            // Regex más agresivo para capturar variaciones y puntuación
             const regex = new RegExp(mal, 'gi')
             limpio = limpio.replace(regex, bien)
           })
@@ -1073,7 +1090,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                   },
                   promedio_general: {
                     alto: 'El perfil proyecta una integridad global destacada. Sus valores personales se manifiestan en una conducta profesional coherente en las dimensiones evaluadas, favoreciendo una alineación sólida.',
-                    medio: 'Posee un nivel de probidad acorde a las expectativas corporativas habituales. Su comportamiento es predecible dentro de los marcos éticos estándar, mostrando un juicio moral funcional.',
+                    medio: 'Posee un nivel de integridad acorde a las expectativas corporativas habituales. Su comportamiento es predecible dentro de los marcos éticos estándar, mostrando un juicio moral funcional.',
                     bajo: 'Se observan áreas de mejora en su juicio ético que requieren atención. Se recomienda un periodo de acompañamiento inicial y una comunicación clara de los valores corporativos.'
                   }
                 };
@@ -1091,7 +1108,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       <span style={{ ...s.factLvl, color: clr }}>{Number(normVal.toFixed(1))}/5</span>
                     </div>
                     <div style={s.barBg}><div style={{ ...s.barFill, width: `${(normVal / 5) * 100}%`, background: clr }} /></div>
-                    <textarea style={s.taFact} rows={4} value={inf.interpretacionPorFactor?.[fk] || descSugerida} onChange={(e) => updFactor(fk, e.target.value)} />
+                    <textarea style={s.taFact} rows={4} value={inf.interpretacionPorFactor?.[fk] || inf.interpretacionPorFactor?.[factor.toLowerCase()] || descSugerida} onChange={(e) => updFactor(fk, e.target.value)} />
                   </div>
                 )
               })}
@@ -1214,7 +1231,12 @@ PsicoPlataforma - Gestión Inteligente de Talento
                         <span style={{...s.factLvl, color:'#0369a1'}}>{Number(vNorm.toFixed(1))}/5</span>
                       </div>
                         <div style={s.barBg}><div style={{...s.barFill, width:`${(vNorm/5)*100}%`, background:'#0369a1'}} /></div>
-                        <textarea style={s.taFact} rows={4} value={inf.interpretacionPorFactor?.[fk] || descSugerida} onChange={(e) => updFactor(fk, e.target.value)} />
+                        <textarea 
+                          style={s.taFact} 
+                          rows={4} 
+                          value={inf.interpretacionPorFactor?.[fk] || inf.interpretacionPorFactor?.[factor.toLowerCase()] || descSugerida} 
+                          onChange={(e) => updFactor(fk, e.target.value)} 
+                        />
                       </div>
                     )
                   })}
@@ -1239,49 +1261,49 @@ PsicoPlataforma - Gestión Inteligente de Talento
 
                 const narrativas: Record<string, any> = {
                   comunicacion: {
-                    alto: 'Demuestra una capacidad superior para articular ideas complejas de forma sencilla, coherente y persuasiva. Su comunicación no es solo un intercambio de información, sino una herramienta estratégica que impacta positivamente en sus interlocutores, logrando alinear expectativas, generar consensos y movilizar voluntades en entornos de alta exigencia profesional. Es un perfil que fortalece la imagen institucional en cada interacción y domina el arte de la escucha activa.',
-                    medio: 'Logra transmitir información de manera efectiva, estructurada y profesional, asegurando que los mensajes clave lleguen a su destino sin distorsiones operativas. Posee habilidades de comunicación asertiva que le permiten interactuar constructivamente con sus pares y superiores, manteniendo un flujo de información funcional que apoya la operatividad diaria. Se beneficia de contar con marcos de referencia claros para optimizar el impacto de su discurso en audiencias diversas.',
-                    bajo: 'Presenta dificultades para estructurar sus mensajes de forma lógica y sintética, lo que puede derivar en malentendidos, omisiones de datos críticos o una percepción de falta de claridad por parte del equipo. Su estilo comunicativo tiende a ser insuficiente para las demandas estratégicas del cargo, por lo que requiere entrenamiento específico en oratoria técnica, redacción ejecutiva y el uso de canales de comunicación más pautados para garantizar la efectividad.',
+                    alto: 'Transmite información de manera clara y estructurada, facilitando el intercambio de datos técnicos entre áreas. Su discurso se adapta a los requerimientos del interlocutor, lo que asegura que los objetivos operativos sean comprendidos sin ambigüedades en entornos de alta exigencia.',
+                    medio: 'Logra transmitir información de manera efectiva y profesional, asegurando que los mensajes clave lleguen a su destino en los tiempos previstos. Posee habilidades de escucha activa que le permiten interactuar constructivamente con su equipo directo.',
+                    bajo: 'Se recomienda fortalecer la estructura lógica de los mensajes para evitar omisiones de datos críticos. El uso de canales de comunicación más pautados garantizaría la efectividad de sus interacciones en procesos complejos.'
                   },
                   liderazgo: {
-                    alto: 'Posee una visión estratégica de largo alcance y una capacidad natural para inspirar y guiar equipos hacia el logro de metas altamente ambiciosas. Su liderazgo se fundamenta en el ejemplo personal, la integridad y el empoderamiento de sus colaboradores, logrando delegar con confianza y mentorizar el talento emergente. Es un motor de resultados extraordinarios que sabe equilibrar con maestría la exigencia técnica con el bienestar y la motivación del capital humano.',
-                    medio: 'Muestra iniciativa para coordinar procesos operativos y guiar a sus compañeros en situaciones de trabajo cotidiano. Ejerce una influencia positiva basada en su sólido conocimiento técnico y su capacidad de organización, logrando que el equipo mantenga el rumbo y cumpla con los objetivos propuestos de manera cohesionada. Funciona bien como un líder de soporte que facilita la ejecución y mantiene la estabilidad del grupo bajo directrices generales.',
-                    bajo: 'Muestra una marcada preferencia por roles de ejecución individual antes que de coordinación o gestión de personas. Le cuesta asumir la responsabilidad directa sobre el desempeño de terceros y tiende a evitar la toma de decisiones difíciles que puedan generar conflicto, por lo que su potencial de liderazgo requiere ser desarrollado mediante un plan de carrera estructurado y un acompañamiento jerárquico cercano que le brinde seguridad en la toma de decisiones.',
+                    alto: 'Muestra capacidad para coordinar procesos complejos y guiar la ejecución de tareas bajo estándares de calidad institucional. Su enfoque se centra en el cumplimiento de objetivos estratégicos, organizando el flujo de trabajo de manera que se optimicen los recursos disponibles.',
+                    medio: 'Ejerce una influencia funcional basada en su sólido conocimiento técnico, apoyando la estabilidad del grupo en las tareas cotidianas. Funciona como un referente operativo que facilita la ejecución y mantiene la cohesión del equipo bajo directrices claras.',
+                    bajo: 'Muestra una marcada preferencia por roles de ejecución individual. Se recomienda un plan de acompañamiento jerárquico para desarrollar habilidades de supervisión y toma de decisiones que afecten el desempeño de terceros.'
                   },
                   trabajo_equipo: {
-                    alto: 'Destaca por su excepcional nivel de compromiso con los objetivos colectivos, priorizando de forma sistemática el éxito del grupo sobre el reconocimiento personal. Es un integrador por excelencia que fomenta la sinergia organizacional, comparte sus conocimientos de manera generosa y actúa como un soporte crítico para sus compañeros en momentos de alta carga laboral. Su presencia garantiza un clima de confianza y una productividad potenciada por la colaboración inteligente.',
-                    medio: 'Se integra con facilidad a dinámicas grupales diversas, manteniendo una actitud cooperativa, propositiva y orientada al apoyo mutuo. Contribuye activamente al mantenimiento de un clima laboral positivo y cumple con rigor sus compromisos hacia el equipo, facilitando que los proyectos compartidos avancen de manera fluida y sin fricciones internas. Es un colaborador confiable que valora el consenso y la estabilidad en las relaciones de trabajo.',
-                    bajo: 'Tiende a trabajar de forma aislada y compartimentada, mostrando cierta resistencia a compartir información estratégica o a delegar parte de sus responsabilidades técnicas. Su enfoque individualista puede ralentizar involuntariamente los procesos colectivos y afectar la agilidad del equipo, por lo que necesita ser integrado en proyectos que demanden una interdependencia obligatoria para desarrollar su músculo colaborativo y su sentido de pertenencia.',
+                    alto: 'Se integra a la dinámica grupal aportando de forma proactiva al cumplimiento de los objetivos colectivos. Su enfoque fomenta la sinergia organizacional y el soporte mutuo, lo que garantiza un clima de confianza y una productividad estable en el área.',
+                    medio: 'Participa de forma colaborativa en el equipo, cumpliendo con sus compromisos técnicos y manteniendo una interacción profesional con sus pares. Facilita que los proyectos compartidos avancen de manera fluida, respetando los consensos alcanzados.',
+                    bajo: 'Tiende a priorizar el trabajo autónomo sobre la interdependencia grupal. Se recomienda su integración en proyectos que demanden una colaboración obligatoria para desarrollar su sentido de pertenencia y agilidad colectiva.'
                   },
                   adaptabilidad: {
-                    alto: 'Muestra una flexibilidad cognitiva y operativa excepcional frente a entornos de alta volatilidad, incertidumbre y cambio constante. Logra reconfigurar sus estrategias, prioridades y métodos de trabajo de manera casi instantánea cuando el negocio lo demanda, manteniendo su productividad intacta y actuando como un agente de cambio positivo que ayuda al resto de la organización a transitar las transformaciones con seguridad y optimismo.',
-                    medio: 'Logra asimilar cambios en procesos, herramientas y estructuras organizacionales en tiempos razonables, mostrando una apertura constructiva hacia la innovación necesaria. Es capaz de mantener su desempeño bajo control mientras atraviesa nuevas curvas de aprendizaje, ajustándose a los requerimientos cambiantes del cargo con solvencia y profesionalismo, siempre que el cambio esté debidamente justificado y comunicado.',
-                    bajo: 'Presenta una marcada rigidez frente a las modificaciones súbitas en su rutina u operativa diaria. Los cambios imprevistos suelen generar una baja significativa en su rendimiento y un aumento en sus niveles de frustración personal, por lo que requiere de una gestión del cambio muy estructurada, comunicada con mucha antelación y con un acompañamiento paso a paso para poder integrarse a las nuevas dinámicas sin bloquearse.',
+                    alto: 'Muestra capacidad para ajustar su ritmo de trabajo ante cambios sutiles o drásticos en las prioridades del sector. Su flexibilidad le permite transitar modificaciones normativas manteniendo la calidad de su ejecución técnica sin comprometer el resultado final.',
+                    medio: 'Logra asimilar cambios en procesos y estructuras organizacionales en tiempos razonables, mostrando una apertura constructiva hacia la innovación necesaria para la competitividad del negocio.',
+                    bajo: 'Presenta rigidez frente a las modificaciones imprevistas en su rutina operativa. Se beneficia de una gestión del cambio muy estructurada, comunicada con antelación y con un acompañamiento paso a paso.'
                   },
                   resolucion_problemas: {
-                    alto: 'Posee un enfoque analítico, sistémico y pragmático de alto nivel para el abordaje de situaciones complejas. Identifica la raíz de los problemas de forma predictiva y propone soluciones integrales que no solo resuelven la urgencia inmediata, sino que previenen recurrencias futuras mediante la mejora de procesos. Su capacidad de decisión en situaciones críticas aporta una seguridad operativa y una eficiencia de recursos invaluable para la dirección.',
-                    medio: 'Es capaz de resolver inconvenientes operativos de manera autónoma utilizando el sentido común, su experiencia previa y los recursos disponibles. Muestra iniciativa para destrabar situaciones que impiden el avance de sus tareas, buscando alternativas viables y comunicando los incidentes de forma oportuna a sus superiores. Su enfoque es resolutivo y práctico, asegurando la continuidad de la operación diaria sin necesidad de escalamientos constantes.',
-                    bajo: 'Tiende a bloquearse ante imprevistos técnicos o a depender de manera excesiva de instrucciones externas detalladas para resolver problemas básicos. Su falta de autonomía resolutiva puede generar cuellos de botella en la operación y sobrecargar la supervisión, por lo que necesita ser capacitado en metodologías de análisis de problemas, pensamiento lateral y toma de decisiones bajo presión para ganar confianza operativa.',
+                    alto: 'Utiliza criterios lógicos y un enfoque sistémico para identificar la raíz de errores operativos. Su análisis facilita la implementación de soluciones prácticas que no solo resuelven la urgencia, sino que previenen recurrencias futuras mediante la mejora de procesos.',
+                    medio: 'Es capaz de resolver inconvenientes operativos de manera autónoma utilizando el sentido común y la experiencia técnica previa. Muestra iniciativa para destrabar situaciones que impiden el avance de sus tareas habituales.',
+                    bajo: 'Tiende a depender de instrucciones detalladas para resolver problemas básicos fuera de su rutina. Se recomienda capacitación en metodologías de análisis de causa raíz y pensamiento lateral para ganar autonomía resolutiva.'
                   },
                   etica: {
-                    alto: 'Muestra una adherencia inquebrantable a los valores éticos y principios organizacionales, incluso en situaciones de alta complejidad o conflicto de intereses. Su integridad actúa como un marco de referencia para el equipo, promoviendo una cultura de transparencia y responsabilidad. Es un perfil altamente confiable para la gestión de activos críticos y la representación institucional en entornos de alta sensibilidad.',
-                    medio: 'Actúa de manera íntegro y profesional en sus interacciones cotidianas, respetando las normas y valores establecidos por la organización. Posee un criterio ético equilibrado que le permite tomar decisiones alineadas con el bien común y la legalidad vigente. Es un colaborador confiable que valora la transparencia y el trato justo en todas sus relaciones laborales.',
-                    bajo: 'Presenta dificultades para alinear sus acciones con los marcos éticos en situaciones de conveniencia personal o presión externa. Su juicio moral puede verse nublado por intereses de corto plazo, por lo que requiere una supervisión clara y un reforzamiento constante de la cultura de integridad organizacional para evitar sesgos que comprometan la reputación institucional.'
+                    alto: 'El perfil se alinea con los protocolos de integridad institucional, demostrando un manejo responsable de la información confidencial. Esta tendencia favorece la mitigación de riesgos operativos en procesos que requieren un estricto apego a la normativa vigente del área.',
+                    medio: 'Mantiene un comportamiento profesional alineado con las normas de convivencia y legalidad organizacional. Su criterio permite tomar decisiones equilibradas que aseguran la transparencia en la ejecución de sus tareas diarias.',
+                    bajo: 'Se recomienda reforzar el conocimiento de los marcos normativos específicos del cargo. Una supervisión cercana permitirá alinear sus acciones con los estándares de integridad y transparencia requeridos por la organización.'
                   },
                   negociacion: {
-                    alto: 'Destaca por una capacidad excepcional para gestionar desacuerdos y alcanzar acuerdos beneficiosos para todas las partes (ganar-ganar). Su habilidad para leer las necesidades implícitas y proponer soluciones creativas le permite destrabar negociaciones complejas, preservando la calidad de las relaciones interpersonales y asegurando la sostenibilidad de los acuerdos alcanzados.',
-                    medio: 'Posee habilidades de negociación funcionales que le permiten llegar a consensos operativos en el día a día. Logra defender su posición de manera profesional y respetuosa, mostrando flexibilidad para ceder cuando el objetivo colectivo lo requiere. Su enfoque es práctico y orientado a la resolución constructiva de las diferencias habituales en el entorno de trabajo.',
-                    bajo: 'Tiende a adoptar posturas rígidas o puramente competitivas que dificultan la resolución de conflictos. Su falta de flexibilidad y dificultad para empatizar con las necesidades del otro pueden generar estancamientos en las tareas compartidas, por lo que requiere entrenamiento en técnicas de comunicación asertiva y resolución alternativa de disputas.'
+                    alto: 'Utiliza argumentos basados en datos y normativas para alcanzar acuerdos funcionales que aseguren la continuidad operativa. Su enfoque facilita la resolución de diferencias mediante criterios prácticos, preservando la calidad de las relaciones profesionales.',
+                    medio: 'Posee habilidades de negociación que le permiten llegar a consensos en la operativa diaria. Logra defender los intereses de la organización de forma profesional, mostrando flexibilidad cuando el objetivo colectivo lo demanda.',
+                    bajo: 'Muestra preferencia por posturas fijas en situaciones de desacuerdo. Se beneficiaría de entrenamiento en técnicas de comunicación asertiva para facilitar el alcance de acuerdos en entornos de alta demanda operativa.'
                   },
                   manejo_emocional: {
-                    alto: 'Demuestra un dominio superior sobre sus reacciones emocionales, manteniendo la calma y el profesionalismo incluso en situaciones de crisis extrema. Su inteligencia emocional le permite procesar la tensión de manera productiva, actuando como un regulador emocional para el equipo y facilitando un clima de seguridad psicológica que favorece la toma de decisiones objetiva.',
-                    medio: 'Logra gestionar sus emociones de manera profesional en el entorno laboral, evitando que los sentimientos personales interfieran con su desempeño técnico. Es capaz de manejar situaciones de estrés moderado con tranquilidad, manteniendo un trato cordial y estable con sus compañeros y superiores durante toda la jornada operativa.',
-                    bajo: 'Sus emociones suelen desbordar su capacidad analítica en momentos de presión o conflicto. Presenta dificultades para autorregularse, lo que puede derivar en reacciones impulsivas o una baja significativa de su rendimiento ante críticas o imprevistos, requiriendo un ambiente de trabajo muy estable y predictivo.'
+                    alto: 'Gestiona sus reacciones ante situaciones de conflicto laboral de forma profesional, manteniendo un enfoque neutro y orientado a la tarea. Su estabilidad emocional actúa como un factor de equilibrio que favorece la toma de decisiones objetiva bajo presión.',
+                    medio: 'El evaluado maneja el impacto emocional de su trabajo de manera estable, evitando que las variables personales afecten su desempeño técnico. Es capaz de mantener un trato cordial y profesional incluso ante picos de demanda moderados.',
+                    bajo: 'Se observa vulnerabilidad ante la presión emocional, lo que podría impactar en su rendimiento analítico. Se beneficia de un entorno previsible y pautas de trabajo estructuradas que minimicen la incertidumbre situacional.'
                   },
                   tolerancia_frustracion: {
-                    alto: 'Posee una resiliencia excepcional que le permite mantenerse enfocado y productivo a pesar de los reveses o la falta de resultados inmediatos. No se desmotiva ante el error, sino que lo utiliza como insumo para el aprendizaje, persistiendo con optimismo y tenacidad hasta alcanzar los objetivos estratégicos propuestos.',
-                    medio: 'Muestra una tolerancia adecuada a los inconvenientes y demoras habituales en el trabajo. Es capaz de sobrellevar los fallos operativos sin que afecten de manera permanente su ánimo o su productividad, retomando sus tareas con profesionalismo una vez superado el obstáculo situacional.',
-                    bajo: 'Tiende a desmoralizarse rápidamente cuando las cosas no salen según lo planeado. Los fallos menores impactan de forma desproporcionada en su autoconfianza y motivación, lo que puede llevarle a abandonar tareas complejas o a una parálisis operativa ante la incertidumbre, requiriendo validación y apoyo constante.'
+                    alto: 'Mantiene el ritmo de ejecución previsto ante el aumento en el volumen de tareas o demoras en los resultados esperados. Su respuesta técnica se mantiene estable, capitalizando los obstáculos como una oportunidad para el ajuste de procesos y la mejora continua.',
+                    medio: 'Muestra una capacidad adecuada para recuperarse ante fallos operativos, manteniendo su compromiso con las metas pendientes. Logra retomar sus funciones con profesionalismo una vez superado el inconveniente situacional detectado.',
+                    bajo: 'La tolerancia a los reveses operativos es un factor que requiere fortalecimiento. La frustración ante resultados imprevistos podría impactar en la continuidad de sus funciones, por lo que requiere validación y seguimiento constante.'
                   }
                 };
 
@@ -1295,7 +1317,12 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       <span style={{...s.factLvl, color:clr}}>{Number(normVal.toFixed(1))}/5</span>
                     </div>
                     <div style={s.barBg}><div style={{...s.barFill, width:`${(normVal/5)*100}%`, background:clr}} /></div>
-                    <textarea style={s.taFact} rows={4} value={inf.interpretacionPorFactor?.[fk] || descSugerida} onChange={(e) => updFactor(fk, e.target.value)} />
+                    <textarea 
+                      style={s.taFact} 
+                      rows={4} 
+                      value={inf.interpretacionPorFactor?.[fk] || inf.interpretacionPorFactor?.[factor.toLowerCase()] || descSugerida} 
+                      onChange={(e) => updFactor(fk, e.target.value)} 
+                    />
                   </div>
                 )
               })}
@@ -1317,45 +1344,50 @@ PsicoPlataforma - Gestión Inteligente de Talento
                 const fk = `${sesionId}_${factor.toLowerCase()}`
 
                 const narrativas: Record<string, any> = {
-                  resiliencia: {
-                    alto: 'Presenta una capacidad de recuperación emocional notable frente a la adversidad laboral. Ante proyectos fallidos o periodos de crisis, logra capitalizar la experiencia como un aprendizaje activo, manteniendo su integridad psicológica y motivando al equipo a perseverar hacia los objetivos estratégicos de la organización.',
-                    medio: 'Muestra una fortaleza emocional adecuada para afrontar los desafíos cotidianos del puesto. Es capaz de procesar los inconvenientes con objetividad y recuperar su ritmo operativo en tiempos razonables, asegurando que los contratiempos no afecten su estabilidad ni su rendimiento a largo plazo.',
-                    bajo: 'Los obstáculos inesperados impactan de forma profunda en su motivación y seguridad. Presenta una recuperación lenta tras periodos de presión, lo que puede derivar en una baja de productividad sostenida ante entornos volátiles si no cuenta con un sistema de soporte y validación externa constante.',
-                  },
-                  manejo_estres: {
-                    alto: 'Posee estrategias de afrontamiento de alto nivel que le permiten mantener la lucidez y la precisión técnica bajo condiciones de máxima presión. Sabe priorizar con maestría cuando el volumen de tareas aumenta, evitando el desbordamiento y actuando como un regulador del estrés para su entorno inmediato.',
-                    medio: 'Gestiona de manera efectiva las demandas habituales de un entorno laboral dinámico. Mantiene el control sobre sus procesos y logra canalizar la tensión de forma saludable, aunque ante picos de demanda extraordinarios podría requerir apoyo en la organización de prioridades para evitar la fatiga mental.',
-                    bajo: 'Presenta una baja tolerancia a la presión del tiempo y a la multiactividad. Ante situaciones de estrés moderado, su capacidad de organización se ve comprometida, lo que genera errores por precipitación o parálisis operativa. Requiere una estructura de tareas muy pautada y previsible.',
-                  },
-                  autoestima: {
-                    alto: 'Demuestra una autopercepción sólida y una confianza genuina en sus competencias profesionales. Esta seguridad le permite aceptar feedback crítico con apertura y madurez, utilizándolo como insumo para su crecimiento sin que afecte su valía personal. Es un perfil que proyecta liderazgo y solvencia técnica.',
-                    medio: 'Mantiene un nivel de confianza profesional equilibrado, reconociendo con realismo tanto sus fortalezas como sus áreas de mejora. Se siente capaz de afrontar nuevos desafíos operativos y muestra una receptividad constructiva ante las sugerencias de sus superiores y pares.',
-                    bajo: 'Muestra inseguridad respecto a sus capacidades, lo que puede llevarle a evitar la toma de decisiones o a depender excesivamente de la aprobación de terceros. Requiere un reconocimiento constante de sus logros y un ambiente de baja exposición para poder desplegar su potencial sin miedo al error.',
-                  },
-                  inteligencia_emocional: {
-                    alto: 'Sobresale por su capacidad para identificar y gestionar sutilmente el clima emocional de la organización. Su empatía y habilidades sociales le permiten mediar en conflictos complejos y construir redes de colaboración sólidas, convirtiéndose en un activo clave para la cultura y la retención del talento.',
-                    medio: 'Posee una conciencia emocional funcional que facilita sus relaciones interpersonales en el trabajo. Entiende el impacto de su comportamiento en los demás y se esfuerza por mantener un trato profesional, empático y respetuoso, contribuyendo positivamente a la armonía del equipo.',
-                    bajo: 'Presenta dificultades para leer las señales sociales o para regular sus reacciones emocionales en momentos de tensión. Puede generar fricciones involuntarias con el equipo debido a una comunicación poco empática, por lo que necesita formación en habilidades blandas y autorregulación consciente.',
-                  },
                   burnout: {
-                    alto: 'Presenta un perfil de alta resistencia al agotamiento laboral crónico, con mecanismos de autogestión efectivos que preservan su energía y motivación. Logra mantener un equilibrio saludable entre la entrega profesional y su bienestar personal, lo que garantiza una productividad sostenible a largo plazo.',
-                    medio: 'Muestra niveles de fatiga dentro de los parámetros normales para la carga de trabajo habitual. Aunque logra cumplir con sus responsabilidades, se beneficia de prácticas de desconexión periódica y una organización del tiempo equilibrada para evitar el agotamiento.',
-                    bajo: 'Se detectan indicadores de fatiga acumulada o un riesgo latente de agotamiento emocional. Le cuesta recuperar su energía tras jornadas intensas, por lo que requiere una revisión de sus tareas y un acompañamiento que priorice la prevención del estrés crónico.'
+                    alto: 'Presenta mecanismos de autogestión efectivos que preservan su energía y motivación en el largo plazo. Logra mantener un desempeño constante, minimizando el riesgo de agotamiento por carga laboral sostenida.',
+                    medio: 'Muestra un equilibrio funcional frente a las demandas del puesto, gestionando el desgaste diario de forma profesional y manteniendo su productividad dentro de los parámetros esperados.',
+                    bajo: 'Se observa una vulnerabilidad al agotamiento crónico que requiere monitoreo. Se recomienda revisar la distribución de tareas para prevenir un impacto negativo en su salud y rendimiento a mediano plazo.'
                   },
                   equilibrio: {
-                    alto: 'Domina el balance entre sus esferas personal y laboral, integrándolas de forma armónica. Esta estabilidad le permite presentarse al trabajo con un enfoque pleno y una disposición positiva, impactando favorablemente en el clima del equipo.',
-                    medio: 'Logra un equilibrio funcional que le permite atender sus compromisos profesionales sin descuidar significativamente su bienestar personal. Es capaz de establecer límites saludables en la mayoría de las situaciones cotidianas.',
-                    bajo: 'Presenta dificultades para separar las demandas laborales de su vida privada, lo que genera una sensación de agobio constante. Esta falta de equilibrio afecta su capacidad de concentración y puede derivar en un deterioro de su rendimiento.'
+                    alto: 'Logra una integración saludable entre las demandas profesionales y su bienestar personal. Esta estabilidad favorece un enfoque claro y una mayor capacidad de concentración durante la jornada operativa.',
+                    medio: 'Mantiene un equilibrio adecuado en la mayoría de las situaciones cotidianas, logrando separar sus compromisos laborales de su entorno personal de forma funcional.',
+                    bajo: 'Presenta dificultades para establecer límites entre las esferas laboral y privada. Esta falta de equilibrio podría derivar en una sensación de agobio que afecte su capacidad de respuesta técnica.'
                   },
                   relaciones: {
-                    alto: 'Es un catalizador de relaciones interpersonales sanas y productivas. Su capacidad para generar confianza y colaborar de forma genuina fortalece el tejido social de la organización, facilitando la resolución de problemas compartidos.',
-                    medio: 'Mantiene interacciones profesionales respetuosas y cordiales con sus compañeros. Se integra bien a la cultura del equipo y contribuye al mantenimiento de un clima de trabajo positivo basado en la cortesía y la cooperación.',
-                    bajo: 'Sus relaciones en el trabajo suelen estar marcadas por la distancia o la falta de entendimiento mutuo. Le cuesta construir vínculos de confianza y puede verse involucrado en malentendidos que afectan la cohesión del grupo.'
+                    alto: 'Facilita la construcción de vínculos profesionales basados en el respeto y la cooperación. Su interacción promueve un clima de trabajo positivo y una comunicación fluida dentro del equipo.',
+                    medio: 'Mantiene relaciones laborales cordiales y profesionales con sus pares. Se integra de forma funcional a la cultura del equipo, contribuyendo al mantenimiento de la estabilidad grupal.',
+                    bajo: 'Sus interacciones suelen estar marcadas por la distancia o la falta de entendimiento mutuo. Se recomienda fomentar espacios de integración para mejorar su cohesión con el grupo de trabajo.'
                   },
                   claridad_rol: {
-                    alto: 'Posee una comprensión absoluta de sus funciones, responsabilidades y el impacto de su trabajo en la estrategia global. Esta claridad le permite actuar con autonomía y seguridad, alineando sus esfuerzos con las metas del negocio.',
-                    medio: 'Entiende correctamente sus tareas principales y el alcance de su posición en la estructura del área. Sabe qué se espera de su desempeño y logra orientar su actividad hacia el cumplimiento de los objetivos fijados.',
-                    bajo: 'Muestra ambigüedad respecto a sus responsabilidades reales o a la prioridad de sus tareas. Esta incertidumbre genera inseguridad en su toma de decisiones, requiriendo una definición de perfil de puesto más rigurosa.'
+                    alto: 'Posee una comprensión clara de sus funciones, responsabilidades y el impacto de su tarea en la estructura. Esta claridad le permite actuar con autonomía y seguridad en la toma de decisiones.',
+                    medio: 'Entiende correctamente sus tareas principales y el alcance de su posición. Sabe qué se espera de su desempeño y orienta su actividad hacia el cumplimiento de los objetivos fijados.',
+                    bajo: 'Muestra ambigüedad respecto a sus responsabilidades reales. Se recomienda una definición de perfil de puesto más rigurosa para evitar inseguridades en su ejecución diaria.'
+                  },
+                  nivel_estres: {
+                    alto: 'Se observa una respuesta adaptativa a las presiones del entorno laboral, sin evidencias de tensión que comprometa el desempeño. Esta estabilidad favorece la objetividad en la toma de decisiones.',
+                    medio: 'Gestiona la tensión de forma profesional en la mayoría de las situaciones. Mantiene el control operativo bajo demanda moderada, requiriendo pausas de recuperación ante picos extraordinarios.',
+                    bajo: 'Muestra indicadores de tensión psicológica que requieren atención. Se recomienda un entorno estructurado y previsible para minimizar el impacto del estrés en su rendimiento técnico.'
+                  },
+                  carga_laboral: {
+                    alto: 'Muestra capacidad para organizar su actividad frente a las exigencias de la demanda de trabajo. Su enfoque permite un procesamiento fluido de las tareas, evitando cuellos de botella operativos.',
+                    medio: 'Logra procesar el volumen de trabajo asignado de forma eficiente, ajustando su ritmo a las prioridades del área sin comprometer significativamente la calidad de los resultados.',
+                    bajo: 'El volumen de tareas imprevistas afecta su capacidad de organización. Requiere soporte en la jerarquización de prioridades para evitar la saturación y asegurar el cumplimiento de plazos.'
+                  },
+                  resiliencia: {
+                    alto: 'Muestra capacidad de recuperación ante la adversidad laboral, capitalizando los obstáculos como aprendizaje activo. Mantiene la estabilidad técnica y la orientación a metas en periodos de crisis.',
+                    medio: 'Posee una fortaleza emocional adecuada para afrontar los desafíos cotidianos. Logra recuperar su ritmo operativo en tiempos razonables tras experimentar contratiempos en sus tareas.',
+                    bajo: 'Los obstáculos inesperados impactan en su motivación y seguridad. Requiere un sistema de validación externa constante para recuperar su productividad ante entornos volátiles.'
+                  },
+                  manejo_estres: {
+                    alto: 'Utiliza estrategias de afrontamiento que le permiten mantener la precisión técnica bajo presión. Logra priorizar tareas de forma efectiva cuando el volumen de actividad aumenta súbitamente.',
+                    medio: 'Gestiona de manera efectiva las demandas de un entorno dinámico. Mantiene el control sobre sus procesos, aunque ante picos extraordinarios requiere soporte en la organización de prioridades.',
+                    bajo: 'Presenta una baja tolerancia a la multiactividad. Ante situaciones de presión, su capacidad de organización se ve comprometida, requiriendo una estructura de tareas muy pautada.'
+                  },
+                  autoestima: {
+                    alto: 'Demuestra una confianza profesional sólida fundamentada en sus competencias. Esta seguridad le permite aceptar feedback técnico de forma constructiva para optimizar su desempeño.',
+                    medio: 'Mantiene un nivel de confianza equilibrado, reconociendo sus fortalezas y áreas de mejora. Se siente capaz de afrontar nuevos desafíos operativos con una actitud receptiva.',
+                    bajo: 'Muestra inseguridad respecto a sus capacidades, lo que puede limitar su toma de decisiones. Requiere un ambiente de baja exposición para desplegar su potencial sin temor al error técnico.'
                   }
                 };
 
@@ -1369,7 +1401,12 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       <span style={{...s.factLvl, color:clr}}>{Number(normVal.toFixed(1))}/5</span>
                     </div>
                     <div style={s.barBg}><div style={{...s.barFill, width:`${(normVal/5)*100}%`, background:clr}} /></div>
-                    <textarea style={s.taFact} rows={4} value={inf.interpretacionPorFactor?.[fk] || descSugerida} onChange={(e) => updFactor(fk, e.target.value)} />
+                    <textarea 
+                      style={s.taFact} 
+                      rows={4} 
+                      value={inf.interpretacionPorFactor?.[fk] || inf.interpretacionPorFactor?.[factor.toLowerCase()] || descSugerida} 
+                      onChange={(e) => updFactor(fk, e.target.value)} 
+                    />
                   </div>
                 )
               })}

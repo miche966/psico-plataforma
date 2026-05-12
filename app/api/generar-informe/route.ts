@@ -169,13 +169,17 @@ Estructura de Contenido:
    }
 5. "fundamentacion": Argumentación técnica que justifica la recomendación basada en la probabilidad de éxito.
 6. "ajusteMbti": Cómo su perfil conductual influye en su desempeño diario en este cargo específico.
-7. "metaCompetencias": {
-      "liderazgo": 0-100,
-      "adaptabilidad": 0-100,
-      "resiliencia": 0-100,
-      "colaboracion": 0-100,
-      "comunicacion": 0-100
-   } (Cálculo estimado basado en la combinación de rasgos analizados).
+7. "metaCompetencias": { "liderazgo": 0-100, "adaptabilidad": 0-100, "resiliencia": 0-100, "colaboracion": 0-100, "comunicacion": 0-100 }
+8. "interpretacionPorFactor": Análisis cualitativo INDIVIDUAL para cada factor evaluado (Personalidad, Competencias y Bienestar). 
+
+CRITERIO DE REDACCIÓN (CONSULTORÍA ESTRATÉGICA):
+- Profundidad Analítica: Cada factor debe tener entre 3 y 4 oraciones. No te limites a describir, analiza el IMPACTO de la conducta en el cargo.
+- Estructura de Párrafo: 1) Tendencia observada, 2) Mecanismo de ejecución, 3) Impacto/Valor para la organización.
+- TONO HUMAN-CENTRIC: PROHIBIDO usar jerga técnica deshumanizante como "arquitectura conductual", "eficiencia cognitiva" o referirse al candidato como "recurso". Usa "enfoque profesional", "efectividad operativa" y "perfil".
+- PROHIBIDO usar el nombre del candidato. Usa "El perfil", "El evaluado" o "El candidato".
+- Tono de Auditoría: Redacción en tercera persona, objetiva y basada en evidencia.
+- Prohibido maximalismos: No uses "excepcional", "profunda", "inquebrantable", "sobresaliente".
+- Evita lo genérico: El análisis debe ser específico para el cargo (Jurídico/Recupero), pero sin sonar informal.
 
 Devuelve EXCLUSIVAMENTE un JSON válido con esta estructura exacta:
 {
@@ -186,7 +190,20 @@ Devuelve EXCLUSIVAMENTE un JSON válido con esta estructura exacta:
   "recomendacion": "${dictamenFinal}",
   "fundamentacion": "...",
   "ajusteMbti": "...",
-  "interpretacionPorFactor": { "id_factor": "..." },
+  "interpretacionPorFactor": { 
+     "etica": "...", 
+     "negociacion": "...", 
+     "manejo_emocional": "...", 
+     "tolerancia_frustracion": "...", 
+     "comunicacion": "...",
+     "extraversion": "...",
+     "amabilidad": "...",
+     "responsabilidad": "...",
+     "neuroticismo": "...",
+     "apertura": "...",
+     "nivel_estres": "...",
+     "carga_laboral": "..."
+  },
   "metaCompetencias": { "liderazgo": 0, "adaptabilidad": 0, "resiliencia": 0, "colaboracion": 0, "comunicacion": 0 }
 }
 `
