@@ -94,7 +94,32 @@ export const SimplePDF = ({ data }: any) => {
           </View>
         )}
 
-        {!helpers.esBigFive(pb) && !helpers.esCognitivo(pb) && (
+        {helpers.esSJT(pb) && (
+          <View>
+            <Text style={styles.sectionTitle}>Análisis Situacional (SJT)</Text>
+            {Object.entries(pb.por_factor || {}).map(([factor, info]: any) => {
+              const valor = Math.round(((info.correctas / info.total) * 5) * 10) / 10;
+              const colorStr = '#b45309'; // Amber
+              const nivel = valor >= 4 ? 'Alto' : valor >= 3 ? 'Moderado' : 'Bajo';
+              const pct = (valor / 5) * 100;
+
+              return (
+                <View key={factor} style={styles.factorBlock} wrap={false}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={styles.factorName}>{helpers.etiquetasPDF[factor] || factor}</Text>
+                    <Text style={{ ...styles.factorValue, color: colorStr }}>{nivel} ({valor}/5)</Text>
+                  </View>
+                  <View style={styles.barBg}>
+                    <View style={{ ...styles.barFill, width: `${pct}%`, backgroundColor: colorStr }} />
+                  </View>
+                  <Text style={styles.desc}>{helpers.interpretacion(factor, valor)}</Text>
+                </View>
+              )
+            })}
+          </View>
+        )}
+
+        {!helpers.esBigFive(pb) && !helpers.esCognitivo(pb) && !helpers.esSJT(pb) && (
           <View>
             <Text style={styles.sectionTitle}>Resultado General</Text>
             {(() => {

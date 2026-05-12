@@ -707,8 +707,8 @@ export default function CandidatosPage() {
                 </div>
 
                 {/* Columna Lateral: Sidebar de Conclusiones */}
-                <div className="w-72 space-y-4">
-                  <div className="bg-[#0f172a] rounded-[32px] p-6 text-white h-full space-y-8 relative overflow-hidden shadow-2xl">
+                <div className="w-80 shrink-0">
+                  <div className="bg-[#0f172a] rounded-[32px] p-6 text-white min-h-full space-y-8 relative overflow-y-auto max-h-[800px] custom-scrollbar shadow-2xl">
                     <div className="absolute top-0 right-0 p-8 opacity-10">
                       <Sparkles className="w-32 h-32 text-white" />
                     </div>
@@ -717,7 +717,17 @@ export default function CandidatosPage() {
                       <section className="space-y-3">
                         <div className="flex items-center gap-2">
                           <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
-                          <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Punto de Tensión Dominante</h5>
+                          <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Análisis Global</h5>
+                        </div>
+                        <p className="text-xs leading-relaxed text-slate-300 font-medium italic">
+                          {getAnalisisGlobal(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto))}
+                        </p>
+                      </section>
+
+                      <section className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
+                          <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Desafío Adaptativo Identificado</h5>
                         </div>
                         <p className="text-xs leading-relaxed text-slate-300 font-medium">
                           {getPuntoTension(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto))}
@@ -727,7 +737,7 @@ export default function CandidatosPage() {
                       <section className="space-y-3">
                         <div className="flex items-center gap-2">
                           <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
-                          <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Acompañamiento Inicial Sugerido</h5>
+                          <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Estrategia de Integración</h5>
                         </div>
                         <p className="text-xs leading-relaxed text-slate-300 font-medium">
                           {getAcompanamiento(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto))}
@@ -738,7 +748,7 @@ export default function CandidatosPage() {
                         <section className="bg-indigo-900/40 rounded-2xl p-4 border border-indigo-500/20 space-y-2">
                           <div className="flex items-center gap-2">
                             <Check className="w-3.5 h-3.5 text-indigo-400" />
-                            <h5 className="text-[10px] font-black uppercase tracking-[0.1em] text-indigo-200">Esquema de Gestión Interna</h5>
+                            <h5 className="text-[10px] font-black uppercase tracking-[0.1em] text-indigo-200">Síntesis de Impacto Organizacional</h5>
                           </div>
                           <p className="text-[11px] italic leading-relaxed text-indigo-100/80">
                             {conclusionGeneral(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto))}
@@ -868,6 +878,19 @@ function extraerDiagnostico(pb: any, testId?: string): [string, number][] {
       if (key === 'porcentaje') return 'autorregulacion_emocional'
     }
 
+    // TRANSFORMACIÓN ESPECÍFICA PARA ESTRÉS LABORAL
+    if (tId.includes('estres') || tId.includes('d0e1f2a3-b4c5-6789-defa-000000000001')) {
+      if (key === 'promedio' || key === 'promedio_general') return 'estres'
+      if (key === 'carga' || key === 'carga_laboral') return 'carga_laboral'
+    }
+
+    // TRANSFORMACIÓN ESPECÍFICA PARA TEST DE INTEGRIDAD
+    if (tId.includes('integridad') || tId.includes('b5c6d7e8-f9a0-1234-abcd-888888888888')) {
+      if (key === 'promedio' || key === 'promedio_general') return 'integridad'
+      if (key === 'normas') return 'apego_normas'
+      if (key === 'honestidad_humildad') return 'honestidad_humildad'
+    }
+
     // OCEAN / HEXACO (Especialmente para versiones nuevas con abreviaturas)
     const esPersonalidad = tId.includes('big') || tId.includes('personal') || tId.includes('hexa') || tId.includes('b5')
     if (esPersonalidad) {
@@ -893,7 +916,7 @@ function extraerDiagnostico(pb: any, testId?: string): [string, number][] {
     }
 
     const nameKey = Object.keys(obj).find(k => ['id', 'nombre', 'factor', 'dimension', 'clave', 'trait', 'label', 'name', 'key', 'title', 'tag', 'descr'].includes(k.toLowerCase()))
-    const valueKey = Object.keys(obj).find(k => ['valor', 'score', 'porcentaje', 'puntaje', 'resultado', 'puntos', 'raw', 'scaled', 'percentile', 'result', 'pts', 'val', 'v', 'p'].includes(k.toLowerCase()))
+    const valueKey = Object.keys(obj).find(k => ['valor', 'score', 'porcentaje', 'puntaje', 'resultado', 'puntos', 'raw', 'scaled', 'percentile', 'result', 'pts', 'val', 'v', 'p', 'correctas'].includes(k.toLowerCase()))
 
     if (nameKey && valueKey && typeof obj[nameKey] === 'string') {
       const k = normalizarKey(obj[nameKey], testId)
@@ -928,6 +951,22 @@ function extraerDiagnostico(pb: any, testId?: string): [string, number][] {
     while (typeof data === 'string' && (data.startsWith('{') || data.startsWith('['))) {
       data = JSON.parse(data)
     }
+
+    // SOPORTE ESPECÍFICO PARA SJT (Estructura por_factor)
+    if (data && data.por_factor) {
+      let pf = data.por_factor
+      try {
+        if (typeof pf === 'string' && (pf.startsWith('{') || pf.startsWith('['))) pf = JSON.parse(pf)
+        if (typeof pf === 'object' && pf !== null) {
+          Object.entries(pf).forEach(([f, info]: any) => {
+            if (info && typeof info.correctas === 'number' && typeof info.total === 'number') {
+              mapa.set(normalizarKey(f, testId), (info.correctas / info.total) * 5)
+            }
+          })
+        }
+      } catch (e) {}
+    }
+
     // Intento de extraer datos de strings que contienen "Clave: Valor"
     Object.entries(data).forEach(([k, v]) => {
       if (typeof v === 'string' && v.includes(':')) {
@@ -1038,6 +1077,10 @@ const ETIQUETAS: Record<string, string> = {
   // SJT / Competencias
   etica: 'Ética y Valores',
   negociacion: 'Capacidad de Negociación',
+  analisis: 'Análisis de Situación',
+  priorizacion: 'Priorización de Tareas',
+  inferencia: 'Inferencia Lógica',
+  creatividad: 'Creatividad en Soluciones',
   manejo_emocional: 'Inteligencia Emocional',
   tolerancia_frustracion: 'Tolerancia a la Frustración',
   comunicacion: 'Comunicación Efectiva',
@@ -1052,6 +1095,8 @@ const ETIQUETAS: Record<string, string> = {
   asertividad: 'Asertividad Profesional',
   influencia: 'Capacidad de Influencia',
   sociabilidad: 'Sociabilidad Operativa',
+  etica_comercial: 'Ética Comercial',
+  orientacion_cliente: 'Orientación al Cliente',
   // Creatividad
   pensamiento_divergente: 'Pensamiento Divergente',
   flexibilidad: 'Flexibilidad Cognitiva',
@@ -1093,13 +1138,28 @@ const ETIQUETAS: Record<string, string> = {
   resiliencia_operativa: 'Resiliencia Operativa',
   autorregulacion_emocional: 'Autorregulación Emocional',
   tolerancia_presion: 'Tolerancia a la Presión',
+  // Atención al Detalle
+  documentos: 'Verificación de Documentación',
+  comparacion: 'Comparación de Registros',
+  codigos: 'Cotejo de Información',
+  duplicados: 'Detección de Inconsistencias',
+  nombres: 'Validación de Identidad',
+  concentracion: 'Concentración Sostenida',
+  errores_texto: 'Precisión en Procesamiento de Texto',
+  errores_numeros: 'Rigor en Datos Numéricos',
   // Salud Mental / Riesgos
   ansiedad: 'Nivel de Ansiedad',
   depresion: 'Estado de Ánimo',
-  estres: 'Nivel de Estrés',
-  burnout: 'Riesgo de Burnout',
-  apego_normas: 'Apego a Normas',
-  integridad: 'Integridad Global'
+  estres: 'Nivel de Estrés Percibido',
+  burnout: 'Riesgo de Agotamiento',
+  carga_laboral: 'Gestión de Carga Laboral',
+  apoyo_social: 'Soporte Social y Clima',
+  control: 'Autonomía y Control',
+  apego_normas: 'Apego a Normas y Rigor Operativo',
+  integridad: 'Integridad Global y Ética Profesional',
+  honestidad_humildad: 'Honestidad y Humildad Organizacional',
+  pensamiento_critico: 'Pensamiento Crítico y Análisis de Escenarios',
+  decision: 'Toma de Decisiones y Resolución'
 }
 
 function interpretacionHumana(factor: string, valor: number): { descripcion: string, pregunta: string } {
@@ -1239,30 +1299,100 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
     },
     etica: {
       alto: {
-        desc: 'Compromiso inquebrantable con la transparencia y la integridad moral. Actúa como un guardián de los valores de la organización, anteponiendo siempre los principios sobre el beneficio personal o el atajo operativo.',
-        q: '¿Alguna vez ha tenido que tomar una decisión que era éticamente correcta pero profesionalmente impopular? ¿Cómo la defendió?'
+        desc: 'El evaluado demuestra un criterio de transparencia muy desarrollado en su práctica profesional. Su comportamiento sugiere que prioriza la honestidad y el respeto por los valores organizacionales en la resolución de problemas cotidianos, buscando siempre que sus acciones sean coherentes con la cultura de la empresa.',
+        q: '¿Cómo logra mantener la transparencia en sus decisiones cuando se enfrenta a una situación donde la presión por los resultados es muy alta?'
       },
       moderado: {
-        desc: 'Se alinea correctamente con los valores éticos corporativos. Su comportamiento es íntegro y confiable en entornos normados, mostrando respeto por la legalidad y los acuerdos establecidos.',
-        q: '¿Cómo maneja una situación donde ve que un procedimiento ético está siendo ignorado para agilizar un resultado?'
+        desc: 'Muestra un alineamiento adecuado con los principios éticos de la organización. Su desempeño refleja un compromiso con la honestidad y el cumplimiento de los acuerdos profesionales, permitiéndole generar un clima de confianza en sus relaciones laborales diarias.',
+        q: '¿Qué valor le asigna a la sinceridad cuando debe comunicar resultados que no son los esperados por la dirección?'
       },
       bajo: {
-        desc: 'Su juicio ético puede ser pragmático, priorizando la obtención de resultados o la eficiencia operativa según las demandas de la situación. Se beneficia de trabajar en organizaciones con límites éticos explícitos.',
-        q: '¿Qué factores toma en cuenta para decidir si es aceptable saltarse un paso burocrático para cumplir con una meta urgente?'
+        desc: 'Su enfoque ético es práctico y se adapta a los requerimientos inmediatos de la tarea. En contextos que exigen un alto rigor moral, el evaluado se beneficia de contar con directrices claras y un entorno que fomente la responsabilidad y la integridad como ejes del éxito profesional.',
+        q: '¿Qué elementos considera indispensables para asegurar que un proceso de trabajo sea siempre transparente y justo?'
+      }
+    },
+    normas: {
+      alto: {
+        desc: 'Se observa un perfil que valora el orden y la trazabilidad como pilares de la calidad operativa. Integra los protocolos internos de manera natural en su flujo de trabajo, comprendiendo que el seguimiento de los procesos es fundamental para la seguridad y la sostenibilidad del negocio.',
+        q: '¿Cómo utiliza usted las normativas de la empresa para mejorar la eficiencia y la calidad de los resultados de su área?'
+      },
+      moderado: {
+        desc: 'Demuestra un respeto profesional por las guías y procedimientos establecidos. Su adherencia a las normas es constante, lo que le permite operar con seguridad y colaborar de forma efectiva en el mantenimiento de los estándares administrativos de la organización.',
+        q: 'Si encontrara que una norma dificulta el cumplimiento de una meta importante, ¿cuál sería su propuesta para resolver la situación sin saltarse el proceso?'
+      },
+      bajo: {
+        desc: 'Su prioridad es la agilidad y el cumplimiento de objetivos externos. Para potenciar su rigor metodológico, el uso de herramientas de verificación y una comunicación que resalte el valor estratégico del orden administrativo consolidaría su desempeño a largo plazo.',
+        q: '¿Cómo decide usted qué pasos de un procedimiento son críticos y cuáles podrían ser optimizados ante una urgencia operativa?'
       }
     },
     apego_normas: {
       alto: {
-        desc: 'Sigue los procesos, protocolos y normativas con precisión quirúrgica. Su enfoque garantiza que la operación se mantenga dentro de los márgenes de seguridad y legalidad, minimizando riesgos de auditoría.',
-        q: '¿Cómo reacciona cuando observa que un colega experimentado ignora un protocolo de seguridad vital?'
+        desc: 'Se observa un perfil que valora el orden y la trazabilidad como pilares de la calidad operativa. Integra los protocolos internos de manera natural en su flujo de trabajo, comprendiendo que el seguimiento de los procesos es fundamental para la seguridad y la sostenibilidad del negocio.',
+        q: '¿Cómo utiliza usted las normativas de la empresa para mejorar la eficiencia y la calidad de los resultados de su área?'
       },
       moderado: {
-        desc: 'Respeta y aplica las normas establecidas, comprendiendo su propósito operativo. Se adapta bien a marcos estructurados y sigue directrices institucionales de forma constante.',
-        q: 'Si descubre que un proceso obligatorio genera una ineficiencia grave, ¿lo aplica igual o intenta modificarlo por canales oficiales?'
+        desc: 'Demuestra un respeto profesional por las guías y procedimientos establecidos. Su adherencia a las normas es constante, lo que le permite operar con seguridad y colaborar de forma efectiva en el mantenimiento de los estándares administrativos de la organización.',
+        q: 'Si encontrara que una norma dificulta el cumplimiento de una meta importante, ¿cuál sería su propuesta para resolver la situación sin saltarse el proceso?'
       },
       bajo: {
-        desc: 'Prioriza la autonomía personal y la eficiencia subjetiva sobre las reglas. Posee un estilo disruptivo que cuestiona el status quo, valioso para la innovación pero que requiere gestión para asegurar cumplimiento.',
-        q: '¿En qué circunstancias considera que el criterio personal de un experto debe prevalecer sobre el manual de procedimientos?'
+        desc: 'Su prioridad es la agilidad y el cumplimiento de objetivos externos. Para potenciar su rigor metodológico, el uso de herramientas de verificación y una comunicación que resalte el valor estratégico del orden administrativo consolidaría su desempeño a largo plazo.',
+        q: '¿Cómo decide usted qué pasos de un procedimiento son críticos y cuáles podrían ser optimizados ante una urgencia operativa?'
+      }
+    },
+    honestidad: {
+      alto: {
+        desc: 'Manifiesta una sinceridad profesional genuina y una disposición natural para reconocer sus propias áreas de mejora. Su trato humano y transparente favorece la construcción de vínculos de confianza mutua, priorizando la colaboración honesta sobre la visibilidad personal.',
+        q: '¿Podría describir una situación donde admitir una limitación técnica le permitió al equipo evitar un error importante en el proyecto?'
+      },
+      moderado: {
+        desc: 'Se comunica de forma honesta con sus compañeros y superiores. Es una persona que reconoce los logros del equipo con naturalidad y mantiene una postura de sencillez que facilita la integración y el respeto por los valores compartidos.',
+        q: '¿Cómo gestiona los momentos donde siente que su aporte no ha sido valorado con la rapidez que usted deseaba?'
+      },
+      bajo: {
+        desc: 'Posee un estilo orientado al éxito y a la consecución de metas ambiciosas. Su energía es valiosa para el crecimiento del área, pudiendo potenciar su impacto colaborativo mediante el reconocimiento de los aportes ajenos y el enfoque en el éxito compartido del departamento.',
+        q: '¿Qué valor le da a la humildad en el aprendizaje de nuevas herramientas frente a la necesidad de mostrarse siempre como un experto?'
+      }
+    },
+    honestidad_humildad: {
+      alto: {
+        desc: 'Manifiesta una sinceridad profesional genuina y una disposición natural para reconocer sus propias áreas de mejora. Su trato humano y transparente favorece la construcción de vínculos de confianza mutua, priorizando la colaboración honesta sobre la visibilidad personal.',
+        q: '¿Podría describir una situación donde admitir una limitación técnica le permitió al equipo evitar un error importante en el proyecto?'
+      },
+      moderado: {
+        desc: 'Se comunica de forma honesta con sus compañeros y superiores. Es una persona que reconoce los logros del equipo con naturalidad y mantiene una postura de sencillez que facilita la integración y el respeto por los valores compartidos.',
+        q: '¿Cómo gestiona los momentos donde siente que su aporte no ha sido valorado con la rapidez que usted deseaba?'
+      },
+      bajo: {
+        desc: 'Posee un estilo orientado al éxito y a la consecución de metas ambiciosas. Su energía es valiosa para el crecimiento del área, pudiendo potenciar su impacto colaborativo mediante el reconocimiento de los aportes ajenos y el enfoque en el éxito compartido del departamento.',
+        q: '¿Qué valor le da a la humildad en el aprendizaje de nuevas herramientas frente a la necesidad de mostrarse siempre como un experto?'
+      }
+    },
+    promedio_general: {
+      alto: {
+        desc: 'El perfil se proyecta como una persona confiable que integra la ética como una guía práctica en su desempeño diario. Su toma de decisiones refleja un compromiso con la integridad y la transparencia, asegurando una gestión profesional que protege el clima de confianza de la organización.',
+        q: '¿Cómo logra equilibrar la necesidad de ser competitivo con la importancia de mantener siempre una conducta transparente en sus negocios?'
+      },
+      moderado: {
+        desc: 'Mantiene un comportamiento profesional y confiable en su gestión. Su juicio ante situaciones complejas es equilibrado, demostrando un compromiso claro con la honestidad y la responsabilidad en el cumplimiento de sus funciones.',
+        q: '¿Qué pasos sigue para validar que una decisión difícil es éticamente correcta antes de ejecutarla?'
+      },
+      bajo: {
+        desc: 'Su desempeño ético se apoya en los marcos de control y supervisión de la empresa. Responde de manera positiva a una comunicación clara de los valores institucionales, beneficiándose de un entorno que refuerce la importancia de la integridad como base del crecimiento profesional.',
+        q: '¿Qué importancia le da al ejemplo que dan los líderes de la empresa en temas de honestidad y ética profesional?'
+      }
+    },
+    integridad: {
+      alto: {
+        desc: 'El perfil se proyecta como una persona confiable que integra la ética como una guía práctica en su desempeño diario. Su toma de decisiones refleja un compromiso con la integridad y la transparencia, asegurando una gestión profesional que protege el clima de confianza de la organización.',
+        q: '¿Cómo logra equilibrar la necesidad de ser competitivo con la importancia de mantener siempre una conducta transparente en sus negocios?'
+      },
+      moderado: {
+        desc: 'Mantiene un comportamiento profesional y confiable en su gestión. Su juicio ante situaciones complejas es equilibrado, demostrando un compromiso claro con la honestidad y la responsabilidad en el cumplimiento de sus funciones.',
+        q: '¿Qué pasos sigue para validar que una decisión difícil es éticamente correcta antes de ejecutarla?'
+      },
+      bajo: {
+        desc: 'Su desempeño ético se apoya en los marcos de control y supervisión de la empresa. Responde de manera positiva a una comunicación clara de los valores institucionales, beneficiándose de un entorno que refuerce la importancia de la integridad como base del crecimiento profesional.',
+        q: '¿Qué importancia le da al ejemplo que dan los líderes de la empresa en temas de honestidad y ética profesional?'
       }
     },
     series: {
@@ -1448,18 +1578,6 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
       }
     },
     estres: {
-      alto: {
-        desc: 'El evaluado se encuentra en un punto de saturación operativa donde su capacidad de respuesta está siendo exigida al máximo. Existe el riesgo de que la calidad del trabajo se vea comprometida por la fatiga mental acumulada. Requiere de forma inmediata una revisión de su carga de trabajo, una jerarquización clara de prioridades y, de ser posible, un periodo de recuperación para evitar el agotamiento crónico.',
-        q: '¿Cuál ha sido el momento de mayor presión en su carrera y qué aprendizaje obtuvo sobre sus propios límites personales?'
-      },
-      moderado: {
-        desc: 'Gestiona el estrés de forma profesional y efectiva. Es capaz de absorber picos de trabajo sin que su estabilidad emocional o su trato con los demás se deteriore. Utiliza el estrés como un activador para la eficiencia, mostrando una madurez organizacional que le permite jerarquizar tareas bajo presión de forma autónoma.',
-        q: '¿Cómo decide qué tareas delegar o posponer cuando se da cuenta de que el tiempo no será suficiente para todo?'
-      },
-      bajo: {
-        desc: 'Presenta una capacidad de absorción de carga muy alta o se encuentra actualmente en un entorno de baja demanda relativa. Su sistema cognitivo se mantiene despejado y alerta, permitiéndole asumir nuevas responsabilidades con facilidad. Es un perfil con alta disponibilidad mental para proyectos que exigen gran dedicación y foco sostenido.',
-        q: '¿Cómo se prepara usted para un periodo de alta demanda cuando sabe que el ritmo de trabajo está a punto de acelerarse?'
-      }
     },
     burnout: {
       alto: {
@@ -1755,46 +1873,416 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
         q: 'Cuando debe realizar una presentación breve, ¿cómo selecciona los temas para no extenderse en detalles técnicos?'
       }
     },
+    // Duplicate etica block removed to avoid overwriting professionalized version
     resiliencia_operativa: {
       alto: {
-        desc: 'Demuestra una notable capacidad para recuperar el ritmo de trabajo tras enfrentar obstáculos o errores. Su enfoque se mantiene en la resolución del problema y en la continuidad operativa, evitando que los contratiempos afecten la calidad de su entrega final.',
-        q: 'Describa una situación donde un error inesperado cambió sus planes. ¿Cómo logró retomar el control de la tarea?'
+        desc: 'Posee una flexibilidad psicológica superior que le permite reencuadrar los obstáculos como oportunidades de aprendizaje técnico. Su velocidad de recuperación ante el error es notable, manteniendo una persistencia estratégica que garantiza la continuidad del negocio en escenarios adversos.',
+        q: 'Cuéntenos sobre un fracaso profesional importante: ¿Cómo gestionó el impacto inicial y qué mecanismos activó para retomar la operatividad en tiempo récord?'
       },
       moderado: {
-        desc: 'Muestra una resiliencia funcional ante los imprevistos habituales del entorno laboral. Logra gestionar los fallos de forma profesional, retomando sus actividades con un tiempo de recuperación adecuado para mantener la productividad del área.',
-        q: 'Cuando algo no sale como esperaba en su trabajo, ¿cuáles son los primeros pasos que toma para corregir el rumbo?'
+        desc: 'Manifiesta una capacidad de recuperación equilibrada y profesional. Logra procesar los contratiempos sin permitir que estos paralicen su gestión, retomando sus responsabilidades con un enfoque pragmático y orientado a la solución.',
+        q: '¿Qué hace para evitar que el estrés acumulado de un día difícil afecte su rendimiento al día siguiente?'
       },
       bajo: {
-        desc: 'Puede experimentar mayor dificultad para retomar el foco tras un resultado negativo. Se beneficia de entornos con procesos de soporte claros y una retroalimentación constructiva que le ayude a procesar los obstáculos de forma más ágil.',
-        q: '¿Qué tipo de apoyo le resulta más efectivo cuando se enfrenta a una tarea que le genera frustración?'
+        desc: 'Su rendimiento es óptimo en entornos de baja conflictividad y estabilidad operativa. Ante fallos disruptivos, se beneficia de un acompañamiento cercano que le permita racionalizar el obstáculo y recuperar el ritmo de trabajo de forma progresiva.',
+        q: 'Cuando siente que una tarea le está superando, ¿cuáles son sus señales internas de alerta y cómo busca apoyo para desbloquearse?'
       }
     },
     autorregulacion_emocional: {
       alto: {
-        desc: 'Muestra un sólido control sobre sus estados internos en situaciones de alta exigencia. Es capaz de mantener la objetividad y la calma profesional, evitando que las emociones derivadas de la presión interfieran en su juicio o en su trato con los demás.',
-        q: '¿Cómo logra separar sus emociones personales de las decisiones técnicas que debe tomar en momentos de crisis?'
+        desc: 'Excepcional dominio de su ecosistema emocional. Mantiene una ecuanimidad profesional envidiable en contextos de alta tensión, lo que le permite liderar con el ejemplo y tomar decisiones objetivas que no se ven empañadas por la reactividad del momento.',
+        q: '¿Cuál es su técnica para mantener el equilibrio interno cuando debe interactuar con personas que están bajo un alto nivel de reactividad emocional?'
       },
       moderado: {
-        desc: 'Mantiene una gestión emocional equilibrada en el día a día profesional. Logra canalizar el estrés de forma constructiva la mayor parte del tiempo, preservando un ambiente de trabajo cordial y enfocado en los objetivos.',
-        q: '¿Qué estrategias le ayudan a mantener la serenidad cuando los resultados de un proyecto se retrasan?'
+        desc: 'Gestiona sus emociones de forma madura y asertiva. Reconoce sus disparadores de estrés y aplica mecanismos de control que preservan el clima laboral y la calidad de sus interacciones profesionales.',
+        q: '¿Cómo se asegura de que su tono y lenguaje corporal sigan siendo profesionales cuando está internamente frustrado con un proceso?'
       },
       bajo: {
-        desc: 'Tiende a reflejar el impacto emocional de las dificultades externas en su comportamiento. Se desempeña mejor en climas laborales de baja conflictividad y con metas predecibles que le permitan gestionar su energía emocional de forma más estable.',
-        q: 'Cuando siente que la presión del entorno está aumentando, ¿cómo se asegura de que esto no afecte su comunicación con el equipo?'
+        desc: 'Muestra una alta sensibilidad ante el clima del entorno. Se desempeña con mayor eficacia en culturas colaborativas y de apoyo, donde la gestión emocional se ve facilitada por la armonía grupal y la previsibilidad de las tareas.',
+        q: '¿Qué condiciones de trabajo le ayudan a sentirse más tranquilo y enfocado cuando la demanda aumenta?'
       }
     },
     tolerancia_presion: {
       alto: {
-        desc: 'Destaca por mantener un desempeño constante y de alta calidad incluso en entornos de máxima demanda o plazos críticos. Su efectividad no disminuye ante el aumento de la presión, logrando priorizar con claridad y ejecutar con precisión.',
-        q: '¿Cómo logra decidir qué es lo más importante cuando tiene múltiples tareas urgentes compitiendo por su atención?'
+        desc: 'Destaca por una estabilidad de rendimiento sobresaliente en entornos de alta demanda volátil. No solo tolera la presión, sino que la utiliza como un catalizador para agudizar su enfoque estratégico, manteniendo la calidad ejecutiva en los niveles más exigentes.',
+        q: '¿Cómo logra proteger su capacidad de juicio crítico cuando los tiempos de entrega son extremadamente cortos y las expectativas son máximas?'
       },
       moderado: {
-        desc: 'Se adapta de forma profesional a las cargas de trabajo elevadas. Es capaz de gestionar picos de demanda con efectividad, manteniendo los estándares de calidad requeridos para el cumplimiento de las metas del departamento.',
-        q: '¿Cuál es su método para mantener el rendimiento cuando sabe que tiene un plazo de entrega muy ajustado?'
+        desc: 'Se adapta de forma eficiente a los picos de demanda del rol. Logra priorizar con criterio y mantener la calma operativa necesaria para cumplir con los objetivos del área sin comprometer su bienestar ni el del equipo.',
+        q: '¿Qué cambios nota en su estilo de trabajo cuando la presión aumenta? ¿Cómo hace para volver a su centro de productividad?'
       },
       bajo: {
-        desc: 'Su rendimiento es óptimo en entornos con cargas de trabajo estables y predecibles. Puede requerir apoyo en la priorización de tareas cuando la demanda aumenta repentinamente, beneficiándose de una planificación muy estructurada.',
-        q: '¿Qué tipo de planificación le ayuda más a sentirse seguro cuando la carga de trabajo empieza a escalar?'
+        desc: 'Su desempeño es más sólido y preciso en entornos con cargas de trabajo moderadas y planificadas. En situaciones de saturación imprevista, se beneficia de una estructura de apoyo que le ayude a jerarquizar esfuerzos de manera secuencial.',
+        q: '¿De qué manera le gusta recibir nuevas tareas urgentes para poder procesarlas sin perder la calma operativa?'
+      }
+    },
+    // SJT Resolución de Problemas
+    analisis: {
+      alto: {
+        desc: 'Sobresaliente agudeza para descomponer escenarios críticos en variables manejables. Identifica patrones subyacentes y causas raíz con precisión quirúrgica, permitiendo una toma de decisiones basada en datos y lógica estructural, incluso bajo condiciones de incertidumbre.',
+        q: 'Describa el problema más complejo que ha desglosado recientemente: ¿Cómo identificó las variables críticas que otros habían pasado por alto?'
+      },
+      moderado: {
+        desc: 'Capacidad analítica funcional y equilibrada. Logra procesar información técnica y operativa de forma coherente, identificando soluciones estándar con eficacia. Se desempeña con solidez en entornos estructurados, aunque puede requerir guía en crisis multivariables.',
+        q: '¿Qué metodología personal utiliza para asegurar que ha considerado todas las caras de un problema antes de proponer una solución?'
+      },
+      bajo: {
+        desc: 'Tiende a un enfoque pragmático pero superficial de la resolución. Puede omitir detalles estructurales o consecuencias de segundo orden en problemas complejos, beneficiándose de marcos de trabajo prediseñados y supervisión técnica directa.',
+        q: 'Cuando un problema no se resuelve con el procedimiento habitual, ¿cuál es su siguiente paso lógico para encontrar la falla?'
+      }
+    },
+    priorizacion: {
+      alto: {
+        desc: 'Maestría en la gestión de recursos y tiempos. Posee un criterio estratégico para jerarquizar demandas en conflicto, asegurando que los hitos de alto valor para el negocio reciban atención inmediata sin descuidar la integridad de los procesos secundarios.',
+        q: 'Ante una saturación de urgencias reales, ¿cómo comunica la postergación de una tarea a un stakeholder de alto nivel sin afectar la relación?'
+      },
+      moderado: {
+        desc: 'Organización eficiente de la agenda diaria. Logra cumplir con los plazos establecidos y manejar picos de demanda moderados. Su capacidad de priorización es confiable, permitiendo una operatividad constante y predecible dentro del equipo.',
+        q: '¿Cómo distingue, en la práctica, una tarea que es "urgente por percepción de otros" de una que es "estratégicamente importante" para la empresa?'
+      },
+      bajo: {
+        desc: 'Su rendimiento es óptimo con una hoja de ruta predefinida. Puede dispersar esfuerzos en tareas de bajo impacto emocional o administrativo cuando la demanda aumenta, requiriendo apoyo externo para reenfocar prioridades críticas.',
+        q: '¿Qué herramientas o listas utiliza para evitar que lo cotidiano le impida avanzar en lo que es realmente importante para su rol?'
+      }
+    },
+    inferencia: {
+      alto: {
+        desc: 'Excepcional capacidad predictiva. Conecta fragmentos de información aislada para anticipar riesgos y oportunidades antes de que sean evidentes para el promedio. Su pensamiento prospectivo añade una capa de seguridad estratégica a cualquier proyecto.',
+        q: 'Cuéntenos sobre una ocasión en la que "leyó entre líneas" una situación y tomó medidas preventivas que terminaron ahorrando tiempo o costos.'
+      },
+      moderado: {
+        desc: 'Razonamiento deductivo sólido. Realiza inferencias lógicas basadas en la evidencia disponible y en la experiencia acumulada. Su juicio es prudente y se apoya en hechos verificables, minimizando errores por suposiciones apresuradas.',
+        q: '¿En qué señales se fija para predecir el éxito o el fracaso de una iniciativa antes de que los resultados finales estén listos?'
+      },
+      bajo: {
+        desc: 'Prefiere trabajar con datos explícitos y directivas claras. Su estilo de pensamiento es lineal y concreto, lo que garantiza precisión en la ejecución técnica pero limita su visión sobre consecuencias colaterales en entornos volátiles.',
+        q: 'Si tuviera que tomar una decisión con solo el 50% de la información necesaria, ¿cómo minimizaría el riesgo de una interpretación errónea?'
+      }
+    },
+    pensamiento_critico: {
+      alto: {
+        desc: 'Demuestra un rigor lógico superior y una capacidad excepcional para auditar la validez de los argumentos y datos antes de integrarlos en la toma de decisiones. Detecta sesgos cognitivos y falacias con agudeza, garantizando que las soluciones adoptadas resistan el escrutinio técnico más exigente.',
+        q: '¿Cómo somete a prueba sus propias conclusiones para asegurarse de que no están sesgadas por experiencias previas o por la urgencia del momento?'
+      },
+      moderado: {
+        desc: 'Mantiene un enfoque objetivo y ponderado en el análisis de opciones. Evalúa las pruebas disponibles de forma imparcial y aplica criterios de racionalidad que aseguran decisiones coherentes con los objetivos estratégicos y los hechos verificables.',
+        q: '¿Qué tipo de información o datos necesita para cambiar de opinión sobre una solución que inicialmente le parecía la correcta?'
+      },
+      bajo: {
+        desc: 'Su enfoque es pragmático y orientado a la aplicación de conocimientos consolidados. Se desempeña con éxito en entornos normados, beneficiándose de marcos de referencia compartidos y debates grupales que ayuden a contrastar diferentes ángulos de un mismo problema.',
+        q: 'Cuando recibe información contradictoria de dos fuentes confiables, ¿qué pasos sigue para determinar cuál de las dos es más sólida?'
+      }
+    },
+    decision: {
+      alto: {
+        desc: 'Manifiesta una notable firmeza y agilidad ejecutiva en la toma de decisiones, incluso bajo condiciones de incertidumbre o presión extrema. Sus elecciones están alineadas con la visión estratégica de la organización, demostrando un equilibrio superior entre la velocidad de respuesta y el análisis de riesgos.',
+        q: 'Describa una decisión crítica que tuvo que tomar de forma inmediata sin tener toda la información necesaria: ¿En qué criterios se apoyó para actuar con seguridad?'
+      },
+      moderado: {
+        desc: 'Toma decisiones de forma prudente y ponderada. Evalúa las alternativas con criterio profesional y busca asegurar la viabilidad de sus acciones antes de ejecutarlas, demostrando una madurez operativa que favorece la estabilidad de los procesos.',
+        q: '¿Cómo equilibra la necesidad de ser rápido en una decisión con la importancia de consultar a otros involucrados para asegurar el éxito?'
+      },
+      bajo: {
+        desc: 'Su estilo de decisión es cauteloso y orientado a la minimización de riesgos directos. Se desempeña con mayor eficacia en entornos con protocolos claros de aprobación jerárquica, beneficiándose de marcos de trabajo que validen sus elecciones antes de la implementación.',
+        q: 'Cuando se enfrenta a dos opciones igualmente válidas pero excluyentes, ¿qué proceso sigue para desbloquearse y tomar una determinación final?'
+      }
+    },
+    creatividad: {
+      alto: {
+        desc: 'Motor de innovación disruptiva. Cuestiona el statu quo de forma constructiva, proponiendo alternativas originales que optimizan la eficiencia operativa. Su visión aporta una ventaja competitiva al encontrar caminos inexplorados para resolver bloqueos.',
+        q: '¿Cuál ha sido la solución más "poco convencional" que ha implementado y qué resistencias tuvo que superar para que la aceptaran?'
+      },
+      moderado: {
+        desc: 'Aporta mejoras incrementales valiosas. Es capaz de adaptar soluciones existentes a nuevos contextos de forma ingeniosa, manteniendo un balance saludable entre la innovación y la seguridad de los métodos probados de la organización.',
+        q: 'Si tuviera que rediseñar un proceso actual de su área con presupuesto cero, ¿qué cambio creativo propondría para ganar eficiencia?'
+      },
+      bajo: {
+        desc: 'Estilo de ejecución conservador y seguro. Se siente cómodo siguiendo protocolos de éxito comprobado, lo que asegura una baja tasa de error, aunque puede beneficiarse de estímulos externos para proponer cambios en el proceso.',
+        q: '¿En qué situaciones cree que es mejor ser fiel a la tradición del proceso que intentar inventar algo nuevo?'
+      }
+    },
+    // SJT Atención al Cliente
+    empatia: {
+      alto: {
+        desc: 'Sintonía interpersonal superior. Capta necesidades no expresadas y gestiona la carga emocional del usuario con una maestría que transforma interacciones transaccionales en relaciones de confianza y fidelidad a largo plazo con la marca.',
+        q: '¿Cómo logra validar la frustración de un cliente sin comprometer la política de la empresa ni dar una imagen de debilidad técnica?'
+      },
+      moderado: {
+        desc: 'Trato profesional, cálido y equilibrado. Comprende la perspectiva del cliente y ofrece respuestas que demuestran escucha activa y respeto. Logra un clima de cordialidad que facilita la resolución técnica de los requerimientos.',
+        q: '¿Qué señales verbales o gestuales utiliza para asegurar al cliente que su problema es una prioridad para usted?'
+      },
+      bajo: {
+        desc: 'Enfoque altamente resolutivo y pragmático. Prioriza la eficacia del trámite sobre la gestión del vínculo emocional. Su estilo es directo y técnico, siendo muy eficiente en procesos de autoservicio o soporte de bajo contacto.',
+        q: 'Cuando un cliente se desvía del problema técnico hacia temas personales o quejas emocionales, ¿cómo lo reconduce hacia la solución de forma amable?'
+      }
+    },
+    comunicacion: {
+      alto: {
+        desc: 'Arquitecto de mensajes claros y persuasivos. Posee la habilidad de adaptar su registro lingüístico a cualquier interlocutor, garantizando que la información técnica sea digerible y que el tono refuerce la autoridad y cercanía de la organización.',
+        q: 'Describa una situación donde tuvo que comunicar una noticia difícil a un grupo: ¿Cómo estructuró el mensaje para minimizar el impacto negativo?'
+      },
+      moderado: {
+        desc: 'Comunicación asertiva y fluida. Transmite ideas y procedimientos de forma estructurada, evitando ambigüedades. Su estilo comunicativo favorece la colaboración interna y la claridad en la atención al usuario externo.',
+        q: '¿Qué pasos sigue para verificar que un mensaje complejo ha sido comprendido exactamente como usted pretendía?'
+      },
+      bajo: {
+        desc: 'Estilo comunicativo escueto y funcional. Su transmisión de información es precisa en lo técnico, aunque puede beneficiarse de añadir capas de contexto o calidez para mejorar la experiencia percibida por el interlocutor en situaciones tensas.',
+        q: '¿Qué prefiere: una comunicación rápida y directa aunque sea fría, o una más pausada y relacional? ¿Por qué?'
+      }
+    },
+    escucha_activa: {
+      alto: {
+        desc: 'Capacidad de escucha diagnóstica profunda. No solo oye, sino que procesa el contexto, el tono y los silencios del usuario para extraer el requerimiento real, evitando retrabajos y garantizando una solución acertada desde el primer contacto.',
+        q: '¿Cuándo fue la última vez que una pregunta suya cambió totalmente la dirección de lo que el cliente creía que necesitaba?'
+      },
+      moderado: {
+        desc: 'Atención focalizada y receptiva. Muestra interés genuino por el relato del interlocutor y utiliza técnicas de parafraseo para confirmar el entendimiento. Es un receptor confiable que minimiza errores por falta de atención.',
+        q: '¿Cómo maneja su diálogo interno para no empezar a formular la respuesta antes de que el cliente haya terminado de hablar?'
+      },
+      bajo: {
+        desc: 'Escucha orientada a la acción inmediata. Procesa la información buscando palabras clave para disparar soluciones predefinidas. Es muy ágil en entornos de alto volumen, aunque debe cuidar el no interrumpir el flujo de información del usuario.',
+        q: '¿Qué hace para retomar el hilo de una conversación cuando siente que se ha distraído con un pensamiento o una tarea paralela?'
+      }
+    },
+    resolucion: {
+      alto: {
+        desc: 'Orientación a resultados de alto estándar. No se limita a cerrar el caso, sino que busca la optimización de la respuesta y la satisfacción total. Su proactividad le lleva a "dar el paso extra" que define la excelencia operativa en el servicio.',
+        q: 'Cuéntenos sobre un problema que resolvió de forma tan efectiva que el cliente terminó enviando una felicitación o reconocimiento.'
+      },
+      moderado: {
+        desc: 'Eficacia resolutiva constante. Cumple con los niveles de servicio (SLA) establecidos y maneja con solvencia las herramientas de gestión. Su desempeño garantiza la fluidez de los procesos y la respuesta oportuna a las demandas del rol.',
+        q: '¿Cuál es su estrategia para mantener la calidad de resolución cuando tiene una fila de tareas acumuladas que debe despachar rápido?'
+      },
+      bajo: {
+        desc: 'Se desempeña con éxito en resoluciones de baja complejidad o procesos lineales. En escenarios de alta dificultad, prefiere escalar o consultar para asegurar la corrección, priorizando la seguridad del procedimiento sobre la autonomía.',
+        q: '¿En qué punto decide que un problema ya no puede ser resuelto por usted y debe ser derivado a un supervisor o especialista?'
+      }
+    },
+    manejo_conflicto: {
+      alto: {
+        desc: 'Dominio de la desescalada estratégica. Navega con serenidad en entornos de alta hostilidad, logrando neutralizar la agresión y reconducir la energía hacia acuerdos constructivos. Es un activo vital para la retención de clientes críticos.',
+        q: '¿Cuál es su secreto para no tomarse de forma personal los ataques de un cliente que está fuera de control?'
+      },
+      moderado: {
+        desc: 'Gestión profesional de discrepancias. Afronta las tensiones con objetividad y busca el "ganar-ganar" a través del diálogo y la negociación básica. Mantiene la postura corporativa sin perder la flexibilidad necesaria para destrabar situaciones.',
+        q: '¿Cómo maneja una situación donde el cliente tiene la razón pero la solución que él quiere es inviable para la empresa?'
+      },
+      bajo: {
+        desc: 'Tiende a evitar la confrontación directa o a adherirse rígidamente a la norma como escudo defensivo. Su rendimiento es óptimo en entornos de baja conflictividad donde las reglas de juego son respetadas por todas las partes.',
+        q: '¿Qué sensaciones físicas experimenta ante un conflicto y cómo intenta que no afecten su voz o su capacidad de respuesta?'
+      }
+    },
+    // SJT Comercial
+    negociacion: {
+      alto: {
+        desc: 'Persuasión estratégica basada en valor. Detecta los disparadores de decisión del cliente y construye propuestas que alinean el beneficio del usuario con la rentabilidad del negocio. Cierra acuerdos complejos preservando márgenes y relaciones.',
+        q: '¿Cómo logra que un cliente acepte un precio más alto que el de la competencia sin que sienta que está pagando de más?'
+      },
+      moderado: {
+        desc: 'Habilidad comercial sólida y convincente. Domina las técnicas de venta consultiva y maneja objeciones estándar con fluidez. Su estilo es profesional y genera la confianza necesaria para el cumplimiento sostenido de metas comerciales.',
+        q: '¿Cuál es su metodología para "ablandar" a un cliente que se muestra cerrado a escuchar nuevas propuestas?'
+      },
+      bajo: {
+        desc: 'Venta orientada a la descripción de beneficios. Se apoya en la calidad del producto y en ofertas predefinidas para cerrar ventas. Es muy efectivo en mercados de alta demanda donde el producto se explica por sí solo.',
+        q: '¿Qué hace cuando siente que el cliente sabe más del producto que usted y empieza a cuestionar la oferta?'
+      }
+    },
+    etica_comercial: {
+      alto: {
+        desc: 'Proyecta la integridad como un activo estratégico en la gestión comercial. Entiende que la sostenibilidad del negocio reside en la confianza a largo plazo, priorizando la transparencia absoluta sobre el cierre de ventas que puedan comprometer la reputación institucional o la satisfacción futura del cliente.',
+        q: '¿Cómo ha gestionado situaciones donde el cliente esperaba una promesa que usted sabía que la empresa no podría cumplir al 100%?'
+      },
+      moderado: {
+        desc: 'Muestra un alineamiento funcional con los valores institucionales del área comercial. Su práctica es honesta y se ajusta a los compromisos establecidos, manteniendo una imagen de seriedad que favorece la confianza del cliente y el cumplimiento ético de sus metas.',
+        q: '¿Qué importancia le da a la claridad de las condiciones de venta para evitar malentendidos que afecten la relación comercial futura?'
+      },
+      bajo: {
+        desc: 'Su enfoque es pragmático y orientado a la consecución de objetivos inmediatos. Se beneficia de contar con marcos éticos claros y procesos de supervisión que aseguren que la ambición por el cierre se mantenga siempre dentro de los parámetros de transparencia y responsabilidad de la empresa.',
+        q: '¿Cómo equilibra usted su instinto de cierre con la necesidad de asegurar que el cliente tiene toda la información relevante antes de firmar?'
+      }
+    },
+    // Atención al Detalle
+    documentos: {
+      alto: {
+        desc: 'Presenta un enfoque meticuloso y sistemático en la revisión de activos documentales. Su capacidad para detectar discrepancias sutiles en registros extensos asegura la integridad normativa de la información, mitigando riesgos operativos derivados de omisiones técnicas.',
+        q: 'Cuando debe procesar un alto volumen de información bajo presión, ¿qué pasos sigue para garantizar que la velocidad no comprometa la calidad de la verificación?'
+      },
+      moderado: {
+        desc: 'Muestra una capacidad de revisión alineada con los estándares operativos habituales. Logra identificar errores evidentes en la documentación y mantiene un flujo de trabajo ordenado, aunque en contextos de alta saturación puede beneficiarse de herramientas de apoyo.',
+        q: '¿Cómo gestiona su nivel de atención cuando la tarea de revisión se vuelve altamente repetitiva o monótona?'
+      },
+      bajo: {
+        desc: 'Su proceso de verificación tiende a ser ágil y orientado al resultado global. En tareas que exigen un control exhaustivo de detalles técnicos, el uso de protocolos de doble validación potenciaría su precisión y reduciría el margen de error administrativo.',
+        q: '¿Qué tipo de controles o ayudas externas le resultan más útiles para asegurar la exactitud total en tareas de revisión documental?'
+      }
+    },
+    comparacion: {
+      alto: {
+        desc: 'Destaca por su agudeza en el cotejo de patrones y la identificación de paridad entre fuentes de datos heterogéneas. Su rigor en la comparación de registros previene la propagación de errores en la cadena de procesos, garantizando la consistencia del sistema.',
+        q: '¿Qué señales o indicadores específicos busca primero cuando necesita validar que dos conjuntos de datos complejos coinciden plenamente?'
+      },
+      moderado: {
+        desc: 'Efectúa comparaciones de registros de forma coherente y efectiva. Identifica desviaciones estándar en la información y aplica criterios de validación lógicos que aseguran un nivel de precisión funcional para las necesidades del rol.',
+        q: 'Describa una situación donde un error de comparación podría haber tenido consecuencias importantes y cómo logró resolverlo.'
+      },
+      bajo: {
+        desc: 'Realiza el cotejo de información con un enfoque en los aspectos macro del proceso. Para optimizar su desempeño en la detección de micro-errores, se recomienda el uso de guías de referencia rápidas que faciliten la identificación de variaciones menores.',
+        q: '¿Cómo se asegura de mantener la objetividad cuando debe comparar información que le resulta muy familiar o conocida?'
+      }
+    },
+    codigos: {
+      alto: {
+        desc: 'Posee una facultad superior para el manejo y validación de información alfanumérica compleja. Su capacidad para detectar anomalías en secuencias o códigos asegura una trazabilidad impecable y una reducción significativa de fallos en el procesamiento de datos.',
+        q: '¿Cuál es su estrategia para mantener un estándar de error cero cuando trabaja con secuencias de datos que no tienen un significado lógico inmediato?'
+      },
+      moderado: {
+        desc: 'Maneja el cotejo de códigos con solvencia profesional. Su ritmo de procesamiento es estable y logra mantener la exactitud necesaria para la correcta imputación de datos en sistemas internos de gestión.',
+        q: '¿Qué método utiliza para re-verificar su propio trabajo de carga de códigos antes de darlo por finalizado?'
+      },
+      bajo: {
+        desc: 'Prioriza la fluidez en el procesamiento de información codificada. Su desempeño es altamente productivo en tareas de volumen, pudiendo mejorar la precisión fina mediante el uso de máscaras de entrada o validadores algorítmicos.',
+        q: 'Si nota que está cometiendo errores recurrentes en una tarea de códigos, ¿cómo ajusta su proceso para recuperar la exactitud?'
+      }
+    },
+    duplicados: {
+      alto: {
+        desc: 'Excelente capacidad de escrutinio para identificar redundancias o registros en conflicto. Su intervención directa en la limpieza de datos optimiza la arquitectura de la información, evitando sobrecostos y duplicidades operativas estratégicas.',
+        q: '¿Cómo evalúa el impacto que un registro duplicado puede tener en la toma de decisiones de la empresa a largo plazo?'
+      },
+      moderado: {
+        desc: 'Identifica y resuelve duplicados de forma efectiva bajo parámetros estándar. Demuestra compromiso con la calidad de la información y aplica los criterios de depuración establecidos de manera consistente y profesional.',
+        q: '¿Qué criterios de prioridad aplica cuando encuentra múltiples inconsistencias y el tiempo para resolverlas es limitado?'
+      },
+      bajo: {
+        desc: 'Realiza una detección de inconsistencias basada en los errores más frecuentes. Se desempeña con éxito en la depuración de bases de datos estructuradas, beneficiándose de supervisiones periódicas en entornos de datos no normalizados.',
+        q: '¿Cómo organiza una tarea de limpieza de datos cuando la información proviene de fuentes muy desordenadas o poco fiables?'
+      }
+    },
+    nombres: {
+      alto: {
+        desc: 'Rigor extremo en la validación de identidades y datos de registro. Asegura una precisión total en la normalización de información sensible, lo que fortalece la confiabilidad de la base de datos y la calidad de la atención institucional.',
+        q: '¿Qué medidas de seguridad personal toma para asegurar que los datos de identidad que registra son 100% exactos y están libres de errores tipográficos?'
+      },
+      moderado: {
+        desc: 'Valida la información de identidad de forma cuidadosa y profesional. Mantiene un estándar de calidad constante en el registro de datos de terceros, demostrando respeto por la precisión administrativa requerida.',
+        q: '¿Cómo procede cuando la información de origen es ambigua o difícil de interpretar para evitar registrar un dato erróneo?'
+      },
+      bajo: {
+        desc: 'Enfoque funcional en el registro y validación de datos personales. Logra una operatividad adecuada, pudiendo potenciar su precisión técnica a través del uso de herramientas de autocompletado o validación cruzada obligatoria.',
+        q: '¿En qué tipo de datos suele poner mayor énfasis para asegurar que la identidad del registro sea inconfundible?'
+      }
+    },
+    concentracion: {
+      alto: {
+        desc: 'Muestra una capacidad de enfoque prolongado y profundidad atencional superior. Su resistencia mental le permite procesar tareas repetitivas de alta complejidad sin degradación de la calidad, actuando como un filtro crítico contra el error operativo.',
+        q: '¿Qué hábitos o técnicas de enfoque utiliza para mantener su mente en "estado de flujo" cuando la tarea exige una atención absoluta por periodos largos?'
+      },
+      moderado: {
+        desc: 'Mantiene un nivel de concentración estable y productivo. Logra aislarse de distracciones comunes del entorno para cumplir con sus responsabilidades con exactitud, demostrando una madurez atencional adecuada para el rol.',
+        q: '¿Cómo gestiona las interrupciones imprevistas para no perder el hilo de una tarea que requiere precisión técnica?'
+      },
+      bajo: {
+        desc: 'Su atención es ágil y tiende a la multitarea. Se desempeña mejor en actividades dinámicas con cambios de estímulo frecuentes, beneficiándose de pausas programadas y entornos de trabajo con bajos niveles de ruido ambiental.',
+        q: '¿Qué herramientas o recordatorios externos le ayudan a re-enfocarse cuando nota que su mente empieza a dispersarse en una tarea de detalle?'
+      }
+    },
+    errores_texto: {
+      alto: {
+        desc: 'Posee una agudeza visual y lingüística excepcional para la detección de erratas, fallos ortográficos o inconsistencias semánticas. Su rigor garantiza una comunicación institucional impecable y una documentación libre de ruidos tipográficos.',
+        q: '¿Cuál es su proceso de revisión final para asegurar que un texto o registro no contenga ni un solo error de forma antes de ser procesado?'
+      },
+      moderado: {
+        desc: 'Demuestra un cuidado profesional en el procesamiento de información escrita. Identifica los errores más comunes y mantiene un estándar de calidad ortográfica y gramatical acorde a las exigencias corporativas.',
+        q: '¿En qué tipo de errores de texto suele poner mayor atención porque considera que son los que más afectan la imagen de la empresa?'
+      },
+      bajo: {
+        desc: 'Se enfoca en la transmisión del mensaje principal y la fluidez comunicativa. Para tareas de alta precisión ortográfica, el apoyo de correctores automatizados y una revisión secundaria consolidarían su desempeño técnico.',
+        q: '¿Cómo se asegura de que la rapidez en la carga de información no genere malentendidos por errores de tipeo o puntuación?'
+      }
+    },
+    errores_numeros: {
+      alto: {
+        desc: 'Excelencia en el manejo y validación de datos cuantitativos. Su capacidad para detectar discrepancias numéricas mínimas previene errores de cálculo o de registro que podrían tener un impacto financiero o administrativo crítico.',
+        q: '¿Qué método de comprobación cruzada utiliza para estar 100% seguro de que una cifra registrada es idéntica a su fuente de origen?'
+      },
+      moderado: {
+        desc: 'Muestra un rigor adecuado en la gestión de cifras y datos numéricos. Realiza validaciones lógicas que aseguran la consistencia de los registros y previene fallos comunes en la transcripción de valores alfanuméricos.',
+        q: 'Cuando nota una inconsistencia numérica, ¿cuál es su protocolo para encontrar el origen del error y corregirlo?'
+      },
+      bajo: {
+        desc: 'Su enfoque numérico es funcional y orientado a la productividad. Su desempeño en la detección de micro-errores matemáticos se ve potenciado por el uso de plantillas de validación y procesos de auditoría por muestreo.',
+        q: '¿Cómo se siente trabajando con grandes tablas de números y qué hace para que la fatiga visual no afecte su precisión?'
+      }
+    },
+    // Salud Mental / Riesgos / Estrés
+    estres: {
+      alto: {
+        desc: 'Presenta una percepción elevada de tensión en el entorno laboral. Esta intensidad sugiere una fase de alerta que podría afectar la toma de decisiones objetiva a largo plazo si no se implementan estrategias de recuperación y dosificación de esfuerzos.',
+        q: '¿Cuáles son los factores específicos del entorno que están generando mayor tensión en este momento y cómo intenta aislarlos de sus decisiones clave?'
+      },
+      moderado: {
+        desc: 'Muestra un nivel de estrés laboral dentro de los parámetros de adaptabilidad profesional. Es capaz de navegar las demandas del rol con equilibrio, aunque posee áreas de sensibilidad que requieren una gestión consciente de los tiempos de descanso.',
+        q: '¿Qué señales físicas o mentales le indican que está llegando a su límite de saturación y qué hace para revertirlo?'
+      },
+      bajo: {
+        desc: 'Manifiesta un estado de calma operativa y bienestar en el puesto. Su percepción de las demandas externas es de control absoluto, lo que le permite mantener un clima de tranquilidad y una ejecución técnica fluida y sin ruidos emocionales.',
+        q: 'En momentos de calma extrema, ¿cómo se asegura de mantener el nivel de energía y proactividad necesario para el negocio?'
+      }
+    },
+    burnout: {
+      alto: {
+        desc: 'Los indicadores sugieren un desgaste acumulado significativo que compromete la energía psíquica del colaborador. Es vital revisar la distribución de responsabilidades y fomentar espacios de desconexión para prevenir la apatía operativa o el agotamiento crónico.',
+        q: '¿Siente que su capacidad de disfrute de los logros laborales ha disminuido? ¿A qué atribuye esta sensación de cansancio persistente?'
+      },
+      moderado: {
+        desc: 'Se observa una fatiga propia de ciclos de alta exigencia. Si bien mantiene la funcionalidad, se encuentra en un punto donde la prevención es clave para evitar que el cansancio impacte en su compromiso a largo plazo con el proyecto.',
+        q: '¿Qué actividades o cambios en su rutina laboral le ayudan a "recargar baterías" de forma efectiva?'
+      },
+      bajo: {
+        desc: 'Posee un sólido blindaje emocional contra el agotamiento. Su vitalidad y entusiasmo por las tareas se mantienen intactos, reflejando una excelente higiene mental y una integración saludable de las demandas laborales en su vida.',
+        q: '¿Cuál es su secreto para mantener la motivación alta incluso después de semanas de trabajo intenso?'
+      }
+    },
+    carga_laboral: {
+      alto: {
+        desc: 'Percibe un volumen de tareas que excede su capacidad de procesamiento óptimo. Esta sobrecarga puede derivar en una sensación de asfixia operativa que requiere una revisión urgente de la priorización y delegación de funciones.',
+        q: 'Si pudiera rediseñar su flujo de trabajo, ¿qué tareas eliminaría o delegaría para recuperar su eficacia estratégica?'
+      },
+      moderado: {
+        desc: 'La carga percibida es desafiante pero manejable. Existe un equilibrio entre las demandas externas y los recursos internos disponibles, permitiendo una ejecución constante sin caer en estados de saturación crítica.',
+        q: '¿Cómo decide qué tareas "pueden esperar" cuando la carga del día se vuelve más pesada de lo habitual?'
+      },
+      bajo: {
+        desc: 'Considera que el volumen de trabajo actual le permite un desempeño holgado y detallista. Posee capacidad remanente para asumir nuevos desafíos o liderar iniciativas especiales sin comprometer sus responsabilidades base.',
+        q: '¿En qué áreas de la empresa le gustaría aportar más ahora que tiene su carga de trabajo bajo control total?'
+      }
+    },
+    apoyo_social: {
+      alto: {
+        desc: 'Se siente plenamente respaldado por su red de contactos y su jerarquía. Esta percepción de soporte actúa como un factor protector crítico, potenciando su resiliencia y su compromiso afectivo con la organización.',
+        q: '¿Quiénes son sus referentes de apoyo en la empresa y cómo han influido en su bienestar durante las crisis?'
+      },
+      moderado: {
+        desc: 'Percibe un clima de colaboración funcional. Cuenta con los canales de apoyo necesarios para resolver dudas y enfrentar problemas, sintiéndose integrado en el flujo comunicativo del equipo.',
+        q: '¿Qué cambios en la comunicación del equipo harían que se sintiera aún más respaldado en su día a día?'
+      },
+      bajo: {
+        desc: 'Manifiesta una sensación de aislamiento u orfandad operativa. El fortalecimiento de los vínculos con sus pares y superiores es una prioridad para mejorar su sentido de pertenencia y su seguridad en la toma de decisiones.',
+        q: '¿En qué momentos ha sentido que debía resolver solo problemas que deberían haber sido compartido?'
+      }
+    },
+    control: {
+      alto: {
+        desc: 'Posee una fuerte sensación de autonomía sobre sus procesos y decisiones. Este control le otorga seguridad y fomenta una proactividad de alto impacto, permitiéndole innovar dentro de su esfera de influencia.',
+        q: '¿Cómo utiliza su autonomía para proponer mejoras que no estaban originalmente en su descripción de puesto?'
+      },
+      moderado: {
+        desc: 'Siente que tiene el margen de maniobra suficiente para gestionar su día a día con eficacia. Logra equilibrar las directrices recibidas con su propio criterio profesional de manera constructiva.',
+        q: '¿En qué situaciones le gustaría tener mayor poder de decisión para acelerar los resultados de su área?'
+      },
+      bajo: {
+        desc: 'Percibe una alta rigidez o supervisión excesiva en sus tareas. Esta sensación de falta de control puede inhibir su iniciativa personal, recomendándose delegar mayores espacios de decisión para potenciar su compromiso.',
+        q: '¿Qué barreras burocráticas o de supervisión siente que están frenando su capacidad de aportar valor real?'
       }
     }
   }
@@ -1807,65 +2295,99 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
   return { descripcion: res.desc, pregunta: res.q }
 }
 
+function getAnalisisGlobal(testId: string, promedio: number): string {
+  const nivel = promedio >= 4 ? 'alto' : promedio >= 3 ? 'moderado' : 'bajo'
+  const idLower = testId.toLowerCase()
+  const nameLower = (TEST_NAMES[testId] || '').toLowerCase()
+  const matches = (str: string) => idLower.includes(str) || nameLower.includes(str)
+
+  if (matches('bigfive') || matches('personality') || matches('hexaco')) {
+    if (nivel === 'alto') return 'El perfil proyecta una arquitectura conductual madura, donde la estabilidad emocional y la proactividad convergen para facilitar liderazgos equilibrados. Su capacidad para navegar la ambigüedad organizacional sin perder el foco operativo lo posiciona como un activo de alto potencial adaptativo.'
+    if (nivel === 'moderado') return 'Se observa una dinámica profesional estable y funcional. El evaluado demuestra una plasticidad conductual que le permite alinearse con los objetivos del equipo, manteniendo una consistencia técnica que favorece la cohesión y el cumplimiento de hitos estándar.'
+    return 'El perfil manifiesta una preferencia por entornos con alta predictibilidad y soporte estructural. Su desempeño alcanza su punto óptimo cuando los marcos de acción están claramente delimitados, permitiéndole canalizar su energía hacia la ejecución técnica segura y de calidad.'
+  }
+
+  if (matches('integridad')) {
+    if (nivel === 'alto') return 'La consistencia ética detectada sugiere una interiorización profunda de la transparencia como eje de gestión. Su conducta no solo protege los activos reputacionales de la empresa, sino que actúa como un referente de integridad que eleva el estándar moral del entorno inmediato.'
+    if (nivel === 'moderado') return 'Manifiesta un compromiso genuino con los valores institucionales y la honestidad profesional. Su juicio moral es equilibrado, permitiéndole gestionar responsabilidades críticas con la transparencia necesaria para generar climas de confianza recíproca.'
+    return 'El evaluado responde de manera efectiva a marcos de cumplimiento explícitos y supervisión directa. Su integridad operativa se ve fortalecida en entornos donde la cultura de ética está formalizada y los protocolos de control actúan como guías constantes de comportamiento.'
+  }
+  
+  if (matches('icar') || matches('cognitivo') || matches('verbal') || matches('numerico') || matches('detalle')) {
+    if (nivel === 'alto') return 'La agilidad intelectual observada facilita la desarticulación de problemas complejos y la síntesis de información heterogénea con gran precisión. Posee una facultad de aprendizaje acelerado que le permite liderar procesos de innovación y mejora continua con rigor mental.'
+    if (nivel === 'moderado') return 'Posee una capacidad de procesamiento mental sólida y alineada con las exigencias del rol. Su enfoque lógico le permite asimilar conocimientos técnicos y aplicarlos con eficiencia, manteniendo un ritmo de productividad intelectual constante y confiable.'
+    return 'Se desempeña con éxito en tareas que exigen una ejecución dominada y sistemática. El perfil se potencia mediante la especialización progresiva y el uso de herramientas de apoyo que optimicen su curva de aprendizaje en contextos de cambio técnico.'
+  }
+
+  if (matches('sjt') || matches('competencia') || matches('comercial')) {
+    if (nivel === 'alto') return 'Estrategia situacional de alto nivel, caracterizada por una lectura aguda de los intereses en juego y una toma de decisiones orientada a la sostenibilidad del negocio. Su juicio profesional es maduro, equilibrando la eficacia inmediata con la preservación del capital relacional.'
+    if (nivel === 'moderado') return 'Juicio profesional funcional y coherente con las mejores prácticas del área. Responde de forma asertiva ante desafíos estándar, demostrando una capacidad de resolución que integra los objetivos comerciales con el respeto por los procesos internos.'
+    return 'Perfil con potencial de desarrollo en la gestión de escenarios complejos. Se beneficia de mentorías enfocadas en el análisis de impacto y la toma de decisiones asistida, consolidando progresivamente su autonomía y visión estratégica en el rol.'
+  }
+
+  if (matches('estres') || matches('bienestar') || matches('dass')) {
+    if (nivel === 'alto') return 'Presenta una arquitectura de resiliencia sobresaliente, operando desde un equilibrio psicofisiológico que favorece la toma de decisiones lúcida bajo presión. Su gestión de la carga es eficiente, permitiéndole actuar como un soporte emocional positivo para su entorno.'
+    if (nivel === 'moderado') return 'Muestra una gestión de la tensión operativa dentro de los parámetros de salud profesional. Es capaz de equilibrar las demandas externas con sus recursos personales, asegurando una continuidad en el desempeño sin comprometer su estabilidad emocional.'
+    return 'Se detectan indicadores de fatiga reactiva que sugieren una necesidad de redosificar la carga de trabajo inmediata. El perfil responderá positivamente a entornos que fomenten la seguridad psicológica y la planificación estratégica de esfuerzos para recuperar el foco.'
+  }
+
+  return 'Análisis integral que refleja una consistencia profesional alineada con un nivel de ajuste ' + nivel + '. El perfil demuestra facultades para la integración productiva, con áreas de oportunidad que, gestionadas con el apoyo adecuado, potenciarán su valor organizativo.'
+}
+
+
+
 function getPuntoTension(testId: string, promedio: number): string {
   const isClinical = testId.toLowerCase().includes('dass') || testId.toLowerCase().includes('estres') || testId.toLowerCase().includes('bienestar')
   
   if (isClinical) {
-    if (promedio < 1.5) return 'Excelente equilibrio psicofisiológico. El candidato opera desde una base de calma y alta resiliencia emocional.'
-    if (promedio < 3.5) return 'Nivel de tensión dentro de parámetros manejables. Se observa una carga operativa activa que requiere monitoreo preventivo.'
-    return 'Indicadores de saturación elevados. El riesgo de fatiga cognitiva es alto y podría afectar la calidad de la toma de decisiones.'
+    if (promedio < 1.5) return 'Muestra una base de calma operativa y alta resiliencia. Su principal fortaleza es la estabilidad emocional ante picos de demanda imprevistos.'
+    if (promedio < 3.5) return 'Se observa una carga reactiva dentro de parámetros funcionales. El desafío reside en mantener la objetividad cuando los plazos de entrega se comprimen.'
+    return 'Presenta indicadores de saturación que requieren atención. El riesgo principal es la pérdida de foco estratégico debido a una percepción elevada de presión externa.'
   }
 
-  if (promedio < 2.5) return 'El perfil arroja indicadores de vulnerabilidad frente a entornos de alta demanda. Se sugiere una revisión de la carga asignada.'
-  if (promedio < 4) return 'Es posible observar una necesidad de validación externa ante dilemas técnicos complejos. El liderazgo será clave.'
-  return 'Alta autonomía operativa. El riesgo principal es la posible desconexión con procesos estándar por exceso de confianza.'
+  if (promedio < 2.5) return 'El perfil sugiere una mayor sensibilidad a entornos ambiguos. Su desempeño se potencia en estructuras con objetivos claros y previsibilidad operativa.'
+  if (promedio < 4) return 'Podría requerir validación técnica periódica en decisiones de alto impacto. El desafío es transitar hacia una autonomía profesional más robusta.'
+  return 'Posee una marcada autonomía en la ejecución. El riesgo adaptativo es la tendencia a priorizar el criterio personal sobre los protocolos establecidos de la organización.'
 }
 
 function getAcompanamiento(testId: string, promedio: number): string {
   const isClinical = testId.toLowerCase().includes('dass') || testId.toLowerCase().includes('estres') || testId.toLowerCase().includes('bienestar')
   
   if (isClinical) {
-    if (promedio > 3.5) return 'Se recomienda intervención inmediata de bienestar y redistribución de tareas críticas para mitigar riesgos.'
-    if (promedio > 1.5) return 'Fomentar espacios de desconexión y feedback estructurado para evitar que la tensión acumulada escale.'
-    return 'Espacio para el crecimiento de alto rendimiento. El candidato está en condiciones óptimas para asumir desafíos de alta presión.'
+    if (promedio > 3.5) return 'Se sugiere un esquema de rotación de tareas críticas y espacios de feedback orientados a la dosificación de esfuerzos y recuperación de foco.'
+    if (promedio > 1.5) return 'Fomentar la participación en proyectos colaborativos que permitan diluir la carga individual y fortalecer los vínculos de soporte social.'
+    return 'Entorno propicio para el desarrollo de alta responsabilidad. Se recomienda asignarle desafíos que requieran una gestión templada y liderazgo en crisis.'
   }
 
-  if (promedio < 3) return 'Se aconseja proporcionar una hoja de ruta detallada con hitos claros a corto plazo. Feedback frecuente es vital.'
-  return 'Espacio para la innovación guiada. Se sugiere mentoría enfocada en visión estratégica más que en ejecución técnica.'
+  if (promedio < 3) return 'Proporcionar un roadmap detallado con hitos de corto plazo y retroalimentación técnica frecuente para consolidar su seguridad en el rol.'
+  return 'Se sugiere un modelo de mentoría enfocado en la visión estratégica y el impacto del negocio, permitiéndole liderar iniciativas con autonomía supervisada.'
 }
 
 function conclusionGeneral(testId: string, promedio: number): string {
   const nivel = promedio >= 4 ? 'alto' : promedio >= 3 ? 'moderado' : 'bajo'
   const idLower = testId.toLowerCase()
   const nameLower = (TEST_NAMES[testId] || '').toLowerCase()
-  
   const matches = (str: string) => idLower.includes(str) || nameLower.includes(str)
 
-  if (matches('bigfive') || matches('personality') || matches('hexaco')) {
-    if (nivel === 'alto') return 'El perfil de personalidad es sumamente sólido y equilibrado. Demuestra rasgos que facilitan tanto la integración en equipos como la autogestión de alta calidad.'
-    if (nivel === 'moderado') return 'Muestra un perfil conductual funcional y adaptable. Sus rasgos de personalidad le permiten ajustarse bien a la cultura organizacional estándar sin grandes fricciones.'
-    return 'Presenta rasgos que requieren una gestión más cercana o un entorno muy específico para alcanzar su máximo potencial. Es ideal para roles con poca exposición social o procesos muy guiados.'
+  if (matches('bigfive') || matches('personality') || matches('hexaco') || matches('integridad')) {
+    if (nivel === 'alto') return 'Perfil profesional con una sólida integración de competencias conductuales. Aporta equilibrio y coherencia ética al equipo, facilitando la cultura de alto desempeño.'
+    if (nivel === 'moderado') return 'Muestra una adaptabilidad funcional a los valores de la organización. Su desempeño es estable y se alinea correctamente con las expectativas del entorno corporativo.'
+    return 'Perfil con áreas de desarrollo que requieren un acompañamiento cercano. Su integración será más efectiva en equipos con roles muy definidos y procesos estructurados.'
   }
   
-  if (matches('icar') || matches('cognitivo') || matches('verbal') || matches('numerico')) {
-    if (nivel === 'alto') return 'Excelente capacidad de procesamiento mental. Aprenderá nuevas tareas con rapidez y tiene un potencial intelectual muy por encima del promedio para resolver problemas complejos.'
-    if (nivel === 'moderado') return 'Posee una capacidad de aprendizaje adecuada para el ritmo corporativo. Puede resolver desafíos técnicos estándar y asimilar procesos nuevos con un tiempo de inducción normal.'
-    return 'Su ritmo de aprendizaje puede ser más pausado. Se recomienda asignarle tareas que ya domine o proporcionarle guías muy detalladas y tiempo extra durante su etapa inicial.'
+  if (matches('icar') || matches('cognitivo') || matches('verbal') || matches('numerico') || matches('detalle')) {
+    if (nivel === 'alto') return 'Referente de alta capacidad analítica. Posee un potencial destacado para asimilar conocimientos complejos y optimizar procesos técnicos con rigor y agilidad mental.'
+    if (nivel === 'moderado') return 'Capacidad de procesamiento alineada con el estándar profesional del rol. Resuelve problemas técnicos de forma lógica y mantiene un ritmo de aprendizaje constante.'
+    return 'Requiere tiempos de inducción extendidos en tareas nuevas. Se beneficia de manuales de apoyo y una división de tareas que permita la especialización progresiva.'
   }
 
   if (matches('sjt') || matches('competencia') || matches('comercial')) {
-    if (nivel === 'alto') return 'Demuestra un juicio profesional sobresaliente. Sabe exactamente cómo actuar ante situaciones críticas de negocio, priorizando siempre la eficacia y los valores de la empresa.'
-    if (nivel === 'moderado') return 'Sus respuestas ante situaciones laborales son coherentes y acertadas en la mayoría de los casos. Posee el criterio suficiente para manejar su rol con autonomía básica.'
-    return 'Su juicio situacional aún está en desarrollo. Se beneficiaría de tener un mentor o procesos muy claros de "paso a paso" para evitar errores de criterio en situaciones de presión.'
+    if (nivel === 'alto') return 'Demuestra un criterio profesional maduro y orientado a resultados. Sabe navegar escenarios críticos priorizando el impacto estratégico y la sostenibilidad de las relaciones.'
+    if (nivel === 'moderado') return 'Toma decisiones coherentes basadas en la experiencia y los protocolos. Su juicio es confiable para la gestión de situaciones estándar de negocio y atención.'
+    return 'Su juicio situacional se encuentra en etapa de consolidación. Se recomienda soporte en la toma de decisiones complejas para evitar desviaciones del estándar institucional.'
   }
 
-  if (matches('estres') || matches('bienestar') || matches('dass')) {
-    if (nivel === 'alto') return 'El evaluado goza de un excelente equilibrio emocional y una alta resiliencia. Está en una posición óptima para asumir desafíos de alta responsabilidad y presión.'
-    if (nivel === 'moderado') return 'Muestra niveles de bienestar dentro de lo normal. Es capaz de gestionar su carga de trabajo, aunque es importante monitorear momentos de alta demanda para evitar el agotamiento.'
-    return 'Se detectan indicadores que sugieren un nivel de fatiga o estrés actual. Sería recomendable evaluar su carga de trabajo o proporcionarle herramientas de gestión emocional para mejorar su bienestar.'
-  }
-
-  return 'En resumen, el desempeño en esta técnica refleja a un profesional con competencias de nivel ' + nivel + '. Es apto para los desafíos del cargo, con los puntos de apoyo y áreas de mejora detallados anteriormente.'
+  return 'En resumen, el evaluado presenta un perfil con un nivel de desempeño ' + nivel + '. Es un profesional con capacidades técnicas sólidas, cuyos puntos de apoyo actuales permitirán una integración productiva al equipo.'
 }
 // Hack for lucide-react icon fix if Users was missing from import, though I added UserPlus above
 // Importación al final para evitar problemas de hoisting si es necesario

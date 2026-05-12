@@ -117,7 +117,34 @@ const etiquetas: Record<string, string> = {
   amabilidad: 'Amabilidad',
   responsabilidad: 'Responsabilidad',
   neuroticismo: 'Neuroticismo',
-  apertura: 'Apertura'
+  apertura: 'Apertura',
+  // SJT Problemas
+  analisis: 'Análisis de Situación',
+  priorizacion: 'Priorización de Tareas',
+  inferencia: 'Inferencia Lógica',
+  creatividad: 'Creatividad en Soluciones',
+  decision: 'Toma de Decisiones',
+  pensamiento_critico: 'Pensamiento Crítico',
+  // SJT Atención
+  empatia: 'Empatía y Orientación al Cliente',
+  comunicacion: 'Comunicación Asertiva',
+  escucha_activa: 'Escucha Activa',
+  resolucion: 'Resolución de Incidencias',
+  manejo_conflicto: 'Manejo de Conflictos',
+  etica: 'Integridad y Normas',
+  // SJT Comercial
+  negociacion: 'Negociación y Cierre',
+  etica_comercial: 'Ética Comercial',
+  organizacion: 'Gestión de Cartera',
+  trabajo_equipo: 'Colaboración Comercial',
+  manejo_clientes: 'Relacionamiento con Clientes',
+  cobranza: 'Gestión de Cobranza',
+  proactividad_comercial: 'Proactividad en Ventas',
+  orientacion_cliente: 'Enfoque en el Cliente'
+}
+
+function esSJT(pb: any): boolean {
+  return pb && 'por_factor' in pb
 }
 
 const TEST_IDS: Record<string, string> = {
@@ -371,7 +398,7 @@ export default function PanelEvaluador() {
       const idsCompletados = new Set<string>()
       c.sesiones.forEach(s => {
         const slug = TEST_IDS[s.test_id] || s.test_id
-        if (slug) idsCompletados.add(slug)
+        if (slug && s.estado === 'finalizado') idsCompletados.add(slug)
       })
       Array.from(videosUnicosMap.values()).forEach(v => idsCompletados.add(`entrevista:${v.entrevista_id}`))
 
@@ -903,7 +930,26 @@ export default function PanelEvaluador() {
                                   {interpretacion(factor, valor)}
                                 </p>
                               </div>
-                            )) : esCognitivo(pb) ? (() => {
+                            )) : esSJT(pb) ? Object.entries((pb as any).por_factor || {}).map(([factor, info]: any) => {
+                              const valor = Math.round(((info.correctas / info.total) * 5) * 10) / 10
+                              return (
+                                <div key={factor} className="mb-4 last:mb-0">
+                                  <div className="flex justify-between text-xs mb-1">
+                                    <span className="font-semibold text-slate-700">{etiquetas[factor] || factor}</span>
+                                    <span className="text-slate-500">{valor} / 5</span>
+                                  </div>
+                                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mb-1">
+                                    <div 
+                                      className="h-full bg-amber-500 rounded-full" 
+                                      style={{ width: `${(valor / 5) * 100}%` }}
+                                    />
+                                  </div>
+                                  <p className="text-[10px] text-slate-500 leading-relaxed">
+                                    {interpretacion(factor, valor)}
+                                  </p>
+                                </div>
+                              )
+                            }) : esCognitivo(pb) ? (() => {
                               const { correctas, total, pct } = datosCognitivos(pb)
                               const nivel = pct >= 80 ? 'Superior' : pct >= 60 ? 'Promedio' : 'Bajo'
                               const colorBg = pct >= 80 ? 'bg-emerald-500' : pct >= 60 ? 'bg-amber-500' : 'bg-rose-500'
@@ -994,8 +1040,8 @@ async function generarPDF(sesion: Sesion) {
   const pdfData = {
     sesion, nombre, fecha,
     helpers: {
-      esBigFive, esCognitivo, valoresNumericos, promedioPuntaje, datosCognitivos,
-      coloresRGB, etiquetasPDF, interpretacion
+      esBigFive, esCognitivo, esSJT, valoresNumericos, promedioPuntaje, datosCognitivos,
+      coloresRGB, etiquetasPDF: etiquetas, interpretacion
     }
   }
 
@@ -1045,6 +1091,79 @@ function interpretacion(factor: string, valor: number): string {
       alto: 'Alta curiosidad intelectual, creatividad y apertura al cambio. Destaca en roles que requieren innovación.',
       moderado: 'Equilibrio entre creatividad y pragmatismo. Se adapta tanto a entornos estructurados como creativos.',
       bajo: 'Preferencia por métodos conocidos y entornos predecibles. Destaca en roles con procesos claros y definidos.'
+    },
+    // SJT Análisis
+    analisis: {
+      alto: 'Excelente capacidad para desglosar situaciones complejas en componentes manejables, identificando la raíz del problema de forma lógica.',
+      moderado: 'Capacidad adecuada para analizar problemas estándar. Puede requerir apoyo en escenarios de ambigüedad extrema.',
+      bajo: 'Tiende a ver los problemas de forma superficial. Puede tener dificultades para identificar causas raíz en procesos complejos.'
+    },
+    priorizacion: {
+      alto: 'Gran habilidad para jerarquizar urgencias y recursos, optimizando el tiempo de respuesta ante múltiples demandas simultáneas.',
+      moderado: 'Organiza sus tareas de forma efectiva en condiciones normales. Bajo presión extrema, la jerarquización puede verse afectada.',
+      bajo: 'Dificultad para discernir entre lo urgente y lo importante. Puede dispersar energía en tareas de bajo impacto.'
+    },
+    inferencia: {
+      alto: 'Destaca en conectar puntos de información aparentemente aislados para anticipar consecuencias y escenarios futuros con precisión.',
+      moderado: 'Capacidad lógica estándar. Realiza deducciones correctas basadas en hechos evidentes.',
+      bajo: 'Le cuesta anticipar consecuencias a largo plazo. Prefiere trabajar con información explícita y directa.'
+    },
+    creatividad: {
+      alto: 'Alta disposición para proponer soluciones fuera de los marcos convencionales, buscando la eficiencia a través de la innovación disruptiva.',
+      moderado: 'Propone mejoras incrementales sobre procesos conocidos. Mantiene un equilibrio entre lo nuevo y lo probado.',
+      bajo: 'Estilo de resolución conservador. Prefiere seguir protocolos establecidos y métodos tradicionales.'
+    },
+    // SJT Atención
+    empatia: {
+      alto: 'Capacidad genuina de sintonizar con la necesidad del cliente, validando su emoción antes de proceder a la solución técnica.',
+      moderado: 'Mantiene un trato cordial y profesional. Logra entender la necesidad del cliente sin involucramiento emocional profundo.',
+      bajo: 'Trato funcional y distante. Puede ser percibido como poco sensible ante la frustración o el problema del usuario.'
+    },
+    comunicacion: {
+      alto: 'Habilidad superior para transmitir información de forma clara y amable, manteniendo la calma incluso en situaciones de alta demanda.',
+      moderado: 'Comunicación clara en situaciones habituales. Puede perder fluidez en interacciones de alta tensión.',
+      bajo: 'Comunicación limitada o excesivamente técnica. Puede generar malentendidos por falta de claridad o tono inadecuado.'
+    },
+    escucha_activa: {
+      alto: 'Procesamiento profundo del mensaje del usuario, asegurando que se entiende el problema real antes de intervenir o sugerir.',
+      moderado: 'Escucha lo suficiente para dar una respuesta estándar. Puede omitir detalles sutiles en conversaciones largas.',
+      bajo: 'Tiende a interrumpir o a presuponer la solución antes de que el cliente termine de exponer su caso.'
+    },
+    resolucion: {
+      alto: 'Orientación pragmática a dar respuesta efectiva y oportuna, cerrando el ciclo de la consulta con un alto estándar de satisfacción.',
+      moderado: 'Logra resolver la mayoría de los casos dentro de los tiempos esperados. Puede demorar ante excepciones.',
+      bajo: 'Falta de agilidad en la resolución. Tiende a derivar problemas simples o a quedar atrapado en la burocracia del proceso.'
+    },
+    manejo_conflicto: {
+      alto: 'Gran temple para navegar interacciones difíciles, transformando una queja o reclamo en una oportunidad de fidelización estratégica.',
+      moderado: 'Maneja situaciones tensas con profesionalismo. Evita el conflicto directo pero puede ceder ante presión excesiva.',
+      bajo: 'Dificultad para manejar críticas o enojos. Puede reaccionar de forma defensiva o evitar la interacción conflictiva.'
+    },
+    etica: {
+      alto: 'Adherencia inquebrantable a los protocolos y valores de la organización, asegurando un trato justo y transparente para todos.',
+      moderado: 'Sigue las normas generales de la empresa. Puede flexibilizar criterios menores si la situación lo amerita.',
+      bajo: 'Riesgo de omitir protocolos en favor de la rapidez o la comodidad personal. Falta de consistencia ética.'
+    },
+    // SJT Comercial
+    negociacion: {
+      alto: 'Habilidad táctica superior para encontrar el equilibrio entre los intereses del cliente y los objetivos de rentabilidad corporativa.',
+      moderado: 'Capacidad de persuasión básica. Logra acuerdos en condiciones de mercado estándar.',
+      bajo: 'Dificultad para defender márgenes o condiciones. Tiende a ceder rápidamente o a perder cierres por falta de firmeza.'
+    },
+    etica_comercial: {
+      alto: 'Compromiso total con la honestidad en la venta, priorizando la relación a largo plazo y la confianza sobre el beneficio inmediato.',
+      moderado: 'Venta transparente bajo los estándares del sector. Evita malas prácticas evidentes.',
+      bajo: 'Prioriza el cierre a toda costa. Riesgo de omitir información relevante o de sobrevender capacidades reales.'
+    },
+    organizacion: {
+      alto: 'Disciplina excepcional en la gestión de cartera y seguimiento de prospectos, asegurando que ninguna oportunidad quede al azar.',
+      moderado: 'Mantiene un orden básico de sus contactos y agenda. Puede mejorar en la sistematicidad del seguimiento.',
+      bajo: 'Gestión comercial desorganizada. Pérdida de oportunidades por falta de seguimiento o mala planificación de rutas.'
+    },
+    trabajo_equipo: {
+      alto: 'Colaboración proactiva con otras áreas para potenciar la oferta comercial y asegurar que la promesa de venta sea cumplida.',
+      moderado: 'Participa en reuniones de equipo y colabora cuando se le solicita explícitamente.',
+      bajo: 'Estilo de trabajo individualista. Puede generar fricciones con áreas operativas por falta de comunicación.'
     }
   }
   return textos[factor]?.[nivel] || ''

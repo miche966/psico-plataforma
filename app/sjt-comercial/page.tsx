@@ -147,14 +147,14 @@ export default function SjtComercialPage() {
   const tiempoColor = tiempoRestante <= 15 ? '#dc2626' : tiempoRestante <= 30 ? '#ea580c' : '#1e293b'
 
   const factorLabel: Record<string, string> = {
-    manejo_clientes: 'Manejo de clientes',
-    cobranza: 'Gestión de cobranza',
-    etica_comercial: 'Ética comercial',
-    negociacion: 'Negociación',
-    proactividad_comercial: 'Proactividad',
-    orientacion_cliente: 'Orientación al cliente',
-    organizacion: 'Organización',
-    trabajo_equipo: 'Trabajo en equipo'
+    manejo_clientes: 'Relacionamiento con Clientes',
+    cobranza: 'Gestión de Cobranza',
+    etica_comercial: 'Ética Comercial',
+    negociacion: 'Negociación y Cierre',
+    proactividad_comercial: 'Proactividad en Ventas',
+    orientacion_cliente: 'Enfoque en el Cliente',
+    organizacion: 'Gestión de Cartera',
+    trabajo_equipo: 'Colaboración Comercial'
   }
 
   return (

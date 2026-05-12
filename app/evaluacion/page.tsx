@@ -78,6 +78,7 @@ export default function PortalCandidatoPage() {
   const [proceso, setProceso] = useState<any>(null)
   const [bateria, setBateria] = useState<string[]>([])
   const [testsCompletados, setTestsCompletados] = useState<string[]>([])
+  const [sesionesPortal, setSesionesPortal] = useState<any[]>([])
 
   const [mostrarSetup, setMostrarSetup] = useState(false)
   const [stream, setStream] = useState<MediaStream | null>(null)
@@ -143,6 +144,7 @@ export default function PortalCandidatoPage() {
         .eq('proceso_id', procesoId)
       
       if (errSes) console.error('Error DB Sesiones:', errSes)
+      setSesionesPortal(sesiones || [])
 
       // 3. Cargar desde DB (Respuestas de Videoentrevistas)
       const { data: respuestasVideo, error: errVid } = await supabase
@@ -158,7 +160,7 @@ export default function PortalCandidatoPage() {
       if (sesiones) {
         sesiones.forEach(s => {
           const key = TEST_IDS[s.test_id]
-          if (key) completadosDB.push(key)
+          if (key && s.estado === 'finalizado') completadosDB.push(key)
         })
       }
 
@@ -195,7 +197,12 @@ export default function PortalCandidatoPage() {
 
     const ruta = RUTAS[testKey]
     if (!ruta) return
-    router.push(`${ruta}?candidato=${candidatoId}&proceso=${procesoId}&evaluacion=1`)
+
+    // Buscar si ya existe una sesión (aunque sea pendiente) para este test
+    const sesionExistente = sesionesPortal.find((s: any) => TEST_IDS[s.test_id] === testKey)
+    const sesionId = sesionExistente?.id ? `&sesion=${sesionExistente.id}` : ''
+
+    router.push(`${ruta}?candidato=${candidatoId}&proceso=${procesoId}&evaluacion=1${sesionId}`)
   }
 
   // Hook para detectar si acaba de volver de un test y marcarlo completado

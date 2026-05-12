@@ -89,21 +89,33 @@ export default function UnirsePage() {
     setError(null)
 
     try {
-      // 1. Crear el candidato
-      const { data: candidato, error: candError } = await supabase
+      // 1. Verificar si el candidato ya existe (por email o documento)
+      let { data: candidato, error: candError } = await supabase
         .from('candidatos')
-        .insert({
-          nombre: form.nombres,
-          apellido: form.apellidos,
-          email: form.email,
-          documento: form.documento,
-          edad: parseInt(form.edad),
-          sexo: form.sexo,
-          formacion: form.formacion,
-          profesion: form.profesion
-        })
-        .select()
-        .single()
+        .select('id')
+        .or(`email.eq.${form.email},documento.eq.${form.documento}`)
+        .maybeSingle()
+
+      if (!candidato) {
+        // Crear el candidato si no existe
+        const { data: nuevoCandidato, error: createError } = await supabase
+          .from('candidatos')
+          .insert({
+            nombre: form.nombres,
+            apellido: form.apellidos,
+            email: form.email,
+            documento: form.documento,
+            edad: parseInt(form.edad),
+            sexo: form.sexo,
+            formacion: form.formacion,
+            profesion: form.profesion
+          })
+          .select()
+          .single()
+        
+        if (createError) throw createError
+        candidato = nuevoCandidato
+      }
 
       if (candError) throw candError
 

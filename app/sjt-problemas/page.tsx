@@ -147,11 +147,11 @@ export default function SjtProblemasPage() {
   const tiempoColor = tiempoRestante <= 15 ? '#dc2626' : tiempoRestante <= 30 ? '#ea580c' : '#1e293b'
 
   const factorLabel: Record<string, string> = {
-    analisis: 'Análisis de problemas',
-    decision: 'Toma de decisiones',
-    pensamiento_critico: 'Pensamiento crítico',
-    inferencia: 'Inferencias',
-    creatividad: 'Creatividad aplicada'
+    analisis: 'Análisis de Situación',
+    decision: 'Toma de Decisiones',
+    pensamiento_critico: 'Pensamiento Crítico',
+    inferencia: 'Inferencia Lógica',
+    creatividad: 'Creatividad en Soluciones'
   }
 
   return (

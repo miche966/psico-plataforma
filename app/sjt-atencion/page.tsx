@@ -136,13 +136,13 @@ export default function SjtAtencionPage() {
   const tiempoColor = tiempoRestante <= 15 ? '#dc2626' : tiempoRestante <= 30 ? '#ea580c' : '#1e293b'
 
   const factorLabel: Record<string, string> = {
-    empatia: 'Empatía',
-    escucha_activa: 'Escucha activa',
-    resolucion: 'Resolución',
-    manejo_conflicto: 'Manejo de conflictos',
-    comunicacion: 'Comunicación',
-    tolerancia_frustracion: 'Tolerancia a la frustración',
-    etica: 'Ética'
+    empatia: 'Empatía y Orientación al Cliente',
+    escucha_activa: 'Escucha Activa',
+    resolucion: 'Resolución de Incidencias',
+    manejo_conflicto: 'Manejo de Conflictos',
+    comunicacion: 'Comunicación Asertiva',
+    tolerancia_frustracion: 'Tolerancia a la Frustración',
+    etica: 'Integridad y Normas'
   }
 
   return (
