@@ -15,24 +15,20 @@ export async function POST(req: Request) {
     // 1. SINCRONIZACIÓN DE SCORE
     let scoreFinal = actual?.ajusteCargo?.score || 0;
     
-    // 2. NORMALIZACIÓN Y EXTRACCIÓN DE FACTORES (EL "BUZÓN" UNIFICADO)
+    // 2. ESCÁNER ULTRA-ROBUSTO DE FACTORES (FOCO EN BIENESTAR)
     const factoresCrudos: Record<string, number> = {};
     const NORMALIZACION_MAP: Record<string, string> = {
         'relaciones': 'relaciones',
         'relaciones interpersonales': 'relaciones',
-        'relaciones interpersonales y clima': 'relaciones',
+        'clima': 'relaciones',
         'claridad_rol': 'claridad_rol',
         'claridad de rol': 'claridad_rol',
         'percepción de claridad de rol': 'claridad_rol',
         'burnout': 'burnout',
-        'riesgo de agotamiento': 'burnout',
+        'agotamiento': 'burnout',
         'equilibrio': 'equilibrio',
         'balance vida-trabajo': 'equilibrio',
-        'extraversion': 'extraversion',
-        'amabilidad': 'amabilidad',
-        'responsabilidad': 'responsabilidad',
-        'neuroticismo': 'neuroticismo',
-        'apertura': 'apertura'
+        'nivel_estres': 'nivel_estres'
     };
 
     sesiones.forEach((s: any) => {
@@ -40,32 +36,47 @@ export async function POST(req: Request) {
             if (!obj || typeof obj !== 'object') return;
             Object.entries(obj).forEach(([k, v]) => {
                 const rawKey = k.toLowerCase().trim();
-                const cleanKey = NORMALIZACION_MAP[rawKey] || rawKey;
-                if (typeof v === 'number') factoresCrudos[cleanKey] = v;
+                
+                // Mapeo inteligente
+                let targetKey = null;
+                for (const [pattern, target] of Object.entries(NORMALIZACION_MAP)) {
+                    if (rawKey.includes(pattern)) {
+                        targetKey = target;
+                        break;
+                    }
+                }
+                const finalKey = targetKey || rawKey;
+
+                if (typeof v === 'number') {
+                    // Normalización a escala 0-5 si viene en 0-100 o 0-1
+                    let val = v;
+                    if (val > 5 && val <= 100) val = (val / 100) * 5;
+                    factoresCrudos[finalKey] = val;
+                }
+                
                 if (typeof v === 'object') scan(v);
             });
         };
-        scan(s.puntaje_bruto);
+        scan(s.puntaje_bruto || s.puntuacion || s.puntaje || {});
     });
 
     const prompt = `
-Eres un Consultor Senior en Psicodiagnóstico. Genera un informe PREMIUM para:
+Eres un Consultor Senior. Genera un informe PREMIUM.
 Candidato: ${candidato.nombre} ${candidato.apellido}
-Puesto: ${proceso?.cargo || 'N/A'}
 Ajuste: ${scoreFinal}%
 
-DATOS PSICOMÉTRICOS (FACTORES):
+DATOS DETECTADOS:
 ${JSON.stringify(factoresCrudos)}
 
-INSTRUCCIONES DE REDACCIÓN (HUMAN-CENTRIC PREMIUM):
-1. TONO: Profesional, humano, sin maximalismos (evita: excepcional, extraordinario, excelente).
-2. DESCRIPCIONES: Genera un análisis de alta gama (Tendencia, Mecanismo e Impacto) para cada factor encontrado.
-3. LLAVES OBLIGATORIAS: Debes usar EXACTAMENTE estas llaves en el objeto "interpretacionPorFactor":
-   - "relaciones" (para Relaciones Interpersonales)
-   - "claridad_rol" (para Claridad de Rol)
-   - "burnout" (para Riesgo de Agotamiento)
-   - "equilibrio" (para Equilibrio Vida-Trabajo)
-   - "extraversion", "amabilidad", "responsabilidad", "neuroticismo", "apertura".
+INSTRUCCIONES CRÍTICAS:
+1. NARRATIVA POR FACTOR: Debes generar descripciones cualitativas (Tendencia, Mecanismo e Impacto) para:
+   - "relaciones"
+   - "claridad_rol"
+   - "burnout"
+   - "equilibrio"
+   - Factores OCEAN (si existen)
+2. ESTILO: Profesional, humano, sin maximalismos.
+3. FORMATO: Devuelve JSON con la llave "interpretacionPorFactor" usando exactamente esas llaves.
 
 Devuelve JSON:
 {
@@ -73,20 +84,17 @@ Devuelve JSON:
   "fortalezas": [{"tendencia": "...", "mecanismo": "...", "impacto_organizacional": "..."}],
   "oportunidadesMejora": [{"tendencia": "...", "mecanismo": "...", "impacto_organizacional": "..."}],
   "ajusteCargo": { "score": ${scoreFinal}, "analisis": "..." },
-  "fundamentacion": "...",
   "interpretacionPorFactor": {
      "relaciones": "Análisis profundo...",
      "claridad_rol": "Análisis profundo...",
-     "burnout": "Análisis profundo...",
-     "equilibrio": "Análisis profundo...",
+     "burnout": "...",
+     "equilibrio": "...",
      "extraversion": "...",
      "amabilidad": "...",
      "responsabilidad": "...",
      "neuroticismo": "...",
      "apertura": "..."
-  },
-  "recomendacion": "...",
-  "metaCompetencias": { "liderazgo": 80, "adaptabilidad": 80, "resiliencia": 80, "colaboracion": 80, "comunicacion": 80 }
+  }
 }
 `;
 
@@ -100,7 +108,7 @@ Devuelve JSON:
     return NextResponse.json(resultado);
 
   } catch (error: any) {
-    console.error('[FATAL ERROR]:', error.message);
+    console.error('[ERROR]:', error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
