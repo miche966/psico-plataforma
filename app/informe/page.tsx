@@ -43,6 +43,8 @@ interface InformeState {
   liderazgo: number
   adaptabilidad: number
   resiliencia: number
+  colaboracion: number
+  comunicacion: number
   confianza: number
   alertasTab: number
   alertasCopia: number
@@ -272,17 +274,17 @@ function InformePageContent() {
   const [inf, setInf] = useState<InformeState>({
     recomendacion: 'con_reservas',
     fundamentacion: '',
-    fortalezas: [],
-    oportunidadesMejora: [],
     resumenEjecutivo: '',
+    fortalezas: ['', '', ''],
+    oportunidadesMejora: ['', ''],
     ajusteCargo: { score: 0, analisis: '' },
     interpretacionPorFactor: {},
-    nombreEvaluador: 'Equipo de Consultoría Psicométrica',
-    mbti: '',
-    ajusteMbti: '',
+    nombreEvaluador: 'Antigravity AI',
     liderazgo: 0,
     adaptabilidad: 0,
     resiliencia: 0,
+    colaboracion: 0,
+    comunicacion: 0,
     confianza: 100,
     alertasTab: 0,
     alertasCopia: 0,
@@ -616,6 +618,16 @@ function InformePageContent() {
             'maravilloso': 'positivo',
             'increíble': 'relevante',
             'magnífico': 'adecuado',
+            'excepcional': 'destacado',
+            'sobresaliente': 'notable',
+            'inquebrantable': 'consistente',
+            'agudo': 'claro',
+            'aguda': 'clara',
+            'profunda adherencia': 'adherencia consistente',
+            'manejo excepcional': 'manejo efectivo',
+            'inteligencia emocional': 'estabilidad emocional',
+            'IE aplicada': 'gestión de emociones',
+            'apego a normas y ética': 'sentido ético',
             'decisiones objetiva': 'decisiones objetivas',
             'DASS-21': 'equilibrio emocional',
             'DASS21': 'equilibrio emocional',
@@ -640,12 +652,12 @@ function InformePageContent() {
           ...rawRes,
           fundamentacion: humanizar(rawRes.fundamentacion),
           fortalezas: (rawRes.fortalezas || []).map((f: string) => humanizar(f)),
-          areasDesarrollo: (rawRes.areasDesarrollo || []).map((f: string) => humanizar(f)),
+          oportunidadesMejora: (rawRes.oportunidadesMejora || rawRes.areasDesarrollo || []).map((f: string) => humanizar(f)),
           interpretacionPorFactor: Object.fromEntries(
             Object.entries(rawRes.interpretacionPorFactor || {}).map(([k, v]) => [k, humanizar(v as string)])
           ),
           ajusteCargo: {
-            score: scoreFrontend, // Mantenemos el 61% original
+            score: scoreFrontend, 
             analisis: humanizar(rawRes.ajusteCargo?.analisis || rawRes.fundamentacion || '')
           },
           recomendacion: scoreFrontend >= 85 ? 'recomendado' : scoreFrontend >= 70 ? 'con_reservas' : 'no_recomendado'
@@ -654,6 +666,11 @@ function InformePageContent() {
         setInf(prev => ({
           ...prev,
           ...nuevoInforme,
+          liderazgo: rawRes.metaCompetencias?.liderazgo || prev.liderazgo,
+          adaptabilidad: rawRes.metaCompetencias?.adaptabilidad || prev.adaptabilidad,
+          resiliencia: rawRes.metaCompetencias?.resiliencia || prev.resiliencia,
+          colaboracion: rawRes.metaCompetencias?.colaboracion || prev.colaboracion,
+          comunicacion: rawRes.metaCompetencias?.comunicacion || prev.comunicacion,
           alertasTab: prev.alertasTab,
           alertasCopia: prev.alertasCopia,
           confianza: prev.confianza,
@@ -684,6 +701,73 @@ function InformePageContent() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const descargarTXT = () => {
+    const text = `
+==================================================
+      INFORME EJECUTIVO PSICOMÉTRICO
+==================================================
+Candidato: ${candidato.nombre} ${candidato.apellido}
+Documento: ${candidato.documento || 'No provisto'}
+Cargo: ${proceso?.cargo || 'Sin cargo'}
+Fecha: ${new Date().toLocaleDateString()}
+
+--------------------------------------------------
+1. RESUMEN EJECUTIVO
+--------------------------------------------------
+${inf.resumenEjecutivo || 'Contenido no generado'}
+
+--------------------------------------------------
+2. DIAGNÓSTICO ESTRATÉGICO
+--------------------------------------------------
+AJUSTE AL CARGO: ${inf.ajusteCargo?.score || 0}%
+Análisis de Idoneidad:
+${inf.ajusteCargo?.analisis || 'Sin análisis'}
+
+MATRIZ DE POTENCIAL CONDUCTUAL:
+• Liderazgo: ${inf.liderazgo}/100
+• Adaptabilidad: ${inf.adaptabilidad}/100
+• Resiliencia: ${inf.resiliencia}/100
+• Colaboración: ${inf.colaboracion}/100
+• Comunicación: ${inf.comunicacion}/100
+
+FORTALEZAS CLAVE:
+${(inf.fortalezas || []).filter(f => f.trim() !== '').map(f => `• ${f}`).join('\n') || 'No definidas'}
+
+OPORTUNIDADES DE MEJORA:
+${(inf.oportunidadesMejora || []).filter(o => o.trim() !== '').map(o => `• ${o}`).join('\n') || 'No definidas'}
+
+--------------------------------------------------
+3. FUNDAMENTACIÓN TÉCNICA
+--------------------------------------------------
+${inf.fundamentacion || 'Sin fundamentación'}
+
+--------------------------------------------------
+4. AJUSTE CONDUCTUAL (MBTI)
+--------------------------------------------------
+${inf.ajusteMbti || 'Sin análisis de personalidad'}
+
+--------------------------------------------------
+5. INTERPRETACIÓN POR FACTORES
+--------------------------------------------------
+${Object.entries(inf.interpretacionPorFactor || {}).length > 0 
+  ? Object.entries(inf.interpretacionPorFactor || {}).map(([f, t]) => `[${f.toUpperCase()}]\n${t}`).join('\n\n')
+  : 'Sin desglose detallado'}
+
+==================================================
+PsicoPlataforma - Gestión Inteligente de Talento
+==================================================
+    `;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Informe_${candidato.nombre}_${candidato.apellido}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   if (loading) return <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>Cargando datos del motor psicométrico...</div>
@@ -727,6 +811,21 @@ function InformePageContent() {
             </button>
             <button onClick={guardar} disabled={saving} style={{ ...s.btnSave, opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Guardando...' : 'Guardar Cambios'}
+            </button>
+            <button 
+              onClick={descargarTXT} 
+              style={{ 
+                background: '#475569', 
+                color: '#fff', 
+                padding: '12px 24px', 
+                borderRadius: '12px', 
+                fontWeight: '700', 
+                fontSize: '0.9rem',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              📥 Descargar TXT
             </button>
             <Suspense fallback={<div style={{ padding: '12px', fontSize: '0.8rem' }}>Cargando exportador...</div>}>
               <PDFDownloadLink
@@ -877,21 +976,31 @@ function InformePageContent() {
             <span style={s.badge}>Análisis de Meta-Competencias</span>
           </div>
           <div style={{ padding: '1.25rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
-              <div style={{ background: '#f5f3ff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #ddd6fe', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#7c3aed', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Liderazgo</div>
-                <input type="number" style={{ fontSize: '2.5rem', fontWeight: '900', color: '#7c3aed', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.liderazgo} onChange={e => upd('liderazgo', Number(e.target.value))} />
-                <div style={{ fontSize: '0.7rem', color: '#9333ea', marginTop: '4px' }}>Impacto e Influencia</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
+              <div style={{ background: '#f5f3ff', padding: '1rem', borderRadius: '16px', border: '1px solid #ddd6fe', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#7c3aed', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Liderazgo</div>
+                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#7c3aed', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.liderazgo} onChange={e => upd('liderazgo', Number(e.target.value))} />
+                <div style={{ fontSize: '0.6rem', color: '#9333ea', marginTop: '2px' }}>Impacto e Influencia</div>
               </div>
-              <div style={{ background: '#fff7ed', padding: '1.5rem', borderRadius: '16px', border: '1px solid #ffedd5', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#ea580c', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Adaptabilidad</div>
-                <input type="number" style={{ fontSize: '2.5rem', fontWeight: '900', color: '#ea580c', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.adaptabilidad} onChange={e => upd('adaptabilidad', Number(e.target.value))} />
-                <div style={{ fontSize: '0.7rem', color: '#c2410c', marginTop: '4px' }}>Flexibilidad al Cambio</div>
+              <div style={{ background: '#fff7ed', padding: '1rem', borderRadius: '16px', border: '1px solid #ffedd5', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#ea580c', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Adaptabilidad</div>
+                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#ea580c', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.adaptabilidad} onChange={e => upd('adaptabilidad', Number(e.target.value))} />
+                <div style={{ fontSize: '0.6rem', color: '#c2410c', marginTop: '2px' }}>Flexibilidad al Cambio</div>
               </div>
-              <div style={{ background: '#fef2f2', padding: '1.5rem', borderRadius: '16px', border: '1px solid #fee2e2', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#dc2626', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Resiliencia</div>
-                <input type="number" style={{ fontSize: '2.5rem', fontWeight: '900', color: '#dc2626', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.resiliencia} onChange={e => upd('resiliencia', Number(e.target.value))} />
-                <div style={{ fontSize: '0.7rem', color: '#b91c1c', marginTop: '4px' }}>Tolerancia a la Presión</div>
+              <div style={{ background: '#fef2f2', padding: '1rem', borderRadius: '16px', border: '1px solid #fee2e2', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#dc2626', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Resiliencia</div>
+                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#dc2626', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.resiliencia} onChange={e => upd('resiliencia', Number(e.target.value))} />
+                <div style={{ fontSize: '0.6rem', color: '#b91c1c', marginTop: '2px' }}>Tolerancia a la Presión</div>
+              </div>
+              <div style={{ background: '#ecfdf5', padding: '1rem', borderRadius: '16px', border: '1px solid #d1fae5', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#059669', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Colaboración</div>
+                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#059669', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.colaboracion} onChange={e => upd('colaboracion', Number(e.target.value))} />
+                <div style={{ fontSize: '0.6rem', color: '#047857', marginTop: '2px' }}>Sintonía Grupal</div>
+              </div>
+              <div style={{ background: '#f0f9ff', padding: '1rem', borderRadius: '16px', border: '1px solid #e0f2fe', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#0284c7', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Comunicación</div>
+                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#0284c7', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.comunicacion} onChange={e => upd('comunicacion', Number(e.target.value))} />
+                <div style={{ fontSize: '0.6rem', color: '#0369a1', marginTop: '2px' }}>Claridad y Discurso</div>
               </div>
             </div>
             <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '1.25rem', textAlign: 'center', lineHeight: '1.4' }}>

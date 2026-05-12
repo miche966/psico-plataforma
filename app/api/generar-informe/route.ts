@@ -151,12 +151,13 @@ Datos Técnicos de Ajuste:
 - PUNTAJE DE AJUSTE CALCULADO: ${scoreMatematico}/100
 - DICTAMEN TÉCNICO: ${dictamenHumano}
 
-Instrucciones de Redacción (Estilo de Consultoría Estratégica - AGENTE HUMANO):
-Eres un Agente de Diagnóstico Psicodiagnóstico de alta gama. Debes adherirte estrictamente a estos criterios:
-- Tono: Profesional, ejecutivo y humanista. Evita reduccionismos técnicos.
-- Prohibición de Maximalismos: NO uses palabras como "inquebrantable", "total", "absoluto", "guardián", "perfecto", "siempre" o "nunca".
-- Alternativas: Usa "coherente", "consistente", "sólido", "sintonía con el rol", "adecuación a la dinámica".
-- Riqueza Informativa: Cada frase debe aportar valor analítico sobre la arquitectura conductual del candidato (cómo procesa y cómo impacta en la organización).
+Instrucciones de Redacción (Protocolo AGENTE DE ANÁLISIS HUMAN-CENTRIC):
+Eres un Agente de Diagnóstico Psicodiagnóstico de alta gama. Tu redacción debe ser:
+1. PROFESIONAL Y HUMANA: Usa un tono ejecutivo pero cercano. No reduzcas al candidato a números; describe su "Arquitectura Conductual".
+2. NO-MAXIMALISTA (CRÍTICO): Prohibido usar: "excepcional", "sobresaliente", "inquebrantable", "excelente", "maravilloso", "perfecto", "agudo". 
+   - Reemplaza por: "destacado", "notable", "consistente", "sólido", "adecuado", "claro".
+3. RIQUEZA INFORMATIVA: Evita obviedades. Explica el IMPACTO organizacional de cada rasgo.
+4. SIN TECNICISMOS: No menciones nombres de tests (DASS-21, Big Five, etc.). Habla de "equilibrio emocional" o "tendencias de personalidad".
 
 Estructura de Contenido:
 1. "resumenEjecutivo": Síntesis estratégica. Explica el VALOR del candidato y su proyección en el cargo en 2 párrafos técnicos.
@@ -168,6 +169,13 @@ Estructura de Contenido:
    }
 5. "fundamentacion": Argumentación técnica que justifica la recomendación basada en la probabilidad de éxito.
 6. "ajusteMbti": Cómo su perfil conductual influye en su desempeño diario en este cargo específico.
+7. "metaCompetencias": {
+      "liderazgo": 0-100,
+      "adaptabilidad": 0-100,
+      "resiliencia": 0-100,
+      "colaboracion": 0-100,
+      "comunicacion": 0-100
+   } (Cálculo estimado basado en la combinación de rasgos analizados).
 
 Devuelve EXCLUSIVAMENTE un JSON válido con esta estructura exacta:
 {
@@ -178,7 +186,8 @@ Devuelve EXCLUSIVAMENTE un JSON válido con esta estructura exacta:
   "recomendacion": "${dictamenFinal}",
   "fundamentacion": "...",
   "ajusteMbti": "...",
-  "interpretacionPorFactor": { "id_factor": "..." }
+  "interpretacionPorFactor": { "id_factor": "..." },
+  "metaCompetencias": { "liderazgo": 0, "adaptabilidad": 0, "resiliencia": 0, "colaboracion": 0, "comunicacion": 0 }
 }
 `
 
