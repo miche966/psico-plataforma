@@ -126,22 +126,22 @@ const REC_LABELS: Record<Rec, string> = {
 }
 
 const MBTI_DESC: Record<string, string> = {
-  'ISTJ': 'Inspector - Responsable, leal, pragmático y orientado al deber.',
-  'ISFJ': 'Protector - Dedicado, cálido, responsable y detallista.',
-  'INFJ': 'Consejero - Idealista, organizado, visionario y decidido.',
-  'INTJ': 'Arquitecto - Estratega, ambicioso, independiente y analítico.',
-  'ISTP': 'Virtuoso - Pragmático, adaptable, observador y técnico.',
-  'ISFP': 'Aventurero - Flexible, sensible, amable y creativo.',
-  'INFP': 'Mediador - Idealista, leal, curioso y empático.',
-  'INTP': 'Lógico - Analítico, escéptico, independiente y teórico.',
-  'ESTP': 'Emprendedor - Enérgico, pragmático, observador y audaz.',
-  'ESFP': 'Animador - Entusiasta, espontáneo, sociable y flexible.',
-  'ENFP': 'Activista - Entusiasta, creativo, sociable y optimista.',
-  'ENTP': 'Innovador - Analítico, curioso, estratégico y retador.',
-  'ESTJ': 'Ejecutivo - Organizado, práctico, decidido y eficiente.',
-  'ESFJ': 'Cónsul - Servicial, responsable, sociable y detallista.',
-  'ENFJ': 'Protagonista - Inspirador, empático, organizado y líder.',
-  'ENTJ': 'Comandante - Estratega, decidido, eficiente y líder nato.'
+  'ISTJ': 'Perfil Logista: Se caracteriza por un enfoque pragmático, leal y altamente orientado al cumplimiento de estándares operativos y normativos.',
+  'ISFJ': 'Perfil Protector: Demuestra una dedicación constante, calidez en el trato profesional y un alto sentido de la responsabilidad detallista.',
+  'INFJ': 'Perfil Consejero: Idealista y organizado, con una capacidad notable para la visión estratégica y la toma de decisiones basada en valores.',
+  'INTJ': 'Perfil Estratega: Independiente y analítico, se enfoca en la eficiencia a largo plazo y el desarrollo de sistemas lógicos complejos.',
+  'ISTP': 'Perfil Virtuoso: Pragmático y técnico, destaca por su adaptabilidad y su capacidad para resolver problemas operativos de forma directa.',
+  'ISFP': 'Perfil Aventurero: Sensible y amable, aporta flexibilidad y un enfoque creativo a las tareas que requieren una ejecución armoniosa.',
+  'INFP': 'Perfil Mediador: Empático y leal, posee una curiosidad natural y una fuerte orientación hacia proyectos con impacto humano significativo.',
+  'INTP': 'Perfil Lógico: Analítico y escéptico, prefiere el trabajo independiente y el desarrollo de marcos teóricos para entender procesos.',
+  'ESTP': 'Perfil Emprendedor: Enérgico y audaz, su enfoque es pragmático y orientado a resultados inmediatos en entornos de alta movilidad.',
+  'ESFP': 'Perfil Animador: Sociable y espontáneo, destaca por su entusiasmo y su capacidad para dinamizar entornos de trabajo colaborativo.',
+  'ENFP': 'Perfil Activista: Creativo y optimista, posee una fuerte capacidad de comunicación y una visión entusiasta hacia la innovación grupal.',
+  'ENTP': 'Perfil Innovador: Estratégico y retador, se destaca por su curiosidad intelectual y su capacidad para proponer soluciones disruptivas.',
+  'ESTJ': 'Perfil Ejecutivo: Organizado y decidido, su fortaleza reside en la gestión eficiente de recursos y el liderazgo basado en resultados.',
+  'ESFJ': 'Perfil Cónsul: Responsable y sociable, fomenta la armonía del equipo y se asegura de que las necesidades operativas sean atendidas.',
+  'ENFJ': 'Perfil Protagonista: Líder inspirador y empático, posee una gran capacidad de organización orientada al desarrollo del talento humano.',
+  'ENTJ': 'Perfil Comandante: Decidido y eficiente, su visión estratégica y liderazgo natural impulsan la ejecución de metas institucionales.'
 }
 
 // Estilos base de la UI
@@ -574,11 +574,27 @@ function InformePageContent() {
 
   // MBTI Estimator
   function estimarMBTI(pb: any) {
-    if (!pb || !pb.extraversion) return null
-    const E = pb.extraversion >= 3 ? 'E' : 'I'
-    const S = pb.apertura < 3 ? 'S' : 'N'
-    const T = pb.amabilidad < 3 ? 'T' : 'F'
-    const J = pb.responsabilidad >= 3 ? 'J' : 'P'
+    if (!pb) return null
+    // Búsqueda profunda de factores OCEAN si pb es un objeto complejo
+    const find = (key: string) => {
+      let found = 2.5
+      const search = (obj: any) => {
+        Object.entries(obj).forEach(([f, v]) => {
+          if (f.toLowerCase().includes(key)) {
+            found = (v?.correctas ? (v.correctas/v.total)*5 : (typeof v === 'number' ? v : 0)) || 2.5
+          } else if (typeof v === 'object' && v !== null) {
+            search(v)
+          }
+        })
+      }
+      search(pb)
+      return found
+    }
+
+    const E = find('extraver') >= 2.7 ? 'E' : 'I'
+    const S = find('apertura') < 2.7 ? 'S' : 'N'
+    const T = find('amabilid') < 2.7 ? 'T' : 'F'
+    const J = find('responsab') >= 2.7 ? 'J' : 'P'
     return `${E}${S}${T}${J}`
   }
 
@@ -1123,28 +1139,36 @@ PsicoPlataforma - Gestión Inteligente de Talento
               <span style={s.cardHeadTxt}>Perfil Tipológico MBTI</span>
               <span style={s.badge}>Estimación Psicométrica</span>
             </div>
-            <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '1.5rem', alignItems: 'center' }}>
-              <div style={{ background: '#f0f9ff', padding: '2rem', borderRadius: '16px', border: '1px solid #bae6fd', textAlign: 'center' }}>
-                <div style={{ fontSize: '3rem', fontWeight: '900', color: '#0369a1' }}>{estimarMBTI(getFactoresUnicos(DOMINIOS.PERSONALIDAD)[0]?.[1]?.valor) || 'N/A'}</div>
-                <div style={{ fontSize: '0.75rem', color: '#0369a1', fontWeight: 'bold', textTransform: 'uppercase' }}>Tipo Estimado</div>
-              </div>
-              <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <h4 style={{ color: '#1e293b', margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 'bold' }}>Análisis Tipológico</h4>
-                <p style={{ fontSize: '0.9rem', color: '#475569', lineHeight: '1.6', fontStyle: 'italic' }}>
-                  {MBTI_DESC[estimarMBTI(getFactoresUnicos(DOMINIOS.PERSONALIDAD)[0]?.[1]?.valor) || ''] || 'No se cuenta con datos suficientes para una estimación tipológica precisa.'}
-                </p>
-                <div style={{ marginTop: '1rem' }}>
-                  <label style={s.commentLabel}>Ajuste Tipológico al Cargo</label>
-                  <textarea 
-                    style={{ ...s.ta, fontSize: '0.85rem' }} 
-                    rows={3} 
-                    value={inf.ajusteMbti || ''} 
-                    onChange={e => upd('ajusteMbti', e.target.value)}
-                    placeholder="Analice cómo este tipo de personalidad se desempeña en las tareas específicas del puesto..."
-                  />
+            {(() => {
+              const pbPersonalidad = getFactoresUnicos(DOMINIOS.PERSONALIDAD)[0]?.[1]?.valor;
+              const mbtiCodigo = inf.mbtiType || estimarMBTI(pbPersonalidad) || 'N/A';
+              const mbtiDesc = MBTI_DESC[mbtiCodigo] || 'No se cuenta con datos suficientes para una estimación tipológica precisa.';
+              
+              return (
+                <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '1.5rem', alignItems: 'center' }}>
+                  <div style={{ background: '#f0f9ff', padding: '2rem', borderRadius: '16px', border: '1px solid #bae6fd', textAlign: 'center' }}>
+                    <div style={{ fontSize: '3rem', fontWeight: '900', color: '#0369a1' }}>{mbtiCodigo}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#0369a1', fontWeight: 'bold', textTransform: 'uppercase' }}>Tipo Estimado</div>
+                  </div>
+                  <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                    <h4 style={{ color: '#1e293b', margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 'bold' }}>Análisis Tipológico</h4>
+                    <p style={{ fontSize: '0.9rem', color: '#475569', lineHeight: '1.6', fontStyle: 'italic' }}>
+                      {mbtiDesc}
+                    </p>
+                    <div style={{ marginTop: '1rem' }}>
+                      <label style={s.commentLabel}>Ajuste Tipológico al Cargo</label>
+                      <textarea 
+                        style={{ ...s.ta, fontSize: '0.85rem' }} 
+                        rows={3} 
+                        value={inf.ajusteMbti || ''} 
+                        onChange={e => upd('ajusteMbti', e.target.value)}
+                        placeholder="Análisis del perfil tipológico en relación al puesto..."
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         )}
 

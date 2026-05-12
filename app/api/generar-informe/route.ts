@@ -140,6 +140,35 @@ export async function POST(req: Request) {
     const dictamenFinal = scoreMatematico >= 85 ? 'recomendado' : scoreMatematico >= 70 ? 'con_reservas' : 'no_recomendado';
     const dictamenHumano = dictamenFinal === 'recomendado' ? 'RECOMENDADO' : dictamenFinal === 'con_reservas' ? 'RECOMENDADO CON RESERVAS' : 'NO RECOMENDADO';
 
+    // Motor de Estimación MBTI (Big Five Correlation)
+    let ocean: Record<string, number> = { o: 2.5, c: 2.5, e: 2.5, a: 2.5, n: 2.5 };
+    if (candidato.sesiones) {
+      candidato.sesiones.forEach((s: any) => {
+        const buscarOcean = (obj: any) => {
+          if (!obj) return;
+          Object.entries(obj).forEach(([f, v]) => {
+            const k = f.toLowerCase().trim();
+            const val = (v?.correctas ? (v.correctas/v.total)*5 : (typeof v === 'number' ? v : 0)) || 0;
+            if (k.includes('extraver')) ocean.e = val;
+            if (k.includes('responsab')) ocean.c = val;
+            if (k.includes('amabilid')) ocean.a = val;
+            if (k.includes('apertura')) ocean.o = val;
+            if (k.includes('neurotic')) ocean.n = val;
+            if (typeof v === 'object') buscarOcean(v);
+          });
+        };
+        buscarOcean(s.puntaje_bruto);
+      });
+    }
+
+    const mbti = [
+      ocean.e >= 2.7 ? 'E' : 'I',
+      ocean.o >= 2.7 ? 'N' : 'S',
+      ocean.a >= 2.7 ? 'F' : 'T',
+      ocean.c >= 2.7 ? 'J' : 'P'
+    ].join('');
+
+
     const prompt = `
 Contexto de Evaluación:
 ${datosCandidato}
@@ -150,6 +179,7 @@ ${resultados}
 Datos Técnicos de Ajuste:
 - PUNTAJE DE AJUSTE CALCULADO: ${scoreMatematico}/100
 - DICTAMEN TÉCNICO: ${dictamenHumano}
+- PERFIL MBTI ESTIMADO: ${mbti}
 
 Instrucciones de Redacción (Protocolo AGENTE DE ANÁLISIS HUMAN-CENTRIC):
 Eres un Agente de Diagnóstico Psicodiagnóstico de alta gama. Tu redacción debe ser:
@@ -190,6 +220,7 @@ Devuelve EXCLUSIVAMENTE un JSON válido con esta estructura exacta:
   "ajusteCargo": { "score": ${scoreMatematico}, "analisis": "..." },
   "recomendacion": "${dictamenFinal}",
   "fundamentacion": "...",
+  "mbtiType": "${mbti}",
   "ajusteMbti": "...",
   "interpretacionPorFactor": { 
      "etica": "...", 
