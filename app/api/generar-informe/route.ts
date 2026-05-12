@@ -7,7 +7,7 @@ export async function POST(req: Request) {
     const { candidato, proceso, sesiones } = payload;
 
     if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ error: 'La llave de API no está configurada.' }, { status: 500 });
+      return NextResponse.json({ error: 'Falta GEMINI_API_KEY' }, { status: 500 });
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -78,20 +78,17 @@ export async function POST(req: Request) {
     const prompt = `
 Contexto de Evaluación:
 Candidato: ${candidato.nombre} ${candidato.apellido}
-Proceso: ${proceso?.nombre || 'N/A'} - Cargo: ${proceso?.cargo || 'N/A'}
+Cargo: ${proceso?.cargo || 'N/A'}
 Resultados de Tests: ${JSON.stringify(sesiones.map(s => ({ test: s.test_id, data: s.puntaje_bruto })))}
 
-Datos Técnicos de Referencia (CONFIDENCIAL):
-- AJUSTE AL PERFIL: ${scoreSeguro}%
-- DICTAMEN TÉCNICO: ${dictamenHumano}
-- PERFIL CONDUCTUAL (MBTI): ${mbtiFinalCalculado}
+Referencia Técnica: Ajuste ${scoreSeguro}% - MBTI: ${mbtiFinalCalculado}
 
 Instrucciones de Redacción (Protocolo AGENTE DE ANÁLISIS HUMAN-CENTRIC):
 Eres un Agente de Diagnóstico Psicodiagnóstico de alta gama. Tu redacción debe ser:
 1. PROFESIONAL Y HUMANA: Tono ejecutivo. Describe la "Arquitectura Conductual".
 2. SILENCIO TÉCNICO: PROHIBIDO mencionar etiquetas como "PUNTAJE", "NaN", "SCORE" o nombres de variables.
 3. NO-MAXIMALISTA: Prohibido usar: "excepcional", "sobresaliente", "excelente". Usa: "destacado", "notable", "adecuado", "claro".
-4. PROFUNDIDAD ANALÍTICA: Explica el IMPACTO organizacional de cada rasgo. 1) Tendencia, 2) Mecanismo, 3) Impacto.
+4. PROFUNDIDAD ANALÍTICA: Explica el IMPACTO organizacional de cada rasgo.
 
 Estructura de Contenido:
 - "resumenEjecutivo": Síntesis estratégica (2 párrafos).
@@ -106,8 +103,8 @@ Estructura de Contenido:
 Devuelve EXCLUSIVAMENTE un JSON válido.
 `;
 
-    // 4. LLAMADA AL NUEVO MODELO (GEMINI-2.5-FLASH-LATEST)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-latest' });
+    // 4. LLAMADA AL MODELO SELECCIONADO (GEMINI-2.5-FLASH-LITE)
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
     const result = await model.generateContent(prompt);
     const text = (await result.response).text();
     
