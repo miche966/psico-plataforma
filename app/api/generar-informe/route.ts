@@ -3,15 +3,23 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 
 export async function POST(req: Request) {
   try {
-    const { candidato, proceso, sesiones } = await req.json()
+    console.log('[DEBUG] Recibiendo petición para generar informe...');
+    const payload = await req.json();
+    const { candidato, proceso, sesiones } = payload;
 
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ error: 'La llave de API de Gemini no está configurada.' }, { status: 500 })
+    if (!candidato || !sesiones) {
+        console.error('[ERROR] Datos insuficientes en el payload');
+        return NextResponse.json({ error: 'Faltan datos del candidato o sesiones.' }, { status: 400 });
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+    if (!process.env.GEMINI_API_KEY) {
+      console.error('[ERROR] GEMINI_API_KEY no configurada');
+      return NextResponse.json({ error: 'Configuración de API incompleta.' }, { status: 500 });
+    }
 
-    // 1. Re-mapeo de competencias para el cálculo
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+    // 1. Re-mapeo de competencias
     const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
       'Orientación al cliente': { amabilidad: 4.5, responsabilidad: 4 },
       'Orientación a resultados': { responsabilidad: 5, extraversion: 4 },
@@ -30,7 +38,7 @@ export async function POST(req: Request) {
       'Responsabilidad': { responsabilidad: 5 }
     };
 
-    // 2. Cálculo de Score Matemático
+    console.log('[DEBUG] Calculando score matemático...');
     let scoreMatematico = 0;
     const reqs = proceso?.competencias_requeridas || [];
     
@@ -41,22 +49,19 @@ export async function POST(req: Request) {
         const mapping = COMPETENCIAS_MAPPING[r.competencia];
         sesiones.forEach((s: any) => {
           const d = s.puntaje_bruto?.por_factor || s.puntaje_bruto || {};
-          const keyNormalizada = r.competencia?.toLowerCase()?.trim();
-          if (d[keyNormalizada]) valCand = d[keyNormalizada];
+          const k = r.competencia?.toLowerCase()?.trim();
+          if (d[k]) valCand = d[k];
           else if (mapping) {
-             Object.entries(mapping).forEach(([mk, mv]) => {
-                if (d[mk]) valCand = d[mk];
-             });
+             Object.entries(mapping).forEach(([mk, mv]) => { if (d[mk]) valCand = d[mk]; });
           }
         });
         pcts.push(Math.min(100, Math.round((valCand / (r.nivel || 3)) * 100)));
       });
       scoreMatematico = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
     }
-
     const scoreSeguro = isNaN(scoreMatematico) ? 0 : scoreMatematico;
 
-    // 3. Estimación MBTI
+    console.log('[DEBUG] Estimando MBTI...');
     let ocean = { e: 2.5, c: 2.5, a: 2.5, o: 2.5, n: 2.5 };
     sesiones.forEach((s: any) => {
       const d = s.puntaje_bruto || {};
@@ -74,42 +79,29 @@ export async function POST(req: Request) {
       ocean.c >= 2.7 ? 'J' : 'P'
     ].join('');
 
-    // 4. Preparación del Prompt
-    const prompt = `
-Contexto: ${candidato.nombre} ${candidato.apellido} - Cargo: ${proceso?.cargo || 'N/A'}
-Resultados: ${JSON.stringify(sesiones.map(s => ({ test: s.test_id, data: s.puntaje_bruto })))}
-Referencia Técnica: Ajuste ${scoreSeguro}%, MBTI: ${mbtiCalculadoFinal}
-
-Instrucciones:
-- Tono ejecutivo. PROHIBIDO mencionar etiquetas técnicas como "PUNTAJE" o "NaN".
-- Fortalezas: 3-5 puntos relevantes.
-- Oportunidades de Mejora: 2-4 puntos identificados.
-
-Devuelve JSON exacto:
-{
-  "resumenEjecutivo": "...",
-  "fortalezas": ["..."],
-  "oportunidadesMejora": ["..."],
-  "ajusteCargo": { "score": ${scoreSeguro}, "analisis": "..." },
-  "recomendacion": "recomendado | con_reservas | no_recomendado",
-  "fundamentacion": "...",
-  "mbtiType": "${mbtiCalculadoFinal}",
-  "ajusteMbti": "...",
-  "interpretacionPorFactor": { "perfil": "Análisis cualitativo del evaluado" },
-  "metaCompetencias": { "liderazgo": 80, "adaptabilidad": 70, "resiliencia": 75, "colaboracion": 85, "comunicacion": 80 }
-}
-`;
+    console.log('[DEBUG] Llamando a Gemini...');
+    const prompt = `Contexto: ${candidato.nombre} - Score: ${scoreSeguro}% - MBTI: ${mbtiCalculadoFinal}. 
+    Resultados: ${JSON.stringify(sesiones.map(s => ({ id: s.test_id, p: s.puntaje_bruto })))}
+    Genera un informe psicométrico en JSON con: resumenEjecutivo, fortalezas(3-5), oportunidadesMejora(2-4), ajusteCargo{score, analisis}, recomendacion, fundamentacion, mbtiType, ajusteMbti, interpretacionPorFactor, metaCompetencias.`;
 
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
     const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const resultado = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+    const text = result.response.text();
 
+    console.log('[DEBUG] Respuesta de IA recibida, parseando...');
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonMatch ? jsonMatch[0] : text;
+    const resultado = JSON.parse(jsonStr);
+
+    console.log('[DEBUG] Informe generado con éxito');
     return NextResponse.json(resultado);
+
   } catch (error: any) {
-    console.error('Error en Generación:', error.message);
-    return NextResponse.json({ error: 'Error al procesar el informe.', detalle: error.message }, { status: 500 });
+    console.error('[FATAL ERROR] Error en route.ts:', error.message);
+    console.error(error.stack);
+    return NextResponse.json({ 
+        error: 'Error interno en el motor de IA.', 
+        detalle: error.message 
+    }, { status: 500 });
   }
 }
