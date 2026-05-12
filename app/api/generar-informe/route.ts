@@ -12,82 +12,80 @@ export async function POST(req: Request) {
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-    // 1. SINCRONIZACIÓN DE SCORE (Priorizamos el dato real del frontend)
+    // 1. SINCRONIZACIÓN DE SCORE
     let scoreFinal = actual?.ajusteCargo?.score || 0;
     
-    // Si el frontend no envió el score, intentamos el cálculo de respaldo (backup)
-    if (scoreFinal === 0) {
-        const COMPETENCIAS_MAPPING: Record<string, any> = {
-            'Orientación al cliente': { amabilidad: 4.5, responsabilidad: 4 },
-            'Liderazgo': { extraversion: 5, responsabilidad: 4.5, neuroticismo: 1.5 },
-            'Responsabilidad': { responsabilidad: 5 }
-        };
-        let pcts: number[] = [];
-        (proceso?.competencias_requeridas || []).forEach((r: any) => {
-            let valCand = 2.5;
-            sesiones.forEach((s: any) => {
-                const d = s.puntaje_bruto?.por_factor || s.puntaje_bruto || {};
-                if (d[r.competencia?.toLowerCase()]) valCand = d[r.competencia.toLowerCase()];
-            });
-            pcts.push(Math.min(100, Math.round((valCand / (r.nivel || 3)) * 100)));
-        });
-        if (pcts.length > 0) scoreFinal = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
-    }
+    // 2. NORMALIZACIÓN Y EXTRACCIÓN DE FACTORES (EL "BUZÓN" UNIFICADO)
+    const factoresCrudos: Record<string, number> = {};
+    const NORMALIZACION_MAP: Record<string, string> = {
+        'relaciones': 'relaciones',
+        'relaciones interpersonales': 'relaciones',
+        'relaciones interpersonales y clima': 'relaciones',
+        'claridad_rol': 'claridad_rol',
+        'claridad de rol': 'claridad_rol',
+        'percepción de claridad de rol': 'claridad_rol',
+        'burnout': 'burnout',
+        'riesgo de agotamiento': 'burnout',
+        'equilibrio': 'equilibrio',
+        'balance vida-trabajo': 'equilibrio',
+        'extraversion': 'extraversion',
+        'amabilidad': 'amabilidad',
+        'responsabilidad': 'responsabilidad',
+        'neuroticismo': 'neuroticismo',
+        'apertura': 'apertura'
+    };
 
-    // 2. EXTRACCIÓN DE FACTORES PARA LA IA (OCEAN + BIENESTAR)
-    const factoresEncontrados: Record<string, number> = {};
     sesiones.forEach((s: any) => {
         const scan = (obj: any) => {
             if (!obj || typeof obj !== 'object') return;
             Object.entries(obj).forEach(([k, v]) => {
-                const key = k.toLowerCase().trim();
-                if (typeof v === 'number') factoresEncontrados[key] = v;
+                const rawKey = k.toLowerCase().trim();
+                const cleanKey = NORMALIZACION_MAP[rawKey] || rawKey;
+                if (typeof v === 'number') factoresCrudos[cleanKey] = v;
                 if (typeof v === 'object') scan(v);
             });
         };
         scan(s.puntaje_bruto);
     });
 
-    // 3. PROMPT DE ALTA GAMA CON FOCO EN NARRATIVAS INDIVIDUALES
     const prompt = `
-Eres un Consultor Senior en Psicodiagnóstico Laboral. Tu tarea es generar un informe PREMIUM para:
+Eres un Consultor Senior en Psicodiagnóstico. Genera un informe PREMIUM para:
 Candidato: ${candidato.nombre} ${candidato.apellido}
-Cargo: ${proceso?.cargo || 'N/A'}
-Ajuste Calculado: ${scoreFinal}%
+Puesto: ${proceso?.cargo || 'N/A'}
+Ajuste: ${scoreFinal}%
 
-DATOS TÉCNICOS DETECTADOS:
-${JSON.stringify(factoresEncontrados)}
+DATOS PSICOMÉTRICOS (FACTORES):
+${JSON.stringify(factoresCrudos)}
 
-INSTRUCCIONES DE REDACCIÓN (PROTOCOLO HUMAN-CENTRIC):
-1. TONO: Profesional, ejecutivo y humano. PROHIBIDO usar palabras como "excepcional", "perfecto" o "sobresaliente". Usa "notable", "adecuado", "consistente".
-2. SILENCIO TÉCNICO: No menciones puntajes numéricos dentro de los textos. Describe conductas.
-3. NARRATIVA POR FACTOR: Debes generar una descripción cualitativa única para CADA uno de estos factores si están presentes en los datos:
-   - Relaciones interpersonales
-   - Claridad de rol
-   - Equilibrio vida-trabajo
-   - Riesgo de agotamiento
-   - Factores OCEAN (Extraversión, Amabilidad, etc.)
-   Cada descripción debe explicar: 1) Tendencia, 2) Mecanismo diario y 3) Impacto organizacional.
+INSTRUCCIONES DE REDACCIÓN (HUMAN-CENTRIC PREMIUM):
+1. TONO: Profesional, humano, sin maximalismos (evita: excepcional, extraordinario, excelente).
+2. DESCRIPCIONES: Genera un análisis de alta gama (Tendencia, Mecanismo e Impacto) para cada factor encontrado.
+3. LLAVES OBLIGATORIAS: Debes usar EXACTAMENTE estas llaves en el objeto "interpretacionPorFactor":
+   - "relaciones" (para Relaciones Interpersonales)
+   - "claridad_rol" (para Claridad de Rol)
+   - "burnout" (para Riesgo de Agotamiento)
+   - "equilibrio" (para Equilibrio Vida-Trabajo)
+   - "extraversion", "amabilidad", "responsabilidad", "neuroticismo", "apertura".
 
-Devuelve EXCLUSIVAMENTE este JSON:
+Devuelve JSON:
 {
   "resumenEjecutivo": "...",
   "fortalezas": [{"tendencia": "...", "mecanismo": "...", "impacto_organizacional": "..."}],
   "oportunidadesMejora": [{"tendencia": "...", "mecanismo": "...", "impacto_organizacional": "..."}],
-  "ajusteCargo": { "score": ${scoreFinal}, "analisis": "Análisis profundo del ajuste." },
+  "ajusteCargo": { "score": ${scoreFinal}, "analisis": "..." },
   "fundamentacion": "...",
   "interpretacionPorFactor": {
-     "relaciones": "Análisis premium...",
-     "claridad_rol": "Análisis premium...",
-     "burnout": "Análisis premium...",
-     "equilibrio": "Análisis premium...",
+     "relaciones": "Análisis profundo...",
+     "claridad_rol": "Análisis profundo...",
+     "burnout": "Análisis profundo...",
+     "equilibrio": "Análisis profundo...",
      "extraversion": "...",
      "amabilidad": "...",
      "responsabilidad": "...",
      "neuroticismo": "...",
      "apertura": "..."
   },
-  "recomendacion": "recomendado | con_reservas | no_recomendado",
+  "recomendacion": "...",
   "metaCompetencias": { "liderazgo": 80, "adaptabilidad": 80, "resiliencia": 80, "colaboracion": 80, "comunicacion": 80 }
 }
 `;
@@ -98,9 +96,7 @@ Devuelve EXCLUSIVAMENTE este JSON:
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const resultado = JSON.parse(jsonMatch ? jsonMatch[0] : text);
 
-    // Aseguramos que el score de ajuste sea el que enviamos, no uno inventado por la IA
     resultado.ajusteCargo.score = scoreFinal;
-
     return NextResponse.json(resultado);
 
   } catch (error: any) {
