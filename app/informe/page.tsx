@@ -674,6 +674,15 @@ function InformePageContent() {
             const regex = new RegExp(mal, 'gi')
             limpio = limpio.replace(regex, bien)
           })
+
+          // 4. Limpieza final de artefactos técnicos y normalización gramatical
+          limpio = limpio
+            .replace(/NaN/g, 'adecuado')
+            .replace(/PUNTAJE DE AJUSTE/gi, 'nivel de adecuación')
+            .trim()
+
+          // 5. Autocorrección de capitalización (Mayúscula al inicio de cada oración)
+          limpio = limpio.replace(/(^\s*\w|[\.\!\?]\s+\w)/g, c => c.toUpperCase())
           
           return limpio
         }

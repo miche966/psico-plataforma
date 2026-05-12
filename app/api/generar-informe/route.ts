@@ -169,6 +169,17 @@ export async function POST(req: Request) {
     ].join('');
 
 
+    // BLINDAJE ANTI-NaN: Aseguramos que el score sea siempre un número válido antes de enviarlo a la IA
+    const scoreSeguro = isNaN(scoreMatematico) ? 0 : scoreMatematico;
+
+    const mbti = [
+      ocean.e >= 2.7 ? 'E' : 'I',
+      ocean.o >= 2.7 ? 'N' : 'S',
+      ocean.a >= 2.7 ? 'F' : 'T',
+      ocean.c >= 2.7 ? 'J' : 'P'
+    ].join('');
+
+
     const prompt = `
 Contexto de Evaluación:
 ${datosCandidato}
@@ -176,15 +187,16 @@ ${datosCandidato}
 Resultados de Pruebas:
 ${resultados}
 
-Datos Técnicos de Ajuste:
-- PUNTAJE DE AJUSTE CALCULADO: ${scoreMatematico}/100
-- DICTAMEN TÉCNICO: ${dictamenHumano}
-- PERFIL MBTI ESTIMADO: ${mbti}
+Datos Técnicos de Referencia (CONFIDENCIAL - NO MENCIONAR):
+- NIVEL DE AJUSTE: ${scoreSeguro}/100
+- DICTAMEN: ${dictamenHumano}
+- PERFIL MBTI: ${mbti}
 
 Instrucciones de Redacción (Protocolo AGENTE DE ANÁLISIS HUMAN-CENTRIC):
 Eres un Agente de Diagnóstico Psicodiagnóstico de alta gama. Tu redacción debe ser:
 1. PROFESIONAL Y HUMANA: Usa un tono ejecutivo pero cercano. No reduzcas al candidato a números; describe su "Arquitectura Conductual".
-2. NO-MAXIMALISTA (CRÍTICO): Prohibido usar: "excepcional", "sobresaliente", "inquebrantable", "excelente", "maravilloso", "perfecto", "agudo". 
+2. SILENCIO TÉCNICO: PROHIBIDO mencionar etiquetas internas como "PUNTAJE DE AJUSTE", "NaN", "SCORE" o nombres de variables. Traduce los datos técnicos a lenguaje narrativo.
+3. NO-MAXIMALISTA (CRÍTICO): Prohibido usar: "excepcional", "sobresaliente", "inquebrantable", "excelente", "maravilloso", "perfecto", "agudo". 
    - Reemplaza por: "destacado", "notable", "consistente", "sólido", "adecuado", "claro".
 3. RIQUEZA INFORMATIVA: Evita obviedades. Explica el IMPACTO organizacional de cada rasgo.
 4. SIN TECNICISMOS: No menciones nombres de tests (DASS-21, Big Five, etc.). Habla de "equilibrio emocional" o "tendencias de personalidad".
