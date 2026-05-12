@@ -608,50 +608,96 @@ function InformePageContent() {
       })
 
       if (!res.ok) {
-        throw new Error(`Servidor Vercel respondió con código ${res.status}.`);
+        throw new Error(`Servidor Vercel respondió con código ${res.status}. Esto suele ser un Timeout (10s) o un error de configuración.`);
       }
 
       const data = await res.json()
+      
       const rawRes = data.informe || data
       
       if (rawRes && !data.error) {
+        // Humanizador de factores técnicos y tono profesional (Consultoría)
         const humanizar = (t: string) => {
           if (!t || typeof t !== 'string') return t
-          let limpio = t.replace(/\*\*/g, '').trim()
+          let limpio = t.replace(/\*\*/g, '')
+
+          // 1. Filtro de nombre: reemplaza el nombre del evaluado por "El candidato"
           if (candidato?.nombre) {
-            const regexNombre = new RegExp(candidato.nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')
+            const nombreEscaped = candidato.nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const regexNombre = new RegExp(nombreEscaped, 'gi')
             limpio = limpio.replace(regexNombre, 'El candidato')
           }
-          return limpio.replace(/(^\s*\w|[\.\!\?]\s+\w)/g, c => c.toUpperCase())
+
+          // 2. Normalización de factores técnicos (ETQ)
+          Object.entries(ETQ).forEach(([key, label]) => {
+            const variant = key.replace(/_/g, '[\\s\\-_]')
+            const regex = new RegExp(`['"]?${variant}['"]?`, 'gi')
+            limpio = limpio.replace(regex, label)
+          })
+
+          // 3. Eliminación de maximalismos y lenguaje informal
+          const prohibidas: Record<string, string> = {
+            'arquitectura conductual': 'enfoque profesional',
+            'arquitectura': 'estilo de comportamiento',
+            'eficiencia cognitiva': 'efectividad operativa',
+            'recurso': 'profesional',
+            'un recurso': 'un perfil',
+            'como recurso': 'como profesional',
+            'profunda adherencia': 'adherencia consistente',
+            'manejo excepcional': 'manejo efectivo',
+            'inteligencia emocional': 'estabilidad emocional',
+            'IE aplicada': 'gestión de emociones',
+            'apego a normas y ética': 'sentido ético',
+            'solvencia': 'adecuación',
+            'destacada': 'notable',
+            'consistente': 'clara',
+            'excepcional': 'destacada',
+            'sobresaliente': 'notable',
+            'superior': 'destacado',
+            'dominio superior': 'manejo adecuado',
+            'capacidad superior': 'capacidad clara',
+            'resiliencia excepcional': 'resiliencia consistente',
+            'adherencia inquebrantable': 'adherencia consistente',
+            'decisiones objetiva': 'decisiones objetivas',
+            'DASS-21': 'equilibrio emocional',
+            'DASS21': 'equilibrio emocional',
+            'MBTI': 'perfil conductual',
+            'ICAR': 'capacidad cognitiva',
+            'SJT': 'juicio situacional',
+            'discurso inferido': 'comunicación observada',
+            'magnífico': 'adecuado',
+            'maravilloso': 'positivo',
+            'increíble': 'relevante'
+          }
+          
+          Object.entries(prohibidas).forEach(([mal, bien]) => {
+            const regex = new RegExp(mal, 'gi')
+            limpio = limpio.replace(regex, bien)
+          })
+
+          // 4. Limpieza final de artefactos técnicos y normalización gramatical
+          limpio = limpio
+            .replace(/NaN/g, 'adecuado')
+            .replace(/PUNTAJE DE AJUSTE/gi, 'nivel de adecuación')
+            .trim()
+
+          // 5. Autocorrección de capitalización (Mayúscula al inicio de cada oración)
+          limpio = limpio.replace(/(^\s*\w|[\.\!\?]\s+\w)/g, c => c.toUpperCase())
+          
+          return limpio
         }
 
+        // BLINDAJE: Recuperamos el score que el Frontend ya calculó con éxito (ej: 61%)
         const scoreFrontend = inf.ajusteCargo?.score || 0;
         
         const nuevoInforme = {
           ...rawRes,
           fundamentacion: humanizar(rawRes.fundamentacion),
-          fortalezas: (rawRes.fortalezas || []).map((f: any) => {
-             if (typeof f === 'object') return {
-                tendencia: humanizar(f.tendencia),
-                mecanismo: humanizar(f.mecanismo),
-                impacto_organizacional: humanizar(f.impacto_organizacional)
-             }
-             return humanizar(f)
-          }),
-          oportunidadesMejora: (rawRes.oportunidadesMejora || rawRes.areasDesarrollo || []).map((f: any) => {
-             if (typeof f === 'object') return {
-                tendencia: humanizar(f.tendencia),
-                mecanismo: humanizar(f.mecanismo),
-                impacto_organizacional: humanizar(f.impacto_organizacional)
-             }
-             return humanizar(f)
-          }),
-          interpretacionPorFactor: {
-             ...(inf.interpretacionPorFactor || {}),
-             ...Object.fromEntries(
-                Object.entries(rawRes.interpretacionPorFactor || {}).map(([k, v]) => [k, humanizar(v as string)])
-             )
-          },
+          fortalezas: (rawRes.fortalezas || []).map((f: string) => humanizar(f)),
+          oportunidadesMejora: (rawRes.oportunidadesMejora || rawRes.areasDesarrollo || []).map((f: string) => humanizar(f)),
+          interpretacionPorFactor: Object.fromEntries(
+            Object.entries(rawRes.interpretacionPorFactor || {}).map(([k, v]) => [k, humanizar(v as string)])
+          ),
           ajusteCargo: {
             score: scoreFrontend, 
             analisis: humanizar(rawRes.ajusteCargo?.analisis || rawRes.fundamentacion || '')
@@ -666,14 +712,18 @@ function InformePageContent() {
           adaptabilidad: rawRes.metaCompetencias?.adaptabilidad || prev.adaptabilidad,
           resiliencia: rawRes.metaCompetencias?.resiliencia || prev.resiliencia,
           colaboracion: rawRes.metaCompetencias?.colaboracion || prev.colaboracion,
-          comunicacion: rawRes.metaCompetencias?.comunicacion || prev.comunicacion
+          comunicacion: rawRes.metaCompetencias?.comunicacion || prev.comunicacion,
+          alertasTab: prev.alertasTab,
+          alertasCopia: prev.alertasCopia,
+          confianza: prev.confianza,
+          tiempoPromedio: prev.tiempoPromedio
         }))
       } else if (data.error) {
         alert('Error IA: ' + data.error)
       }
     } catch (err: any) {
       console.error(err)
-      alert(`Error: ${err.message}`)
+      alert(`Error de conexión: ${err.message || 'Error desconocido'}. Revisa la consola para más detalles.`)
     } finally {
       setGenerating(false)
     }
