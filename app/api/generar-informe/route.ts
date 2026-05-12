@@ -161,14 +161,6 @@ export async function POST(req: Request) {
       });
     }
 
-    const mbti = [
-      ocean.e >= 2.7 ? 'E' : 'I',
-      ocean.o >= 2.7 ? 'N' : 'S',
-      ocean.a >= 2.7 ? 'F' : 'T',
-      ocean.c >= 2.7 ? 'J' : 'P'
-    ].join('');
-
-
     // BLINDAJE ANTI-NaN: Aseguramos que el score sea siempre un número válido antes de enviarlo a la IA
     const scoreSeguro = isNaN(scoreMatematico) ? 0 : scoreMatematico;
 
