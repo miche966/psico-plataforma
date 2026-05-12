@@ -7,12 +7,12 @@ export async function POST(req: Request) {
     const { candidato, proceso, sesiones } = payload;
 
     if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ error: 'Falta GEMINI_API_KEY' }, { status: 500 });
+      return NextResponse.json({ error: 'La llave de API no está configurada.' }, { status: 500 });
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-    // 1. Re-mapeo de competencias
+    // 1. LÓGICA TÉCNICA (Mapeo de Competencias)
     const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
       'Orientación al cliente': { amabilidad: 4.5, responsabilidad: 4 },
       'Orientación a resultados': { responsabilidad: 5, extraversion: 4 },
@@ -31,7 +31,6 @@ export async function POST(req: Request) {
       'Responsabilidad': { responsabilidad: 5 }
     };
 
-    // 2. Cálculo de Score Matemático
     let scoreMatematico = 0;
     const reqs = proceso?.competencias_requeridas || [];
     
@@ -54,7 +53,7 @@ export async function POST(req: Request) {
     }
     const scoreSeguro = isNaN(scoreMatematico) ? 0 : scoreMatematico;
 
-    // 3. Estimación MBTI (OCEAN)
+    // 2. ESTIMACIÓN MBTI (OCEAN)
     let ocean = { e: 2.5, c: 2.5, a: 2.5, o: 2.5, n: 2.5 };
     sesiones.forEach((s: any) => {
       const d = s.puntaje_bruto || {};
@@ -72,38 +71,46 @@ export async function POST(req: Request) {
       ocean.c >= 2.7 ? 'J' : 'P'
     ].join('');
 
-    // 4. Prompt Ejecutivo
+    const dictamenFinal = scoreSeguro >= 85 ? 'recomendado' : scoreSeguro >= 70 ? 'con_reservas' : 'no_recomendado';
+    const dictamenHumano = dictamenFinal === 'recomendado' ? 'RECOMENDADO' : dictamenFinal === 'con_reservas' ? 'RECOMENDADO CON RESERVAS' : 'NO RECOMENDADO';
+
+    // 3. PROMPT DE ALTA GAMA (Human-Centric Protocol)
     const prompt = `
-Contexto Candidato: ${candidato.nombre} ${candidato.apellido}
-Cargo: ${proceso?.cargo || 'N/A'}
-Resultados de Tests: ${JSON.stringify(sesiones.map(s => ({ id: s.test_id, p: s.puntaje_bruto })))}
-Métricas de Ajuste: ${scoreSeguro}% - MBTI: ${mbtiFinalCalculado}
+Contexto de Evaluación:
+Candidato: ${candidato.nombre} ${candidato.apellido}
+Proceso: ${proceso?.nombre || 'N/A'} - Cargo: ${proceso?.cargo || 'N/A'}
+Resultados de Tests: ${JSON.stringify(sesiones.map(s => ({ test: s.test_id, data: s.puntaje_bruto })))}
 
-Instrucciones:
-- Genera un diagnóstico psicométrico profundo y profesional.
-- SILENCIO TÉCNICO: PROHIBIDO usar etiquetas como "PUNTAJE", "NaN", "SCORE" o nombres de variables en el texto.
-- DINAMISMO: Identifica entre 3-5 fortalezas y 2-4 áreas de desarrollo basadas en la evidencia.
+Datos Técnicos de Referencia (CONFIDENCIAL - NO CITAR ETIQUETAS):
+- AJUSTE AL PERFIL: ${scoreSeguro}%
+- DICTAMEN TÉCNICO: ${dictamenHumano}
+- PERFIL CONDUCTUAL (MBTI): ${mbtiFinalCalculado}
 
-Devuelve EXCLUSIVAMENTE un JSON válido:
-{
-  "resumenEjecutivo": "...",
-  "fortalezas": ["...", "..."],
-  "oportunidadesMejora": ["...", "..."],
-  "ajusteCargo": { "score": ${scoreSeguro}, "analisis": "..." },
-  "recomendacion": "recomendado | con_reservas | no_recomendado",
-  "fundamentacion": "...",
-  "mbtiType": "${mbtiFinalCalculado}",
-  "ajusteMbti": "...",
-  "interpretacionPorFactor": { "perfil": "Analisis narrativo" },
-  "metaCompetencias": { "liderazgo": 0, "adaptabilidad": 0, "resiliencia": 0, "colaboracion": 0, "comunicacion": 0 }
-}
+Instrucciones de Redacción (Protocolo AGENTE DE ANÁLISIS HUMAN-CENTRIC):
+Eres un Agente de Diagnóstico Psicodiagnóstico de alta gama. Tu redacción debe ser:
+1. PROFESIONAL Y HUMANA: Usa un tono ejecutivo pero cercano. No reduzcas al candidato a números; describe su "Arquitectura Conductual".
+2. SILENCIO TÉCNICO: PROHIBIDO mencionar etiquetas como "PUNTAJE DE AJUSTE", "NaN", "SCORE" o nombres de variables. Traduce los datos técnicos a lenguaje narrativo.
+3. NO-MAXIMALISTA (CRÍTICO): Prohibido usar: "excepcional", "sobresaliente", "inquebrantable", "excelente", "maravilloso", "perfecto", "agudo". 
+   - Reemplaza por: "destacado", "notable", "consistente", "sólido", "adecuado", "claro".
+4. PROFUNDIDAD ANALÍTICA: Explica el IMPACTO organizacional de cada rasgo. 1) Tendencia observada, 2) Mecanismo de ejecución, 3) Impacto/Valor.
+
+Estructura de Contenido:
+1. "resumenEjecutivo": Síntesis estratégica (2 párrafos).
+2. "fortalezas": Lista de entre 3 y 5 competencias críticas.
+3. "oportunidadesMejora": Lista de entre 2 y 4 áreas de desarrollo identificadas.
+4. "ajusteCargo": { "score": ${scoreSeguro}, "analisis": "Análisis profundo de idoneidad contra el cargo." }
+5. "fundamentacion": Argumentación técnica de la recomendación.
+6. "ajusteMbti": Cómo su perfil conductual influye en su desempeño diario.
+7. "interpretacionPorFactor": { "perfil": "Análisis cualitativo integral de sus dimensiones evaluadas." }
+8. "metaCompetencias": { "liderazgo": 0-100, "adaptabilidad": 0-100, "resiliencia": 0-100, "colaboracion": 0-100, "comunicacion": 0-100 }
+
+Devuelve EXCLUSIVAMENTE un JSON válido.
 `;
 
-    // 5. LLAMADA AL MODELO HABILITADO (GEMINI-PRO)
+    // 4. LLAMADA AL MODELO AUTORIZADO
     const model = genAI.getGenerativeModel({ model: 'gemini-pro-latest' });
     const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const text = (await result.response).text();
     
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const resultado = JSON.parse(jsonMatch ? jsonMatch[0] : text);
@@ -111,7 +118,7 @@ Devuelve EXCLUSIVAMENTE un JSON válido:
     return NextResponse.json(resultado);
 
   } catch (error: any) {
-    console.error('[FATAL] Error en motor IA:', error.message);
+    console.error('[FATAL ERROR] Motor IA:', error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
