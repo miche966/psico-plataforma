@@ -180,6 +180,7 @@ CRITERIO DE REDACCIÓN (CONSULTORÍA ESTRATÉGICA):
 - Tono de Auditoría: Redacción en tercera persona, objetiva y basada en evidencia.
 - Prohibido maximalismos: No uses "excepcional", "profunda", "inquebrantable", "sobresaliente".
 - Evita lo genérico: El análisis debe ser específico para el cargo (Jurídico/Recupero), pero sin sonar informal.
+- FORMATO LIMPIO: PROHIBIDO usar negritas (**), cursivas o cualquier marca de formato Markdown. Entrega solo texto plano profesional.
 
 Devuelve EXCLUSIVAMENTE un JSON válido con esta estructura exacta:
 {

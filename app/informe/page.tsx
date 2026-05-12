@@ -603,7 +603,7 @@ function InformePageContent() {
         // Humanizador de factores técnicos y tono profesional (Consultoría)
         const humanizar = (t: string) => {
           if (!t || typeof t !== 'string') return t
-          let limpio = t
+          let limpio = t.replace(/\*\*/g, '')
 
           // 1. Filtro de nombre: reemplaza el nombre del evaluado por "El candidato"
           if (candidato?.nombre) {
@@ -818,7 +818,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
               Volver al Panel
             </Link>
             <div>
-              <h1 style={s.title}>Editor de Informe Ejecutivo</h1>
+              <h1 style={s.title}>Informe Psicolaboral Final</h1>
               <p style={s.subtitle}>Candidato: <span style={{ color: '#1e293b', fontWeight: '700' }}>{candidato.nombre} {candidato.apellido}</span></p>
             </div>
           </div>
