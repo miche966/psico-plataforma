@@ -164,7 +164,7 @@ export async function POST(req: Request) {
     // BLINDAJE ANTI-NaN: Aseguramos que el score sea siempre un número válido antes de enviarlo a la IA
     const scoreSeguro = isNaN(scoreMatematico) ? 0 : scoreMatematico;
 
-    const mbti = [
+    const mbtiCalculado = [
       ocean.e >= 2.7 ? 'E' : 'I',
       ocean.o >= 2.7 ? 'N' : 'S',
       ocean.a >= 2.7 ? 'F' : 'T',
@@ -182,7 +182,7 @@ ${resultados}
 Datos Técnicos de Referencia (CONFIDENCIAL - NO MENCIONAR):
 - NIVEL DE AJUSTE: ${scoreSeguro}/100
 - DICTAMEN: ${dictamenHumano}
-- PERFIL MBTI: ${mbti}
+- PERFIL MBTI: ${mbtiCalculado}
 
 Instrucciones de Redacción (Protocolo AGENTE DE ANÁLISIS HUMAN-CENTRIC):
 Eres un Agente de Diagnóstico Psicodiagnóstico de alta gama. Tu redacción debe ser:
@@ -224,7 +224,7 @@ Devuelve EXCLUSIVAMENTE un JSON válido con esta estructura exacta:
   "ajusteCargo": { "score": ${scoreMatematico}, "analisis": "..." },
   "recomendacion": "${dictamenFinal}",
   "fundamentacion": "...",
-  "mbtiType": "${mbti}",
+  "mbtiType": "${mbtiCalculado}",
   "ajusteMbti": "...",
   "interpretacionPorFactor": { 
      "etica": "...", 
