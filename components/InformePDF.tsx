@@ -199,8 +199,10 @@ export const InformePDF = ({ data }: any) => {
       const clr = clrOf(vNorm);
       const fk = `${sid}_${factor}`;
 
-      // Narrativas fallback (simplified version of the deep ones)
-      const desc = inf.interpretacionPorFactor?.[fk] || 'Muestra un desempeño funcional acorde a los requerimientos del cargo evaluado.';
+      // Narrativas fallback e integración con IA profunda
+      const desc = inf.interpretacionPorFactor?.[fk] || 
+                   inf.interpretacionPorFactor?.[factor.toLowerCase()] || 
+                   'Muestra un desempeño funcional acorde a los requerimientos del cargo evaluado.';
 
       return (
         <View key={factor} style={styles.factorBlock}>

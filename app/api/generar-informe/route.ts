@@ -4,7 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 export async function POST(req: Request) {
   try {
     const payload = await req.json();
-    const { candidato, proceso, sesiones } = payload;
+    const { candidato, proceso, sesiones, actual } = payload;
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: 'Falta llave de API.' }, { status: 500 });
@@ -12,114 +12,82 @@ export async function POST(req: Request) {
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-    // 1. LÓGICA DE CÁLCULO TÉCNICO (SCORE)
-    const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
-      'Orientación al cliente': { amabilidad: 4.5, responsabilidad: 4 },
-      'Orientación a resultados': { responsabilidad: 5, extraversion: 4 },
-      'Trabajo en equipo': { amabilidad: 5, extraversion: 4 },
-      'Adaptabilidad al cambio': { apertura: 5, neuroticismo: 1.5 },
-      'Integridad': { responsabilidad: 5, amabilidad: 4 },
-      'Iniciativa': { extraversion: 4.5, apertura: 4, responsabilidad: 4 },
-      'Liderazgo': { extraversion: 5, responsabilidad: 4.5, neuroticismo: 1.5 },
-      'Comunicación': { extraversion: 5, amabilidad: 4 },
-      'Negociación': { extraversion: 4.5, amabilidad: 3.5, responsabilidad: 4 },
-      'Planificación y organización': { responsabilidad: 5, apertura: 3.5 },
-      'Tolerancia a la presión': { neuroticismo: 1, responsabilidad: 4.5 },
-      'Pensamiento analítico': { apertura: 4.5, responsabilidad: 4 },
-      'Creatividad e innovación': { apertura: 5, extraversion: 4 },
-      'Autocontrol': { neuroticismo: 1, amabilidad: 4 },
-      'Responsabilidad': { responsabilidad: 5 }
-    };
-
-    let scoreMatematico = 0;
-    const reqs = proceso?.competencias_requeridas || [];
+    // 1. SINCRONIZACIÓN DE SCORE (Priorizamos el dato real del frontend)
+    let scoreFinal = actual?.ajusteCargo?.score || 0;
     
-    if (reqs.length > 0) {
-      const pcts: number[] = [];
-      reqs.forEach((r: any) => {
-        let valCand = 2.5;
-        const mapping = COMPETENCIAS_MAPPING[r.competencia];
-        sesiones.forEach((s: any) => {
-          const d = s.puntaje_bruto?.por_factor || s.puntaje_bruto || {};
-          const keyNormalizada = r.competencia?.toLowerCase()?.trim();
-          if (d[keyNormalizada]) valCand = d[keyNormalizada];
-          else if (mapping) {
-             Object.entries(mapping).forEach(([mk, mv]) => { if (d[mk]) valCand = d[mk]; });
-          }
+    // Si el frontend no envió el score, intentamos el cálculo de respaldo (backup)
+    if (scoreFinal === 0) {
+        const COMPETENCIAS_MAPPING: Record<string, any> = {
+            'Orientación al cliente': { amabilidad: 4.5, responsabilidad: 4 },
+            'Liderazgo': { extraversion: 5, responsabilidad: 4.5, neuroticismo: 1.5 },
+            'Responsabilidad': { responsabilidad: 5 }
+        };
+        let pcts: number[] = [];
+        (proceso?.competencias_requeridas || []).forEach((r: any) => {
+            let valCand = 2.5;
+            sesiones.forEach((s: any) => {
+                const d = s.puntaje_bruto?.por_factor || s.puntaje_bruto || {};
+                if (d[r.competencia?.toLowerCase()]) valCand = d[r.competencia.toLowerCase()];
+            });
+            pcts.push(Math.min(100, Math.round((valCand / (r.nivel || 3)) * 100)));
         });
-        pcts.push(Math.min(100, Math.round((valCand / (r.nivel || 3)) * 100)));
-      });
-      scoreMatematico = Math.round(pcts.reduce((a:number, b:number) => a + b, 0) / pcts.length);
+        if (pcts.length > 0) scoreFinal = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
     }
-    const scoreSeguro = isNaN(scoreMatematico) ? 0 : scoreMatematico;
 
-    // 2. REPARACIÓN DEL TERMÓMETRO MBTI (Búsqueda Profunda de OCEAN)
-    let ocean = { e: 2.5, c: 2.5, a: 2.5, o: 2.5, n: 2.5 };
-    
+    // 2. EXTRACCIÓN DE FACTORES PARA LA IA (OCEAN + BIENESTAR)
+    const factoresEncontrados: Record<string, number> = {};
     sesiones.forEach((s: any) => {
-      const scan = (obj: any) => {
-        if (!obj || typeof obj !== 'object') return;
-        Object.entries(obj).forEach(([k, v]) => {
-          const key = k.toLowerCase().trim();
-          const val = typeof v === 'number' ? v : (typeof v === 'string' ? parseFloat(v) : null);
-          
-          if (val !== null && !isNaN(val)) {
-            // Normalización de escalas (si vienen en 0-100 o 0-20, convertir a 0-5)
-            let normVal = val;
-            if (normVal > 5 && normVal <= 20) normVal = (normVal / 20) * 5;
-            else if (normVal > 20 && normVal <= 100) normVal = (normVal / 100) * 5;
-
-            if (key.includes('extraver')) ocean.e = normVal;
-            if (key.includes('responsab') || key === 'c') ocean.c = normVal;
-            if (key.includes('amabilid') || key === 'a') ocean.a = normVal;
-            if (key.includes('apertura') || key === 'o') ocean.o = normVal;
-            if (key.includes('neurotic') || key === 'n') ocean.n = normVal;
-          }
-          if (typeof v === 'object') scan(v); // Búsqueda recursiva
-        });
-      };
-      scan(s.puntaje_bruto);
+        const scan = (obj: any) => {
+            if (!obj || typeof obj !== 'object') return;
+            Object.entries(obj).forEach(([k, v]) => {
+                const key = k.toLowerCase().trim();
+                if (typeof v === 'number') factoresEncontrados[key] = v;
+                if (typeof v === 'object') scan(v);
+            });
+        };
+        scan(s.puntaje_bruto);
     });
 
-    const mbtiFinalCalculado = [
-      ocean.e >= 2.7 ? 'E' : 'I',
-      ocean.o >= 2.7 ? 'N' : 'S',
-      ocean.a >= 2.7 ? 'F' : 'T',
-      ocean.c >= 2.7 ? 'J' : 'P'
-    ].join('');
-
-    const dictamenFinal = scoreSeguro >= 85 ? 'recomendado' : scoreSeguro >= 70 ? 'con_reservas' : 'no_recomendado';
-    const dictamenHumano = dictamenFinal === 'recomendado' ? 'RECOMENDADO' : dictamenFinal === 'con_reservas' ? 'RECOMENDADO CON RESERVAS' : 'NO RECOMENDADO';
-
-    // 3. PROMPT ESTRATÉGICO (Se mantiene el estilo Human-Centric)
+    // 3. PROMPT DE ALTA GAMA CON FOCO EN NARRATIVAS INDIVIDUALES
     const prompt = `
-Contexto Candidato: ${candidato.nombre} ${candidato.apellido}
-Puesto: ${proceso?.cargo || 'N/A'}
-Resultados: ${JSON.stringify(sesiones.map(s => ({ t: s.test_id, d: s.puntaje_bruto })))}
+Eres un Consultor Senior en Psicodiagnóstico Laboral. Tu tarea es generar un informe PREMIUM para:
+Candidato: ${candidato.nombre} ${candidato.apellido}
+Cargo: ${proceso?.cargo || 'N/A'}
+Ajuste Calculado: ${scoreFinal}%
 
-Parámetros:
-- Ajuste al Puesto: ${scoreSeguro}%
-- Perfil MBTI: ${mbtiFinalCalculado}
-- Recomendación: ${dictamenHumano}
+DATOS TÉCNICOS DETECTADOS:
+${JSON.stringify(factoresEncontrados)}
 
-Instrucciones (Protocolo HUMAN-CENTRIC PREMIUM):
-Genera un diagnóstico de alta gama. 
-1. TONO: Profesional y sobrio. Prohibido maximalismos (excepcional, excelente, etc.).
-2. IMPACTO: Explica Tendencia, Mecanismo e Impacto organizacional.
-3. DINAMISMO: 3-5 fortalezas y 2-4 áreas de desarrollo.
-4. SILENCIO TÉCNICO: Cero menciones a etiquetas internas o código.
+INSTRUCCIONES DE REDACCIÓN (PROTOCOLO HUMAN-CENTRIC):
+1. TONO: Profesional, ejecutivo y humano. PROHIBIDO usar palabras como "excepcional", "perfecto" o "sobresaliente". Usa "notable", "adecuado", "consistente".
+2. SILENCIO TÉCNICO: No menciones puntajes numéricos dentro de los textos. Describe conductas.
+3. NARRATIVA POR FACTOR: Debes generar una descripción cualitativa única para CADA uno de estos factores si están presentes en los datos:
+   - Relaciones interpersonales
+   - Claridad de rol
+   - Equilibrio vida-trabajo
+   - Riesgo de agotamiento
+   - Factores OCEAN (Extraversión, Amabilidad, etc.)
+   Cada descripción debe explicar: 1) Tendencia, 2) Mecanismo diario y 3) Impacto organizacional.
 
-JSON de salida:
+Devuelve EXCLUSIVAMENTE este JSON:
 {
   "resumenEjecutivo": "...",
-  "fortalezas": [],
-  "oportunidadesMejora": [],
-  "ajusteCargo": { "score": ${scoreSeguro}, "analisis": "..." },
-  "recomendacion": "${dictamenFinal}",
+  "fortalezas": [{"tendencia": "...", "mecanismo": "...", "impacto_organizacional": "..."}],
+  "oportunidadesMejora": [{"tendencia": "...", "mecanismo": "...", "impacto_organizacional": "..."}],
+  "ajusteCargo": { "score": ${scoreFinal}, "analisis": "Análisis profundo del ajuste." },
   "fundamentacion": "...",
-  "mbtiType": "${mbtiFinalCalculado}",
-  "ajusteMbti": "...",
-  "interpretacionPorFactor": { "perfil": "..." },
+  "interpretacionPorFactor": {
+     "relaciones": "Análisis premium...",
+     "claridad_rol": "Análisis premium...",
+     "burnout": "Análisis premium...",
+     "equilibrio": "Análisis premium...",
+     "extraversion": "...",
+     "amabilidad": "...",
+     "responsabilidad": "...",
+     "neuroticismo": "...",
+     "apertura": "..."
+  },
+  "recomendacion": "recomendado | con_reservas | no_recomendado",
   "metaCompetencias": { "liderazgo": 80, "adaptabilidad": 80, "resiliencia": 80, "colaboracion": 80, "comunicacion": 80 }
 }
 `;
@@ -129,6 +97,9 @@ JSON de salida:
     const text = (await result.response).text();
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const resultado = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+
+    // Aseguramos que el score de ajuste sea el que enviamos, no uno inventado por la IA
+    resultado.ajusteCargo.score = scoreFinal;
 
     return NextResponse.json(resultado);
 
