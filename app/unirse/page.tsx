@@ -92,7 +92,7 @@ export default function UnirsePage() {
       // 1. Verificar si el candidato ya existe (por email o documento)
       let { data: candidato, error: candError } = await supabase
         .from('candidatos')
-        .select('id')
+        .select('*')
         .or(`email.eq.${form.email},documento.eq.${form.documento}`)
         .maybeSingle()
 
@@ -115,27 +115,58 @@ export default function UnirsePage() {
         
         if (createError) throw createError
         candidato = nuevoCandidato
+      } else {
+        // Si el candidato existe, actualizar sus datos por si cambiaron (opcional, pero profesional)
+        await supabase.from('candidatos').update({
+          nombre: form.nombres,
+          apellido: form.apellidos,
+          edad: parseInt(form.edad),
+          sexo: form.sexo,
+          formacion: form.formacion,
+          profesion: form.profesion
+        }).eq('id', candidato.id)
       }
 
       if (candError) throw candError
 
-      // 2. Crear el vínculo inicial con el proceso (Sesión pendiente)
-      const proceso = procesos.find(p => p.id === form.procesoId)
-      if (proceso) {
-        const slugPrimerTest = proceso.bateria_tests?.[0] || 'bigfive'
-        let testIdFinal = slugPrimerTest
-        if (slugPrimerTest.startsWith('entrevista:')) testIdFinal = slugPrimerTest.split(':')[1]
-        else if (SLUG_TO_ID[slugPrimerTest]) testIdFinal = SLUG_TO_ID[slugPrimerTest]
+      // 2. Verificar si ya tiene el vínculo con el proceso y sesiones creadas
+      const { data: sesionesExistentes } = await supabase
+        .from('sesiones')
+        .select('id')
+        .eq('candidato_id', candidato.id)
+        .eq('proceso_id', form.procesoId)
+        .limit(1)
 
-        await supabase.from('sesiones').insert({
-          candidato_id: candidato.id,
-          proceso_id: form.procesoId,
-          test_id: testIdFinal,
-          estado: 'pendiente'
-        })
+      // 3. Solo crear el vínculo inicial si NO tiene sesiones previas
+      if (!sesionesExistentes || sesionesExistentes.length === 0) {
+        const { data: procData } = await supabase
+          .from('procesos')
+          .select('bateria_tests')
+          .eq('id', form.procesoId)
+          .single()
+
+        if (procData) {
+          const slugPrimerTest = procData.bateria_tests?.[0] || 'bigfive'
+          let testIdFinal = slugPrimerTest
+          if (slugPrimerTest.startsWith('entrevista:')) testIdFinal = slugPrimerTest.split(':')[1]
+          else if (SLUG_TO_ID[slugPrimerTest]) testIdFinal = SLUG_TO_ID[slugPrimerTest]
+
+          await supabase.from('sesiones').insert({
+            candidato_id: candidato.id,
+            proceso_id: form.procesoId,
+            test_id: testIdFinal,
+            estado: 'pendiente'
+          })
+          
+          // Asegurar vínculo en tabla relacional para el panel
+          await supabase.from('candidatos_procesos').upsert({
+            candidato_id: candidato.id,
+            proceso_id: form.procesoId
+          })
+        }
       }
 
-      // 3. Redirigir a la evaluación
+      // 4. Redirigir a la evaluación (Perfil recuperado o nuevo)
       router.push(`/evaluacion?candidato=${candidato.id}&proceso=${form.procesoId}`)
       
     } catch (err: any) {
