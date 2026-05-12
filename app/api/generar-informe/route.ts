@@ -191,8 +191,8 @@ Eres un Agente de Diagnóstico Psicodiagnóstico de alta gama. Tu redacción deb
 
 Estructura de Contenido:
 1. "resumenEjecutivo": Síntesis estratégica. Explica el VALOR del candidato y su proyección en el cargo en 2 párrafos técnicos.
-2. "fortalezas": 3 competencias críticas que representan una ventaja competitiva.
-3. "oportunidadesMejora": 2 áreas de desarrollo descritas de forma profesional.
+2. "fortalezas": Lista de entre 3 y 5 competencias críticas que representen una ventaja competitiva real según los datos.
+3. "oportunidadesMejora": Lista de entre 2 y 4 áreas de desarrollo identificadas, descritas de forma profesional.
 4. "ajusteCargo": { 
       "score": ${scoreMatematico}, 
       "analisis": "Análisis profundo de idoneidad. Compara el perfil contra los desafíos de '${proceso?.cargo || 'la posición'}'. Identifica sintonía profesional y posibles brechas operativas." 
@@ -215,8 +215,8 @@ CRITERIO DE REDACCIÓN (CONSULTORÍA ESTRATÉGICA):
 Devuelve EXCLUSIVAMENTE un JSON válido con esta estructura exacta:
 {
   "resumenEjecutivo": "...",
-  "fortalezas": ["...", "..."],
-  "oportunidadesMejora": ["...", "..."],
+  "fortalezas": ["punto 1", "punto 2", "..."],
+  "oportunidadesMejora": ["punto 1", "punto 2", "..."],
   "ajusteCargo": { "score": ${scoreMatematico}, "analisis": "..." },
   "recomendacion": "${dictamenFinal}",
   "fundamentacion": "...",
