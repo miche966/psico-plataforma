@@ -74,41 +74,40 @@ export async function POST(req: Request) {
     const dictamenFinal = scoreSeguro >= 85 ? 'recomendado' : scoreSeguro >= 70 ? 'con_reservas' : 'no_recomendado';
     const dictamenHumano = dictamenFinal === 'recomendado' ? 'RECOMENDADO' : dictamenFinal === 'con_reservas' ? 'RECOMENDADO CON RESERVAS' : 'NO RECOMENDADO';
 
-    // 3. PROMPT DE ALTA GAMA (Human-Centric Protocol)
+    // 3. PROMPT DE ALTA GAMA (Protocolo Human-Centric)
     const prompt = `
 Contexto de Evaluación:
 Candidato: ${candidato.nombre} ${candidato.apellido}
 Proceso: ${proceso?.nombre || 'N/A'} - Cargo: ${proceso?.cargo || 'N/A'}
 Resultados de Tests: ${JSON.stringify(sesiones.map(s => ({ test: s.test_id, data: s.puntaje_bruto })))}
 
-Datos Técnicos de Referencia (CONFIDENCIAL - NO CITAR ETIQUETAS):
+Datos Técnicos de Referencia (CONFIDENCIAL):
 - AJUSTE AL PERFIL: ${scoreSeguro}%
 - DICTAMEN TÉCNICO: ${dictamenHumano}
 - PERFIL CONDUCTUAL (MBTI): ${mbtiFinalCalculado}
 
 Instrucciones de Redacción (Protocolo AGENTE DE ANÁLISIS HUMAN-CENTRIC):
 Eres un Agente de Diagnóstico Psicodiagnóstico de alta gama. Tu redacción debe ser:
-1. PROFESIONAL Y HUMANA: Usa un tono ejecutivo pero cercano. No reduzcas al candidato a números; describe su "Arquitectura Conductual".
-2. SILENCIO TÉCNICO: PROHIBIDO mencionar etiquetas como "PUNTAJE DE AJUSTE", "NaN", "SCORE" o nombres de variables. Traduce los datos técnicos a lenguaje narrativo.
-3. NO-MAXIMALISTA (CRÍTICO): Prohibido usar: "excepcional", "sobresaliente", "inquebrantable", "excelente", "maravilloso", "perfecto", "agudo". 
-   - Reemplaza por: "destacado", "notable", "consistente", "sólido", "adecuado", "claro".
-4. PROFUNDIDAD ANALÍTICA: Explica el IMPACTO organizacional de cada rasgo. 1) Tendencia observada, 2) Mecanismo de ejecución, 3) Impacto/Valor.
+1. PROFESIONAL Y HUMANA: Tono ejecutivo. Describe la "Arquitectura Conductual".
+2. SILENCIO TÉCNICO: PROHIBIDO mencionar etiquetas como "PUNTAJE", "NaN", "SCORE" o nombres de variables.
+3. NO-MAXIMALISTA: Prohibido usar: "excepcional", "sobresaliente", "excelente". Usa: "destacado", "notable", "adecuado", "claro".
+4. PROFUNDIDAD ANALÍTICA: Explica el IMPACTO organizacional de cada rasgo. 1) Tendencia, 2) Mecanismo, 3) Impacto.
 
 Estructura de Contenido:
-1. "resumenEjecutivo": Síntesis estratégica (2 párrafos).
-2. "fortalezas": Lista de entre 3 y 5 competencias críticas.
-3. "oportunidadesMejora": Lista de entre 2 y 4 áreas de desarrollo identificadas.
-4. "ajusteCargo": { "score": ${scoreSeguro}, "analisis": "Análisis profundo de idoneidad contra el cargo." }
-5. "fundamentacion": Argumentación técnica de la recomendación.
-6. "ajusteMbti": Cómo su perfil conductual influye en su desempeño diario.
-7. "interpretacionPorFactor": { "perfil": "Análisis cualitativo integral de sus dimensiones evaluadas." }
-8. "metaCompetencias": { "liderazgo": 0-100, "adaptabilidad": 0-100, "resiliencia": 0-100, "colaboracion": 0-100, "comunicacion": 0-100 }
+- "resumenEjecutivo": Síntesis estratégica (2 párrafos).
+- "fortalezas": Lista de entre 3 y 5 competencias críticas.
+- "oportunidadesMejora": Lista de entre 2 y 4 áreas de desarrollo.
+- "ajusteCargo": { "score": ${scoreSeguro}, "analisis": "Análisis profundo de idoneidad." }
+- "fundamentacion": Argumentación técnica.
+- "ajusteMbti": Cómo su perfil influye en su desempeño.
+- "interpretacionPorFactor": { "perfil": "Análisis cualitativo integral." }
+- "metaCompetencias": { "liderazgo": 0-100, "adaptabilidad": 0-100, "resiliencia": 0-100, "colaboracion": 0-100, "comunicacion": 0-100 }
 
 Devuelve EXCLUSIVAMENTE un JSON válido.
 `;
 
-    // 4. LLAMADA AL MODELO AUTORIZADO
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro-latest' });
+    // 4. LLAMADA AL NUEVO MODELO (GEMINI-2.5-FLASH-LATEST)
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-latest' });
     const result = await model.generateContent(prompt);
     const text = (await result.response).text();
     
