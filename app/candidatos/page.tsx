@@ -65,7 +65,9 @@ export default function CandidatosPage() {
     
     const counts: Record<string, number> = {}
     sData?.forEach(s => {
-      counts[s.candidato_id] = (counts[s.candidato_id] || 0) + 1
+      if (s.puntaje_bruto || s.puntajes || s.resultados) {
+        counts[s.candidato_id] = (counts[s.candidato_id] || 0) + 1
+      }
     })
 
     setSesionesData(sData || [])
@@ -574,10 +576,16 @@ export default function CandidatosPage() {
                   </div>
 
                   {/* Selector de Test */}
-                  {sesionesData.filter(s => s.candidato_id === sesionParaDetalle.candidato_id).length > 1 && (
+                  {sesionesData.filter(s => 
+                    s.candidato_id === sesionParaDetalle.candidato_id && 
+                    (s.puntaje_bruto || s.puntajes || s.resultados)
+                  ).length > 1 && (
                     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                       {sesionesData
-                        .filter(s => s.candidato_id === sesionParaDetalle.candidato_id)
+                        .filter(s => 
+                          s.candidato_id === sesionParaDetalle.candidato_id && 
+                          (s.puntaje_bruto || s.puntajes || s.resultados)
+                        )
                         .map((s, i) => {
                           const name = TEST_NAMES[s.test_id] || s.test_id.split('-').pop()?.toUpperCase() || 'TEST'
                           const isSelected = s.test_id === sesionParaDetalle.test_id
