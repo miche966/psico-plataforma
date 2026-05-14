@@ -1155,6 +1155,11 @@ const ETIQUETAS: Record<string, string> = {
   carga_laboral: 'Gestión de Carga Laboral',
   apoyo_social: 'Soporte Social y Clima',
   control: 'Autonomía y Control',
+  autonomia: 'Autonomía y Control',
+  equilibrio: 'Equilibrio Vida-Trabajo',
+  relaciones: 'Relaciones Interpersonales',
+  claridad_rol: 'Claridad de Rol',
+  expectativas: 'Expectativas sobre el Trabajo',
   apego_normas: 'Apego a Normas y Rigor Operativo',
   integridad: 'Integridad Global y Ética Profesional',
   honestidad_humildad: 'Honestidad y Humildad Organizacional',
@@ -2002,74 +2007,89 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
       }
     },
     // SJT Atención al Cliente
+    // SJT Atención al Cliente
+    etica: {
+      alto: {
+        desc: 'Proyecta una integridad sólida en cada interacción, priorizando la transparencia y el respeto por los protocolos institucionales. Su conducta asegura que los intereses del cliente se gestionen siempre dentro del marco ético de la organización.',
+        q: '¿Cómo ha manejado situaciones donde el cliente esperaba una promesa que usted sabía que la empresa no podría cumplir al 100%?'
+      },
+      moderado: {
+        desc: 'Muestra un alineamiento constante con los valores y normas del área. Su práctica profesional es honesta y confiable, cumpliendo con los compromisos establecidos y manteniendo la seriedad necesaria para generar confianza.',
+        q: '¿Qué importancia le da a la claridad de las condiciones para evitar malentendidos que afecten la relación futura?'
+      },
+      bajo: {
+        desc: 'Se enfoca en la resolución práctica de las solicitudes dentro de los parámetros básicos de cumplimiento. Se beneficia de contar con guías de actuación explícitas que aseguren que la agilidad operativa se mantenga alineada con los estándares de transparencia.',
+        q: '¿Cómo equilibra usted su instinto de cierre con la necesidad de asegurar que el cliente tiene toda la información relevante?'
+      }
+    },
     empatia: {
       alto: {
-        desc: 'Sintonía interpersonal superior. Capta necesidades no expresadas y gestiona la carga emocional del usuario con una maestría que transforma interacciones transaccionales en relaciones de confianza y fidelidad a largo plazo con la marca.',
+        desc: 'Posee una notable capacidad para captar el estado emocional del cliente y validar su perspectiva con naturalidad. Este enfoque le permite gestionar situaciones de alta carga afectiva con serenidad, transformando interacciones en relaciones de confianza.',
         q: '¿Cómo logra validar la frustración de un cliente sin comprometer la política de la empresa ni dar una imagen de debilidad técnica?'
       },
       moderado: {
-        desc: 'Trato profesional, cálido y equilibrado. Comprende la perspectiva del cliente y ofrece respuestas que demuestran escucha activa y respeto. Logra un clima de cordialidad que facilita la resolución técnica de los requerimientos.',
+        desc: 'Mantiene un trato profesional, cálido y equilibrado. Comprende las necesidades del interlocutor y ofrece respuestas que demuestran una escucha atenta, facilitando un clima de cordialidad que simplifica la resolución de los requerimientos.',
         q: '¿Qué señales verbales o gestuales utiliza para asegurar al cliente que su problema es una prioridad para usted?'
       },
       bajo: {
-        desc: 'Enfoque altamente resolutivo y pragmático. Prioriza la eficacia del trámite sobre la gestión del vínculo emocional. Su estilo es directo y técnico, siendo muy eficiente en procesos de autoservicio o soporte de bajo contacto.',
-        q: 'Cuando un cliente se desvía del problema técnico hacia temas personales o quejas emocionales, ¿cómo lo reconduce hacia la solución de forma amable?'
+        desc: 'Prioriza la eficacia resolutiva y el cumplimiento de los procesos sobre la gestión del vínculo emocional. Su estilo es directo y pragmático, siendo efectivo en entornos donde la rapidez de respuesta es el factor principal.',
+        q: 'Cuando un cliente se desvía del problema técnico hacia quejas emocionales, ¿cómo lo reconduce hacia la solución de forma amable?'
       }
     },
     comunicacion: {
       alto: {
-        desc: 'Arquitecto de mensajes claros y persuasivos. Posee la habilidad de adaptar su registro lingüístico a cualquier interlocutor, garantizando que la información técnica sea digerible y que el tono refuerce la autoridad y cercanía de la organización.',
-        q: 'Describa una situación donde tuvo que comunicar una noticia difícil a un grupo: ¿Cómo estructuró el mensaje para minimizar el impacto negativo?'
+        desc: 'Logra transmitir información técnica de forma clara, pausada y persuasiva, adaptando su lenguaje al nivel de comprensión de cada interlocutor. Su estilo comunicativo minimiza los malentendidos y refuerza la autoridad profesional.',
+        q: 'Describa una situación donde tuvo que comunicar una noticia difícil: ¿Cómo estructuró el mensaje para minimizar el impacto negativo?'
       },
       moderado: {
-        desc: 'Comunicación asertiva y fluida. Transmite ideas y procedimientos de forma estructurada, evitando ambigüedades. Su estilo comunicativo favorece la colaboración interna y la claridad en la atención al usuario externo.',
+        desc: 'Transmite ideas y procedimientos de forma estructurada y fluida. Su comunicación es asertiva y evita ambigüedades, lo que favorece el entendimiento mutuo y agiliza la gestión de las consultas del usuario.',
         q: '¿Qué pasos sigue para verificar que un mensaje complejo ha sido comprendido exactamente como usted pretendía?'
       },
       bajo: {
-        desc: 'Estilo comunicativo escueto y funcional. Su transmisión de información es precisa en lo técnico, aunque puede beneficiarse de añadir capas de contexto o calidez para mejorar la experiencia percibida por el interlocutor en situaciones tensas.',
+        desc: 'Utiliza un estilo comunicativo funcional y directo, centrado en los datos esenciales. Para optimizar la experiencia en situaciones complejas, se beneficia de añadir capas de contexto que den mayor calidez al mensaje final.',
         q: '¿Qué prefiere: una comunicación rápida y directa aunque sea fría, o una más pausada y relacional? ¿Por qué?'
       }
     },
     escucha_activa: {
       alto: {
-        desc: 'Capacidad de escucha diagnóstica profunda. No solo oye, sino que procesa el contexto, el tono y los silencios del usuario para extraer el requerimiento real, evitando retrabajos y garantizando una solución acertada desde el primer contacto.',
+        desc: 'Demuestra una capacidad de escucha profunda que le permite identificar el requerimiento real detrás del relato del cliente. Al procesar el contexto y el tono, evita reprocesos y garantiza que la solución sea la más acertada.',
         q: '¿Cuándo fue la última vez que una pregunta suya cambió totalmente la dirección de lo que el cliente creía que necesitaba?'
       },
       moderado: {
-        desc: 'Atención focalizada y receptiva. Muestra interés genuino por el relato del interlocutor y utiliza técnicas de parafraseo para confirmar el entendimiento. Es un receptor confiable que minimiza errores por falta de atención.',
+        desc: 'Muestra una atención focalizada y receptiva durante la interacción. Utiliza técnicas de confirmación para asegurar que ha comprendido correctamente la solicitud, actuando como un receptor confiable.',
         q: '¿Cómo maneja su diálogo interno para no empezar a formular la respuesta antes de que el cliente haya terminado de hablar?'
       },
       bajo: {
-        desc: 'Escucha orientada a la acción inmediata. Procesa la información buscando palabras clave para disparar soluciones predefinidas. Es muy ágil en entornos de alto volumen, aunque debe cuidar el no interrumpir el flujo de información del usuario.',
+        desc: 'Escucha orientada a la detección rápida de palabras clave para disparar soluciones predefinidas. Es ágil en entornos de alto volumen, aunque debe cuidar de no interrumpir el flujo de información del cliente.',
         q: '¿Qué hace para retomar el hilo de una conversación cuando siente que se ha distraído con un pensamiento o una tarea paralela?'
       }
     },
     resolucion: {
       alto: {
-        desc: 'Orientación a resultados de alto estándar. No se limita a cerrar el caso, sino que busca la optimización de la respuesta y la satisfacción total. Su proactividad le lleva a "dar el paso extra" que define la excelencia operativa en el servicio.',
+        desc: 'Manifiesta una fuerte orientación a la solución integral de los problemas, buscando la optimización de la respuesta y la satisfacción total. Su proactividad le permite anticiparse a obstáculos, garantizando una respuesta de calidad.',
         q: 'Cuéntenos sobre un problema que resolvió de forma tan efectiva que el cliente terminó enviando una felicitación o reconocimiento.'
       },
       moderado: {
-        desc: 'Eficacia resolutiva constante. Cumple con los niveles de servicio (SLA) establecidos y maneja con solvencia las herramientas de gestión. Su desempeño garantiza la fluidez de los procesos y la respuesta oportuna a las demandas del rol.',
-        q: '¿Cuál es su estrategia para mantener la calidad de resolución cuando tiene una fila de tareas acumuladas que debe despachar rápido?'
+        desc: 'Resuelve las incidencias de forma coherente y efectiva, cumpliendo con los niveles de servicio establecidos. Utiliza los recursos con criterio profesional, asegurando la continuidad y la atención oportuna de las demandas.',
+        q: '¿Cuál es su estrategia para mantener la calidad de resolución cuando tiene una fila de tareas acumuladas?'
       },
       bajo: {
-        desc: 'Se desempeña con éxito en resoluciones de baja complejidad o procesos lineales. En escenarios de alta dificultad, prefiere escalar o consultar para asegurar la corrección, priorizando la seguridad del procedimiento sobre la autonomía.',
-        q: '¿En qué punto decide que un problema ya no puede ser resuelto por usted y debe ser derivado a un supervisor o especialista?'
+        desc: 'Se desempeña con éxito en la resolución de situaciones pautadas o de baja complejidad. En escenarios imprevistos, prefiere validar sus pasos con supervisión para asegurar la corrección del procedimiento antes de actuar.',
+        q: '¿En qué punto decide que un problema ya no puede ser resuelto por usted y debe ser derivado a un especialista?'
       }
     },
     manejo_conflicto: {
       alto: {
-        desc: 'Dominio de la desescalada estratégica. Navega con serenidad en entornos de alta hostilidad, logrando neutralizar la agresión y reconducir la energía hacia acuerdos constructivos. Es un activo vital para la retención de clientes críticos.',
+        desc: 'Navega con serenidad en entornos de alta hostilidad, logrando neutralizar la tensión y reconducir la interacción hacia acuerdos constructivos. Su enfoque profesional impide que las situaciones críticas escalen.',
         q: '¿Cuál es su secreto para no tomarse de forma personal los ataques de un cliente que está fuera de control?'
       },
       moderado: {
-        desc: 'Gestión profesional de discrepancias. Afronta las tensiones con objetividad y busca el "ganar-ganar" a través del diálogo y la negociación básica. Mantiene la postura corporativa sin perder la flexibilidad necesaria para destrabar situaciones.',
+        desc: 'Gestiona las discrepancias con objetividad y busca soluciones de mutuo beneficio. Mantiene la postura corporativa con firmeza pero con la flexibilidad necesaria para destrabar situaciones tensas de forma profesional.',
         q: '¿Cómo maneja una situación donde el cliente tiene la razón pero la solución que él quiere es inviable para la empresa?'
       },
       bajo: {
-        desc: 'Tiende a evitar la confrontación directa o a adherirse rígidamente a la norma como escudo defensivo. Su rendimiento es óptimo en entornos de baja conflictividad donde las reglas de juego son respetadas por todas las partes.',
-        q: '¿Qué sensaciones físicas experimenta ante un conflicto y cómo intenta que no afecten su voz o su capacidad de respuesta?'
+        desc: 'Tiende a adherirse estrictamente a la norma o a buscar soporte externo ante confrontaciones directas. Su rendimiento es óptimo en entornos donde las reglas son claras, beneficiándose de protocolos de desescalada.',
+        q: '¿Qué sensaciones físicas experimenta ante un conflicto y cómo intenta que no afecten su capacidad de respuesta?'
       }
     },
     // SJT Comercial
@@ -2231,29 +2251,29 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
     },
     burnout: {
       alto: {
-        desc: 'Los indicadores sugieren un desgaste acumulado significativo que compromete la energía psíquica del colaborador. Es vital revisar la distribución de responsabilidades y fomentar espacios de desconexión para prevenir la apatía operativa o el agotamiento crónico.',
+        desc: 'Los indicadores sugieren un desgaste acumulado significativo que compromete la energía psíquica del colaborador. Es vital revisar la distribución de responsabilidades para prevenir la apatía operativa o el agotamiento crónico a corto plazo.',
         q: '¿Siente que su capacidad de disfrute de los logros laborales ha disminuido? ¿A qué atribuye esta sensación de cansancio persistente?'
       },
       moderado: {
-        desc: 'Se observa una fatiga propia de ciclos de alta exigencia. Si bien mantiene la funcionalidad, se encuentra en un punto donde la prevención es clave para evitar que el cansancio impacte en su compromiso a largo plazo con el proyecto.',
+        desc: 'Se observa una fatiga propia de ciclos de alta exigencia. Si bien mantiene la funcionalidad, se encuentra en un punto donde la prevención es clave para evitar que el cansancio impacte en su compromiso a largo plazo.',
         q: '¿Qué actividades o cambios en su rutina laboral le ayudan a "recargar baterías" de forma efectiva?'
       },
       bajo: {
-        desc: 'Posee un sólido blindaje emocional contra el agotamiento. Su vitalidad y entusiasmo por las tareas se mantienen intactos, reflejando una excelente higiene mental y una integración saludable de las demandas laborales en su vida.',
+        desc: 'Posee un sólido blindaje emocional contra el agotamiento. Su vitalidad y entusiasmo se mantienen intactos, reflejando una excelente higiene mental y una integración saludable de las demandas laborales.',
         q: '¿Cuál es su secreto para mantener la motivación alta incluso después de semanas de trabajo intenso?'
       }
     },
     carga_laboral: {
       alto: {
-        desc: 'Percibe un volumen de tareas que excede su capacidad de procesamiento óptimo. Esta sobrecarga puede derivar en una sensación de asfixia operativa que requiere una revisión urgente de la priorización y delegación de funciones.',
-        q: 'Si pudiera rediseñar su flujo de trabajo, ¿qué tareas eliminaría o delegaría para recuperar su eficacia estratégica?'
+        desc: 'Percibe un volumen de tareas que excede su capacidad de procesamiento óptimo. Esta sobrecarga puede derivar en una sensación de asfixia operativa que requiere una revisión urgente de la priorización estratégica.',
+        q: 'Si pudiera rediseñar su flujo de trabajo, ¿qué tareas eliminaría o delegaría para recuperar su eficacia?'
       },
       moderado: {
         desc: 'La carga percibida es desafiante pero manejable. Existe un equilibrio entre las demandas externas y los recursos internos disponibles, permitiendo una ejecución constante sin caer en estados de saturación crítica.',
         q: '¿Cómo decide qué tareas "pueden esperar" cuando la carga del día se vuelve más pesada de lo habitual?'
       },
       bajo: {
-        desc: 'Considera que el volumen de trabajo actual le permite un desempeño holgado y detallista. Posee capacidad remanente para asumir nuevos desafíos o liderar iniciativas especiales sin comprometer sus responsabilidades base.',
+        desc: 'Considera que el volumen de trabajo actual le permite un desempeño holgado y detallista. Posee capacidad remanente para asumir nuevos desafíos sin comprometer sus responsabilidades base.',
         q: '¿En qué áreas de la empresa le gustaría aportar más ahora que tiene su carga de trabajo bajo control total?'
       }
     },
@@ -2267,8 +2287,8 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
         q: '¿Qué cambios en la comunicación del equipo harían que se sintiera aún más respaldado en su día a día?'
       },
       bajo: {
-        desc: 'Manifiesta una sensación de aislamiento u orfandad operativa. El fortalecimiento de los vínculos con sus pares y superiores es una prioridad para mejorar su sentido de pertenencia y su seguridad en la toma de decisiones.',
-        q: '¿En qué momentos ha sentido que debía resolver solo problemas que deberían haber sido compartido?'
+        desc: 'Manifiesta una sensación de aislamiento operativo. El fortalecimiento de los vínculos con sus pares y superiores es una prioridad para mejorar su sentido de pertenencia y su seguridad en la toma de decisiones.',
+        q: '¿En qué momentos ha sentido que debía resolver solo problemas que deberían haber sido compartidos?'
       }
     },
     control: {
@@ -2281,8 +2301,78 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
         q: '¿En qué situaciones le gustaría tener mayor poder de decisión para acelerar los resultados de su área?'
       },
       bajo: {
-        desc: 'Percibe una alta rigidez o supervisión excesiva en sus tareas. Esta sensación de falta de control puede inhibir su iniciativa personal, recomendándose delegar mayores espacios de decisión para potenciar su compromiso.',
+        desc: 'Percibe una alta rigidez o supervisión excesiva en sus tareas. Esta sensación de falta de control puede inhibir su iniciativa personal, recomendándose delegar mayores espacios de decisión.',
         q: '¿Qué barreras burocráticas o de supervisión siente que están frenando su capacidad de aportar valor real?'
+      }
+    },
+    autonomia: {
+      alto: {
+        desc: 'Manifiesta una sólida facultad para gestionar sus procesos y tiempos con independencia. Su proactividad le permite tomar decisiones lúcidas y proponer mejoras, asumiendo la responsabilidad total sobre el resultado de su gestión.',
+        q: '¿Cómo utiliza su autonomía para proponer mejoras que no estaban originalmente en su descripción de puesto?'
+      },
+      moderado: {
+        desc: 'Se desempeña de forma autónoma en las tareas que domina técnicamente, siguiendo las directrices generales con criterio. Logra un equilibrio adecuado entre la independencia de acción y la consulta necesaria.',
+        q: '¿En qué situaciones le gustaría tener mayor poder de decisión para acelerar los resultados de su área?'
+      },
+      bajo: {
+        desc: 'Muestra una preferencia por la supervisión constante y la validación externa. Su iniciativa se potencia en entornos con protocolos muy definidos, donde las instrucciones son explícitas y el margen de error es bajo.',
+        q: '¿Qué barreras burocráticas o de supervisión siente que están frenando su capacidad de aportar valor real?'
+      }
+    },
+    equilibrio: {
+      alto: {
+        desc: 'Demuestra una gestión ejemplar de sus límites profesionales y personales, manteniendo un ritmo de trabajo sostenible que previene el agotamiento. Su capacidad para desconectar asegura una presencia mental plena.',
+        q: '¿Qué hábitos de desconexión le permiten mantener su alto rendimiento durante las semanas de mayor demanda?'
+      },
+      moderado: {
+        desc: 'Logra un balance funcional entre sus compromisos laborales y su entorno privado. Si bien puede enfrentar picos de demanda temporales, posee los mecanismos para recuperar su centro sin sacrificar su bienestar.',
+        q: '¿Cómo gestiona su tiempo personal para asegurar que llega al trabajo con la energía renovada cada día?'
+      },
+      bajo: {
+        desc: 'Muestra dificultades para establecer fronteras claras entre la esfera laboral y la personal, lo que genera una sensación de agobio persistente que podría comprometer su capacidad de respuesta técnica.',
+        q: '¿Qué cambios en la organización de su jornada le ayudarían a separar mejor sus responsabilidades laborales de su tiempo de descanso?'
+      }
+    },
+    relaciones: {
+      alto: {
+        desc: 'Destaca por su capacidad para construir vínculos de confianza mutua con sus pares y jerarquía. Su estilo relacional fomenta un clima de colaboración y seguridad psicológica, facilitando la cohesión hacia objetivos comunes.',
+        q: '¿Cómo logra mantener la calidad de sus relaciones profesionales cuando debe comunicar decisiones que no son populares?'
+      },
+      moderado: {
+        desc: 'Mantiene interacciones profesionales correctas y cordiales. Logra integrarse bien en las dinámicas de equipo, aunque su participación en el fortalecimiento del tejido social es más reactiva que proactiva.',
+        q: '¿En qué situaciones prefiere el trabajo individual y cuándo considera que el apoyo del equipo es indispensable?'
+      },
+      bajo: {
+        desc: 'Manifiesta un estilo de interacción centrado estrictamente en la tarea, lo que puede ser percibido como distancia. Se beneficia de entornos que fomenten la comunicación abierta para evitar el aislamiento operativo.',
+        q: '¿Qué acciones toma para asegurar que sus compañeros se sientan escuchados y apoyados por usted en tareas compartidas?'
+      }
+    },
+    claridad_rol: {
+      alto: {
+        desc: 'Posee un entendimiento profundo de sus responsabilidades y del impacto de su función en la cadena de valor. Esta claridad le permite actuar con determinación, minimizando la incertidumbre operativa.',
+        q: '¿Cómo utiliza su conocimiento del rol para ayudar a otros compañeros que puedan tener dudas sobre sus propias funciones?'
+      },
+      moderado: {
+        desc: 'Comprende sus funciones básicas y los límites de su puesto. Se desempeña con corrección, aunque ante cambios estructurales podría requerir definiciones adicionales para mantener su nivel de eficacia.',
+        q: '¿Qué información o directrices suele solicitar cuando se le asigna una tarea que sale de su rutina habitual?'
+      },
+      bajo: {
+        desc: 'Experimenta cierta ambigüedad respecto a las expectativas de su posición. Esta incertidumbre puede generar vacilaciones, por lo que se beneficia de un esquema de objetivos muy estructurado y feedback constante.',
+        q: '¿Qué aspectos de su puesto actual siente que no han sido definidos con suficiente claridad y cómo le afecta esto?'
+      }
+    },
+    expectativas: {
+      alto: {
+        desc: 'Sus aspiraciones profesionales están plenamente alineadas con la propuesta de valor de la organización. Esta sintonía genera un alto compromiso intrínseco y una visión optimista sobre su crecimiento en la empresa.',
+        q: '¿Qué es lo que más le motiva del proyecto actual de la empresa y cómo se ve aportando a él en los próximos años?'
+      },
+      moderado: {
+        desc: 'Mantiene una visión realista y funcional sobre su carrera y el entorno laboral. Sus expectativas son estables y se ajustan a las oportunidades actuales, permitiéndole mantener un compromiso constante.',
+        q: '¿Qué condiciones laborales considera indispensables para mantener su nivel de compromiso y satisfacción a largo plazo?'
+      },
+      bajo: {
+        desc: 'Se observa una brecha entre sus proyecciones personales y la realidad percibida en su rol. Esta desalineación podría afectar su motivación, recomendándose un diálogo para reencuadrar sus objetivos.',
+        q: '¿Qué aspectos de su rol actual no están cumpliendo con sus expectativas iniciales y qué propuestas tiene para mejorarlos?'
       }
     }
   }

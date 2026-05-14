@@ -94,12 +94,14 @@ const ETQ: Record<string, string> = {
   resolucion_problemas: 'Resolución de Problemas Complejos',
   
   // Salud y Bienestar Laboral
-  burnout: 'Nivel de Riesgo (Burnout)',
+  burnout: 'Nivel de Bienestar y Energía',
   equilibrio: 'Balance Vida-Trabajo',
   relaciones: 'Relaciones Interpersonales y Clima',
-  claridad_rol: 'Percepción de Claridad de Rol',
-  nivel_estres: 'Indicador de Tensión Psicológica',
+  claridad_rol: 'Claridad de Funciones y Rol',
+  nivel_estres: 'Indicador de Calma Operativa',
   carga_laboral: 'Gestión de la Demanda de Trabajo',
+  autonomia: 'Autonomía y Control de Procesos',
+  expectativas: 'Alineamiento de Expectativas',
   resiliencia: 'Capacidad de Resiliencia',
   manejo_estres: 'Gestión Situacional de Estrés',
   autoestima: 'Confianza y Autoestima Profesional',
@@ -110,7 +112,7 @@ const DOMINIOS = {
   PERSONALIDAD: ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura', 'honestidad_humildad', 'honestidad', 'normas', 'promedio_general'],
   COGNITIVO: ['correctas', 'percentil', 'score', 'documentos', 'comparacion', 'concentracion', 'errores_texto', 'errores_numeros', 'metricas_fraude'],
   COMPETENCIAS: ['etica', 'negociacion', 'manejo_emocional', 'tolerancia_frustracion', 'comunicacion', 'liderazgo', 'trabajo_equipo', 'adaptabilidad', 'resolucion_problemas'],
-  BIENESTAR: ['burnout', 'equilibrio', 'relaciones', 'claridad_rol', 'nivel_estres', 'carga_laboral', 'resiliencia', 'manejo_estres', 'autoestima', 'inteligencia_emocional']
+  BIENESTAR: ['burnout', 'equilibrio', 'relaciones', 'claridad_rol', 'nivel_estres', 'carga_laboral', 'autonomia', 'expectativas', 'resiliencia', 'manejo_estres', 'autoestima', 'inteligencia_emocional']
 }
 
 const REC_COLOR: Record<Rec, string> = {
@@ -1388,49 +1390,59 @@ PsicoPlataforma - Gestión Inteligente de Talento
 
                 const narrativas: Record<string, any> = {
                   burnout: {
-                    alto: 'Presenta mecanismos de autogestión efectivos que preservan su energía y motivación en el largo plazo. Logra mantener un desempeño constante, minimizando el riesgo de agotamiento por carga laboral sostenida.',
-                    medio: 'Muestra un equilibrio funcional frente a las demandas del puesto, gestionando el desgaste diario de forma profesional y manteniendo su productividad dentro de los parámetros esperados.',
-                    bajo: 'Se observa una vulnerabilidad al agotamiento crónico que requiere monitoreo. Se recomienda revisar la distribución de tareas para prevenir un impacto negativo en su salud y rendimiento a mediano plazo.'
+                    alto: 'Posee un sólido blindaje emocional contra el agotamiento. Su vitalidad y entusiasmo se mantienen intactos, reflejando una excelente higiene mental y una integración saludable de las demandas laborales en su vida.',
+                    medio: 'Muestra una gestión de la energía funcional, propia de ciclos de alta exigencia. Si bien mantiene la productividad, se beneficia de espacios de recuperación para sostener su compromiso a largo plazo.',
+                    bajo: 'Se observa una vulnerabilidad al desgaste crónico que sugiere la necesidad de redosificar la carga inmediata. El fortalecimiento de sus recursos de afrontamiento favorecerá la recuperación de su vitalidad operativa.'
                   },
                   equilibrio: {
-                    alto: 'Logra una integración saludable entre las demandas profesionales y su bienestar personal. Esta estabilidad favorece un enfoque claro y una mayor capacidad de concentración durante la jornada operativa.',
-                    medio: 'Mantiene un equilibrio adecuado en la mayoría de las situaciones cotidianas, logrando separar sus compromisos laborales de su entorno personal de forma funcional.',
-                    bajo: 'Presenta dificultades para establecer límites entre las esferas laboral y privada. Esta falta de equilibrio podría derivar en una sensación de agobio que afecte su capacidad de respuesta técnica.'
+                    alto: 'Demuestra una gestión ejemplar de sus límites profesionales y personales, manteniendo un ritmo de trabajo sostenible que previene el agotamiento y asegura una presencia mental plena en sus tareas.',
+                    medio: 'Logra un balance funcional entre sus compromisos laborales y su entorno privado. Posee los mecanismos básicos para recuperar su centro y mantener la efectividad operativa sin sacrificar su bienestar.',
+                    bajo: 'Muestra dificultades para establecer fronteras claras entre la esfera laboral y la personal. Esta falta de equilibrio podría derivar en una sensación de agobio que afecte su capacidad de respuesta técnica.'
                   },
                   relaciones: {
-                    alto: 'Facilita la construcción de vínculos profesionales basados en el respeto y la cooperación. Su interacción promueve un clima de trabajo positivo y una comunicación fluida dentro del equipo.',
-                    medio: 'Mantiene relaciones laborales cordiales y profesionales con sus pares. Se integra de forma funcional a la cultura del equipo, contribuyendo al mantenimiento de la estabilidad grupal.',
-                    bajo: 'Sus interacciones suelen estar marcadas por la distancia o la falta de entendimiento mutuo. Se recomienda fomentar espacios de integración para mejorar su cohesión con el grupo de trabajo.'
+                    alto: 'Destaca por su capacidad para construir vínculos de confianza mutua con su entorno. Su estilo relacional fomenta un clima de colaboración y seguridad psicológica, facilitando la cohesión hacia objetivos comunes.',
+                    medio: 'Mantiene interacciones profesionales correctas y cordiales con sus pares. Logra integrarse bien en las dinámicas de equipo, contribuyendo de forma estable a la armonía del grupo de trabajo.',
+                    bajo: 'Manifiesta un estilo de interacción centrado estrictamente en la tarea, lo que puede ser percibido como distancia. Se beneficia de entornos que fomenten la comunicación abierta para mejorar su integración.'
                   },
                   claridad_rol: {
-                    alto: 'Posee una comprensión clara de sus funciones, responsabilidades y el impacto de su tarea en la estructura. Esta claridad le permite actuar con autonomía y seguridad en la toma de decisiones.',
-                    medio: 'Entiende correctamente sus tareas principales y el alcance de su posición. Sabe qué se espera de su desempeño y orienta su actividad hacia el cumplimiento de los objetivos fijados.',
-                    bajo: 'Muestra ambigüedad respecto a sus responsabilidades reales. Se recomienda una definición de perfil de puesto más rigurosa para evitar inseguridades en su ejecución diaria.'
+                    alto: 'Posee un entendimiento profundo de sus responsabilidades y del impacto de su función en la cadena de valor. Esta claridad le permite actuar con determinación y autonomía en cada intervención.',
+                    medio: 'Comprende sus funciones básicas y los límites de su puesto. Se desempeña con corrección y orienta su actividad hacia el cumplimiento de los objetivos fijados por la organización.',
+                    bajo: 'Experimenta cierta ambigüedad respecto a las expectativas de su posición. Se recomienda una definición de perfil más rigurosa para evitar vacilaciones e inseguridades en su ejecución diaria.'
                   },
                   nivel_estres: {
-                    alto: 'Se observa una respuesta adaptativa a las presiones del entorno laboral, sin evidencias de tensión que comprometa el desempeño. Esta estabilidad favorece la objetividad en la toma de decisiones.',
-                    medio: 'Gestiona la tensión de forma profesional en la mayoría de las situaciones. Mantiene el control operativo bajo demanda moderada, requiriendo pausas de recuperación ante picos extraordinarios.',
-                    bajo: 'Muestra indicadores de tensión psicológica que requieren atención. Se recomienda un entorno estructurado y previsible para minimizar el impacto del estrés en su rendimiento técnico.'
+                    alto: 'Manifiesta un estado de calma operativa y alta resiliencia. Su percepción de las demandas externas es de control, lo que le permite mantener una ejecución técnica fluida y sin ruidos emocionales.',
+                    medio: 'Gestiona la tensión operativa de forma profesional en la mayoría de las situaciones. Mantiene el control bajo demanda moderada, requiriendo pausas de recuperación ante picos extraordinarios de presión.',
+                    bajo: 'Presenta indicadores de tensión que sugieren una fase de alerta elevada. Se beneficia de entornos estructurados y previsibles que le permitan recuperar su objetividad en la toma de decisiones.'
                   },
                   carga_laboral: {
-                    alto: 'Muestra capacidad para organizar su actividad frente a las exigencias de la demanda de trabajo. Su enfoque permite un procesamiento fluido de las tareas, evitando cuellos de botella operativos.',
-                    medio: 'Logra procesar el volumen de trabajo asignado de forma eficiente, ajustando su ritmo a las prioridades del área sin comprometer significativamente la calidad de los resultados.',
-                    bajo: 'El volumen de tareas imprevistas afecta su capacidad de organización. Requiere soporte en la jerarquización de prioridades para evitar la saturación y asegurar el cumplimiento de plazos.'
+                    alto: 'Considera que el volumen de trabajo actual le permite un desempeño holgado y detallista. Posee capacidad remanente para asumir nuevos desafíos o liderar iniciativas especiales con rigor técnico.',
+                    medio: 'Logra procesar el volumen de trabajo asignado de forma eficiente, ajustando su ritmo a las prioridades del área sin comprometer la calidad de los resultados finales.',
+                    bajo: 'Percibe un volumen de tareas que desafía su capacidad de organización. Requiere soporte en la jerarquización estratégica de prioridades para evitar la saturación y asegurar el cumplimiento de hitos.'
+                  },
+                  autonomia: {
+                    alto: 'Manifiesta una sólida facultad para gestionar sus procesos y tiempos con independencia. Su proactividad le permite tomar decisiones lúcidas y proponer mejoras sustanciales en su esfera de influencia.',
+                    medio: 'Siente que tiene el margen de maniobra suficiente para gestionar su día a día con eficacia, equilibrando las directrices recibidas con su propio criterio profesional de manera constructiva.',
+                    bajo: 'Percibe una alta rigidez o supervisión excesiva en sus tareas. Esta sensación de falta de control puede inhibir su iniciativa, recomendándose delegar mayores espacios de decisión para potenciar su valor.'
+                  },
+                  expectativas: {
+                    alto: 'Sus aspiraciones profesionales están plenamente alineadas con la propuesta de valor de la organización. Esta sintonía genera un alto compromiso intrínseco y una visión optimista sobre su crecimiento.',
+                    medio: 'Mantiene una visión realista y funcional sobre su carrera y el entorno laboral. Sus expectativas son estables y se ajustan a las oportunidades actuales, permitiéndole mantener un compromiso constante.',
+                    bajo: 'Se observa una brecha entre sus proyecciones personales y la realidad percibida en su rol. Se recomienda un diálogo abierto para reencuadrar sus objetivos dentro del proyecto institucional.'
                   },
                   resiliencia: {
-                    alto: 'Muestra capacidad de recuperación ante la adversidad laboral, capitalizando los obstáculos como aprendizaje activo. Mantiene la estabilidad técnica y la orientación a metas en periodos de crisis.',
+                    alto: 'Presenta una arquitectura de resiliencia sobresaliente, capitalizando los obstáculos como aprendizaje activo. Mantiene la estabilidad técnica y la orientación a metas incluso en periodos de crisis.',
                     medio: 'Posee una fortaleza emocional adecuada para afrontar los desafíos cotidianos. Logra recuperar su ritmo operativo en tiempos razonables tras experimentar contratiempos en sus tareas.',
-                    bajo: 'Los obstáculos inesperados impactan en su motivación y seguridad. Requiere un sistema de validación externa constante para recuperar su productividad ante entornos volátiles.'
+                    bajo: 'Los obstáculos inesperados impactan en su seguridad operativa. Requiere un sistema de validación externa constante para recuperar su productividad ante entornos volátiles o de alta incertidumbre.'
                   },
                   manejo_estres: {
                     alto: 'Utiliza estrategias de afrontamiento que le permiten mantener la precisión técnica bajo presión. Logra priorizar tareas de forma efectiva cuando el volumen de actividad aumenta súbitamente.',
-                    medio: 'Gestiona de manera efectiva las demandas de un entorno dinámico. Mantiene el control sobre sus procesos, aunque ante picos extraordinarios requiere soporte en la organización de prioridades.',
-                    bajo: 'Presenta una baja tolerancia a la multiactividad. Ante situaciones de presión, su capacidad de organización se ve comprometida, requiriendo una estructura de tareas muy pautada.'
+                    medio: 'Gestiona de manera efectiva las demandas de un entorno dinámico. Mantiene el control sobre sus procesos, aunque ante picos extraordinarios se beneficia de soporte en la organización de prioridades.',
+                    bajo: 'Presenta una baja tolerancia a la multiactividad. Ante situaciones de presión extrema, su capacidad de organización se ve comprometida, requiriendo una estructura de tareas muy pautada.'
                   },
                   autoestima: {
-                    alto: 'Demuestra una confianza profesional sólida fundamentada en sus competencias. Esta seguridad le permite aceptar feedback técnico de forma constructiva para optimizar su desempeño.',
-                    medio: 'Mantiene un nivel de confianza equilibrado, reconociendo sus fortalezas y áreas de mejora. Se siente capaz de afrontar nuevos desafíos operativos con una actitud receptiva.',
-                    bajo: 'Muestra inseguridad respecto a sus capacidades, lo que puede limitar su toma de decisiones. Requiere un ambiente de baja exposición para desplegar su potencial sin temor al error técnico.'
+                    alto: 'Demuestra una confianza profesional sólida fundamentada en sus competencias. Esta seguridad le permite aceptar feedback técnico de forma constructiva para optimizar continuamente su desempeño.',
+                    medio: 'Mantiene un nivel de confianza equilibrado, reconociendo sus fortalezas y áreas de mejora. Se siente capaz de afrontar nuevos desafíos operativos con una actitud receptiva y profesional.',
+                    bajo: 'Muestra inseguridad respecto a sus capacidades, lo que puede limitar su iniciativa. Requiere un ambiente de baja exposición para desplegar su potencial sin temor al error técnico.'
                   }
                 };
 
