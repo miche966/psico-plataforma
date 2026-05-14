@@ -197,7 +197,9 @@ export default function PortalCandidatoPage() {
     }
   }
 
-  function iniciarTest(testKey: string) {
+  async function iniciarTest(testKey: string) {
+    if (iniciandoTest) return
+    
     // Validación de seguridad: No permitir iniciar si hay tests previos pendientes
     const index = bateria.indexOf(testKey);
     if (index > 0) {
@@ -208,6 +210,7 @@ export default function PortalCandidatoPage() {
       }
     }
 
+    setIniciandoTest(testKey)
     localStorage.setItem(`last_started_${candidatoId}_${procesoId}`, testKey)
 
     if (testKey.startsWith('entrevista:')) {
@@ -217,7 +220,10 @@ export default function PortalCandidatoPage() {
     }
 
     const ruta = RUTAS[testKey]
-    if (!ruta) return
+    if (!ruta) {
+      setIniciandoTest(null)
+      return
+    }
 
     // Buscar si ya existe una sesión (aunque sea pendiente) para este test
     const sesionExistente = sesionesPortal.find((s: any) => TEST_IDS[s.test_id] === testKey)
@@ -521,15 +527,24 @@ export default function PortalCandidatoPage() {
                     ) : (
                       <button
                         onClick={() => iniciarTest(testKey)}
-                        disabled={!esSiguiente}
+                        disabled={!esSiguiente || (iniciandoTest !== null)}
                         className={`w-full md:w-auto inline-flex justify-center items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl transition-all shadow-sm focus:ring-2 focus:ring-offset-2 ${
                           esSiguiente 
                             ? 'bg-indigo-600 hover:bg-indigo-700 text-white focus:ring-indigo-500' 
                             : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                        }`}
+                        } ${iniciandoTest === testKey ? 'opacity-80 animate-pulse' : ''}`}
                       >
-                        <PlayCircle className="w-4 h-4" />
-                        Comenzar
+                        {iniciandoTest === testKey ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Cargando...
+                          </>
+                        ) : (
+                          <>
+                            <PlayCircle className="w-4 h-4" />
+                            Comenzar
+                          </>
+                        )}
                       </button>
                     )}
                   </div>

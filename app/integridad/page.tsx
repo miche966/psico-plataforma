@@ -35,6 +35,41 @@ export default function IntegridadPage() {
   const [tiempoInicio] = useState(() => Date.now())
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0)
 
+  const [sesionIdActual, setSesionIdActual] = useState<string | null>(null)
+  const INTEGRIDAD_ID = 'e5f6a7b8-c9d0-1234-efab-345678901234'
+
+  useEffect(() => {
+    async function initSesion() {
+      const idUrl = searchParams.get('sesion')
+      if (idUrl) {
+        setSesionIdActual(idUrl)
+        await supabase.from('sesiones').update({ estado: 'iniciado' }).eq('id', idUrl)
+      } else if (candidatoId && procesoId) {
+        const { data: previa } = await supabase.from('sesiones')
+          .select('id')
+          .eq('candidato_id', candidatoId)
+          .eq('test_id', INTEGRIDAD_ID)
+          .neq('estado', 'finalizado')
+          .maybeSingle()
+        
+        if (previa) {
+          setSesionIdActual(previa.id)
+          await supabase.from('sesiones').update({ estado: 'iniciado' }).eq('id', previa.id)
+        } else {
+          const { data: nueva } = await supabase.from('sesiones').insert({
+            test_id: INTEGRIDAD_ID,
+            candidato_id: candidatoId,
+            proceso_id: procesoId,
+            estado: 'iniciado',
+            iniciada_en: new Date().toISOString()
+          }).select().single()
+          if (nueva) setSesionIdActual(nueva.id)
+        }
+      }
+    }
+    initSesion()
+  }, [candidatoId, procesoId, searchParams])
+
   useEffect(() => {
     cargarItems()
     if (candidatoId) {
@@ -61,7 +96,7 @@ export default function IntegridadPage() {
     const { data, error } = await supabase
       .from('items')
       .select('*')
-      .eq('test_id', 'e5f6a7b8-c9d0-1234-efab-345678901234')
+      .eq('test_id', INTEGRIDAD_ID)
       .order('orden')
 
     if (error) { console.error(error); return }
@@ -114,30 +149,29 @@ export default function IntegridadPage() {
 
     const resultado = { ...promedios, promedio_general }
 
-    const { data: sesion, error } = await supabase
-      .from('sesiones')
-      .insert({
-        test_id: 'e5f6a7b8-c9d0-1234-efab-345678901234',
-        candidato_id: candidatoId || null,
-        proceso_id: procesoId || null,
-        estado: 'finalizado',
-        iniciada_en: new Date().toISOString(),
-        finalizada_en: new Date().toISOString(),
-        puntaje_bruto: resultado
-      })
-      .select()
-      .single()
+    if (sesionIdActual) {
+      const { data: sesion, error } = await supabase
+        .from('sesiones')
+        .update({
+          estado: 'finalizado',
+          finalizada_en: new Date().toISOString(),
+          puntaje_bruto: resultado
+        })
+        .eq('id', sesionIdActual)
+        .select()
+        .single()
 
-    if (error || !sesion) { console.error(error); return }
+      if (error || !sesion) { console.error(error); return }
 
-    const respuestasParaGuardar = todasLasRespuestas.map(r => ({
-      sesion_id: sesion.id,
-      item_id: r.item_id,
-      valor: r.valor,
-      tiempo_respuesta: 0
-    }))
+      const respuestasParaGuardar = todasLasRespuestas.map(r => ({
+        sesion_id: sesion.id,
+        item_id: r.item_id,
+        valor: r.valor,
+        tiempo_respuesta: 0
+      }))
 
-    await supabase.from('respuestas').insert(respuestasParaGuardar)
+      await supabase.from('respuestas').insert(respuestasParaGuardar)
+    }
   }
 
   if (cargando) return <div style={s.centro}><p>Cargando test...</p></div>

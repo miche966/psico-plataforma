@@ -150,21 +150,40 @@ function FiguraRotacion({ codigo }: { codigo: string }) {
 
 export default function IcarPage() {
   const metricasFraude = useProctoring()
-  const [items, setItems] = useState<Item[]>([])
-  const [itemActual, setItemActual] = useState(0)
-  const [respuestas, setRespuestas] = useState<Record<string, string>>({})
-  const [cargando, setCargando] = useState(true)
-  const [finalizado, setFinalizado] = useState(false)
-  const enEvaluacion = useEvaluacionRedirect(finalizado)
-  const [nombreCandidato, setNombreCandidato] = useState('')
-  const [startTime] = useState(new Date().toISOString())
-  const [tiempoRestante, setTiempoRestante] = useState(60)
-  const [seleccionada, setSeleccionada] = useState<string | null>(null)
-  const searchParams = useSearchParams()
-  const candidatoId = searchParams.get('candidato')
-  const procesoId = searchParams.get('proceso')
-  const nivelMax = parseInt(searchParams.get('nivel') || '3')
-  const sinRotacion = searchParams.get('rotacion') === 'no'
+  const [sesionIdActual, setSesionIdActual] = useState<string | null>(null)
+  const ICAR_ID = 'f6a7b8c9-d0e1-2345-fabc-456789012345'
+
+  useEffect(() => {
+    async function initSesion() {
+      const idUrl = searchParams.get('sesion')
+      if (idUrl) {
+        setSesionIdActual(idUrl)
+        await supabase.from('sesiones').update({ estado: 'iniciado' }).eq('id', idUrl)
+      } else if (candidatoId && procesoId) {
+        const { data: previa } = await supabase.from('sesiones')
+          .select('id')
+          .eq('candidato_id', candidatoId)
+          .eq('test_id', ICAR_ID)
+          .neq('estado', 'finalizado')
+          .maybeSingle()
+        
+        if (previa) {
+          setSesionIdActual(previa.id)
+          await supabase.from('sesiones').update({ estado: 'iniciado' }).eq('id', previa.id)
+        } else {
+          const { data: nueva } = await supabase.from('sesiones').insert({
+            test_id: ICAR_ID,
+            candidato_id: candidatoId,
+            proceso_id: procesoId,
+            estado: 'iniciado',
+            iniciada_en: new Date().toISOString()
+          }).select().single()
+          if (nueva) setSesionIdActual(nueva.id)
+        }
+      }
+    }
+    initSesion()
+  }, [candidatoId, procesoId, searchParams])
 
   useEffect(() => {
     cargarItems()
@@ -203,7 +222,7 @@ export default function IcarPage() {
 
   async function cargarItems() {
     let query = supabase.from('items').select('*')
-      .eq('test_id', 'f6a7b8c9-d0e1-2345-fabc-456789012345')
+      .eq('test_id', ICAR_ID)
       .lte('nivel_dificultad', nivelMax)
       .order('subtipo').order('nivel_dificultad').order('orden')
 
@@ -234,31 +253,29 @@ export default function IcarPage() {
       porcentaje: Math.round((correctas / todosLosItems.length) * 100),
       por_subtipo: porSubtipo,
       nivel_maximo: nivelMax,
-      metricas_fraude: metricasFraude // Añadimos las métricas al puntaje_bruto
+      metricas_fraude: metricasFraude
     }
 
     setFinalizado(true)
 
-    const { data: sesion, error } = await supabase.from('sesiones').insert({
-      test_id: 'f6a7b8c9-d0e1-2345-fabc-456789012345',
-      candidato_id: candidatoId || null,
-      proceso_id: procesoId || null,
-      estado: 'finalizado',
-      iniciada_en: startTime,
-      finalizada_en: new Date().toISOString(),
-      puntaje_bruto: resultado
-    }).select().single()
+    if (sesionIdActual) {
+      const { data: sesion, error } = await supabase.from('sesiones').update({
+        estado: 'finalizado',
+        finalizada_en: new Date().toISOString(),
+        puntaje_bruto: resultado
+      }).eq('id', sesionIdActual).select().single()
 
-    if (error || !sesion) return
+      if (error || !sesion) return
 
-    await supabase.from('respuestas').insert(
-      todosLosItems.map(item => ({
-        sesion_id: sesion.id,
-        item_id: item.id,
-        valor: todasLasRespuestas[item.id] === item.respuesta_correcta ? 1 : 0,
-        tiempo_respuesta: 0
-      }))
-    )
+      await supabase.from('respuestas').insert(
+        todosLosItems.map(item => ({
+          sesion_id: sesion.id,
+          item_id: item.id,
+          valor: todasLasRespuestas[item.id] === item.respuesta_correcta ? 1 : 0,
+          tiempo_respuesta: 0
+        }))
+      )
+    }
   }
 
   function responder(opcion: string) {

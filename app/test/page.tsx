@@ -37,7 +37,42 @@ export default function TestPage() {
   const [cargando, setCargando] = useState(true)
   const [finalizado, setFinalizado] = useState(false)
   const enEvaluacion = useEvaluacionRedirect(finalizado)
-  const [resultado, setResultado] = useState<Record<string, number>>({})
+  const [sesionIdActual, setSesionIdActual] = useState<string | null>(null)
+  const BIG_FIVE_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+
+  useEffect(() => {
+    async function initSesion() {
+      const idUrl = searchParams.get('sesion')
+      if (idUrl) {
+        setSesionIdActual(idUrl)
+        await supabase.from('sesiones').update({ estado: 'iniciado' }).eq('id', idUrl)
+      } else if (candidatoId && procesoId) {
+        // Rescate: Buscar si existe sesión previa no finalizada
+        const { data: previa } = await supabase.from('sesiones')
+          .select('id')
+          .eq('candidato_id', candidatoId)
+          .eq('test_id', BIG_FIVE_ID)
+          .neq('estado', 'finalizado')
+          .maybeSingle()
+        
+        if (previa) {
+          setSesionIdActual(previa.id)
+          await supabase.from('sesiones').update({ estado: 'iniciado' }).eq('id', previa.id)
+        } else {
+          // Crear sesión de control al inicio
+          const { data: nueva } = await supabase.from('sesiones').insert({
+            test_id: BIG_FIVE_ID,
+            candidato_id: candidatoId,
+            proceso_id: procesoId,
+            estado: 'iniciado',
+            iniciada_en: new Date().toISOString()
+          }).select().single()
+          if (nueva) setSesionIdActual(nueva.id)
+        }
+      }
+    }
+    initSesion()
+  }, [candidatoId, procesoId, searchParams])
 
   useEffect(() => {
     cargarItems()
@@ -58,7 +93,7 @@ export default function TestPage() {
   async function cargarItems() {
     const { data, error } = await supabase.from('items')
       .select('*')
-      .eq('test_id', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890')
+      .eq('test_id', BIG_FIVE_ID)
       .order('orden')
     if (error) { console.error(error); return }
     setItems(data || [])
@@ -101,49 +136,32 @@ export default function TestPage() {
 
     setResultado(promedios)
 
-    const sesionId = searchParams.get('sesion')
-    
-    let resSesion;
-    if (sesionId) {
-      resSesion = await supabase.from('sesiones').update({
+    if (sesionIdActual) {
+      const { data: sesion, error: errorSesion } = await supabase.from('sesiones').update({
         estado: 'finalizado',
         finalizada_en: new Date().toISOString(),
         puntaje_bruto: {
           ...promedios,
           metricas_fraude: metricasFraude
         }
-      }).eq('id', sesionId).select().single()
-    } else {
-      resSesion = await supabase.from('sesiones').insert({
-        test_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-        candidato_id: candidatoId || null,
-        proceso_id: procesoId || null,
-        estado: 'finalizado',
-        iniciada_en: new Date(tiempoInicio).toISOString(),
-        finalizada_en: new Date().toISOString(),
-        puntaje_bruto: {
-          ...promedios,
-          metricas_fraude: metricasFraude
-        }
-      }).select().single()
+      }).eq('id', sesionIdActual).select().single()
+
+      if (errorSesion || !sesion) {
+        console.error("Error al guardar sesión:", errorSesion)
+        return
+      }
+
+      const respuestasParaGuardar = todasLasRespuestas.map(r => ({
+        sesion_id: sesion.id,
+        item_id: r.item_id,
+        valor: r.valor,
+        tiempo_respuesta: 0
+      }))
+
+      await supabase.from('respuestas').insert(respuestasParaGuardar)
     }
-
-    const { data: sesion, error: errorSesion } = resSesion
-
-    if (errorSesion || !sesion) {
-      console.error("Error al guardar sesión:", errorSesion)
-      return
-    }
-
-    const respuestasParaGuardar = todasLasRespuestas.map(r => ({
-      sesion_id: sesion.id,
-      item_id: r.item_id,
-      valor: r.valor,
-      tiempo_respuesta: 0
-    }))
-
-    await supabase.from('respuestas').insert(respuestasParaGuardar)
   }
+
 
   if (cargando) return <div style={estilos.centro}><p>Cargando test...</p></div>
   if (finalizado && enEvaluacion) return <div style={estilos.centro}><p>Guardando resultados...</p></div>
