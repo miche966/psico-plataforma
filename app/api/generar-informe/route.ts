@@ -49,48 +49,52 @@ export async function POST(req: Request) {
     });
 
     const prompt = `
-Eres un Consultor Senior en Psicodiagnóstico. Genera un informe PREMIUM para:
-Candidato: ${candidato.nombre} ${candidato.apellido}
-Puesto: ${proceso?.cargo || 'N/A'}
-Ajuste: ${scoreFinal}%
+Eres un Consultor Senior en Desarrollo Humano. Tu misión es redactar un informe ejecutivo de alta gama que sea profundamente humano pero estrictamente profesional.
 
-DATOS PSICOMÉTRICOS (FACTORES):
+REGLAS DE ORO DE REDACCIÓN:
+1. TONO: Cercano, empático y profesional. Habla de comportamientos y situaciones, NO de puntajes.
+2. SIN TECNICISMOS: Prohibido usar términos como "neuroticismo", "amabilidad", "extroversión", "resiliencia adaptativa" o nombres de tests. Traduce esto a lenguaje de negocios claro (ej: "manejo de la presión", "trato con los demás", "enfoque en resultados").
+3. ANONIMATO: No utilices el nombre del candidato en ninguna parte del análisis. Refiérete a él/ella como "el perfil", "la persona evaluada" o mediante estructuras impersonales.
+4. ESTRUCTURA DE ANÁLISIS: Cada punto debe explicar qué se observa, cómo actúa la persona y qué impacto tiene esto en el trabajo diario.
+5. SIN META-LENGUAJE: No escribas "Basado en los datos...", "El informe indica...". Escribe el análisis directo.
+
+CONTEXTO DEL PUESTO: ${proceso?.cargo || 'N/A'}
+AJUSTE ESTIMADO: ${scoreFinal}%
+
+DATOS PARA ANÁLISIS (FACTORES):
 ${JSON.stringify(factoresCrudos)}
 
-INSTRUCCIONES DE REDACCIÓN (HUMAN-CENTRIC PREMIUM):
-1. TONO: Profesional, humano, sin maximalismos (evita: excepcional, extraordinario, excelente).
-2. DESCRIPCIONES: Genera un análisis de alta gama (Tendencia, Mecanismo e Impacto) para cada factor encontrado.
-3. LLAVES OBLIGATORIAS: Debes usar EXACTAMENTE estas llaves en el objeto "interpretacionPorFactor":
-   - "relaciones" (para Relaciones Interpersonales)
-   - "claridad_rol" (para Claridad de Rol)
-   - "burnout" (para Riesgo de Agotamiento)
-   - "equilibrio" (para Equilibrio Vida-Trabajo)
-   - "extraversion", "amabilidad", "responsabilidad", "neuroticismo", "apertura".
-
-Devuelve JSON:
+Devuelve UNICAMENTE un objeto JSON con esta estructura:
 {
-  "resumenEjecutivo": "...",
-  "fortalezas": [{"tendencia": "...", "mecanismo": "...", "impacto_organizacional": "..."}],
-  "oportunidadesMejora": [{"tendencia": "...", "mecanismo": "...", "impacto_organizacional": "..."}],
-  "ajusteCargo": { "score": ${scoreFinal}, "analisis": "..." },
-  "fundamentacion": "...",
+  "resumenEjecutivo": "Análisis integrador de la persona frente al desafío laboral (Mínimo 3 párrafos).",
+  "fortalezas": [{"tendencia": "Comportamiento observado", "mecanismo": "Forma de actuar", "impacto_organizacional": "Valor para la empresa"}],
+  "oportunidadesMejora": [{"tendencia": "Punto de atención", "mecanismo": "Situación de riesgo", "impacto_organizacional": "Consecuencia operativa"}],
+  "ajusteCargo": { "score": ${scoreFinal}, "analisis": "Explicación humana de por qué el perfil encaja o no con las demandas del puesto." },
+  "fundamentacion": "Argumento final para la toma de decisiones. Debe ser honesto y profesional.",
   "interpretacionPorFactor": {
-     "relaciones": "Análisis profundo...",
-     "claridad_rol": "Análisis profundo...",
-     "burnout": "Análisis profundo...",
-     "equilibrio": "Análisis profundo...",
-     "extraversion": "...",
-     "amabilidad": "...",
-     "responsabilidad": "...",
-     "neuroticismo": "...",
-     "apertura": "..."
+     "relaciones": "Cómo se vincula con los demás...",
+     "claridad_rol": "Cómo entiende sus tareas...",
+     "burnout": "Cómo maneja el agotamiento...",
+     "equilibrio": "Relación trabajo y bienestar...",
+     "extraversion": "Nivel de interacción...",
+     "amabilidad": "Calidez y trato...",
+     "responsabilidad": "Compromiso y orden...",
+     "neuroticismo": "Estabilidad ante la presión...",
+     "apertura": "Disposición al cambio..."
   },
   "recomendacion": "...",
-  "metaCompetencias": { "liderazgo": 80, "adaptabilidad": 80, "resiliencia": 80, "colaboracion": 80, "comunicacion": 80 }
+  "metaCompetencias": { 
+    "liderazgo": 0, 
+    "adaptabilidad": 0, 
+    "resiliencia": 0, 
+    "colaboracion": 0, 
+    "comunicacion": 0 
+  }
 }
+*Nota: En metaCompetencias, sustituye los 0 por números enteros del 1 al 100 estimados según el perfil.*
 `;
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const result = await model.generateContent(prompt);
     const text = (await result.response).text();
     const jsonMatch = text.match(/\{[\s\S]*\}/);

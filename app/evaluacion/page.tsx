@@ -136,6 +136,17 @@ export default function PortalCandidatoPage() {
       // 1. Cargar desde LocalStorage
       const completadosLocal = JSON.parse(localStorage.getItem(`completados_${candidatoId}_${procesoId}`) || '[]')
       
+      // Lógica de rescate: Si viene el parámetro reset=1 o es alguno de los IDs de Shanaia que están bloqueados, limpiamos el localStorage local
+      if (searchParams.get('reset') === '1' || candidatoId === 'ac05a547-c3c4-48e7-85b3-a9c2b4835076' || candidatoId === 'd8804cc9-9c85-4916-a33f-1b892604b679') {
+        localStorage.removeItem(`completados_${candidatoId}_${procesoId}`)
+        if (searchParams.get('reset') === '1') {
+          const newUrl = window.location.pathname + '?' + 
+            searchParams.toString().replace(/&?reset=1/, '').replace(/^&/, '')
+          window.location.href = newUrl
+          return
+        }
+      }
+      
       // 2. Cargar desde DB (Sesiones de Tests) - Filtered by process to avoid cross-contamination
       const { data: sesiones, error: errSes } = await supabase
         .from('sesiones')
