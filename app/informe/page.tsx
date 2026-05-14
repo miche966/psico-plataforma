@@ -632,8 +632,10 @@ function InformePageContent() {
           // 2. Normalización de factores técnicos (ETQ)
           Object.entries(ETQ).forEach(([key, label]) => {
             const variant = key.replace(/_/g, '[\\s\\-_]')
-            const regex = new RegExp(`['"]?${variant}['"]?`, 'gi')
-            limpio = limpio.replace(regex, label)
+            // Usamos límites de palabra (\b) para evitar reemplazar subcadenas dentro de otras palabras
+            const regex = new RegExp(`\\b${variant}\\b`, 'gi')
+            // Integramos la etiqueta en minúsculas para que fluya mejor en la oración
+            limpio = limpio.replace(regex, label.toLowerCase())
           })
 
           // 3. Eliminación de maximalismos y lenguaje informal
@@ -677,7 +679,7 @@ function InformePageContent() {
           }
           
           Object.entries(prohibidas).forEach(([mal, bien]) => {
-            const regex = new RegExp(mal, 'gi')
+            const regex = new RegExp(`\\b${mal}\\b`, 'gi')
             limpio = limpio.replace(regex, bien)
           })
 
