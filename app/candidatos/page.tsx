@@ -720,7 +720,7 @@ export default function CandidatosPage() {
                           <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Análisis Global</h5>
                         </div>
                         <p className="text-xs leading-relaxed text-slate-300 font-medium italic">
-                          {getAnalisisGlobal(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto))}
+                          {getAnalisisGlobal(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto), sesionParaDetalle.puntaje_bruto)}
                         </p>
                       </section>
 
@@ -729,8 +729,8 @@ export default function CandidatosPage() {
                           <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
                           <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Desafío Adaptativo Identificado</h5>
                         </div>
-                        <p className="text-xs leading-relaxed text-slate-300 font-medium">
-                          {getPuntoTension(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto))}
+                        <p className="text-xs leading-relaxed text-slate-300 font-medium border-l-2 border-indigo-500/30 pl-3">
+                          {getPuntoTension(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto), sesionParaDetalle.puntaje_bruto)}
                         </p>
                       </section>
 
@@ -739,8 +739,8 @@ export default function CandidatosPage() {
                           <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
                           <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Estrategia de Integración</h5>
                         </div>
-                        <p className="text-xs leading-relaxed text-slate-300 font-medium">
-                          {getAcompanamiento(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto))}
+                        <p className="text-xs leading-relaxed text-slate-300 font-medium bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
+                          {getAcompanamiento(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto), sesionParaDetalle.puntaje_bruto)}
                         </p>
                       </section>
 
@@ -981,6 +981,19 @@ function extraerDiagnostico(pb: any, testId?: string): [string, number][] {
     })
 
     escanearRecursivo(data)
+    
+    // --- NORMALIZACIÓN E INVERSIÓN FINAL ---
+    // Aseguramos que factores negativos se conviertan en indicadores de "Bienestar/Estabilidad" (5 = Mejor)
+    const factoresAInvertir = ['neuroticismo', 'neuroticism', 'ansiedad', 'depresion', 'estres', 'burnout', 'nivel_estres']
+    factoresAInvertir.forEach(f => {
+      if (mapa.has(f)) {
+        const v = mapa.get(f)!
+        // Si está en escala 1-5 (valor > 0.5), usamos 6 - v. Si es 0-5, usamos 5 - v.
+        // La mayoría de personalidad es 1-5.
+        const vInvertido = v > 1 ? Math.max(0, 6 - v) : Math.max(0, 5 - v)
+        mapa.set(f, Math.min(5, vInvertido))
+      }
+    })
 
     // SÍNTESIS DE DIMENSIONES PARA RAZONAMIENTO VERBAL (Post-Escaneo)
     if (tId.includes('verbal') || tId.includes('d4e5f6a7')) {
@@ -1215,16 +1228,16 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
     },
     neuroticismo: {
       alto: {
-        desc: 'Posee una sensibilidad aguda ante los cambios del entorno, lo que le permite identificar riesgos de forma temprana. Su capacidad de alerta es valiosa para entornos que exigen vigilancia constante, aunque se desempeña mejor en climas de trabajo estables y con metas claras.',
-        q: '¿Qué técnicas utiliza para recuperar el enfoque y la objetividad en momentos de alta incertidumbre laboral?'
+        desc: 'Destaca por una notable estabilidad emocional y templanza. Mantiene la calma y la objetividad incluso en situaciones de presión o crisis, actuando como un factor de equilibrio que ayuda al equipo a mantener el foco en la resolución del problema.',
+        q: 'En situaciones donde el entorno se vuelve caótico, ¿cómo logra mantener la claridad mental para priorizar las acciones correctas?'
       },
       moderado: {
         desc: 'Muestra una gestión emocional estable y funcional. Es capaz de procesar las tensiones habituales del entorno laboral sin que afecten su rendimiento, manteniendo una resiliencia equilibrada ante los desafíos cotidianos del puesto.',
         q: '¿Cómo separa las tensiones de un proyecto difícil de su interacción diaria con el resto del equipo?'
       },
       bajo: {
-        desc: 'Destaca por una notable estabilidad emocional y templanza. Mantiene la calma y la objetividad incluso en situaciones de presión o crisis, actuando como un factor de equilibrio que ayuda al equipo a mantener el foco en la resolución del problema.',
-        q: 'En situaciones donde el entorno se vuelve caótico, ¿cómo logra mantener la claridad mental para priorizar las acciones correctas?'
+        desc: 'Posee una sensibilidad aguda ante los cambios del entorno, lo que le permite identificar riesgos de forma temprana. Su capacidad de alerta es valiosa para entornos que exigen vigilancia constante, aunque se beneficia de climas de trabajo estables y con metas claras.',
+        q: '¿Qué técnicas utiliza para recuperar el enfoque y la objetividad en momentos de alta incertidumbre laboral?'
       }
     },
     apertura: {
@@ -1556,46 +1569,46 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
     },
     ansiedad: {
       alto: {
-        desc: 'El evaluado presenta un estado de alerta psicofisiológica elevado, lo que se traduce en una hipersensibilidad a las demandas del entorno. En el contexto laboral, esto puede manifestarse como una preocupación constante por el rendimiento o una dificultad para desconectar de las tareas pendientes. Posee un gran sentido de la responsabilidad, pero requiere un entorno que proporcione certezas operativas y evite la ambigüedad extrema.',
-        q: '¿Cómo logra usted mantener la claridad mental y el foco en el resultado cuando las prioridades del día cambian drásticamente cada hora?'
+        desc: 'Perfil caracterizado por una notable serenidad y temple. Mantiene una conducta imperturbable incluso en situaciones de alta demanda, lo que le permite actuar como un ancla de calma para su equipo. Su procesamiento de la información es pausado y objetivo, priorizando la lógica sobre la urgencia emocional. Es ideal para roles que exigen toma de decisiones con "sangre fría".',
+        q: '¿Cómo se asegura de mantener la velocidad de respuesta necesaria cuando el entorno es tan tranquilo que no siente presión externa?'
       },
       moderado: {
         desc: 'Muestra una reactividad emocional equilibrada ante las presiones habituales del trabajo. Experimenta niveles de tensión normales que suelen actuar como un motor de movilización para cumplir con sus objetivos. Posee una buena capacidad de autocontrol y puede navegar en entornos con niveles moderados de incertidumbre sin que su rendimiento se vea afectado significativamente.',
         q: '¿Cuál es su estrategia para evitar que una preocupación puntual de un proyecto se convierta en una distracción constante?'
       },
       bajo: {
-        desc: 'Perfil caracterizado por una notable serenidad y temple. Mantiene una conducta imperturbable incluso en situaciones de alta demanda, lo que le permite actuar como un ancla de calma para su equipo. Su procesamiento de la información es pausado y objetivo, priorizando la lógica sobre la urgencia emocional. Es ideal para roles que exigen toma de decisiones con "sangre fría".',
-        q: '¿Cómo se asegura de mantener la velocidad de respuesta necesaria cuando el entorno es tan tranquilo que no siente presión externa?'
+        desc: 'El evaluado presenta un estado de alerta psicofisiológica elevado, lo que se traduce en una hipersensibilidad a las demandas del entorno. En el contexto laboral, esto puede manifestarse como una preocupación constante por el rendimiento o una dificultad para desconectar de las tareas pendientes. Posee un gran sentido de la responsabilidad, pero requiere un entorno que proporcione certezas operativas y evite la ambigüedad extrema.',
+        q: '¿Cómo logra usted mantener la claridad mental y el foco en el resultado cuando las prioridades del día cambian drásticamente cada hora?'
       }
     },
     depresion: {
       alto: {
-        desc: 'Los indicadores sugieren una disminución temporal en los niveles de energía vital y motivación intrínseca. En el ámbito profesional, esto puede reflejarse como una menor proactividad o una visión más pesimista ante nuevos desafíos. El evaluado puede beneficiarse de objetivos a muy corto plazo, feedback positivo frecuente y un liderazgo empático que fomente la reconexión con el propósito de su rol.',
-        q: 'Cuando siente que su energía o motivación está baja, ¿qué herramientas o hábitos utiliza para cumplir con sus compromisos profesionales?'
+        desc: 'Muestra una actitud vital positiva y un alto nivel de compromiso emocional con su entorno. Se percibe como una persona con gran iniciativa y una visión optimista pero realista de las oportunidades. Su energía es contagiosa y tiende a ver los problemas como retos superables, lo que favorece un clima laboral constructivo y orientado al crecimiento.',
+        q: '¿Cómo utiliza su optimismo natural para ayudar a un equipo que está pasando por una etapa de pesimismo o estancamiento?'
       },
       moderado: {
         desc: 'Mantiene un estado de ánimo funcional y adaptado a las exigencias laborales. Muestra fluctuaciones normales de motivación consistentes con el ciclo de trabajo, logrando mantener el compromiso con sus tareas y una interacción social adecuada con sus pares. Posee la resiliencia básica para superar periodos de alta carga emocional.',
         q: '¿Qué aspectos de su trabajo actual son los que más contribuyen a mantener su entusiasmo y compromiso a largo plazo?'
       },
       bajo: {
-        desc: 'Muestra una actitud vital positiva y un alto nivel de compromiso emocional con su entorno. Se percibe como una persona con gran iniciativa y una visión optimista pero realista de las oportunidades. Su energía es contagiosa y tiende a ver los problemas como retos superables, lo que favorece un clima laboral constructivo y orientado al crecimiento.',
-        q: '¿Cómo utiliza su optimismo natural para ayudar a un equipo que está pasando por una etapa de pesimismo o estancamiento?'
+        desc: 'Los indicadores sugieren una disminución temporal en los niveles de energía vital y motivación intrínseca. En el ámbito profesional, esto puede reflejarse como una menor proactividad o una visión más pesimista ante nuevos desafíos. El evaluado puede beneficiarse de objetivos a muy corto plazo, feedback positivo frecuente y un liderazgo empático que fomente la reconexión con el propósito de su rol.',
+        q: 'Cuando siente que su energía o motivación está baja, ¿qué herramientas o hábitos utiliza para cumplir con sus compromisos profesionales?'
       }
     },
     estres: {
     },
     burnout: {
       alto: {
-        desc: 'Indicadores de agotamiento emocional o fatiga acumulada. Su compromiso es alto, pero sus reservas de energía están al límite. Se recomienda una revisión inmediata de cargas y un periodo de desconexión operativa.',
-        q: 'Si pudiera rediseñar su semana laboral para ser más sostenible, ¿qué cambios haría hoy mismo?'
+        desc: 'Estado de energía óptimo. Se siente motivado y conectado con su propósito laboral, mostrando una gran vitalidad para asumir nuevos proyectos y desafíos sin riesgo aparente de fatiga.',
+        q: '¿Cuál es su secreto para mantener ese nivel de entusiasmo después de una semana de trabajo intenso?'
       },
       moderado: {
         desc: 'Muestra signos de cansancio típicos de ciclos de alta demanda. Es capaz de seguir rindiendo, pero se beneficiaría de estrategias preventivas de autocuidado y gestión del tiempo para evitar el agotamiento crónico.',
         q: '¿Qué actividades fuera del trabajo le ayudan realmente a desconectar el cerebro de las responsabilidades?'
       },
       bajo: {
-        desc: 'Estado de energía óptimo. Se siente motivado y conectado con su propósito laboral, mostrando una gran vitalidad para asumir nuevos proyectos y desafíos sin riesgo aparente de fatiga.',
-        q: '¿Cuál es su secreto para mantener ese nivel de entusiasmo después de una semana de trabajo intenso?'
+        desc: 'Indicadores de agotamiento emocional o fatiga acumulada. Su compromiso es alto, pero sus reservas de energía están al límite. Se recomienda una revisión inmediata de cargas y un periodo de desconexión operativa.',
+        q: 'Si pudiera rediseñar su semana laboral para ser más sostenible, ¿qué cambios haría hoy mismo?'
       }
     },
     secuencias: {
@@ -2385,72 +2398,80 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
   return { descripcion: res.desc, pregunta: res.q }
 }
 
-function getAnalisisGlobal(testId: string, promedio: number): string {
+function getAnalisisGlobal(testId: string, promedio: number, puntajes?: any): string {
   const nivel = promedio >= 4 ? 'alto' : promedio >= 3 ? 'moderado' : 'bajo'
   const idLower = testId.toLowerCase()
   const nameLower = (TEST_NAMES[testId] || '').toLowerCase()
   const matches = (str: string) => idLower.includes(str) || nameLower.includes(str)
+  
+  // Lógica de Personalización por rasgo dominante (si existe)
+  let matiz = ''
+  if (puntajes) {
+    if (puntajes.amabilidad > 4.5) matiz = " Destaca especialmente su gran disposición para ayudar y crear un buen ambiente de equipo."
+    else if (puntajes.neuroticismo > 4) matiz = " En momentos de mucha carga, se beneficia de un entorno que le brinde seguridad y apoyo."
+    else if (puntajes.responsabilidad > 4.5) matiz = " Su fuerte sentido del deber asegura que los compromisos se cumplan siempre con rigor."
+    else if (puntajes.extraversion > 4.5) matiz = " Aporta una energía social muy positiva que facilita la integración y el entusiasmo del grupo."
+    else if (puntajes.apertura > 4.5) matiz = " Su curiosidad natural le permite proponer ideas frescas y soluciones creativas."
+  }
 
   if (matches('bigfive') || matches('personality') || matches('hexaco')) {
-    if (nivel === 'alto') return 'El perfil proyecta una arquitectura conductual madura, donde la estabilidad emocional y la proactividad convergen para facilitar liderazgos equilibrados. Su capacidad para navegar la ambigüedad organizacional sin perder el foco operativo lo posiciona como un activo de alto potencial adaptativo.'
-    if (nivel === 'moderado') return 'Se observa una dinámica profesional estable y funcional. El evaluado demuestra una plasticidad conductual que le permite alinearse con los objetivos del equipo, manteniendo una consistencia técnica que favorece la cohesión y el cumplimiento de hitos estándar.'
-    return 'El perfil manifiesta una preferencia por entornos con alta predictibilidad y soporte estructural. Su desempeño alcanza su punto óptimo cuando los marcos de acción están claramente delimitados, permitiéndole canalizar su energía hacia la ejecución técnica segura y de calidad.'
+    if (nivel === 'alto') return 'Se observa a un profesional con una forma de trabajar madura y equilibrada, que sabe mantener la calma incluso cuando las situaciones son inciertas.' + matiz + ' Su capacidad para entender lo que el equipo necesita, sumado a su compromiso, lo convierte en alguien muy confiable.'
+    if (nivel === 'moderado') return 'Muestra una forma de actuar estable y profesional. Se adapta bien a los objetivos del grupo y mantiene un ritmo de trabajo constante, lo que ayuda a que los proyectos avancen sin contratiempos.' + matiz
+    return 'Es una persona que trabaja mejor en entornos ordenados y con reglas claras. Su desempeño es óptimo cuando sabe exactamente qué se espera de él, permitiéndole enfocarse en hacer su tarea con seguridad y buena calidad.' + matiz
   }
 
   if (matches('integridad')) {
-    if (nivel === 'alto') return 'La consistencia ética detectada sugiere una interiorización profunda de la transparencia como eje de gestión. Su conducta no solo protege los activos reputacionales de la empresa, sino que actúa como un referente de integridad que eleva el estándar moral del entorno inmediato.'
-    if (nivel === 'moderado') return 'Manifiesta un compromiso genuino con los valores institucionales y la honestidad profesional. Su juicio moral es equilibrado, permitiéndole gestionar responsabilidades críticas con la transparencia necesaria para generar climas de confianza recíproca.'
-    return 'El evaluado responde de manera efectiva a marcos de cumplimiento explícitos y supervisión directa. Su integridad operativa se ve fortalecida en entornos donde la cultura de ética está formalizada y los protocolos de control actúan como guías constantes de comportamiento.'
+    if (nivel === 'alto') return 'Demuestra ser una persona muy honesta y transparente en su trabajo. Su forma de actuar genera mucha confianza en los demás, convirtiéndose en un ejemplo de rectitud que ayuda a mantener un estándar ético alto en su entorno.'
+    if (nivel === 'moderado') return 'Tiene un compromiso real con los valores de la empresa y la honestidad en el trabajo. Su juicio es equilibrado, lo que le permite manejar sus responsabilidades con la transparencia necesaria para trabajar bien en equipo.'
+    return 'Se desempeña de forma segura cuando los límites y las normas están bien explicados. Su compromiso con la ética se fortalece en entornos donde los procesos de control sirven como una guía clara para su comportamiento diario.'
   }
   
   if (matches('icar') || matches('cognitivo') || matches('verbal') || matches('numerico') || matches('detalle')) {
-    if (nivel === 'alto') return 'La agilidad intelectual observada facilita la desarticulación de problemas complejos y la síntesis de información heterogénea con gran precisión. Posee una facultad de aprendizaje acelerado que le permite liderar procesos de innovación y mejora continua con rigor mental.'
-    if (nivel === 'moderado') return 'Posee una capacidad de procesamiento mental sólida y alineada con las exigencias del rol. Su enfoque lógico le permite asimilar conocimientos técnicos y aplicarlos con eficiencia, manteniendo un ritmo de productividad intelectual constante y confiable.'
-    return 'Se desempeña con éxito en tareas que exigen una ejecución dominada y sistemática. El perfil se potencia mediante la especialización progresiva y el uso de herramientas de apoyo que optimicen su curva de aprendizaje en contextos de cambio técnico.'
+    if (nivel === 'alto') return 'Tiene una facilidad natural para entender problemas complicados y organizar información de distintos tipos con mucha rapidez. Aprende muy rápido a usar nuevas herramientas y puede proponer mejoras gracias a su agilidad mental.'
+    if (nivel === 'moderado') return 'Cuenta con una capacidad de análisis sólida y alineada con lo que el puesto requiere. Aprende bien los procesos técnicos y los aplica con eficiencia, manteniendo una productividad intelectual constante y muy confiable.'
+    return 'Es muy efectivo en tareas que requieren un orden y un método claro. Su rendimiento mejora a medida que se especializa en su área y cuenta con manuales o apoyos que le ayuden a ganar seguridad frente a los cambios técnicos.'
   }
 
-  if (matches('sjt') || matches('competencia') || matches('comercial')) {
-    if (nivel === 'alto') return 'Estrategia situacional de alto nivel, caracterizada por una lectura aguda de los intereses en juego y una toma de decisiones orientada a la sostenibilidad del negocio. Su juicio profesional es maduro, equilibrando la eficacia inmediata con la preservación del capital relacional.'
-    if (nivel === 'moderado') return 'Juicio profesional funcional y coherente con las mejores prácticas del área. Responde de forma asertiva ante desafíos estándar, demostrando una capacidad de resolución que integra los objetivos comerciales con el respeto por los procesos internos.'
-    return 'Perfil con potencial de desarrollo en la gestión de escenarios complejos. Se beneficia de mentorías enfocadas en el análisis de impacto y la toma de decisiones asistida, consolidando progresivamente su autonomía y visión estratégica en el rol.'
+  if (matches('sjt') || matches('competencia') || matches('comercial') || matches('cliente')) {
+    if (nivel === 'alto') return 'Muestra un criterio profesional muy maduro, sabiendo entender bien los intereses en juego para tomar decisiones que beneficien al negocio a largo plazo. Equilibra la rapidez con el buen trato y el cuidado de las relaciones.'
+    if (nivel === 'moderado') return 'Toma decisiones lógicas y acertadas basadas en la experiencia y las normas del área. Responde bien ante los desafíos diarios, demostrando una capacidad para resolver problemas que ayuda a mantener la fluidez del servicio.'
+    return 'Se encuentra en una etapa de ganar seguridad en la toma de decisiones complejas. Se beneficia de contar con el apoyo de alguien con más experiencia para validar sus pasos, lo que le ayudará a ganar autonomía poco a poco.'
   }
 
   if (matches('estres') || matches('bienestar') || matches('dass')) {
-    if (nivel === 'alto') return 'Presenta una arquitectura de resiliencia sobresaliente, operando desde un equilibrio psicofisiológico que favorece la toma de decisiones lúcida bajo presión. Su gestión de la carga es eficiente, permitiéndole actuar como un soporte emocional positivo para su entorno.'
-    if (nivel === 'moderado') return 'Muestra una gestión de la tensión operativa dentro de los parámetros de salud profesional. Es capaz de equilibrar las demandas externas con sus recursos personales, asegurando una continuidad en el desempeño sin comprometer su estabilidad emocional.'
-    return 'Se detectan indicadores de fatiga reactiva que sugieren una necesidad de redosificar la carga de trabajo inmediata. El perfil responderá positivamente a entornos que fomenten la seguridad psicológica y la planificación estratégica de esfuerzos para recuperar el foco.'
+    if (nivel === 'alto') return 'Se encuentra en un momento de gran equilibrio personal, lo que le permite tomar decisiones con mucha claridad incluso bajo presión. Gestiona muy bien su energía y suele ser un apoyo positivo para sus compañeros de trabajo.'
+    if (nivel === 'moderado') return 'Maneja la carga de trabajo diaria de forma profesional y equilibrada. Sabe compensar las exigencias externas con sus propios recursos, manteniendo un desempeño constante sin que su estado de ánimo se vea afectado.'
+    return 'Se perciben señales de que el volumen de trabajo actual le está pesando un poco más de lo habitual. Responderá muy bien si se le ayuda a organizar sus tareas de forma más estratégica, permitiéndole recuperar el foco y la tranquilidad operativa.'
   }
 
-  return 'Análisis integral que refleja una consistencia profesional alineada con un nivel de ajuste ' + nivel + '. El perfil demuestra facultades para la integración productiva, con áreas de oportunidad que, gestionadas con el apoyo adecuado, potenciarán su valor organizativo.'
+  return 'Se observa un perfil profesional alineado con un nivel de ajuste ' + nivel + '. Es una persona con ganas de aportar al equipo, cuyas áreas de mejora pueden ser potenciadas fácilmente con el acompañamiento adecuado del área.'
 }
 
-
-
-function getPuntoTension(testId: string, promedio: number): string {
+function getPuntoTension(testId: string, promedio: number, puntajes?: any): string {
   const isClinical = testId.toLowerCase().includes('dass') || testId.toLowerCase().includes('estres') || testId.toLowerCase().includes('bienestar')
   
   if (isClinical) {
-    if (promedio < 1.5) return 'Muestra una base de calma operativa y alta resiliencia. Su principal fortaleza es la estabilidad emocional ante picos de demanda imprevistos.'
-    if (promedio < 3.5) return 'Se observa una carga reactiva dentro de parámetros funcionales. El desafío reside en mantener la objetividad cuando los plazos de entrega se comprimen.'
-    return 'Presenta indicadores de saturación que requieren atención. El riesgo principal es la pérdida de foco estratégico debido a una percepción elevada de presión externa.'
+    if (promedio < 1.5) return 'Su mayor fortaleza hoy es la calma y la estabilidad ante los imprevistos. No se deja llevar por la urgencia del momento.'
+    if (promedio < 3.5) return 'Maneja bien la tensión diaria, aunque el desafío será no descuidar el detalle cuando los plazos de entrega se vuelven muy cortos.'
+    return 'Se siente algo sobrepasado por las demandas externas. El riesgo es que el cansancio le haga perder de vista las prioridades más importantes del puesto.'
   }
 
-  if (promedio < 2.5) return 'El perfil sugiere una mayor sensibilidad a entornos ambiguos. Su desempeño se potencia en estructuras con objetivos claros y previsibilidad operativa.'
-  if (promedio < 4) return 'Podría requerir validación técnica periódica en decisiones de alto impacto. El desafío es transitar hacia una autonomía profesional más robusta.'
-  return 'Posee una marcada autonomía en la ejecución. El riesgo adaptativo es la tendencia a priorizar el criterio personal sobre los protocolos establecidos de la organización.'
+  if (promedio < 2.5) return 'Se siente más cómodo en puestos con tareas bien definidas. Su mayor desafío será ganar confianza cuando los objetivos no son del todo claros.'
+  if (promedio < 4) return 'A veces prefiere consultar antes de tomar una decisión importante. El reto es confiar más en su propio criterio para ganar mayor agilidad.'
+  return 'Es una persona con mucha autonomía. El desafío será asegurarse de no salirse de los procesos establecidos por intentar hacer las cosas a su propia manera.'
 }
 
-function getAcompanamiento(testId: string, promedio: number): string {
+function getAcompanamiento(testId: string, promedio: number, puntajes?: any): string {
   const isClinical = testId.toLowerCase().includes('dass') || testId.toLowerCase().includes('estres') || testId.toLowerCase().includes('bienestar')
   
   if (isClinical) {
-    if (promedio > 3.5) return 'Se sugiere un esquema de rotación de tareas críticas y espacios de feedback orientados a la dosificación de esfuerzos y recuperación de foco.'
-    if (promedio > 1.5) return 'Fomentar la participación en proyectos colaborativos que permitan diluir la carga individual y fortalecer los vínculos de soporte social.'
-    return 'Entorno propicio para el desarrollo de alta responsabilidad. Se recomienda asignarle desafíos que requieran una gestión templada y liderazgo en crisis.'
+    if (promedio > 3.5) return 'Se recomienda ayudarle a organizar sus tareas prioritarias y darle espacios para que pueda recargar energías y recuperar su enfoque.'
+    if (promedio > 1.5) return 'Fomentar que trabaje más en equipo; sentirse apoyado por sus compañeros le ayudará a manejar mejor las rachas de mucho trabajo.'
+    return 'Es ideal para puestos de mucha responsabilidad. Se le pueden dar desafíos importantes que requieran temple y saber manejar situaciones de crisis.'
   }
 
-  if (promedio < 3) return 'Proporcionar un roadmap detallado con hitos de corto plazo y retroalimentación técnica frecuente para consolidar su seguridad en el rol.'
-  return 'Se sugiere un modelo de mentoría enfocado en la visión estratégica y el impacto del negocio, permitiéndole liderar iniciativas con autonomía supervisada.'
+  if (promedio < 3) return 'Darle una guía paso a paso con metas a corto plazo. Felicitar sus avances técnicos le ayudará mucho a integrarse con seguridad al equipo.'
+  return 'Funciona muy bien con un modelo de guía enfocado en la visión general del negocio, permitiéndole proponer mejoras mientras se le acompaña en su crecimiento.'
 }
 
 function conclusionGeneral(testId: string, promedio: number): string {
@@ -2460,24 +2481,24 @@ function conclusionGeneral(testId: string, promedio: number): string {
   const matches = (str: string) => idLower.includes(str) || nameLower.includes(str)
 
   if (matches('bigfive') || matches('personality') || matches('hexaco') || matches('integridad')) {
-    if (nivel === 'alto') return 'Perfil profesional con una sólida integración de competencias conductuales. Aporta equilibrio y coherencia ética al equipo, facilitando la cultura de alto desempeño.'
-    if (nivel === 'moderado') return 'Muestra una adaptabilidad funcional a los valores de la organización. Su desempeño es estable y se alinea correctamente con las expectativas del entorno corporativo.'
-    return 'Perfil con áreas de desarrollo que requieren un acompañamiento cercano. Su integración será más efectiva en equipos con roles muy definidos y procesos estructurados.'
+    if (nivel === 'alto') return 'Es un profesional muy sólido y equilibrado. Aporta tranquilidad y una forma de trabajar ética que ayuda a que todo el equipo rinda mejor.'
+    if (nivel === 'moderado') return 'Se adapta bien a los valores de la empresa. Su trabajo es constante y cumple correctamente con lo que se espera de alguien en su puesto.'
+    return 'Necesita un poco más de guía al principio para entender bien la cultura de la empresa. Con procesos claros, podrá integrarse de forma muy productiva.'
   }
   
   if (matches('icar') || matches('cognitivo') || matches('verbal') || matches('numerico') || matches('detalle')) {
-    if (nivel === 'alto') return 'Referente de alta capacidad analítica. Posee un potencial destacado para asimilar conocimientos complejos y optimizar procesos técnicos con rigor y agilidad mental.'
-    if (nivel === 'moderado') return 'Capacidad de procesamiento alineada con el estándar profesional del rol. Resuelve problemas técnicos de forma lógica y mantiene un ritmo de aprendizaje constante.'
-    return 'Requiere tiempos de inducción extendidos en tareas nuevas. Se beneficia de manuales de apoyo y una división de tareas que permita la especialización progresiva.'
+    if (nivel === 'alto') return 'Es un referente por su gran capacidad de análisis. Entiende rápido los temas difíciles y sabe cómo mejorar el trabajo con su agilidad mental.'
+    if (nivel === 'moderado') return 'Tiene una capacidad de aprendizaje adecuada para lo que el puesto pide. Resuelve bien los problemas y siempre está dispuesto a aprender más.'
+    return 'Puede que necesite un poco más de tiempo para aprender tareas totalmente nuevas. Con manuales y ejemplos claros, logrará dominar su área con éxito.'
   }
 
-  if (matches('sjt') || matches('competencia') || matches('comercial')) {
-    if (nivel === 'alto') return 'Demuestra un criterio profesional maduro y orientado a resultados. Sabe navegar escenarios críticos priorizando el impacto estratégico y la sostenibilidad de las relaciones.'
-    if (nivel === 'moderado') return 'Toma decisiones coherentes basadas en la experiencia y los protocolos. Su juicio es confiable para la gestión de situaciones estándar de negocio y atención.'
-    return 'Su juicio situacional se encuentra en etapa de consolidación. Se recomienda soporte en la toma de decisiones complejas para evitar desviaciones del estándar institucional.'
+  if (matches('sjt') || matches('competencia') || matches('comercial') || matches('cliente')) {
+    if (nivel === 'alto') return 'Muestra un criterio muy acertado y siempre enfocado en los resultados. Sabe manejar situaciones difíciles cuidando siempre el trato con los demás.'
+    if (nivel === 'moderado') return 'Toma decisiones seguras basadas en lo que dictan las normas. Su juicio es confiable para manejar las situaciones normales del día a día.'
+    return 'Aún está aprendiendo a manejar situaciones de negocio complejas. Con el apoyo de su jefe, podrá ir ganando la experiencia necesaria para decidir solo.'
   }
 
-  return 'En resumen, el evaluado presenta un perfil con un nivel de desempeño ' + nivel + '. Es un profesional con capacidades técnicas sólidas, cuyos puntos de apoyo actuales permitirán una integración productiva al equipo.'
+  return 'En resumen, el evaluado muestra un nivel de desempeño ' + nivel + '. Es una persona con capacidades sólidas que, con el apoyo adecuado, se integrará muy bien al equipo.'
 }
 // Hack for lucide-react icon fix if Users was missing from import, though I added UserPlus above
 // Importación al final para evitar problemas de hoisting si es necesario

@@ -457,10 +457,9 @@ function InformePageContent() {
     if (k === 'neuroticismo' || k === 'nivel_estres' || k === 'burnout') {
       val = Math.max(0, 6 - val)
     }
-    // Inversión lógica para escalas 0-5:
-    if (k === 'errores_texto') {
-      val = Math.max(0, 5 - val)
-    }
+    // La inversión lógica para escalas 0-5 de errores fue eliminada ya que el motor
+    // ahora entrega directamente efectividad (correctas/total), evitando dobles inversiones.
+
 
     // Normalización Final de Seguridad (Escala 0-5)
     if (val > 5) {
@@ -639,7 +638,7 @@ function InformePageContent() {
 
           // 3. Eliminación de maximalismos y lenguaje informal
           const prohibidas: Record<string, string> = {
-            'arquitectura conductual': 'enfoque profesional',
+            'arquitectura conductual': 'estilo de trabajo',
             'arquitectura': 'estilo de comportamiento',
             'eficiencia cognitiva': 'efectividad operativa',
             'recurso': 'profesional',
@@ -661,15 +660,19 @@ function InformePageContent() {
             'resiliencia excepcional': 'resiliencia consistente',
             'adherencia inquebrantable': 'adherencia consistente',
             'decisiones objetiva': 'decisiones objetivas',
-            'DASS-21': 'equilibrio emocional',
-            'DASS21': 'equilibrio emocional',
+            'DASS-21': 'bienestar emocional',
+            'DASS21': 'bienestar emocional',
             'MBTI': 'perfil conductual',
             'ICAR': 'capacidad cognitiva',
             'SJT': 'juicio situacional',
             'discurso inferido': 'comunicación observada',
             'magnífico': 'adecuado',
             'maravilloso': 'positivo',
-            'increíble': 'relevante'
+            'increíble': 'relevante',
+            'proclive': 'tiende a',
+            'deficitario': 'con áreas de mejora',
+            'óptimo': 'adecuado',
+            'máximo': 'alto'
           }
           
           Object.entries(prohibidas).forEach(([mal, bien]) => {
