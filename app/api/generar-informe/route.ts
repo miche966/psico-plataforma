@@ -12,8 +12,9 @@ export async function POST(req: Request) {
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-    // 1. SINCRONIZACIÓN DE SCORE
+    // 1. SINCRONIZACIÓN DE SCORE Y MBTI
     let scoreFinal = actual?.ajusteCargo?.score || 0;
+    const mbtiType = actual?.mbtiType || 'N/A';
     
     // 2. NORMALIZACIÓN Y EXTRACCIÓN DE FACTORES (EL "BUZÓN" UNIFICADO)
     const factoresCrudos: Record<string, number> = {};
@@ -60,6 +61,7 @@ REGLAS DE ORO DE REDACCIÓN:
 
 CONTEXTO DEL PUESTO: ${proceso?.cargo || 'N/A'}
 AJUSTE ESTIMADO: ${scoreFinal}%
+PERFIL CONDUCTUAL (MBTI): ${mbtiType}
 
 DATOS PARA ANÁLISIS (FACTORES):
 ${JSON.stringify(factoresCrudos)}
@@ -70,6 +72,7 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
   "fortalezas": [{"tendencia": "Comportamiento observado", "mecanismo": "Forma de actuar", "impacto_organizacional": "Valor para la empresa"}],
   "oportunidadesMejora": [{"tendencia": "Punto de atención", "mecanismo": "Situación de riesgo", "impacto_organizacional": "Consecuencia operativa"}],
   "ajusteCargo": { "score": ${scoreFinal}, "analisis": "Explicación humana de por qué el perfil encaja o no con las demandas del puesto." },
+  "ajusteMbti": "Análisis descriptivo y humano de cómo el perfil ${mbtiType} se adapta específicamente a las tareas y desafíos de la posición de ${proceso?.cargo || 'N/A'}.",
   "fundamentacion": "Argumento final para la toma de decisiones. Debe ser honesto y profesional.",
   "interpretacionPorFactor": {
      "relaciones": "Cómo se vincula con los demás...",

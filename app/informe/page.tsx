@@ -128,22 +128,22 @@ const REC_LABELS: Record<Rec, string> = {
 }
 
 const MBTI_DESC: Record<string, string> = {
-  'ISTJ': 'Perfil Logista: Se caracteriza por un enfoque pragmático, leal y altamente orientado al cumplimiento de estándares operativos y normativos.',
-  'ISFJ': 'Perfil Protector: Demuestra una dedicación constante, calidez en el trato profesional y un alto sentido de la responsabilidad detallista.',
-  'INFJ': 'Perfil Consejero: Idealista y organizado, con una capacidad notable para la visión estratégica y la toma de decisiones basada en valores.',
-  'INTJ': 'Perfil Estratega: Independiente y analítico, se enfoca en la eficiencia a largo plazo y el desarrollo de sistemas lógicos complejos.',
-  'ISTP': 'Perfil Virtuoso: Pragmático y técnico, destaca por su adaptabilidad y su capacidad para resolver problemas operativos de forma directa.',
-  'ISFP': 'Perfil Aventurero: Sensible y amable, aporta flexibilidad y un enfoque creativo a las tareas que requieren una ejecución armoniosa.',
-  'INFP': 'Perfil Mediador: Empático y leal, posee una curiosidad natural y una fuerte orientación hacia proyectos con impacto humano significativo.',
-  'INTP': 'Perfil Lógico: Analítico y escéptico, prefiere el trabajo independiente y el desarrollo de marcos teóricos para entender procesos.',
-  'ESTP': 'Perfil Emprendedor: Enérgico y audaz, su enfoque es pragmático y orientado a resultados inmediatos en entornos de alta movilidad.',
-  'ESFP': 'Perfil Animador: Sociable y espontáneo, destaca por su entusiasmo y su capacidad para dinamizar entornos de trabajo colaborativo.',
-  'ENFP': 'Perfil Activista: Creativo y optimista, posee una fuerte capacidad de comunicación y una visión entusiasta hacia la innovación grupal.',
-  'ENTP': 'Perfil Innovador: Estratégico y retador, se destaca por su curiosidad intelectual y su capacidad para proponer soluciones disruptivas.',
-  'ESTJ': 'Perfil Ejecutivo: Organizado y decidido, su fortaleza reside en la gestión eficiente de recursos y el liderazgo basado en resultados.',
-  'ESFJ': 'Perfil Cónsul: Responsable y sociable, fomenta la armonía del equipo y se asegura de que las necesidades operativas sean atendidas.',
-  'ENFJ': 'Perfil Protagonista: Líder inspirador y empático, posee una gran capacidad de organización orientada al desarrollo del talento humano.',
-  'ENTJ': 'Perfil Comandante: Decidido y eficiente, su visión estratégica y liderazgo natural impulsan la ejecución de metas institucionales.'
+  'ISTJ': 'Perfil Logista: Se caracteriza por un enfoque pragmático y una lealtad notable hacia los estándares operativos. Su valor reside en la constancia y en un estilo de trabajo metódico que asegura el cumplimiento de objetivos dentro de los marcos establecidos. En relación a la vacante, aporta la estructura y el rigor necesarios para garantizar una gestión de procesos confiable y predecible.',
+  'ISFJ': 'Perfil Protector: Demuestra una dedicación genuina y un sentido de la responsabilidad orientado al soporte del equipo. Su enfoque es detallista y armónico, priorizando la estabilidad y el cuidado de los procedimientos. En relación a la vacante, se alinea con roles que exigen una atención minuciosa y una colaboración constante para mantener un clima laboral productivo.',
+  'INFJ': 'Perfil Consejero: Idealista y organizado, con una capacidad notable para la visión estratégica basada en valores compartidos. Es un perfil que busca el propósito detrás de cada tarea, aportando profundidad analítica y compromiso. En relación a la vacante, su ajuste destaca en entornos que requieren una visión a largo plazo y una gestión centrada en la integridad del proyecto.',
+  'INTJ': 'Perfil Estratega: Independiente y analítico, se enfoca en la optimización de sistemas y la eficiencia operativa. Posee una gran capacidad para anticipar necesidades futuras mediante un razonamiento lógico y objetivo. En relación a la vacante, es ideal para funciones de planificación estratégica donde la autonomía y la resolución de problemas complejos sean factores críticos.',
+  'ISTP': 'Perfil Virtuoso: Pragmático y técnico, destaca por su adaptabilidad y su habilidad para resolver desafíos operativos con una lógica directa. Su estilo es observador y eficiente, respondiendo con calma ante imprevistos. En relación a la vacante, este perfil muestra una sintonía destacada con roles que exigen resolución técnica inmediata y autonomía operativa.',
+  'ISFP': 'Perfil Aventurero: Sensible y flexible, aporta un enfoque práctico y armonioso a la ejecución de tareas diarias. Valora la libertad operativa y se adapta bien a entornos dinámicos que permitan una expresión técnica fluida. En relación a la vacante, su ajuste es óptimo para posiciones que requieran adaptabilidad y un trato humano colaborativo y respetuoso.',
+  'INFP': 'Perfil Mediador: Empático y leal, posee una curiosidad natural y una fuerte orientación hacia proyectos con un impacto humano positivo. Es un perfil que busca la autenticidad y la mejora continua del entorno laboral. En relación a la vacante, aporta una sensibilidad única para roles de soporte, comunicación o áreas donde la cultura organizacional sea un pilar central.',
+  'INTP': 'Perfil Lógico: Analítico y curioso, prefiere el trabajo reflexivo y el desarrollo de marcos de trabajo que optimicen el entendimiento de los procesos. Su enfoque es objetivo y busca la precisión conceptual. En relación a la vacante, se ajusta a posiciones que demanden investigación, análisis de datos o la creación de nuevas metodologías de trabajo.',
+  'ESTP': 'Perfil Emprendedor: Enérgico y audaz, con un enfoque pragmático orientado a obtener resultados visibles de forma inmediata. Se destaca por su capacidad de reacción y su estilo de comunicación directo. En relación a la vacante, su perfil es valioso en entornos de alta exigencia donde la toma de decisiones rápida y la ejecución en terreno sean prioritarias.',
+  'ESFP': 'Perfil Animador: Sociable y espontáneo, destaca por su entusiasmo y su capacidad para dinamizar equipos de trabajo. Posee un enfoque práctico y busca soluciones que involucren activamente a los demás. En relación a la vacante, su ajuste es ideal para roles de cara al cliente o posiciones que exijan una alta interacción social y vitalidad operativa.',
+  'ENFP': 'Perfil Activista: Creativo y optimista, posee una visión entusiasta hacia la innovación y el desarrollo de nuevas ideas. Su facilidad de palabra y apertura mental favorecen un clima de cambio positivo. En relación a la vacante, se alinea con roles dinámicos donde la iniciativa propia y la capacidad de motivar a otros sean esenciales para el crecimiento.',
+  'ENTP': 'Perfil Innovador: Estratégico y retador, se destaca por su curiosidad intelectual y su habilidad para proponer soluciones disruptivas. Disfruta del debate de ideas y de cuestionar procesos para mejorarlos. En relación a la vacante, es un perfil que aporta valor en áreas de desarrollo de negocios, consultoría o cualquier función que exija pensamiento lateral.',
+  'ESTJ': 'Perfil Ejecutivo: Organizado y decidido, su fortaleza reside en la gestión eficiente de recursos y un liderazgo basado en la claridad de objetivos. Valora la honestidad y el cumplimiento de la palabra empeñada. En relación a la vacante, aporta la determinación y el orden necesarios para liderar procesos operativos con un alto estándar de eficacia.',
+  'ESFJ': 'Perfil Cónsul: Responsable y sociable, enfoca su energía en asegurar que las necesidades del equipo y de la organización sean atendidas con calidez y rigor. Fomenta la armonía y la lealtad. En relación a la vacante, su perfil es excelente para la coordinación de servicios, gestión de talento o áreas donde la atención al cliente interno sea crítica.',
+  'ENFJ': 'Perfil Protagonista: Líder inspirador y empático, posee una gran capacidad de organización orientada al desarrollo humano y al éxito colectivo. Comunica con propósito y visión. En relación a la vacante, este perfil se encuentra altamente ajustado para posiciones de liderazgo de equipos, mentoría o gestión de proyectos estratégicos integradores.',
+  'ENTJ': 'Perfil Comandante: Decidido y eficiente, su visión estratégica y liderazgo natural impulsan la ejecución de metas institucionales a gran escala. No teme a los desafíos complejos y busca la excelencia operativa. En relación a la vacante, es el perfil idóneo para roles de dirección o gerencia que requieran un mando firme, analítico y orientado a resultados.'
 }
 
 // Estilos base de la UI
@@ -639,6 +639,7 @@ function InformePageContent() {
           // 3. Eliminación de maximalismos y lenguaje informal
           const prohibidas: Record<string, string> = {
             'arquitectura conductual': 'estilo de trabajo',
+            'arquitectura mental': 'estilo de pensamiento',
             'arquitectura': 'estilo de comportamiento',
             'eficiencia cognitiva': 'efectividad operativa',
             'recurso': 'profesional',
@@ -707,6 +708,7 @@ function InformePageContent() {
             score: scoreFrontend, 
             analisis: humanizar(rawRes.ajusteCargo?.analisis || rawRes.fundamentacion || '')
           },
+          ajusteMbti: humanizar(rawRes.ajusteMbti || ''),
           recomendacion: scoreFrontend >= 85 ? 'recomendado' : scoreFrontend >= 70 ? 'con_reservas' : 'no_recomendado'
         }
 
