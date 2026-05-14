@@ -1240,34 +1240,34 @@ PsicoPlataforma - Gestión Inteligente de Talento
 
                     const narrativas: Record<string, any> = {
                       documentos: {
-                        alto: 'Muestra una agudeza destacada en el manejo de registros y procesos administrativos. Su capacidad para identificar inconsistencias en volúmenes de datos favorece un flujo documental con mínima incidencia de errores, lo que se traduce en una gestión administrativa precisa y confiable para la organización.',
-                        medio: 'Posee una destreza adecuada para la organización y revisión de documentos técnicos. Mantiene un estándar de orden constante, logrando procesar información con seguridad y criterio, lo que facilita que los procesos de soporte administrativo se ejecuten sin contratiempos.',
-                        bajo: 'Podría presentar dificultades para mantener el rigor sistemático en la gestión de archivos o datos. Su rendimiento en tareas de control administrativo tiende a ser variable, por lo que se beneficia del uso de listas de verificación o una revisión final para asegurar la integridad de los registros.'
+                        alto: 'Destaca por un manejo prolijo y ordenado de los activos documentales y registros administrativos. Su capacidad para organizar volúmenes de datos asegura que la información sea tratada con rigor, facilitando un entorno operativo fluido y fortaleciendo la calidad de la gestión administrativa interna.',
+                        medio: 'Muestra un cuidado profesional adecuado en la organización y revisión de documentos. Mantiene un estándar de orden constante, logrando procesar la información con claridad y criterio, lo que asegura que las tareas de soporte avancen sin contratiempos.',
+                        bajo: 'En tareas que exigen un rigor sistemático extremo en la gestión de archivos, se beneficiará del apoyo de listas de verificación. Su enfoque tiende a ser más ágil que detallista, por lo que una revisión de cierre asegurará la integridad total de los registros.'
                       },
                       comparacion: {
-                        alto: 'Su velocidad de procesamiento y reconocimiento de patrones es destacada. Logra identificar diferencias y errores de transcripción con una agilidad que optimiza los tiempos de respuesta del área, siendo un perfil eficiente en tareas que demandan validación de datos.',
-                        medio: 'Demuestra una agilidad mental acorde a las exigencias operativas habituales. Es capaz de contrastar información y detectar errores de manera eficiente, manteniendo un ritmo de trabajo estable que equilibra la velocidad con la precisión técnica.',
-                        bajo: 'Tiende a procesar la comparación de datos de forma más pausada ante la presión de tiempo. Su exactitud mejora en tareas que no dependen de una respuesta inmediata o que permiten una revisión detallada de la información.'
+                        alto: 'Manifiesta una notable agilidad en el procesamiento y reconocimiento de patrones. Logra contrastar información y detectar discrepancias con una fluidez que optimiza los tiempos de respuesta, aportando una alta efectividad en tareas que demandan validación constante.',
+                        medio: 'Demuestra un ritmo de ejecución equilibrado que le permite abordar tareas habituales con una fluidez adecuada. Es capaz de contrastar información de manera efectiva, manteniendo una cadencia estable que asegura la calidad del resultado final.',
+                        bajo: 'Tiende a procesar la comparación de datos de forma más pausada para asegurar la exactitud. Su desempeño mejora en entornos que no dependan de una respuesta inmediata, permitiéndole realizar una revisión más deliberada de la información.'
                       },
                       concentracion: {
-                        alto: 'Posee una capacidad de atención sostenida consistente, incluso en entornos con interferencias. Su foco se mantiene estable durante periodos prolongados, lo que le permite finalizar tareas complejas con un estándar de calidad homogéneo y regular.',
-                        medio: 'Mantiene un nivel de atención funcional durante la jornada laboral. Logra enfocarse en sus objetivos a pesar de las distracciones comunes, aunque podría presentar leves bajas en su precisión ante tareas monótonas o tras periodos largos de actividad ininterrumpida.',
-                        bajo: 'Su umbral de atención tiende a ser variable y puede verse afectado por estímulos externos. Se recomienda un entorno de trabajo organizado y pausas programadas para mantener la calidad operativa y reducir el riesgo de errores por distracción.'
+                        alto: 'Posees una capacidad de enfoque sostenido y constante, incluso en entornos con múltiples estímulos. Su atención se mantiene estable durante periodos prolongados, lo que le permite completar tareas complejas manteniendo un estándar de calidad homogéneo.',
+                        medio: 'Mantiene un nivel de atención funcional durante la jornada. Logra enfocarse en sus objetivos a pesar de las distracciones comunes, asegurando una ejecución estable en sus responsabilidades diarias de manera profesional.',
+                        bajo: 'Muestra un estilo de atención que puede fluctuar ante entornos de alta estimulación. Se beneficia de espacios de trabajo organizados que favorezcan la inmersión en la tarea, minimizando así el impacto de las distracciones en su desempeño.'
                       },
                       errores_texto: {
-                        alto: 'Presenta una agudeza visual y analítica para la detección de anomalías en textos y reportes. Su intervención contribuye a una imagen institucional profesional, reduciendo significativamente el riesgo de malentendidos en la comunicación escrita.',
-                        medio: 'Es capaz de producir y revisar textos con un nivel de corrección profesional adecuado. Detecta los errores comunes y mantiene una coherencia narrativa lógica, asegurando que las comunicaciones cumplan con los estándares de calidad de la organización.',
-                        bajo: 'Muestra una tendencia a la omisión de errores en la redacción o revisión de informes. Se sugiere el uso de herramientas de corrección automatizada o una revisión final por un tercero para asegurar la consistencia de los documentos escritos.'
+                        alto: 'Se identifica una notable minuciosidad en el procesamiento de información escrita y registros de texto. Su habilidad para identificar inconsistencias garantiza que la comunicación institucional sea presentada con un estándar de calidad constante, protegiendo la integridad de los reportes.',
+                        medio: 'Es capaz de producir y revisar documentos con un nivel de corrección profesional claro. Detecta los errores comunes y mantiene una coherencia narrativa lógica, asegurando que las comunicaciones cumplan con los parámetros de claridad esperados.',
+                        bajo: 'Su enfoque se centra principalmente en la agilidad de la comunicación. Para asegurar la precisión absoluta en la redacción de informes críticos, se recomienda una revisión final o el uso de herramientas de soporte que garanticen la consistencia de los textos.'
                       },
                       errores_numeros: {
-                        alto: 'Su precisión en el manejo de cifras y cálculos es destacada. Logra identificar descuadres o errores de carga de datos numéricos con facilidad, aportando seguridad en procesos financieros, estadísticos o de facturación que requieran alta exactitud.',
-                        medio: 'Maneja la información cuantitativa con seguridad y criterio. Realiza cálculos y transcripciones numéricas con una tasa de error baja en condiciones normales, contribuyendo a la estabilidad de los reportes de gestión del área.',
-                        bajo: 'Puede presentar vulnerabilidad ante la fatiga numérica, tendiendo a cometer errores de transcripción cuando maneja volúmenes moderados de datos. Se recomienda una validación secundaria en tareas que impliquen indicadores críticos.'
+                        alto: 'Demuestra un manejo seguro y criterioso de la información cuantitativa. Su enfoque en el cálculo y la transcripción de datos numéricos asegura una consistencia sólida en los reportes de gestión, aportando fiabilidad a los procesos de alta exactitud.',
+                        medio: 'Maneja la información cuantitativa con seguridad y criterio profesional. Realiza cálculos y transcripciones con una baja incidencia de errores en condiciones normales, contribuyendo a la estabilidad y orden de los reportes del área.',
+                        bajo: 'Ante volúmenes moderados de datos numéricos, su precisión mejora con una validación secundaria. Se beneficia de metodologías de trabajo pautadas que le permitan mantener el rigor en tareas que impliquen indicadores críticos de gestión.'
                       },
                       metricas_fraude: {
-                        alto: 'El perfil muestra una transparencia notable en su autoevaluación. No se detectan sesgos significativos de deseabilidad social, lo que aporta una validez técnica consistente a los resultados del informe y refleja una autopercepción honesta.',
-                        medio: 'Sus resultados son coherentes y muestran un ajuste profesional entre la imagen que desea proyectar y sus características. Mantiene un nivel de franqueza que permite confiar en la validez general de la evaluación.',
-                        bajo: 'Se observa una tendencia a proyectar una imagen idealizada, lo que podría indicar una autocrítica limitada. Se recomienda validar estos resultados mediante una entrevista por competencias para profundizar en la veracidad de los rasgos declarados.'
+                        alto: 'Se observa una disposición genuina hacia la transparencia y la honestidad en su autopercepción profesional. Su estilo de respuesta sugiere una mirada objetiva sobre sus propias capacidades, lo que brinda una base de confianza sólida para la interpretación de los resultados.',
+                        medio: 'Sus resultados muestran un ajuste profesional equilibrado entre la imagen proyectada y sus características reales. Mantiene un nivel de franqueza que permite confiar plenamente en la información brindada durante el proceso.',
+                        bajo: 'Muestra una tendencia a proyectar una imagen muy positiva de sus capacidades. Para obtener una visión más equilibrada, se recomienda profundizar en ejemplos conductuales concretos que permitan validar la aplicación real de sus rasgos en el entorno laboral.'
                       }
                     };
 
@@ -1311,49 +1311,49 @@ PsicoPlataforma - Gestión Inteligente de Talento
 
                 const narrativas: Record<string, any> = {
                   comunicacion: {
-                    alto: 'Transmite información de manera clara y estructurada, facilitando el intercambio de datos técnicos entre áreas. Su discurso se adapta a los requerimientos del interlocutor, lo que asegura que los objetivos operativos sean comprendidos sin ambigüedades en entornos de alta exigencia.',
-                    medio: 'Logra transmitir información de manera efectiva y profesional, asegurando que los mensajes clave lleguen a su destino en los tiempos previstos. Posee habilidades de escucha activa que le permiten interactuar constructivamente con su equipo directo.',
-                    bajo: 'Se recomienda fortalecer la estructura lógica de los mensajes para evitar omisiones de datos críticos. El uso de canales de comunicación más pautados garantizaría la efectividad de sus interacciones en procesos complejos.'
+                    alto: 'Transmite información de manera clara y estructurada, facilitando el intercambio de datos entre áreas con fluidez. Su discurso se adapta a los requerimientos del entorno, lo que asegura que los objetivos sean comprendidos con precisión y sin ambigüedades.',
+                    medio: 'Logra transmitir información de manera efectiva y profesional, asegurando que los mensajes clave lleguen a su destino con claridad. Posee habilidades de escucha activa que le permiten interactuar de forma constructiva con su entorno laboral.',
+                    bajo: 'Se recomienda fortalecer la estructura de sus mensajes para asegurar la total claridad en la transmisión de datos. El uso de canales de comunicación pautados garantizaría que sus interacciones mantengan la efectividad en procesos dinámicos.'
                   },
                   liderazgo: {
-                    alto: 'Muestra capacidad para coordinar procesos complejos y guiar la ejecución de tareas bajo estándares de calidad institucional. Su enfoque se centra en el cumplimiento de objetivos estratégicos, organizando el flujo de trabajo de manera que se optimicen los recursos disponibles.',
-                    medio: 'Ejerce una influencia funcional basada en su sólido conocimiento técnico, apoyando la estabilidad del grupo en las tareas cotidianas. Funciona como un referente operativo que facilita la ejecución y mantiene la cohesión del equipo bajo directrices claras.',
-                    bajo: 'Muestra una marcada preferencia por roles de ejecución individual. Se recomienda un plan de acompañamiento jerárquico para desarrollar habilidades de supervisión y toma de decisiones que afecten el desempeño de terceros.'
+                    alto: 'Muestra una sólida facultad para coordinar procesos y guiar la ejecución de tareas bajo estándares de calidad. Su enfoque se centra en el cumplimiento de objetivos organizando el flujo de trabajo de manera que se optimicen los recursos y el tiempo del equipo.',
+                    medio: 'Actúa como un referente operativo que facilita la ejecución de tareas y apoya la estabilidad del grupo. Posee un estilo de influencia funcional que permite mantener la cohesión y el avance de las metas diarias bajo directrices claras.',
+                    bajo: 'Manifiesta una marcada preferencia por roles de ejecución individual y autónoma. Se beneficiará de un acompañamiento que le permita desarrollar progresivamente habilidades de gestión de equipos y toma de decisiones compartidas.'
                   },
                   trabajo_equipo: {
-                    alto: 'Se integra a la dinámica grupal aportando de forma proactiva al cumplimiento de los objetivos colectivos. Su enfoque fomenta la sinergia organizacional y el soporte mutuo, lo que garantiza un clima de confianza y una productividad estable en el área.',
-                    medio: 'Participa de forma colaborativa en el equipo, cumpliendo con sus compromisos técnicos y manteniendo una interacción profesional con sus pares. Facilita que los proyectos compartidos avancen de manera fluida, respetando los consensos alcanzados.',
-                    bajo: 'Tiende a priorizar el trabajo autónomo sobre la interdependencia grupal. Se recomienda su integración en proyectos que demanden una colaboración obligatoria para desarrollar su sentido de pertenencia y agilidad colectiva.'
+                    alto: 'Se integra a la dinámica grupal de forma proactiva, favoreciendo un clima de confianza y soporte mutuo. Su enfoque fomenta la sinergia organizacional, asegurando que el cumplimiento de los objetivos colectivos se realice con una productividad estable.',
+                    medio: 'Participa de forma colaborativa en el equipo, cumpliendo con sus responsabilidades técnicas y manteniendo una interacción profesional cordial. Facilita que los proyectos compartidos avancen con fluidez, respetando siempre los acuerdos del grupo.',
+                    bajo: 'Tiende a priorizar el trabajo autónomo sobre la interdependencia. Se recomienda su integración en proyectos colaborativos que le permitan fortalecer su sentido de pertenencia y desarrollar una mayor agilidad en el intercambio con pares.'
                   },
                   adaptabilidad: {
-                    alto: 'Muestra capacidad para ajustar su ritmo de trabajo ante cambios sutiles o drásticos en las prioridades del sector. Su flexibilidad le permite transitar modificaciones normativas manteniendo la calidad de su ejecución técnica sin comprometer el resultado final.',
-                    medio: 'Logra asimilar cambios en procesos y estructuras organizacionales en tiempos razonables, mostrando una apertura constructiva hacia la innovación necesaria para la competitividad del negocio.',
-                    bajo: 'Presenta rigidez frente a las modificaciones imprevistas en su rutina operativa. Se beneficia de una gestión del cambio muy estructurada, comunicada con antelación y con un acompañamiento paso a paso.'
+                    alto: 'Posee una notable facultad para ajustar su ritmo de trabajo ante cambios en las prioridades del área. Su flexibilidad le permite transitar modificaciones operativas manteniendo la calidad de su ejecución técnica y asegurando la continuidad de los resultados.',
+                    medio: 'Logra asimilar cambios en procesos y estructuras organizacionales de manera profesional, mostrando una apertura constructiva hacia las nuevas metodologías necesarias para la evolución del negocio.',
+                    bajo: 'Muestra una preferencia por rutinas operativas estables y predecibles. Se beneficia de una gestión del cambio estructurada y comunicada con antelación, lo que le permite adaptarse con mayor seguridad a las nuevas demandas del entorno.'
                   },
                   resolucion_problemas: {
-                    alto: 'Utiliza criterios lógicos y un enfoque sistémico para identificar la raíz de errores operativos. Su análisis facilita la implementación de soluciones prácticas que no solo resuelven la urgencia, sino que previenen recurrencias futuras mediante la mejora de procesos.',
-                    medio: 'Es capaz de resolver inconvenientes operativos de manera autónoma utilizando el sentido común y la experiencia técnica previa. Muestra iniciativa para destrabar situaciones que impiden el avance de sus tareas habituales.',
-                    bajo: 'Tiende a depender de instrucciones detalladas para resolver problemas básicos fuera de su rutina. Se recomienda capacitación en metodologías de análisis de causa raíz y pensamiento lateral para ganar autonomía resolutiva.'
+                    alto: 'Utiliza criterios lógicos y un enfoque práctico para identificar la raíz de desafíos operativos. Su análisis facilita soluciones que no solo resuelven la urgencia, sino que aportan mejoras al proceso para prevenir recurrencias de manera efectiva.',
+                    medio: 'Es capaz de resolver inconvenientes operativos de manera autónoma utilizando su experiencia y criterio profesional. Muestra iniciativa para destrabar situaciones que impiden el avance de sus tareas diarias con seguridad.',
+                    bajo: 'Tiende a requerir guías claras para abordar situaciones que se alejan de su rutina habitual. Se recomienda el desarrollo de metodologías de análisis de problemas para ganar mayor autonomía y agilidad resolutiva ante imprevistos.'
                   },
                   etica: {
-                    alto: 'El perfil se alinea con los protocolos de integridad institucional, demostrando un manejo responsable de la información confidencial. Esta tendencia favorece la mitigación de riesgos operativos en procesos que requieren un estricto apego a la normativa vigente del área.',
-                    medio: 'Mantiene un comportamiento profesional alineado con las normas de convivencia y legalidad organizacional. Su criterio permite tomar decisiones equilibradas que aseguran la transparencia en la ejecución de sus tareas diarias.',
-                    bajo: 'Se recomienda reforzar el conocimiento de los marcos normativos específicos del cargo. Una supervisión cercana permitirá alinear sus acciones con los estándares de integridad y transparencia requeridos por la organización.'
+                    alto: 'Demuestra un compromiso sólido con la integridad y el manejo responsable de la información. Su estilo de trabajo se alinea con los estándares institucionales, mitigando riesgos operativos mediante un apego consistente a los protocolos del área.',
+                    medio: 'Mantiene un comportamiento profesional alineado con las normas y la cultura organizacional. Su criterio permite tomar decisiones equilibradas que aseguran la transparencia y la confianza en la ejecución de sus responsabilidades diarias.',
+                    bajo: 'Se recomienda reforzar el conocimiento de los protocolos específicos de integridad del cargo. Una guía cercana le permitirá alinear sus acciones con los estándares de transparencia requeridos por la organización de manera más sólida.'
                   },
                   negociacion: {
-                    alto: 'Utiliza argumentos basados en datos y normativas para alcanzar acuerdos funcionales que aseguren la continuidad operativa. Su enfoque facilita la resolución de diferencias mediante criterios prácticos, preservando la calidad de las relaciones profesionales.',
-                    medio: 'Posee habilidades de negociación que le permiten llegar a consensos en la operativa diaria. Logra defender los intereses de la organización de forma profesional, mostrando flexibilidad cuando el objetivo colectivo lo demanda.',
-                    bajo: 'Muestra preferencia por posturas fijas en situaciones de desacuerdo. Se beneficiaría de entrenamiento en técnicas de comunicación asertiva para facilitar el alcance de acuerdos en entornos de alta demanda operativa.'
+                    alto: 'Utiliza argumentos fundamentados para alcanzar acuerdos que aseguren la fluidez operativa. Su enfoque facilita la resolución de diferencias mediante criterios prácticos, preservando siempre la calidad de los vínculos profesionales y el objetivo común.',
+                    medio: 'Posee habilidades de comunicación que le permiten llegar a consensos en la operativa diaria. Logra representar los intereses del área de forma profesional, mostrando la flexibilidad necesaria cuando el éxito del proyecto así lo requiere.',
+                    bajo: 'Muestra preferencia por defender posturas técnicas fijas en situaciones de desacuerdo. Se beneficiaría de fortalecer sus habilidades de comunicación asertiva para facilitar el alcance de acuerdos constructivos en el día a día.'
                   },
                   manejo_emocional: {
-                    alto: 'Gestiona sus reacciones ante situaciones de conflicto laboral de forma profesional, manteniendo un enfoque neutro y orientado a la tarea. Su estabilidad emocional actúa como un factor de equilibrio que favorece la toma de decisiones objetiva bajo presión.',
-                    medio: 'El evaluado maneja el impacto emocional de su trabajo de manera estable, evitando que las variables personales afecten su desempeño técnico. Es capaz de mantener un trato cordial y profesional incluso ante picos de demanda moderados.',
-                    bajo: 'Se observa vulnerabilidad ante la presión emocional, lo que podría impactar en su rendimiento analítico. Se beneficia de un entorno previsible y pautas de trabajo estructuradas que minimicen la incertidumbre situacional.'
+                    alto: 'Gestiona sus reacciones ante desafíos o conflictos laborales con profesionalismo y calma. Su estabilidad actúa como un factor de equilibrio que favorece la toma de decisiones objetivas y mantiene el foco en la tarea bajo situaciones de demanda.',
+                    medio: 'Maneja el impacto de las demandas laborales de manera estable, asegurando que las variables externas no afecten su desempeño técnico. Es capaz de mantener un trato profesional y cordial incluso ante periodos de actividad intensa.',
+                    bajo: 'Ante situaciones de alta presión, su estilo de respuesta puede verse influenciado por la tensión del momento. Se beneficia de entornos predecibles y de una estructura de apoyo que le permita recuperar su objetividad de forma rápida.'
                   },
                   tolerancia_frustracion: {
-                    alto: 'Mantiene el ritmo de ejecución previsto ante el aumento en el volumen de tareas o demoras en los resultados esperados. Su respuesta técnica se mantiene estable, capitalizando los obstáculos como una oportunidad para el ajuste de procesos y la mejora continua.',
-                    medio: 'Muestra una capacidad adecuada para recuperarse ante fallos operativos, manteniendo su compromiso con las metas pendientes. Logra retomar sus funciones con profesionalismo una vez superado el inconveniente situacional detectado.',
-                    bajo: 'La tolerancia a los reveses operativos es un factor que requiere fortalecimiento. La frustración ante resultados imprevistos podría impactar en la continuidad de sus funciones, por lo que requiere validación y seguimiento constante.'
+                    alto: 'Mantiene el ritmo de ejecución previsto ante el aumento en el volumen de tareas o demoras en los resultados esperados. Su respuesta profesional se mantiene estable, capitalizando los obstáculos como una oportunidad para el ajuste de procesos y la mejora continua.',
+                    medio: 'Muestra una capacidad adecuada para recuperarse ante fallos operativos, manteniendo su compromiso con las metas pendientes. Logra retomar sus funciones con profesionalismo una vez superado el inconveniente detectado.',
+                    bajo: 'La gestión de los reveses operativos es un área que se beneficia de un acompañamiento cercano. Mantiene su compromiso, aunque requiere pautas claras para recuperar la fluidez en sus funciones tras resultados imprevistos.'
                   }
                 };
 
