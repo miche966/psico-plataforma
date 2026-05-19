@@ -64,7 +64,7 @@ export default function CandidatosPage() {
 
     const { data: sData } = await supabase
       .from('sesiones')
-      .select('candidato_id, test_id, finalizada_en, puntaje_bruto')
+      .select('*')
     
     const counts: Record<string, number> = {}
     sData?.forEach(s => {
@@ -830,291 +830,316 @@ export default function CandidatosPage() {
 
             {/* Contenido Principal */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-[#090d16] custom-scrollbar">
-              
-              {/* Bloque 1: Resumen de KPIs Generales */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {(() => {
+                const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.toLowerCase().includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
+                const diagnosticoBF = bf ? extraerDiagnostico(bf.puntaje_bruto || bf.puntajes || bf.resultados || bf, bf.test_id) : []
                 
-                {/* Ajuste al Puesto */}
-                <div className="bg-slate-950/50 border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-5">
-                    <Target className="w-16 h-16 text-indigo-400" />
-                  </div>
-                  <div className="w-16 h-16 rounded-full border-4 border-indigo-500/30 flex items-center justify-center shrink-0">
-                    {(() => {
-                      const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
-                      const matchVal = bf ? Math.round((promedioPuntaje(bf.puntaje_bruto || bf) / 5) * 100) : 75
-                      return <span className="text-lg font-black text-indigo-400">{matchVal}%</span>
-                    })()}
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Ajuste Estimado</span>
-                    <span className="text-sm font-bold text-white">Adecuación General</span>
-                  </div>
-                </div>
+                const getValorOCEAN = (key: string) => {
+                  const found = diagnosticoBF.find(([k]) => k.toLowerCase() === key.toLowerCase())
+                  return found ? found[1] : 3.0
+                };
 
-                {/* Fortaleza Conductual */}
-                <div className="bg-slate-950/50 border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-5">
-                    <Award className="w-16 h-16 text-emerald-400" />
-                  </div>
-                  <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center shrink-0 border border-emerald-500/20">
-                    <Award className="w-6 h-6 text-emerald-400" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Pilar Conductual</span>
-                    {(() => {
-                      const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
-                      let pilar = "Compromiso"
-                      if (bf && bf.puntaje_bruto) {
-                        const vals = bf.puntaje_bruto
-                        const maxVal = Math.max(vals.extraversion || 0, vals.amabilidad || 0, vals.responsabilidad || 0, vals.apertura || 0)
-                        if (maxVal === vals.extraversion) pilar = "Liderazgo e Influencia"
-                        else if (maxVal === vals.amabilidad) pilar = "Colaboración y Soporte"
-                        else if (maxVal === vals.responsabilidad) pilar = "Rigor y Planificación"
-                        else if (maxVal === vals.apertura) pilar = "Innovación y Adaptabilidad"
-                      }
-                      return <span className="text-sm font-bold text-white">{pilar}</span>
-                    })()}
-                  </div>
-                </div>
+                const matchVal = (() => {
+                  if (diagnosticoBF.length === 0) return 75
+                  const avg = diagnosticoBF.reduce((acc, [, v]) => acc + v, 0) / diagnosticoBF.length
+                  return Math.round((avg / 5) * 100)
+                })();
 
-                {/* Eficiencia Cognitiva Baremo */}
-                <div className="bg-slate-950/50 border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-5">
-                    <Briefcase className="w-16 h-16 text-amber-400" />
-                  </div>
-                  <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center shrink-0 border border-amber-500/20">
-                    <Sparkles className="w-6 h-6 text-amber-400" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Índice Cognitivo Baremo</span>
-                    {(() => {
-                      const cog = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.includes('icar') || s.test_id.includes('razonamiento') || s.test_id.includes('detalle')))
-                      let score = "Baremo Medio-Alto"
-                      if (cog && cog.puntaje_bruto) {
-                        const correctas = cog.puntaje_bruto.correctas || 0
-                        if (correctas >= 12) score = "Baremo Superior"
-                        else if (correctas >= 8) score = "Baremo Promedio"
-                        else score = "Baremo Operativo"
-                      }
-                      return <span className="text-sm font-bold text-white">{score}</span>
-                    })()}
-                  </div>
-                </div>
+                const pilar = (() => {
+                  if (diagnosticoBF.length === 0) return "Compromiso"
+                  let maxK = ""
+                  let maxV = -1
+                  diagnosticoBF.forEach(([k, v]) => {
+                    if (k !== 'neuroticismo' && v > maxV) {
+                      maxV = v
+                      maxK = k
+                    }
+                  })
+                  if (maxK === 'extraversion') return "Liderazgo e Influencia"
+                  if (maxK === 'amabilidad') return "Colaboración y Soporte"
+                  if (maxK === 'responsabilidad') return "Rigor y Planificación"
+                  if (maxK === 'apertura') return "Innovación y Adaptabilidad"
+                  return "Compromiso y Confiabilidad"
+                })();
 
-                {/* Ética y Cumplimiento */}
-                <div className="bg-slate-950/50 border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-5">
-                    <PieChart className="w-16 h-16 text-cyan-400" />
-                  </div>
-                  <div className="w-12 h-12 bg-cyan-500/10 rounded-2xl flex items-center justify-center shrink-0 border border-cyan-500/20">
-                    <PieChart className="w-6 h-6 text-cyan-400" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Confiabilidad</span>
-                    {(() => {
-                      const integrity = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && s.test_id.includes('integridad'))
-                      let val = "Alineamiento Óptimo"
-                      if (integrity && integrity.puntaje_bruto) {
-                        const avg = promedioPuntaje(integrity.puntaje_bruto)
-                        if (avg >= 4) val = "Conformidad Ética Alta"
-                        else if (avg >= 2.5) val = "Conformidad Ética Media"
-                        else val = "Conformidad Bajo Supervisión"
-                      }
-                      return <span className="text-sm font-bold text-white">{val}</span>
-                    })()}
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Bloque 2: Gráficos de Análisis */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                const cog = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.toLowerCase().includes('icar') || s.test_id.toLowerCase().includes('razonamiento') || s.test_id.toLowerCase().includes('detalle') || s.test_id.toLowerCase().includes('numerico') || s.test_id.toLowerCase().includes('verbal')))
                 
-                {/* Gráfico de Telaraña (Radar) - Big Five de Personalidad */}
-                <div className="bg-slate-950/50 border border-slate-800/60 rounded-[32px] p-6 flex flex-col justify-between">
-                  <div>
-                    <h4 className="text-base font-bold text-white mb-1">Estructura Conductual Baremo vs. Candidato</h4>
-                    <p className="text-xs text-slate-400 mb-6">Contraste de dimensiones de personalidad contra Baremo Ideal del puesto</p>
-                  </div>
+                const score = (() => {
+                  if (!cog) return "Baremo Medio-Alto"
+                  const diag = extraerDiagnostico(cog.puntaje_bruto || cog.puntajes || cog.resultados || cog, cog.test_id)
+                  const correctasMatch = diag.find(([k]) => k.includes('correctas') || k.includes('fluidez') || k.includes('aptitud') || k.includes('matrices') || k.includes('analogias'))
+                  const pctMatch = diag.find(([k]) => k.includes('porcentaje') || k.includes('pct') || k.includes('analisis'))
                   
-                  {(() => {
-                    const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
-                    
-                    if (!bf || !bf.puntaje_bruto) {
-                      return (
-                        <div className="flex-1 flex flex-col items-center justify-center py-16 text-center text-slate-500">
-                          <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
-                            <Info className="w-6 h-6 text-slate-400" />
-                          </div>
-                          <p className="text-sm font-medium">El evaluado no cuenta con registro de Big Five completado aún.</p>
-                        </div>
-                      )
-                    }
+                  let pct = 50
+                  if (pctMatch) {
+                    pct = pctMatch[1] <= 5 ? (pctMatch[1] / 5) * 100 : pctMatch[1]
+                  } else if (correctasMatch) {
+                    pct = (correctasMatch[1] / 16) * 100
+                  } else if (diag.length > 0) {
+                    pct = (diag[0][1] / 5) * 100
+                  }
+                  
+                  if (pct >= 75) return "Baremo Superior"
+                  if (pct >= 50) return "Baremo Promedio"
+                  return "Baremo Operativo"
+                })();
 
-                    // Preparar los datos
-                    const pb = bf.puntaje_bruto
-                    const radarData = [
-                      { factor: 'Extraversión', Candidato: Number(pb.extraversion) || 3.0, Baremo: 4.0 },
-                      { factor: 'Amabilidad', Candidato: Number(pb.amabilidad) || 3.0, Baremo: 4.2 },
-                      { factor: 'Responsabilidad', Candidato: Number(pb.responsabilidad) || 3.0, Baremo: 4.5 },
-                      { factor: 'Estabilidad Emocional', Candidato: 6 - (Number(pb.neuroticismo) || 3.0), Baremo: 4.0 },
-                      { factor: 'Apertura', Candidato: Number(pb.apertura) || 3.0, Baremo: 3.8 }
-                    ]
-
-                    return (
-                      <div className="w-full h-[320px] flex items-center justify-center">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                            <PolarGrid stroke="#1e293b" />
-                            <PolarAngleAxis dataKey="factor" stroke="#94a3b8" fontSize={11} fontWeight="bold" />
-                            <PolarRadiusAxis angle={30} domain={[0, 5]} stroke="#475569" fontSize={9} />
-                            <ChartTooltip
-                              contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px' }}
-                              labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
-                            />
-                            <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                            <Radar name="Baremo Ideal" dataKey="Baremo" stroke="#475569" fill="#475569" fillOpacity={0.1} />
-                            <Radar name="Candidato" dataKey="Candidato" stroke="#6366f1" fill="#6366f1" fillOpacity={0.4} />
-                          </RadarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )
-                  })()}
-                </div>
-
-                {/* Gráfico de Barras - Rendimiento Cognitivo baremado */}
-                <div className="bg-slate-950/50 border border-slate-800/60 rounded-[32px] p-6 flex flex-col justify-between">
-                  <div>
-                    <h4 className="text-base font-bold text-white mb-1">Rendimiento en Baremos Cognitivos</h4>
-                    <p className="text-xs text-slate-400 mb-6">Comparación en porcentaje de aciertos de razonamiento y atención</p>
-                  </div>
-
-                  {(() => {
-                    const cognitiveTests = sesionesData.filter(s => 
-                      s.candidato_id === candidatoParaDashboard.id && 
-                      (s.test_id.includes('icar') || s.test_id.includes('razonamiento') || s.test_id.includes('detalle') || s.test_id.includes('numerico') || s.test_id.includes('verbal'))
-                    )
-
-                    if (cognitiveTests.length === 0) {
-                      return (
-                        <div className="flex-1 flex flex-col items-center justify-center py-16 text-center text-slate-500">
-                          <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
-                            <Info className="w-6 h-6 text-slate-400" />
-                          </div>
-                          <p className="text-sm font-medium">El evaluado no cuenta con registro de tests cognitivos completados.</p>
-                        </div>
-                      )
-                    }
-
-                    const barData = cognitiveTests.map(t => {
-                      const name = t.test_id.includes('icar') ? 'ICAR' :
-                                   t.test_id.includes('numerico') ? 'R. Numérico' :
-                                   t.test_id.includes('verbal') ? 'R. Verbal' :
-                                   t.test_id.includes('detalle') ? 'Atención Detalle' : 'Test Cognitivo'
-                      
-                      let valor = 70
-                      if (t.puntaje_bruto) {
-                        if (t.puntaje_bruto.correctas && t.puntaje_bruto.total) {
-                          valor = Math.round((t.puntaje_bruto.correctas / t.puntaje_bruto.total) * 100)
-                        } else if (typeof t.puntaje_bruto === 'number') {
-                          valor = Math.round((t.puntaje_bruto / 5) * 100)
-                        } else {
-                          const avg = promedioPuntaje(t.puntaje_bruto)
-                          valor = Math.round((avg / 5) * 100)
-                        }
-                      }
-
-                      return {
-                        name,
-                        Rendimiento: valor,
-                        'Baremo de Referencia': 65
-                      }
-                    })
-
-                    return (
-                      <div className="w-full h-[320px] flex items-center justify-center">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <RechartsBarChart data={barData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                            <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} />
-                            <YAxis stroke="#94a3b8" fontSize={11} domain={[0, 100]} />
-                            <ChartTooltip
-                              contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px' }}
-                              labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
-                            />
-                            <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                            <Bar dataKey="Rendimiento" fill="#10b981" radius={[8, 8, 0, 0]} maxBarSize={45} />
-                            <Bar dataKey="Baremo de Referencia" fill="#475569" radius={[8, 8, 0, 0]} maxBarSize={45} />
-                          </RechartsBarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )
-                  })()}
-                </div>
-
-              </div>
-
-              {/* Bloque 3: Resumen de Re recomendaciones y Ajuste */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                const integrity = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && s.test_id.toLowerCase().includes('integridad'))
                 
-                {/* Fortaleza Clave */}
-                <div className="bg-slate-950/40 border border-slate-800/80 rounded-3xl p-5 relative overflow-hidden">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full" />
-                    <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fortaleza Clave Identificada</h5>
+                const valIntegrity = (() => {
+                  if (!integrity) return "Alineamiento Óptimo"
+                  const diag = extraerDiagnostico(integrity.puntaje_bruto || integrity.puntajes || integrity.resultados || integrity, integrity.test_id)
+                  if (diag.length === 0) return "Alineamiento Óptimo"
+                  const avg = diag.reduce((acc, [, v]) => acc + v, 0) / diag.length
+                  if (avg >= 4) return "Conformidad Ética Alta"
+                  if (avg >= 2.5) return "Conformidad Ética Media"
+                  return "Conformidad Bajo Supervisión"
+                })();
+
+                const cognitiveTests = sesionesData.filter(s => 
+                  s.candidato_id === candidatoParaDashboard.id && 
+                  (s.test_id.toLowerCase().includes('icar') || s.test_id.toLowerCase().includes('razonamiento') || s.test_id.toLowerCase().includes('detalle') || s.test_id.toLowerCase().includes('numerico') || s.test_id.toLowerCase().includes('verbal'))
+                )
+
+                return (
+                  <div className="space-y-6">
+                    {/* Bloque 1: Resumen de KPIs Generales */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      
+                      {/* Ajuste al Puesto */}
+                      <div className="bg-slate-950/50 border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-5">
+                          <Target className="w-16 h-16 text-indigo-400" />
+                        </div>
+                        <div className="w-16 h-16 rounded-full border-4 border-indigo-500/30 flex items-center justify-center shrink-0">
+                          <span className="text-lg font-black text-indigo-400">{matchVal}%</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Ajuste Estimado</span>
+                          <span className="text-sm font-bold text-white">Adecuación General</span>
+                        </div>
+                      </div>
+
+                      {/* Fortaleza Conductual */}
+                      <div className="bg-slate-950/50 border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-5">
+                          <Award className="w-16 h-16 text-emerald-400" />
+                        </div>
+                        <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center shrink-0 border border-emerald-500/20">
+                          <Award className="w-6 h-6 text-emerald-400" />
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Pilar Conductual</span>
+                          <span className="text-sm font-bold text-white">{pilar}</span>
+                        </div>
+                      </div>
+
+                      {/* Eficiencia Cognitiva Baremo */}
+                      <div className="bg-slate-950/50 border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-5">
+                          <Briefcase className="w-16 h-16 text-amber-400" />
+                        </div>
+                        <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center shrink-0 border border-amber-500/20">
+                          <Sparkles className="w-6 h-6 text-amber-400" />
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Índice Cognitivo Baremo</span>
+                          <span className="text-sm font-bold text-white">{score}</span>
+                        </div>
+                      </div>
+
+                      {/* Ética y Cumplimiento */}
+                      <div className="bg-slate-950/50 border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-5">
+                          <PieChart className="w-16 h-16 text-cyan-400" />
+                        </div>
+                        <div className="w-12 h-12 bg-cyan-500/10 rounded-2xl flex items-center justify-center shrink-0 border border-cyan-500/20">
+                          <PieChart className="w-6 h-6 text-cyan-400" />
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Confiabilidad</span>
+                          <span className="text-sm font-bold text-white">{valIntegrity}</span>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* Bloque 2: Gráficos de Análisis */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      
+                      {/* Gráfico de Telaraña (Radar) - Big Five de Personalidad */}
+                      <div className="bg-slate-950/50 border border-slate-800/60 rounded-[32px] p-6 flex flex-col justify-between">
+                        <div>
+                          <h4 className="text-base font-bold text-white mb-1">Estructura Conductual Baremo vs. Candidato</h4>
+                          <p className="text-xs text-slate-400 mb-6">Contraste de dimensiones de personalidad contra Baremo Ideal del puesto</p>
+                        </div>
+                        
+                        {diagnosticoBF.length === 0 ? (
+                          <div className="flex-1 flex flex-col items-center justify-center py-16 text-center text-slate-500">
+                            <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
+                              <Info className="w-6 h-6 text-slate-400" />
+                            </div>
+                            <p className="text-sm font-medium">El evaluado no cuenta con registro de Big Five completado aún.</p>
+                          </div>
+                        ) : (
+                          (() => {
+                            const radarData = [
+                              { factor: 'Extraversión', Candidato: getValorOCEAN('extraversion'), Baremo: 4.0 },
+                              { factor: 'Amabilidad', Candidato: getValorOCEAN('amabilidad'), Baremo: 4.2 },
+                              { factor: 'Responsabilidad', Candidato: getValorOCEAN('responsabilidad'), Baremo: 4.5 },
+                              { factor: 'Estabilidad Emocional', Candidato: 6 - getValorOCEAN('neuroticismo'), Baremo: 4.0 },
+                              { factor: 'Apertura', Candidato: getValorOCEAN('apertura'), Baremo: 3.8 }
+                            ]
+
+                            return (
+                              <div className="w-full h-[320px] flex items-center justify-center">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                                    <PolarGrid stroke="#1e293b" />
+                                    <PolarAngleAxis dataKey="factor" stroke="#94a3b8" fontSize={11} fontWeight="bold" />
+                                    <PolarRadiusAxis angle={30} domain={[0, 5]} stroke="#475569" fontSize={9} />
+                                    <ChartTooltip
+                                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px' }}
+                                      labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                                    />
+                                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                                    <Radar name="Baremo Ideal" dataKey="Baremo" stroke="#475569" fill="#475569" fillOpacity={0.1} />
+                                    <Radar name="Candidato" dataKey="Candidato" stroke="#6366f1" fill="#6366f1" fillOpacity={0.4} />
+                                  </RadarChart>
+                                </ResponsiveContainer>
+                              </div>
+                            )
+                          })()
+                        )}
+                      </div>
+
+                      {/* Gráfico de Barras - Rendimiento Cognitivo baremado */}
+                      <div className="bg-slate-950/50 border border-slate-800/60 rounded-[32px] p-6 flex flex-col justify-between">
+                        <div>
+                          <h4 className="text-base font-bold text-white mb-1">Rendimiento en Baremos Cognitivos</h4>
+                          <p className="text-xs text-slate-400 mb-6">Comparación en porcentaje de aciertos de razonamiento y atención</p>
+                        </div>
+
+                        {cognitiveTests.length === 0 ? (
+                          <div className="flex-1 flex flex-col items-center justify-center py-16 text-center text-slate-500">
+                            <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
+                              <Info className="w-6 h-6 text-slate-400" />
+                            </div>
+                            <p className="text-sm font-medium">El evaluado no cuenta con registro de tests cognitivos completados.</p>
+                          </div>
+                        ) : (
+                          (() => {
+                            const barData = cognitiveTests.map(t => {
+                              const name = t.test_id.includes('icar') ? 'ICAR' :
+                                           t.test_id.includes('numerico') ? 'R. Numérico' :
+                                           t.test_id.includes('verbal') ? 'R. Verbal' :
+                                           t.test_id.includes('detalle') ? 'Atención Detalle' : 'Test Cognitivo'
+                              
+                              let valor = 70
+                              const diag = extraerDiagnostico(t.puntaje_bruto || t.puntajes || t.resultados || t, t.test_id)
+                              if (diag.length > 0) {
+                                const pctMatch = diag.find(([k]) => k.toLowerCase().includes('porcentaje') || k.toLowerCase().includes('pct') || k.toLowerCase().includes('analisis_datos') || k.toLowerCase().includes('analisis_semantico'))
+                                if (pctMatch) {
+                                  valor = Math.round(pctMatch[1] <= 5 ? (pctMatch[1] / 5) * 100 : pctMatch[1])
+                                } else {
+                                  const avg = diag.reduce((acc, [, v]) => acc + v, 0) / diag.length
+                                  valor = Math.round((avg / 5) * 100)
+                                }
+                              }
+
+                              return {
+                                name,
+                                Rendimiento: valor,
+                                'Baremo de Referencia': 65
+                              }
+                            })
+
+                            return (
+                              <div className="w-full h-[320px] flex items-center justify-center">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <RechartsBarChart data={barData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} />
+                                    <YAxis stroke="#94a3b8" fontSize={11} domain={[0, 100]} />
+                                    <ChartTooltip
+                                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px' }}
+                                      labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                                    />
+                                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                                    <Bar dataKey="Rendimiento" fill="#10b981" radius={[8, 8, 0, 0]} maxBarSize={45} />
+                                    <Bar dataKey="Baremo de Referencia" fill="#475569" radius={[8, 8, 0, 0]} maxBarSize={45} />
+                                  </RechartsBarChart>
+                                </ResponsiveContainer>
+                              </div>
+                            )
+                          })()
+                        )}
+                      </div>
+
+                    </div>
+
+                    {/* Bloque 3: Resumen de Re recomendaciones y Ajuste */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      
+                      {/* Fortaleza Clave */}
+                      <div className="bg-slate-950/40 border border-slate-800/80 rounded-3xl p-5 relative overflow-hidden">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full" />
+                          <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fortaleza Clave Identificada</h5>
+                        </div>
+                        {(() => {
+                          let text = "El evaluado demuestra un excelente equilibrio conductual y adaptabilidad a las demandas estándar. Se perfila como una persona propicia para roles dinámicos de soporte corporativo."
+                          const resp = getValorOCEAN('responsabilidad')
+                          const ext = getValorOCEAN('extraversion')
+                          const amab = getValorOCEAN('amabilidad')
+                          
+                          if (resp >= 4.0) text = "Sobresale su meticulosidad, autodisciplina y apego a la calidad procedimental. Su perfil garantiza la consecución de hitos y un manejo riguroso de proyectos complejos."
+                          else if (ext >= 4.0) text = "Gran solvencia comunicativa y dinamismo social. Muestra una actitud proactiva en relaciones interpersonales, ideal para liderazgo, negociación o comercialización."
+                          else if (amab >= 4.0) text = "Alta disposición al trabajo colaborativo, empatía activa y gestión constructiva de conflictos. Favorece la cohesión del equipo y mantiene altos niveles de sinergia grupal."
+                          
+                          return <p className="text-xs text-slate-300 leading-relaxed font-medium">{text}</p>
+                        })()}
+                      </div>
+
+                      {/* Desafío o Punto de Atención */}
+                      <div className="bg-slate-950/40 border border-slate-800/80 rounded-3xl p-5 relative overflow-hidden">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-2.5 h-2.5 bg-amber-500 rounded-full" />
+                          <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Desafío Adaptativo</h5>
+                        </div>
+                        {(() => {
+                          let text = "En entornos de extrema imprevisibilidad o sin metas explícitas, el evaluado se beneficiará de contar con directrices claras y metas a corto plazo para sostener su eficiencia."
+                          const neur = getValorOCEAN('neuroticismo')
+                          const resp = getValorOCEAN('responsabilidad')
+                          
+                          if (neur >= 3.5) text = "Se observan indicadores de vulnerabilidad ante picos extremos de presión o ambigüedad excesiva. Responderá de manera óptima en contextos ordenados con soporte directo."
+                          else if (resp < 3.0) text = "Tiende a enfocarse más en la visión general antes que en el micro-detalle formal. Se sugiere reforzar el uso de herramientas metodológicas de seguimiento."
+                          
+                          return <p className="text-xs text-slate-300 leading-relaxed font-medium">{text}</p>
+                        })()}
+                      </div>
+
+                      {/* Plan de Acompañamiento */}
+                      <div className="bg-slate-950/40 border border-slate-800/80 rounded-3xl p-5 relative overflow-hidden">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full" />
+                          <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Plan de Onboarding Sugerido</h5>
+                        </div>
+                        {(() => {
+                          let text = "Implementar un plan de inducción técnica enfocado en la asimilación del Baremo Ideal del puesto. Programar revisiones de desempeño mensuales durante el primer trimestre."
+                          const apert = getValorOCEAN('apertura')
+                          
+                          if (apert >= 4.0) text = "Favorecer su integración mediante asignación a proyectos transversales de diseño estratégico. Brindarle libertad para proponer soluciones a problemáticas existentes."
+                          else text = "Acompañarlo de un tutor con experiencia que actúe como validador al inicio. Ofrecer retroalimentación positiva periódica para apuntalar su asimilación del rol."
+                          
+                          return <p className="text-xs text-slate-300 leading-relaxed font-medium">{text}</p>
+                        })()}
+                      </div>
+
+                    </div>
                   </div>
-                  {(() => {
-                    const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
-                    let text = "El evaluado demuestra un excelente equilibrio conductual y adaptabilidad a las demandas estándar. Se perfila como una persona propicia para roles dinámicos de soporte corporativo."
-                    if (bf && bf.puntaje_bruto) {
-                      const pb = bf.puntaje_bruto
-                      if (pb.responsabilidad >= 4) text = "Sobresale su meticulosidad, autodisciplina y apego a la calidad procedimental. Su perfil garantiza la consecución de hitos y un manejo riguroso de proyectos complejos."
-                      else if (pb.extraversion >= 4) text = "Gran solvencia comunicativa y dinamismo social. Muestra una actitud proactiva en relaciones interpersonales, ideal para liderazgo, negociación o comercialización."
-                      else if (pb.amabilidad >= 4) text = "Alta disposición al trabajo colaborativo, empatía activa y gestión constructiva de conflictos. Favorece la cohesión del equipo y mantiene altos niveles de sinergia grupal."
-                    }
-                    return <p className="text-xs text-slate-300 leading-relaxed font-medium">{text}</p>
-                  })()}
-                </div>
-
-                {/* Desafío o Punto de Atención */}
-                <div className="bg-slate-950/40 border border-slate-800/80 rounded-3xl p-5 relative overflow-hidden">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-2.5 h-2.5 bg-amber-500 rounded-full" />
-                    <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Desafío Adaptativo</h5>
-                  </div>
-                  {(() => {
-                    const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
-                    let text = "En entornos de extrema imprevisibilidad o sin metas explícitas, el evaluado se beneficiará de contar con directrices claras y metas a corto plazo para sostener su eficiencia."
-                    if (bf && bf.puntaje_bruto) {
-                      const pb = bf.puntaje_bruto
-                      if (pb.neuroticismo >= 3.5) text = "Se observan indicadores de vulnerabilidad ante picos extremos de presión o ambigüedad excesiva. Responderá de manera óptima en contextos ordenados con soporte directo."
-                      else if (pb.responsabilidad < 3.0) text = "Tiende a enfocarse más en la visión general antes que en el micro-detalle formal. Se sugiere reforzar el uso de herramientas metodológicas de seguimiento."
-                    }
-                    return <p className="text-xs text-slate-300 leading-relaxed font-medium">{text}</p>
-                  })()}
-                </div>
-
-                {/* Plan de Acompañamiento */}
-                <div className="bg-slate-950/40 border border-slate-800/80 rounded-3xl p-5 relative overflow-hidden">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full" />
-                    <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Plan de Onboarding Sugerido</h5>
-                  </div>
-                  {(() => {
-                    const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
-                    let text = "Implementar un plan de inducción técnica enfocado en la asimilación del Baremo Ideal del puesto. Programar revisiones de desempeño mensuales durante el primer trimestre."
-                    if (bf && bf.puntaje_bruto) {
-                      const pb = bf.puntaje_bruto
-                      if (pb.apertura >= 4.0) text = "Favorecer su integración mediante asignación a proyectos transversales de diseño estratégico. Brindarle libertad para proponer soluciones a problemáticas existentes."
-                      else text = "Acompañarlo de un tutor con experiencia que actúe como validador al inicio. Ofrecer retroalimentación positiva periódica para apuntalar su asimilación del rol."
-                    }
-                    return <p className="text-xs text-slate-300 leading-relaxed font-medium">{text}</p>
-                  })()}
-                </div>
-
-              </div>
-
+                )
+              })()}
             </div>
 
             {/* Footer */}
