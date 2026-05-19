@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
@@ -19,7 +21,7 @@
 }
 
 /* Dark Mode Theme overrides - Premium Navy/Slate palette */
-.dark {
+html.dark, :root.dark {
   --background: #090d16;
   --foreground: #f8fafc;
   
