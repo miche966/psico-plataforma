@@ -394,7 +394,7 @@ export default function CandidatosPage() {
                       {/* Análisis Test por Test - RESTAURADO */}
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {sesionesData
-                          .filter(s => s.candidato_id === candidato.id)
+                          .filter(s => s.candidato_id === candidato.id && (s.puntaje_bruto || s.puntajes || s.resultados))
                           .map((s, i) => {
                             const testName = TEST_NAMES[s.test_id] || s.test_id.split('-').pop()?.toUpperCase() || 'TEST'
                             return (
