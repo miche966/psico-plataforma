@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
-import { Plus, Check, Link as LinkIcon, Search, FileText, X, Video, Eye, Settings, Clock, CheckCircle2, BellRing } from 'lucide-react'
+import { Plus, Check, Link as LinkIcon, Search, FileText, X, Video, Eye, Settings, Clock, CheckCircle2, BellRing, Briefcase, Award } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
 
 const TESTS_DISPONIBLES = [
@@ -664,6 +664,45 @@ export default function ProcesosPage() {
                     )}
                   </div>
               </div>
+
+              {/* PERFIL REQUERIDO PARA EL CARGO */}
+              {(procesoSeleccionado.descripcion_cargo || (procesoSeleccionado.competencias_requeridas && procesoSeleccionado.competencias_requeridas.length > 0)) && (
+                <div className="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4 mb-8 shadow-sm">
+                  <h4 className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-indigo-500" />
+                    Perfil y Requisitos del Cargo
+                  </h4>
+                  
+                  {procesoSeleccionado.descripcion_cargo && (
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Misión y Tareas Clave</span>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                        {procesoSeleccionado.descripcion_cargo}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {procesoSeleccionado.competencias_requeridas && procesoSeleccionado.competencias_requeridas.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Modelo de Ajuste Conductual</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {procesoSeleccionado.competencias_requeridas.map((comp: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between bg-white dark:bg-slate-900 px-3 py-2 rounded-xl border border-slate-100 dark:border-slate-800/60 shadow-sm">
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate pr-2">{comp.nombre}</span>
+                            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                              comp.nivel === 'A' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400' :
+                              comp.nivel === 'B' ? 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400' :
+                              'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                            }`}>
+                              Nivel {comp.nivel}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="mb-8">
                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Asignar Candidato</h4>
