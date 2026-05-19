@@ -3,13 +3,39 @@
 import { ReactNode, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Users, FileText, BarChart3, Video, LogOut, Bell } from 'lucide-react'
+import { LayoutDashboard, Users, FileText, BarChart3, Video, LogOut, Bell, Sun, Moon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const [novedades, setNovedades] = useState(0)
+  const [isDarkMode, setIsDarkMode] = useState(false)
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme')
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    
+    if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+      setIsDarkMode(true)
+      document.documentElement.classList.add('dark')
+    } else {
+      setIsDarkMode(false)
+      document.documentElement.classList.remove('dark')
+    }
+  }, [])
+
+  const toggleDarkMode = () => {
+    const nextDark = !isDarkMode
+    setIsDarkMode(nextDark)
+    if (nextDark) {
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('theme', 'dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('theme', 'light')
+    }
+  }
 
   useEffect(() => {
     const checkNewResults = async () => {
@@ -81,10 +107,29 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </div>
         </nav>
 
-        <div className="p-4 border-t border-slate-100">
+        <div className="p-4 border-t border-slate-100 space-y-2">
+          {/* Theme Switcher Button */}
+          <button
+            onClick={toggleDarkMode}
+            className="flex items-center justify-between px-3 py-2.5 w-full rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200 text-sm font-medium"
+            title="Cambiar tema"
+          >
+            <div className="flex items-center gap-3">
+              {isDarkMode ? (
+                <Sun className="w-5 h-5 text-amber-500 animate-spin-slow" />
+              ) : (
+                <Moon className="w-5 h-5 text-indigo-500" />
+              )}
+              <span>Modo Oscuro</span>
+            </div>
+            <div className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-all duration-300 ${isDarkMode ? 'bg-indigo-600' : 'bg-slate-300'}`}>
+              <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-all duration-300 ${isDarkMode ? 'translate-x-4' : 'translate-x-0'}`} />
+            </div>
+          </button>
+
           <button 
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all duration-200 text-sm"
+            className="flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-slate-600 dark:text-slate-300 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 transition-all duration-200 text-sm font-medium"
           >
             <LogOut className="w-5 h-5 text-slate-400" />
             <span>Cerrar sesión</span>

@@ -1,22 +1,59 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  
+  --white-bg: #ffffff;
+  
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
 }
 
-@theme inline {
+/* Dark Mode Theme overrides - Premium Navy/Slate palette */
+.dark {
+  --background: #090d16;
+  --foreground: #f8fafc;
+  
+  --white-bg: #111827;
+  
+  --slate-50: #182235;
+  --slate-100: #1f2a40;
+  --slate-200: #293854;
+  --slate-300: #475569;
+  --slate-400: #8892b0;
+  --slate-500: #a8b2d1;
+  --slate-600: #ccd6f6;
+  --slate-700: #e2e8f0;
+  --slate-800: #f1f5f9;
+  --slate-900: #ffffff;
+}
+
+@theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  
+  /* Map Tailwind standard colors to custom theme variables */
+  --color-slate-50: var(--slate-50);
+  --color-slate-100: var(--slate-100);
+  --color-slate-200: var(--slate-200);
+  --color-slate-300: var(--slate-300);
+  --color-slate-400: var(--slate-400);
+  --color-slate-500: var(--slate-500);
+  --color-slate-600: var(--slate-600);
+  --color-slate-700: var(--slate-700);
+  --color-slate-800: var(--slate-800);
+  --color-slate-900: var(--slate-900);
+  
+  --color-white: var(--white-bg);
 }
 
 body {
@@ -25,6 +62,16 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-@keyframes spin {
+/* Premium smooth transitions for color variables, ignoring Recharts SVGs for stability */
+body, aside, main, header, div:not(.recharts-wrapper):not(.recharts-surface), section, article, nav, button, p, span, h1, h2, h3, h4, h5, h6, a, input, select, textarea {
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 12s linear infinite;
 }
