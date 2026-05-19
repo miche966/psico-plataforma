@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as ChartTooltip, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
 import AppLayout from '@/components/AppLayout'
-import { Plus, Check, Copy, FileText, Search, UserPlus, RotateCcw, BarChart3, Users, Sparkles, BellRing, AlertCircle, Info } from 'lucide-react'
+import { Plus, Check, Copy, FileText, Search, UserPlus, RotateCcw, BarChart3, Users, Sparkles, BellRing, AlertCircle, Info, LayoutDashboard, Award, Briefcase, X, Target, PieChart, ShieldAlert } from 'lucide-react'
 
 interface Candidato {
   id: string
@@ -30,6 +31,8 @@ export default function CandidatosPage() {
   const [sesionParaDetalle, setSesionParaDetalle] = useState<any | null>(null)
   const [mostrarDetalle, setMostrarDetalle] = useState(false)
   const [reseteando, setReseteando] = useState<string | null>(null)
+  const [mostrarDashboard, setMostrarDashboard] = useState(false)
+  const [candidatoParaDashboard, setCandidatoParaDashboard] = useState<Candidato | null>(null)
   const [form, setForm] = useState({
     nombres: '',
     apellidos: '',
@@ -496,7 +499,7 @@ export default function CandidatosPage() {
                       </button>
                       <button
                         onClick={() => {
-                          const misSesiones = sesionesData.filter(s => s.candidato_id === candidato.id)
+                          const misSesiones = sesionesData.filter(s => s.candidato_id === candidato.id && (s.puntaje_bruto || s.puntajes || s.resultados))
                           if (misSesiones.length > 0) {
                             setSesionParaDetalle(misSesiones[0])
                             setMostrarDetalle(true)
@@ -507,17 +510,38 @@ export default function CandidatosPage() {
                         className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
                           (sesionesCount[candidato.id] || 0) === 0 
                             ? 'bg-slate-50 text-slate-300 cursor-not-allowed' 
-                            : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700'
+                            : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400'
                         }`}
                         title="Análisis Test por Test"
                       >
                         <BarChart3 className="w-4 h-4" />
                       </button>
+                      
+                      <button
+                        onClick={() => {
+                          const misSesiones = sesionesData.filter(s => s.candidato_id === candidato.id && (s.puntaje_bruto || s.puntajes || s.resultados))
+                          if (misSesiones.length > 0) {
+                            setCandidatoParaDashboard(candidato)
+                            setMostrarDashboard(true)
+                          } else {
+                            alert('Este candidato aún no ha completado ningún test con resultados.')
+                          }
+                        }}
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
+                          (sesionesCount[candidato.id] || 0) === 0 
+                            ? 'bg-slate-50 text-slate-300 cursor-not-allowed' 
+                            : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
+                        }`}
+                        title="Ver Dashboard Ejecutivo"
+                      >
+                        <LayoutDashboard className="w-4 h-4" />
+                      </button>
+
                       <a
                         href={`/informe?candidato=${candidato.id}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 hover:text-purple-700 transition-colors"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 hover:text-purple-700 transition-colors dark:bg-purple-950/30 dark:text-purple-400"
                         title="Ver Informe Ejecutivo"
                       >
                         <FileText className="w-4 h-4" />
@@ -777,6 +801,333 @@ export default function CandidatosPage() {
                 Finalizar Revisión
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Modal de Dashboard Individual Ejecutivo - NUEVO */}
+      {mostrarDashboard && candidatoParaDashboard && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-300">
+          <div className="bg-slate-900 text-slate-100 rounded-[32px] border border-slate-800 shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col h-[90vh]">
+            
+            {/* Header del Dashboard */}
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/60">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20">
+                  <LayoutDashboard className="w-6 h-6 text-indigo-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-extrabold tracking-tight text-white">Dashboard Ejecutivo de Talento</h3>
+                  <p className="text-xs text-slate-400">Análisis interactivo y ajuste al cargo para <span className="text-indigo-400 font-bold">{candidatoParaDashboard.nombre} {candidatoParaDashboard.apellido}</span></p>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setMostrarDashboard(false); setCandidatoParaDashboard(null); }}
+                className="p-2 hover:bg-slate-800 rounded-xl transition-all text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Contenido Principal */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-[#090d16] custom-scrollbar">
+              
+              {/* Bloque 1: Resumen de KPIs Generales */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                
+                {/* Ajuste al Puesto */}
+                <div className="bg-slate-950/50 border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-5">
+                    <Target className="w-16 h-16 text-indigo-400" />
+                  </div>
+                  <div className="w-16 h-16 rounded-full border-4 border-indigo-500/30 flex items-center justify-center shrink-0">
+                    {(() => {
+                      const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
+                      const matchVal = bf ? Math.round((promedioPuntaje(bf.puntaje_bruto || bf) / 5) * 100) : 75
+                      return <span className="text-lg font-black text-indigo-400">{matchVal}%</span>
+                    })()}
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Ajuste Estimado</span>
+                    <span className="text-sm font-bold text-white">Adecuación General</span>
+                  </div>
+                </div>
+
+                {/* Fortaleza Conductual */}
+                <div className="bg-slate-950/50 border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-5">
+                    <Award className="w-16 h-16 text-emerald-400" />
+                  </div>
+                  <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center shrink-0 border border-emerald-500/20">
+                    <Award className="w-6 h-6 text-emerald-400" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Pilar Conductual</span>
+                    {(() => {
+                      const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
+                      let pilar = "Compromiso"
+                      if (bf && bf.puntaje_bruto) {
+                        const vals = bf.puntaje_bruto
+                        const maxVal = Math.max(vals.extraversion || 0, vals.amabilidad || 0, vals.responsabilidad || 0, vals.apertura || 0)
+                        if (maxVal === vals.extraversion) pilar = "Liderazgo e Influencia"
+                        else if (maxVal === vals.amabilidad) pilar = "Colaboración y Soporte"
+                        else if (maxVal === vals.responsabilidad) pilar = "Rigor y Planificación"
+                        else if (maxVal === vals.apertura) pilar = "Innovación y Adaptabilidad"
+                      }
+                      return <span className="text-sm font-bold text-white">{pilar}</span>
+                    })()}
+                  </div>
+                </div>
+
+                {/* Eficiencia Cognitiva Baremo */}
+                <div className="bg-slate-950/50 border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-5">
+                    <Briefcase className="w-16 h-16 text-amber-400" />
+                  </div>
+                  <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center shrink-0 border border-amber-500/20">
+                    <Sparkles className="w-6 h-6 text-amber-400" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Índice Cognitivo Baremo</span>
+                    {(() => {
+                      const cog = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.includes('icar') || s.test_id.includes('razonamiento') || s.test_id.includes('detalle')))
+                      let score = "Baremo Medio-Alto"
+                      if (cog && cog.puntaje_bruto) {
+                        const correctas = cog.puntaje_bruto.correctas || 0
+                        if (correctas >= 12) score = "Baremo Superior"
+                        else if (correctas >= 8) score = "Baremo Promedio"
+                        else score = "Baremo Operativo"
+                      }
+                      return <span className="text-sm font-bold text-white">{score}</span>
+                    })()}
+                  </div>
+                </div>
+
+                {/* Ética y Cumplimiento */}
+                <div className="bg-slate-950/50 border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-5">
+                    <PieChart className="w-16 h-16 text-cyan-400" />
+                  </div>
+                  <div className="w-12 h-12 bg-cyan-500/10 rounded-2xl flex items-center justify-center shrink-0 border border-cyan-500/20">
+                    <PieChart className="w-6 h-6 text-cyan-400" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Confiabilidad</span>
+                    {(() => {
+                      const integrity = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && s.test_id.includes('integridad'))
+                      let val = "Alineamiento Óptimo"
+                      if (integrity && integrity.puntaje_bruto) {
+                        const avg = promedioPuntaje(integrity.puntaje_bruto)
+                        if (avg >= 4) val = "Conformidad Ética Alta"
+                        else if (avg >= 2.5) val = "Conformidad Ética Media"
+                        else val = "Conformidad Bajo Supervisión"
+                      }
+                      return <span className="text-sm font-bold text-white">{val}</span>
+                    })()}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Bloque 2: Gráficos de Análisis */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Gráfico de Telaraña (Radar) - Big Five de Personalidad */}
+                <div className="bg-slate-950/50 border border-slate-800/60 rounded-[32px] p-6 flex flex-col justify-between">
+                  <div>
+                    <h4 className="text-base font-bold text-white mb-1">Estructura Conductual Baremo vs. Candidato</h4>
+                    <p className="text-xs text-slate-400 mb-6">Contraste de dimensiones de personalidad contra Baremo Ideal del puesto</p>
+                  </div>
+                  
+                  {(() => {
+                    const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
+                    
+                    if (!bf || !bf.puntaje_bruto) {
+                      return (
+                        <div className="flex-1 flex flex-col items-center justify-center py-16 text-center text-slate-500">
+                          <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
+                            <Info className="w-6 h-6 text-slate-400" />
+                          </div>
+                          <p className="text-sm font-medium">El evaluado no cuenta con registro de Big Five completado aún.</p>
+                        </div>
+                      )
+                    }
+
+                    // Preparar los datos
+                    const pb = bf.puntaje_bruto
+                    const radarData = [
+                      { factor: 'Extraversión', Candidato: Number(pb.extraversion) || 3.0, Baremo: 4.0 },
+                      { factor: 'Amabilidad', Candidato: Number(pb.amabilidad) || 3.0, Baremo: 4.2 },
+                      { factor: 'Responsabilidad', Candidato: Number(pb.responsabilidad) || 3.0, Baremo: 4.5 },
+                      { factor: 'Estabilidad Emocional', Candidato: 6 - (Number(pb.neuroticismo) || 3.0), Baremo: 4.0 },
+                      { factor: 'Apertura', Candidato: Number(pb.apertura) || 3.0, Baremo: 3.8 }
+                    ]
+
+                    return (
+                      <div className="w-full h-[320px] flex items-center justify-center">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                            <PolarGrid stroke="#1e293b" />
+                            <PolarAngleAxis dataKey="factor" stroke="#94a3b8" fontSize={11} fontWeight="bold" />
+                            <PolarRadiusAxis angle={30} domain={[0, 5]} stroke="#475569" fontSize={9} />
+                            <ChartTooltip
+                              contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px' }}
+                              labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                            <Radar name="Baremo Ideal" dataKey="Baremo" stroke="#475569" fill="#475569" fillOpacity={0.1} />
+                            <Radar name="Candidato" dataKey="Candidato" stroke="#6366f1" fill="#6366f1" fillOpacity={0.4} />
+                          </RadarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )
+                  })()}
+                </div>
+
+                {/* Gráfico de Barras - Rendimiento Cognitivo baremado */}
+                <div className="bg-slate-950/50 border border-slate-800/60 rounded-[32px] p-6 flex flex-col justify-between">
+                  <div>
+                    <h4 className="text-base font-bold text-white mb-1">Rendimiento en Baremos Cognitivos</h4>
+                    <p className="text-xs text-slate-400 mb-6">Comparación en porcentaje de aciertos de razonamiento y atención</p>
+                  </div>
+
+                  {(() => {
+                    const cognitiveTests = sesionesData.filter(s => 
+                      s.candidato_id === candidatoParaDashboard.id && 
+                      (s.test_id.includes('icar') || s.test_id.includes('razonamiento') || s.test_id.includes('detalle') || s.test_id.includes('numerico') || s.test_id.includes('verbal'))
+                    )
+
+                    if (cognitiveTests.length === 0) {
+                      return (
+                        <div className="flex-1 flex flex-col items-center justify-center py-16 text-center text-slate-500">
+                          <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
+                            <Info className="w-6 h-6 text-slate-400" />
+                          </div>
+                          <p className="text-sm font-medium">El evaluado no cuenta con registro de tests cognitivos completados.</p>
+                        </div>
+                      )
+                    }
+
+                    const barData = cognitiveTests.map(t => {
+                      const name = t.test_id.includes('icar') ? 'ICAR' :
+                                   t.test_id.includes('numerico') ? 'R. Numérico' :
+                                   t.test_id.includes('verbal') ? 'R. Verbal' :
+                                   t.test_id.includes('detalle') ? 'Atención Detalle' : 'Test Cognitivo'
+                      
+                      let valor = 70
+                      if (t.puntaje_bruto) {
+                        if (t.puntaje_bruto.correctas && t.puntaje_bruto.total) {
+                          valor = Math.round((t.puntaje_bruto.correctas / t.puntaje_bruto.total) * 100)
+                        } else if (typeof t.puntaje_bruto === 'number') {
+                          valor = Math.round((t.puntaje_bruto / 5) * 100)
+                        } else {
+                          const avg = promedioPuntaje(t.puntaje_bruto)
+                          valor = Math.round((avg / 5) * 100)
+                        }
+                      }
+
+                      return {
+                        name,
+                        Rendimiento: valor,
+                        'Baremo de Referencia': 65
+                      }
+                    })
+
+                    return (
+                      <div className="w-full h-[320px] flex items-center justify-center">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsBarChart data={barData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                            <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} />
+                            <YAxis stroke="#94a3b8" fontSize={11} domain={[0, 100]} />
+                            <ChartTooltip
+                              contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px' }}
+                              labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                            <Bar dataKey="Rendimiento" fill="#10b981" radius={[8, 8, 0, 0]} maxBarSize={45} />
+                            <Bar dataKey="Baremo de Referencia" fill="#475569" radius={[8, 8, 0, 0]} maxBarSize={45} />
+                          </RechartsBarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )
+                  })()}
+                </div>
+
+              </div>
+
+              {/* Bloque 3: Resumen de Re recomendaciones y Ajuste */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* Fortaleza Clave */}
+                <div className="bg-slate-950/40 border border-slate-800/80 rounded-3xl p-5 relative overflow-hidden">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full" />
+                    <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fortaleza Clave Identificada</h5>
+                  </div>
+                  {(() => {
+                    const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
+                    let text = "El evaluado demuestra un excelente equilibrio conductual y adaptabilidad a las demandas estándar. Se perfila como una persona propicia para roles dinámicos de soporte corporativo."
+                    if (bf && bf.puntaje_bruto) {
+                      const pb = bf.puntaje_bruto
+                      if (pb.responsabilidad >= 4) text = "Sobresale su meticulosidad, autodisciplina y apego a la calidad procedimental. Su perfil garantiza la consecución de hitos y un manejo riguroso de proyectos complejos."
+                      else if (pb.extraversion >= 4) text = "Gran solvencia comunicativa y dinamismo social. Muestra una actitud proactiva en relaciones interpersonales, ideal para liderazgo, negociación o comercialización."
+                      else if (pb.amabilidad >= 4) text = "Alta disposición al trabajo colaborativo, empatía activa y gestión constructiva de conflictos. Favorece la cohesión del equipo y mantiene altos niveles de sinergia grupal."
+                    }
+                    return <p className="text-xs text-slate-300 leading-relaxed font-medium">{text}</p>
+                  })()}
+                </div>
+
+                {/* Desafío o Punto de Atención */}
+                <div className="bg-slate-950/40 border border-slate-800/80 rounded-3xl p-5 relative overflow-hidden">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2.5 h-2.5 bg-amber-500 rounded-full" />
+                    <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Desafío Adaptativo</h5>
+                  </div>
+                  {(() => {
+                    const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
+                    let text = "En entornos de extrema imprevisibilidad o sin metas explícitas, el evaluado se beneficiará de contar con directrices claras y metas a corto plazo para sostener su eficiencia."
+                    if (bf && bf.puntaje_bruto) {
+                      const pb = bf.puntaje_bruto
+                      if (pb.neuroticismo >= 3.5) text = "Se observan indicadores de vulnerabilidad ante picos extremos de presión o ambigüedad excesiva. Responderá de manera óptima en contextos ordenados con soporte directo."
+                      else if (pb.responsabilidad < 3.0) text = "Tiende a enfocarse más en la visión general antes que en el micro-detalle formal. Se sugiere reforzar el uso de herramientas metodológicas de seguimiento."
+                    }
+                    return <p className="text-xs text-slate-300 leading-relaxed font-medium">{text}</p>
+                  })()}
+                </div>
+
+                {/* Plan de Acompañamiento */}
+                <div className="bg-slate-950/40 border border-slate-800/80 rounded-3xl p-5 relative overflow-hidden">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full" />
+                    <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Plan de Onboarding Sugerido</h5>
+                  </div>
+                  {(() => {
+                    const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
+                    let text = "Implementar un plan de inducción técnica enfocado en la asimilación del Baremo Ideal del puesto. Programar revisiones de desempeño mensuales durante el primer trimestre."
+                    if (bf && bf.puntaje_bruto) {
+                      const pb = bf.puntaje_bruto
+                      if (pb.apertura >= 4.0) text = "Favorecer su integración mediante asignación a proyectos transversales de diseño estratégico. Brindarle libertad para proponer soluciones a problemáticas existentes."
+                      else text = "Acompañarlo de un tutor con experiencia que actúe como validador al inicio. Ofrecer retroalimentación positiva periódica para apuntalar su asimilación del rol."
+                    }
+                    return <p className="text-xs text-slate-300 leading-relaxed font-medium">{text}</p>
+                  })()}
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 bg-slate-950/80 border-t border-slate-800 flex justify-between items-center shrink-0">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Generado automáticamente por Motor Psicométrico PsicoPlataforma</span>
+              <button 
+                onClick={() => { setMostrarDashboard(false); setCandidatoParaDashboard(null); }}
+                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-lg transition-all active:scale-[0.95]"
+              >
+                Cerrar Dashboard
+              </button>
+            </div>
+            
           </div>
         </div>
       )}
