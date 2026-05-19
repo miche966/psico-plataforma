@@ -33,6 +33,7 @@ export default function CandidatosPage() {
   const [reseteando, setReseteando] = useState<string | null>(null)
   const [mostrarDashboard, setMostrarDashboard] = useState(false)
   const [candidatoParaDashboard, setCandidatoParaDashboard] = useState<Candidato | null>(null)
+  const [simularDatos, setSimularDatos] = useState(false)
   const [form, setForm] = useState({
     nombres: '',
     apellidos: '',
@@ -520,18 +521,11 @@ export default function CandidatosPage() {
                       <button
                         onClick={() => {
                           const misSesiones = sesionesData.filter(s => s.candidato_id === candidato.id && (s.puntaje_bruto || s.puntajes || s.resultados))
-                          if (misSesiones.length > 0) {
-                            setCandidatoParaDashboard(candidato)
-                            setMostrarDashboard(true)
-                          } else {
-                            alert('Este candidato aún no ha completado ningún test con resultados.')
-                          }
+                          setCandidatoParaDashboard(candidato)
+                          setMostrarDashboard(true)
+                          setSimularDatos(misSesiones.length === 0)
                         }}
-                        className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
-                          (sesionesCount[candidato.id] || 0) === 0 
-                            ? 'bg-slate-50 text-slate-300 cursor-not-allowed' 
-                            : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
-                        }`}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
                         title="Ver Dashboard Ejecutivo"
                       >
                         <LayoutDashboard className="w-4 h-4" />
@@ -816,23 +810,83 @@ export default function CandidatosPage() {
                   <LayoutDashboard className="w-6 h-6 text-indigo-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-extrabold tracking-tight text-white">Dashboard Ejecutivo de Talento</h3>
+                  <h3 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-3">
+                    Dashboard Ejecutivo de Talento
+                    {simularDatos && (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
+                        Vista de Simulación
+                      </span>
+                    )}
+                  </h3>
                   <p className="text-xs text-slate-400">Análisis interactivo y ajuste al cargo para <span className="text-indigo-400 font-bold">{candidatoParaDashboard.nombre} {candidatoParaDashboard.apellido}</span></p>
                 </div>
               </div>
-              <button 
-                onClick={() => { setMostrarDashboard(false); setCandidatoParaDashboard(null); }}
-                className="p-2 hover:bg-slate-800 rounded-xl transition-all text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setSimularDatos(!simularDatos)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${
+                    simularDatos 
+                      ? 'bg-amber-600/10 border-amber-500/30 text-amber-400 hover:bg-amber-600/20' 
+                      : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                  }`}
+                  title="Alternar entre datos reales y simulación"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {simularDatos ? 'Ver Datos Reales' : 'Simular Datos Demo'}
+                </button>
+
+                <button 
+                  onClick={() => { setMostrarDashboard(false); setCandidatoParaDashboard(null); }}
+                  className="p-2 hover:bg-slate-800 rounded-xl transition-all text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Contenido Principal */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-[#090d16] custom-scrollbar">
               {(() => {
-                const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.toLowerCase().includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
-                const diagnosticoBF = bf ? extraerDiagnostico(bf.puntaje_bruto || bf.puntajes || bf.resultados || bf, bf.test_id) : []
+                // Deterministic mock data generator based on candidate's name
+                const getSimulatedData = (nombre: string, apellido: string) => {
+                  const nombreCompleto = `${nombre} ${apellido}`
+                  let seed = 0
+                  for (let i = 0; i < nombreCompleto.length; i++) {
+                    seed += nombreCompleto.charCodeAt(i)
+                  }
+                  
+                  const extraversion = 3.0 + ((seed % 17) / 17) * 1.8
+                  const amabilidad = 3.2 + (((seed + 5) % 13) / 13) * 1.6
+                  const responsabilidad = 3.5 + (((seed + 10) % 19) / 19) * 1.3
+                  const neuroticismo = 1.5 + (((seed + 3) % 11) / 11) * 2.0
+                  const apertura = 3.4 + (((seed + 8) % 15) / 15) * 1.4
+
+                  return {
+                    extraversion,
+                    amabilidad,
+                    responsabilidad,
+                    neuroticismo,
+                    apertura,
+                    seed
+                  }
+                }
+
+                const datosSimulados = getSimulatedData(candidatoParaDashboard.nombre, candidatoParaDashboard.apellido)
+
+                const diagnosticoBF = (() => {
+                  if (simularDatos) {
+                    return [
+                      ['extraversion', datosSimulados.extraversion],
+                      ['amabilidad', datosSimulados.amabilidad],
+                      ['responsabilidad', datosSimulados.responsabilidad],
+                      ['neuroticismo', datosSimulados.neuroticismo],
+                      ['apertura', datosSimulados.apertura]
+                    ]
+                  }
+                  const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.toLowerCase().includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
+                  return bf ? extraerDiagnostico(bf.puntaje_bruto || bf.puntajes || bf.resultados || bf, bf.test_id) : []
+                })()
                 
                 const getValorOCEAN = (key: string) => {
                   const found = diagnosticoBF.find(([k]) => k.toLowerCase() === key.toLowerCase())
@@ -865,6 +919,13 @@ export default function CandidatosPage() {
                 const cog = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.toLowerCase().includes('icar') || s.test_id.toLowerCase().includes('razonamiento') || s.test_id.toLowerCase().includes('detalle') || s.test_id.toLowerCase().includes('numerico') || s.test_id.toLowerCase().includes('verbal')))
                 
                 const score = (() => {
+                  if (simularDatos) {
+                    const seed = datosSimulados.seed
+                    const pct = 70 + (seed % 21)
+                    if (pct >= 75) return "Baremo Superior"
+                    if (pct >= 50) return "Baremo Promedio"
+                    return "Baremo Operativo"
+                  }
                   if (!cog) return "Baremo Medio-Alto"
                   const diag = extraerDiagnostico(cog.puntaje_bruto || cog.puntajes || cog.resultados || cog, cog.test_id)
                   const correctasMatch = diag.find(([k]) => k.includes('correctas') || k.includes('fluidez') || k.includes('aptitud') || k.includes('matrices') || k.includes('analogias'))
@@ -884,9 +945,15 @@ export default function CandidatosPage() {
                   return "Baremo Operativo"
                 })();
 
-                const integrity = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && s.test_id.toLowerCase().includes('integridad'))
-                
                 const valIntegrity = (() => {
+                  if (simularDatos) {
+                    const seed = datosSimulados.seed
+                    const val = 3.0 + ((seed % 11) / 11) * 1.8
+                    if (val >= 4) return "Conformidad Ética Alta"
+                    if (val >= 2.5) return "Conformidad Ética Media"
+                    return "Conformidad Bajo Supervisión"
+                  }
+                  const integrity = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && s.test_id.toLowerCase().includes('integridad'))
                   if (!integrity) return "Alineamiento Óptimo"
                   const diag = extraerDiagnostico(integrity.puntaje_bruto || integrity.puntajes || integrity.resultados || integrity, integrity.test_id)
                   if (diag.length === 0) return "Alineamiento Óptimo"
@@ -896,10 +963,21 @@ export default function CandidatosPage() {
                   return "Conformidad Bajo Supervisión"
                 })();
 
-                const cognitiveTests = sesionesData.filter(s => 
-                  s.candidato_id === candidatoParaDashboard.id && 
-                  (s.test_id.toLowerCase().includes('icar') || s.test_id.toLowerCase().includes('razonamiento') || s.test_id.toLowerCase().includes('detalle') || s.test_id.toLowerCase().includes('numerico') || s.test_id.toLowerCase().includes('verbal'))
-                )
+                const cognitiveTests = (() => {
+                  if (simularDatos) {
+                    const seed = datosSimulados.seed
+                    return [
+                      { test_id: 'icar', puntaje_bruto: { porcentaje: 70 + (seed % 21) } },
+                      { test_id: 'numerico', puntaje_bruto: { porcentaje: 60 + ((seed + 4) % 31) } },
+                      { test_id: 'verbal', puntaje_bruto: { porcentaje: 65 + ((seed + 9) % 26) } },
+                      { test_id: 'detalle', puntaje_bruto: { porcentaje: 75 + ((seed + 2) % 21) } }
+                    ]
+                  }
+                  return sesionesData.filter(s => 
+                    s.candidato_id === candidatoParaDashboard.id && 
+                    (s.test_id.toLowerCase().includes('icar') || s.test_id.toLowerCase().includes('razonamiento') || s.test_id.toLowerCase().includes('detalle') || s.test_id.toLowerCase().includes('numerico') || s.test_id.toLowerCase().includes('verbal'))
+                  )
+                })();
 
                 return (
                   <div className="space-y-6">
