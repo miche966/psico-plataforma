@@ -23,7 +23,9 @@ const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
   'Pensamiento analítico': { apertura: 4.5, responsabilidad: 4 },
   'Creatividad e innovación': { apertura: 5, extraversion: 4 },
   'Autocontrol': { neuroticismo: 1, amabilidad: 4 },
-  'Responsabilidad': { responsabilidad: 5 }
+  'Responsabilidad': { responsabilidad: 5 },
+  'Ética profesional': { etica: 5, normas: 5 },
+  'Conciencia organizacional': { normas: 4.5, responsabilidad: 4.5 }
 }
 
 // Tipos base
@@ -179,8 +181,20 @@ const s = {
 
 // Helpers de lógica y cálculo
 function calcAjuste(reqs: any[], sesiones: any[]) {
+  // Helper to convert level string to numeric value (e.g. 'A' -> 5, 'B' -> 4, 'C' -> 3, 'D' -> 2)
+  const getNumericLevel = (nStr: any) => {
+    if (typeof nStr === 'number') return nStr;
+    const n = String(nStr || '').trim().toUpperCase();
+    if (n === 'A') return 5;
+    if (n === 'B') return 4;
+    if (n === 'C') return 3;
+    if (n === 'D') return 2;
+    const parsed = parseFloat(n);
+    return isNaN(parsed) ? 4 : parsed; // Default to 4
+  };
+
   // Si no hay requerimientos (o están vacíos), calculamos un promedio general omnisciente
-  if (!reqs || reqs.length === 0 || (reqs.length === 1 && !reqs[0]?.competencia)) {
+  if (!reqs || reqs.length === 0 || (reqs.length === 1 && !(reqs[0]?.competencia || reqs[0]?.nombre))) {
     const todosLosFactores: number[] = []
     const CLAVES_IGNORAR = ['total', 'correctas', 'porcentaje', 'id', 'created_at', 'proceso_id', 'candidato_id', 'finalizada_en', 'iniciada_en', 'nivel_maximo']
     
@@ -217,11 +231,21 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
 
   const scores: number[] = []
   const detalles = reqs.map(r => {
+    const compName = r.competencia || r.nombre;
+    const reqLevelVal = getNumericLevel(r.nivel);
+
     // Buscar el valor más reciente para esta competencia
     let valorCandidato = -1 
-    const mapping = COMPETENCIAS_MAPPING[r.competencia]
+    const mapping = COMPETENCIAS_MAPPING[compName]
     
-    for (const s of sesiones) {
+    // Sort sessions by date (newest first)
+    const sortedSesiones = [...sesiones].sort((a, b) => {
+      const dA = new Date(b.finalizada_en || b.iniciada_en || b.created_at || 0).getTime()
+      const dB = new Date(a.finalizada_en || a.iniciada_en || a.created_at || 0).getTime()
+      return dA - dB
+    })
+
+    for (const s of sortedSesiones) {
       if (!s.puntaje_bruto || valorCandidato !== -1) continue
       
       const buscar = (obj: any) => {
@@ -231,7 +255,7 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
           const keyNormalizada = f?.toLowerCase()?.trim()
           
           // Caso 1: Coincidencia directa
-          if (keyNormalizada === r.competencia?.toLowerCase()?.trim()) {
+          if (keyNormalizada === compName?.toLowerCase()?.trim()) {
             valorCandidato = (typeof v === 'object' && v !== null && 'correctas' in v) ? (v.correctas / (v.total || 1)) * 5 : Number(v)
           } 
           // Caso 2: Coincidencia a través de mapeo (Big Five)
@@ -252,9 +276,16 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
     }
     if (valorCandidato === -1) valorCandidato = 0
 
-    const pct = Math.min(100, Math.round((valorCandidato / r.nivel) * 100))
+    // Normalizar valorCandidato si es mayor a 5
+    if (valorCandidato > 5) {
+      if (valorCandidato <= 25) valorCandidato = (valorCandidato / 25) * 5
+      else if (valorCandidato <= 100) valorCandidato = (valorCandidato / 100) * 5
+      else valorCandidato = 5
+    }
+
+    const pct = Math.min(100, Math.round((valorCandidato / reqLevelVal) * 100))
     scores.push(pct)
-    return { nombre: r.competencia, nivelReq: r.nivel, nivelCand: valorCandidato, pct }
+    return { nombre: compName, nivelReq: r.nivel, nivelCand: valorCandidato, pct }
   })
 
   const general = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)

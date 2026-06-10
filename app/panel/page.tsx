@@ -25,7 +25,9 @@ const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
   'Pensamiento analítico': { apertura: 4.5, responsabilidad: 4 },
   'Creatividad e innovación': { apertura: 5, extraversion: 4 },
   'Autocontrol': { neuroticismo: 1, amabilidad: 4 },
-  'Responsabilidad': { responsabilidad: 5 }
+  'Responsabilidad': { responsabilidad: 5 },
+  'Ética profesional': { etica: 5, normas: 5 },
+  'Conciencia organizacional': { normas: 4.5, responsabilidad: 4.5 }
 }
 
 function calcularMatch(puntaje: any, reqs: any[]) {
