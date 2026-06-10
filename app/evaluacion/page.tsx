@@ -79,6 +79,7 @@ export default function PortalCandidatoPage() {
   const [bateria, setBateria] = useState<string[]>([])
   const [testsCompletados, setTestsCompletados] = useState<string[]>([])
   const [sesionesPortal, setSesionesPortal] = useState<any[]>([])
+  const [iniciandoTest, setIniciandoTest] = useState<string | null>(null)
 
   const [mostrarSetup, setMostrarSetup] = useState(false)
   const [stream, setStream] = useState<MediaStream | null>(null)
