@@ -149,6 +149,21 @@ function FiguraRotacion({ codigo }: { codigo: string }) {
 }
 
 export default function IcarPage() {
+  const [items, setItems] = useState<Item[]>([])
+  const [itemActual, setItemActual] = useState(0)
+  const [respuestas, setRespuestas] = useState<Record<string, string>>({})
+  const [cargando, setCargando] = useState(true)
+  const [finalizado, setFinalizado] = useState(false)
+  const enEvaluacion = useEvaluacionRedirect(finalizado)
+  const [nombreCandidato, setNombreCandidato] = useState('')
+  const [tiempoRestante, setTiempoRestante] = useState(60)
+  const [seleccionada, setSeleccionada] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+  const candidatoId = searchParams.get('candidato')
+  const procesoId = searchParams.get('proceso')
+  const nivelMax = Number(searchParams.get('max')) || 3
+  const sinRotacion = searchParams.get('norot') === '1'
+
   const metricasFraude = useProctoring()
   const [sesionIdActual, setSesionIdActual] = useState<string | null>(null)
   const ICAR_ID = 'f6a7b8c9-d0e1-2345-fabc-456789012345'
