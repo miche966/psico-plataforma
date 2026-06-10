@@ -120,6 +120,20 @@ const DOMINIOS = {
 export const InformePDF = ({ data }: any) => {
   const { candidato, proceso, sesiones, videos, inf, helpers } = data;
 
+  const esCargoLiderazgo = proceso?.cargo ? (
+    proceso.cargo.toLowerCase().includes('jefe') ||
+    proceso.cargo.toLowerCase().includes('jefa') ||
+    proceso.cargo.toLowerCase().includes('gerente') ||
+    proceso.cargo.toLowerCase().includes('lider') ||
+    proceso.cargo.toLowerCase().includes('líder') ||
+    proceso.cargo.toLowerCase().includes('director') ||
+    proceso.cargo.toLowerCase().includes('coordinador') ||
+    proceso.cargo.toLowerCase().includes('supervisor') ||
+    proceso.cargo.toLowerCase().includes('responsable')
+  ) : false;
+
+  const labelLiderazgo = esCargoLiderazgo ? 'LIDERAZGO' : 'AUTOGESTIÓN';
+
   // Detección robusta de dominios e inclusión de sesiones
   const { hasP, hasC, hasK, hasV, sesBF, sesCog, sesComp, sesBien } = (() => {
     const check = (dom: string[]) => sesiones.some((s: any) => {
@@ -301,7 +315,7 @@ export const InformePDF = ({ data }: any) => {
           <Text style={styles.sectionTitle}>III. Matriz de Potencial Conductual (Soft Skills)</Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={{ flex: 1, backgroundColor: '#f5f3ff', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #ddd6fe' }}>
-              <Text style={{ fontSize: 7, color: '#7c3aed', fontWeight: 'bold', marginBottom: 4 }}>LIDERAZGO</Text>
+              <Text style={{ fontSize: 7, color: '#7c3aed', fontWeight: 'bold', marginBottom: 4 }}>{labelLiderazgo}</Text>
               <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#7c3aed' }}>{inf.liderazgo || 0}</Text>
             </View>
             <View style={{ flex: 1, backgroundColor: '#fff7ed', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #ffedd5' }}>

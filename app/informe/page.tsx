@@ -511,6 +511,21 @@ function InformePageContent() {
     interpretacionPorFactor: { ...(p.interpretacionPorFactor || {}), [fk]: v }
   }))
 
+  const esCargoLiderazgo = proceso?.cargo ? (
+    proceso.cargo.toLowerCase().includes('jefe') ||
+    proceso.cargo.toLowerCase().includes('jefa') ||
+    proceso.cargo.toLowerCase().includes('gerente') ||
+    proceso.cargo.toLowerCase().includes('lider') ||
+    proceso.cargo.toLowerCase().includes('líder') ||
+    proceso.cargo.toLowerCase().includes('director') ||
+    proceso.cargo.toLowerCase().includes('coordinador') ||
+    proceso.cargo.toLowerCase().includes('supervisor') ||
+    proceso.cargo.toLowerCase().includes('responsable')
+  ) : false;
+
+  const labelLiderazgo = esCargoLiderazgo ? 'Liderazgo' : 'Autogestión';
+  const descLiderazgo = esCargoLiderazgo ? 'Impacto e Influencia' : 'Autonomía e Iniciativa';
+
   const hasP = sesiones.some(s => {
     const pb = s.puntaje_bruto || {}
     const keys = Object.keys(pb).map(k => k.toLowerCase())
@@ -808,7 +823,7 @@ Análisis de Idoneidad:
 ${inf.ajusteCargo?.analisis || 'Sin análisis'}
 
 MATRIZ DE POTENCIAL CONDUCTUAL:
-• Liderazgo: ${inf.liderazgo}/100
+• ${labelLiderazgo}: ${inf.liderazgo}/100
 • Adaptabilidad: ${inf.adaptabilidad}/100
 • Resiliencia: ${inf.resiliencia}/100
 • Colaboración: ${inf.colaboracion}/100
@@ -1070,9 +1085,9 @@ PsicoPlataforma - Gestión Inteligente de Talento
           <div style={{ padding: '1.25rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
               <div style={{ background: '#f5f3ff', padding: '1rem', borderRadius: '16px', border: '1px solid #ddd6fe', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#7c3aed', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Liderazgo</div>
+                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#7c3aed', textTransform: 'uppercase', marginBottom: '0.4rem' }}>{labelLiderazgo}</div>
                 <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#7c3aed', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.liderazgo} onChange={e => upd('liderazgo', Number(e.target.value))} />
-                <div style={{ fontSize: '0.6rem', color: '#9333ea', marginTop: '2px' }}>Impacto e Influencia</div>
+                <div style={{ fontSize: '0.6rem', color: '#9333ea', marginTop: '2px' }}>{descLiderazgo}</div>
               </div>
               <div style={{ background: '#fff7ed', padding: '1rem', borderRadius: '16px', border: '1px solid #ffedd5', textAlign: 'center' }}>
                 <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#ea580c', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Adaptabilidad</div>

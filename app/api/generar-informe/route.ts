@@ -96,7 +96,7 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
     "comunicacion": 0 
   }
 }
-*Nota: En metaCompetencias, sustituye los 0 por números enteros del 1 al 100 estimados según el perfil.*
+*Nota: En metaCompetencias, sustituye los 0 por números enteros del 1 al 100 estimados según el perfil. Para cargos de soporte u operativos (que no sean directivos/jefes), el puntaje en la clave "liderazgo" debe representar el potencial de "Autogestión" (iniciativa, autodisciplina y autonomía).*
 `;
 
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
