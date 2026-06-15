@@ -209,7 +209,18 @@ export default function PortalCandidatoPage() {
         })
       }
 
-      const merge = Array.from(new Set([...completadosLocal, ...completadosDB]))
+      // La BD es fuente de verdad: si la BD conoce un test (en CUALQUIER estado),
+      // ignoramos lo que diga el localStorage para ese test. Esto evita que tests
+      // marcados como "completado" en el cache del navegador (pero que en BD están
+      // en 'iniciado' o 'pendiente') aparezcan incorrectamente como finalizados.
+      const testsConSesionDB = new Set(
+        (sesiones || []).map(s => TEST_IDS[s.test_id]).filter(Boolean)
+      )
+      const completadosLocalFiltrados = completadosLocal.filter(
+        (key: string) => !testsConSesionDB.has(key)
+      )
+
+      const merge = Array.from(new Set([...completadosLocalFiltrados, ...completadosDB]))
       
       // Si viene con completed=1, asumimos que el test actual (lastStartedKey) se completó
       // y evitamos bloquearlo por demoras de base de datos o redirección rápida.

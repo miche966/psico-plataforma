@@ -30,6 +30,7 @@ export default function ResponderPage() {
   const [tiempoRestante, setTiempoRestante] = useState(0)
   const [nombreCandidato, setNombreCandidato] = useState('')
   const [subiendo, setSubiendo] = useState(false)
+  const [errorUpload, setErrorUpload] = useState(false)
   const [chunks, setChunks] = useState<Blob[]>([])
   const videoRef = useRef<HTMLVideoElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -129,6 +130,7 @@ export default function ResponderPage() {
   async function confirmarRespuesta() {
     if (!entrevistaId) return
     setSubiendo(true)
+    setErrorUpload(false)
 
     const blob = new Blob(chunksRef.current, { type: 'video/webm' })
     const fileName = `${entrevistaId}/${candidatoId || 'anonimo'}/${preguntas[preguntaActual].id}_${Date.now()}.webm`
@@ -136,29 +138,26 @@ export default function ResponderPage() {
     let urlVideo = null
 
     try {
-      // 1. Obtener URL firmada de Cloudflare R2
+      // 1. Intentar subir a Cloudflare R2 via URL prefirmada
       const resPresigned = await fetch('/api/r2-presigned', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileName, contentType: 'video/webm' })
       })
       
-      const { signedUrl, publicUrl, error: r2Error } = await resPresigned.json()
+      const { signedUrl, publicUrl } = await resPresigned.json()
 
       if (signedUrl) {
-        // 2. Subir directamente a R2
         const uploadRes = await fetch(signedUrl, {
           method: 'PUT',
           body: blob,
           headers: { 'Content-Type': 'video/webm' }
         })
-
-        if (uploadRes.ok) {
-          urlVideo = publicUrl
-        }
+        if (uploadRes.ok) urlVideo = publicUrl
+        else console.warn('R2 upload falló con status:', uploadRes.status)
       }
 
-      // Si R2 falla o no está configurado, intentar Supabase con URL firmada (para evitar RLS)
+      // 2. Fallback: Supabase Storage con URL firmada
       if (!urlVideo) {
         try {
           const resSupaPresigned = await fetch('/api/supabase-presigned', {
@@ -166,8 +165,7 @@ export default function ResponderPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fileName })
           })
-
-          const { signedUrl: supaSignedUrl, token: supaToken, path: supaPath, error: supaError } = await resSupaPresigned.json()
+          const { signedUrl: supaSignedUrl, token: supaToken, path: supaPath } = await resSupaPresigned.json()
 
           if (supaSignedUrl && supaToken && supaPath) {
             const { data: uploadData, error: uploadError } = await supabase.storage
@@ -179,39 +177,46 @@ export default function ResponderPage() {
                 .from('videos-entrevista')
                 .getPublicUrl(fileName)
               urlVideo = urlData.publicUrl
-            } else if (uploadError) {
-              console.error("Error al subir a URL firmada de Supabase:", uploadError)
+            } else {
+              console.warn('Supabase fallback falló:', uploadError)
             }
-          } else if (supaError) {
-            console.error("Error al generar URL firmada de Supabase:", supaError)
           }
         } catch (supaErr) {
-          console.error("Excepción en flujo de subida Supabase:", supaErr)
+          console.error('Excepción en fallback Supabase:', supaErr)
         }
       }
     } catch (err) {
-      console.error("Error en subida R2/Supabase:", err)
+      console.error('Error en subida de video:', err)
     }
 
-    const { data: insertData, error: insertError } = await supabase.from('respuestas_video').insert({
+    // Si ambos sistemas fallaron, mostrar error real al candidato — NO guardar ni avanzar
+    if (!urlVideo) {
+      setSubiendo(false)
+      setErrorUpload(true)
+      return
+    }
+
+    // Upload exitoso: guardar en BD y continuar
+    const { data: insertData } = await supabase.from('respuestas_video').insert({
       pregunta_id: preguntas[preguntaActual].id,
       candidato_id: candidatoId || null,
       entrevista_id: entrevistaId,
       url_video: urlVideo,
       duracion: preguntas[preguntaActual].tiempo_respuesta,
-      estado: urlVideo ? 'completado' : 'sin_video'
+      estado: 'completado'
     }).select('id').single()
 
     // Disparar análisis de IA en segundo plano (sin esperar)
-    if (urlVideo && insertData) {
+    if (insertData) {
       fetch('/api/analizar-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url_video: urlVideo, respuesta_id: insertData.id })
-      }).catch(err => console.error("Error disparando IA:", err))
+      }).catch(err => console.error('Error disparando IA:', err))
     }
 
     setSubiendo(false)
+    setErrorUpload(false)
 
     if (preguntaActual + 1 >= preguntas.length) {
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
@@ -360,7 +365,22 @@ export default function ResponderPage() {
           {estado === 'confirmacion' && (
             <div style={s.controles}>
               {subiendo ? (
-                <div style={s.subiendo}>Subiendo respuesta...</div>
+                <div style={s.subiendo}>Subiendo respuesta... por favor no cierres esta ventana.</div>
+              ) : errorUpload ? (
+                <div style={s.errorUpload}>
+                  <p style={s.errorUploadTitulo}>⚠️ No se pudo enviar el video</p>
+                  <p style={s.errorUploadTexto}>
+                    Hubo un problema al subir tu respuesta. Por favor verificá tu conexión a internet e intentá nuevamente.
+                  </p>
+                  <div style={s.botonesConfirmacion}>
+                    <button style={{ ...s.botonGrande, background: '#f1f5f9', color: '#475569' }} onClick={repetirGrabacion}>
+                      Volver a grabar
+                    </button>
+                    <button style={{ ...s.botonGrande, background: '#dc2626' }} onClick={confirmarRespuesta}>
+                      Reintentar envío
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <div style={s.botonesConfirmacion}>
                   <button style={{ ...s.botonGrande, background: '#f1f5f9', color: '#475569' }} onClick={repetirGrabacion}>
@@ -413,6 +433,9 @@ const s = {
   botonGrande: { width: '100%', padding: '0.875rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '1rem', fontWeight: '500', cursor: 'pointer' } as React.CSSProperties,
   botonesConfirmacion: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' } as React.CSSProperties,
   subiendo: { textAlign: 'center' as const, padding: '1rem', color: '#64748b', fontSize: '0.875rem' } as React.CSSProperties,
+  errorUpload: { background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', padding: '1.25rem', textAlign: 'center' as const } as React.CSSProperties,
+  errorUploadTitulo: { fontWeight: '700', color: '#dc2626', fontSize: '1rem', margin: '0 0 0.5rem' } as React.CSSProperties,
+  errorUploadTexto: { color: '#7f1d1d', fontSize: '0.875rem', margin: '0 0 1rem', lineHeight: '1.5' } as React.CSSProperties,
   checkCirculo: { width: '64px', height: '64px', borderRadius: '50%', background: '#16a34a', color: '#fff', fontSize: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' } as React.CSSProperties,
   mensajeConfirmacion: { fontSize: '0.9rem', color: '#475569', lineHeight: '1.6', textAlign: 'center' as const, marginBottom: '2rem' } as React.CSSProperties,
   contactoBox: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem' } as React.CSSProperties,
