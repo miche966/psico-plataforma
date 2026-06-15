@@ -351,7 +351,7 @@ function InformePageContent() {
         setProceso(proc)
       }
 
-      const { data: vids } = await supabase.from('respuestas_video').select('*').eq('candidato_id', id)
+      const { data: vids } = await supabase.from('respuestas_video').select('*, preguntas_video(pregunta)').eq('candidato_id', id)
       setVideos(vids || [])
 
       // Cálculos de Auditoría y Potencial

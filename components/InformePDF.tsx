@@ -407,10 +407,18 @@ export const InformePDF = ({ data }: any) => {
             <Text style={styles.sectionTitle}>VIII. Análisis de Video-Entrevista y Discurso</Text>
             {videos.map((v: any, i: number) => (
               <View key={i} style={[styles.card, { marginBottom: 10 }]}>
-                <Text style={styles.cardTitle}>Pregunta {i + 1}: {v.pregunta || 'Respuesta en Video'}</Text>
-                <Text style={[styles.cardText, { color: '#64748b' }]}>
-                  {v.transcripcion || 'Transcripción no disponible o en proceso de análisis...'}
+                <Text style={styles.cardTitle}>Pregunta {i + 1}: {v.preguntas_video?.pregunta || 'Respuesta en Video'}</Text>
+                <Text style={[styles.cardText, { color: '#64748b', marginBottom: 5 }]}>
+                  Transcripción: "{v.transcripcion || 'Transcripción no disponible o en proceso de análisis...'}"
                 </Text>
+                {v.analisis_ia && (
+                  <View style={{ marginTop: 5, padding: 5, backgroundColor: '#f0f4f8', borderRadius: 4 }}>
+                    <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#1e40af', marginBottom: 2 }}>Análisis de Actitud e IA:</Text>
+                    <Text style={{ fontSize: 8, color: '#334155', lineHeight: 1.3 }}>
+                      {typeof v.analisis_ia === 'string' ? v.analisis_ia : (v.analisis_ia.actitud || v.analisis_ia.resumen || v.analisis_ia.analisis)}
+                    </Text>
+                  </View>
+                )}
               </View>
             ))}
           </View>

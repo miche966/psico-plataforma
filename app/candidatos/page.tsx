@@ -685,10 +685,11 @@ export default function CandidatosPage() {
                         <div className="space-y-6">
                           {diagnostico.map(([factor, valor]) => {
                             const info = interpretacionHumana(factor, valor)
-                            const isNegativeFactor = ['ansiedad', 'depresion', 'estres', 'burnout'].includes(factor.toLowerCase())
-                            const colorClass = isNegativeFactor 
-                              ? (valor >= 3.5 ? 'bg-rose-500' : valor >= 2 ? 'bg-amber-500' : 'bg-emerald-500')
-                              : (valor >= 3.5 ? 'bg-emerald-500' : valor >= 2 ? 'bg-amber-500' : 'bg-rose-500')
+                            const colorClass = valor >= 3.8 
+                              ? 'bg-emerald-500' 
+                              : valor >= 1.5 
+                                ? 'bg-amber-500' 
+                                : 'bg-rose-500'
                             
                             const isCognitive = sesionParaDetalle.test_id.toLowerCase().includes('icar') || sesionParaDetalle.test_id.toLowerCase().includes('razonamiento')
                             let factorLabel = ETIQUETAS[factor] || factor.replace(/_/g, ' ')
@@ -1279,8 +1280,18 @@ function extraerDiagnostico(pb: any, testId?: string): [string, number][] {
     'test_id', 'nombre', 'apellido', 'email', 'v', 'version'
   ]
 
-  const normalizarValor = (v: any): number => {
+  const normalizarValor = (v: any, keyName?: string): number => {
     if (v === null || v === undefined) return 0
+    
+    // Si es DASS-21, normalizamos por 21 (rango de subescala 0-21)
+    const tId = (testId || '').toLowerCase()
+    const isDASS21 = tId === '7a8b9c0d-e1f2-4356-abcd-999999999999' || tId.includes('dass')
+    if (isDASS21 && keyName && ['depresion', 'ansiedad', 'estres'].includes(keyName.toLowerCase())) {
+      const numVal = Number(v)
+      if (!isNaN(numVal)) {
+        return (numVal / 21) * 5
+      }
+    }
     
     // Si es un string con formato "X/Y" (fracción)
     if (typeof v === 'string' && v.includes('/')) {
@@ -1382,7 +1393,7 @@ function extraerDiagnostico(pb: any, testId?: string): [string, number][] {
 
     if (nameKey && valueKey && typeof obj[nameKey] === 'string') {
       const k = normalizarKey(obj[nameKey], testId)
-      const v = normalizarValor(obj[valueKey])
+      const v = normalizarValor(obj[valueKey], k)
       if (k && !ignorarGlobal.includes(k)) {
         mapa.set(k, v)
       }
@@ -1395,12 +1406,12 @@ function extraerDiagnostico(pb: any, testId?: string): [string, number][] {
       if (v && typeof v === 'object' && !Array.isArray(v)) {
         const subValueKey = Object.keys(v).find(sk => ['valor', 'score', 'porcentaje', 'puntaje', 'resultado', 'puntos'].includes(sk.toLowerCase()))
         if (subValueKey) {
-          mapa.set(key, normalizarValor((v as any)[subValueKey]))
+          mapa.set(key, normalizarValor((v as any)[subValueKey], key))
         } else {
           escanearRecursivo(v, deep + 1)
         }
       } else if (typeof v === 'number' || (typeof v === 'string' && !isNaN(Number(v)) && v.trim() !== '')) {
-        const n = normalizarValor(v)
+        const n = normalizarValor(v, key)
         if (!mapa.has(key) || (mapa.get(key) === 0 && n > 0)) {
           mapa.set(key, n)
         }
@@ -1436,7 +1447,8 @@ function extraerDiagnostico(pb: any, testId?: string): [string, number][] {
         parts.forEach(p => {
           const [subK, subV] = p.split(':').map(s => s.trim())
           if (subK && subV && !isNaN(Number(subV))) {
-            mapa.set(normalizarKey(subK, testId), normalizarValor(subV))
+            const normalizedSubK = normalizarKey(subK, testId)
+            mapa.set(normalizedSubK, normalizarValor(subV, normalizedSubK))
           }
         })
       }
@@ -1450,10 +1462,12 @@ function extraerDiagnostico(pb: any, testId?: string): [string, number][] {
     factoresAInvertir.forEach(f => {
       if (mapa.has(f)) {
         const v = mapa.get(f)!
-        // Si está en escala 1-5 (valor > 0.5), usamos 6 - v. Si es 0-5, usamos 5 - v.
-        // La mayoría de personalidad es 1-5.
-        const vInvertido = v > 1 ? Math.max(0, 6 - v) : Math.max(0, 5 - v)
-        mapa.set(f, Math.min(5, vInvertido))
+        
+        // Determinar si es escala clínica (0-5) o personalidad (1-5)
+        const esClinico = ['ansiedad', 'depresion', 'estres', 'burnout', 'nivel_estres'].includes(f)
+        const vInvertido = esClinico ? (5 - v) : (v > 1 ? Math.max(0, 6 - v) : Math.max(0, 5 - v))
+        
+        mapa.set(f, Math.min(5, Math.max(0, vInvertido)))
       }
     })
 
