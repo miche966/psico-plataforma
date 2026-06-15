@@ -281,45 +281,9 @@ export default function PortalCandidatoPage() {
         }
       }
 
-      // 3. Buscar si hay registro de sesión interrumpida en la DB para un test no finalizado
-      const sesionInterrumpidaDb = (sesiones || []).find(s => {
-        const key = TEST_IDS[s.test_id]
-        return s.estado === 'interrumpido' && key && !merge.includes(key)
-      })
 
-      // 4. Buscar si hay un test en localStorage que se inició pero no se completó (abandono)
-      // (lastStartedKey ya fue declarado y cargado de localStorage arriba)
-
-      if (sesionInterrumpidaDb) {
-        const testKey = TEST_IDS[sesionInterrumpidaDb.test_id]
-        setBloqueado(true)
-        setTestBloqueado(testKey || 'test')
-      } else if (lastStartedKey && !merge.includes(lastStartedKey)) {
-        // Se detectó abandono (cerró ventana, volvió atrás, etc.)
-        setBloqueado(true)
-        setTestBloqueado(lastStartedKey)
-
-        const sesionExistente = (sesiones || []).find(s => TEST_IDS[s.test_id] === lastStartedKey)
-        if (sesionExistente) {
-          await supabase
-            .from('sesiones')
-            .update({ estado: 'interrumpido' })
-            .eq('id', sesionExistente.id)
-        } else {
-          const testIdDb = TEST_KEY_TO_ID[lastStartedKey]
-          if (testIdDb) {
-            await supabase
-              .from('sesiones')
-              .insert({
-                candidato_id: candidatoId,
-                proceso_id: procesoId,
-                test_id: testIdDb,
-                estado: 'interrumpido',
-                iniciada_en: new Date().toISOString()
-              })
-          }
-        }
-      }
+      // El sistema de bloqueos de proctoring por abandono/interrupción se encuentra desactivado a nivel general por solicitud del reclutador.
+      // Se permite que los candidatos retomen sus evaluaciones libremente si cierran o recargan la pestaña.
       
       if (searchParams.get('debug') === '1') {
         (window as any).debugInfo = { ...debugData, merge, bateria: bat }
