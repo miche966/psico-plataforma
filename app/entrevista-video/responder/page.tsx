@@ -136,25 +136,45 @@ export default function ResponderPage() {
     const fileName = `${entrevistaId}/${candidatoId || 'anonimo'}/${preguntas[preguntaActual].id}_${Date.now()}.webm`
 
     let urlVideo = null
+    let logs: string[] = []
+    let extraData: any = {
+      blobSize: blob.size,
+      blobType: blob.type,
+      chunksCount: chunksRef.current.length,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown'
+    }
 
     try {
-      // 1. Intentar subir a Cloudflare R2 via URL prefirmada
-      const resPresigned = await fetch('/api/r2-presigned', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName, contentType: 'video/webm' })
-      })
-      
-      const { signedUrl, publicUrl } = await resPresigned.json()
-
-      if (signedUrl) {
-        const uploadRes = await fetch(signedUrl, {
-          method: 'PUT',
-          body: blob,
-          headers: { 'Content-Type': 'video/webm' }
+      // 1. Intentar subir a Cloudflare R2
+      try {
+        const resPresigned = await fetch('/api/r2-presigned', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileName, contentType: 'video/webm' })
         })
-        if (uploadRes.ok) urlVideo = publicUrl
-        else console.warn('R2 upload falló con status:', uploadRes.status)
+        
+        if (resPresigned.ok) {
+          const { signedUrl, publicUrl } = await resPresigned.json()
+          if (signedUrl) {
+            const uploadRes = await fetch(signedUrl, {
+              method: 'PUT',
+              body: blob,
+              headers: { 'Content-Type': 'video/webm' }
+            })
+            if (uploadRes.ok) {
+              urlVideo = publicUrl
+              logs.push('R2: OK')
+            } else {
+              logs.push(`R2: PUT failed with status ${uploadRes.status}`)
+            }
+          } else {
+            logs.push('R2: No signedUrl returned from api')
+          }
+        } else {
+          logs.push(`R2: Presigned API failed with status ${resPresigned.status}`)
+        }
+      } catch (errR2: any) {
+        logs.push(`R2: Exception: ${errR2.message || errR2}`)
       }
 
       // 2. Fallback: Supabase Storage con URL firmada (PUT directo)
@@ -165,36 +185,59 @@ export default function ResponderPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fileName })
           })
-          const { signedUrl: supaSignedUrl } = await resSupaPresigned.json()
+          
+          if (resSupaPresigned.ok) {
+            const { signedUrl: supaSignedUrl } = await resSupaPresigned.json()
 
-          if (supaSignedUrl) {
-            const uploadRes = await fetch(supaSignedUrl, {
-              method: 'PUT',
-              body: blob,
-              headers: { 'Content-Type': 'video/webm' }
-            })
+            if (supaSignedUrl) {
+              const uploadRes = await fetch(supaSignedUrl, {
+                method: 'PUT',
+                body: blob,
+                headers: { 'Content-Type': 'video/webm' }
+              })
 
-            if (uploadRes.ok) {
-              const { data: urlData } = supabase.storage
-                .from('videos-entrevista')
-                .getPublicUrl(fileName)
-              urlVideo = urlData.publicUrl
+              if (uploadRes.ok) {
+                const { data: urlData } = supabase.storage
+                  .from('videos-entrevista')
+                  .getPublicUrl(fileName)
+                urlVideo = urlData.publicUrl
+                logs.push('Supabase: OK')
+              } else {
+                logs.push(`Supabase: PUT failed with status ${uploadRes.status}`)
+              }
             } else {
-              console.warn('Supabase fallback direct PUT falló con status:', uploadRes.status)
+              logs.push('Supabase: No signedUrl returned from api')
             }
+          } else {
+            logs.push(`Supabase: Presigned API failed with status ${resSupaPresigned.status}`)
           }
-        } catch (supaErr) {
-          console.error('Excepción en fallback Supabase:', supaErr)
+        } catch (supaErr: any) {
+          logs.push(`Supabase: Exception: ${supaErr.message || supaErr}`)
         }
       }
-    } catch (err) {
-      console.error('Error en subida de video:', err)
+    } catch (err: any) {
+      logs.push(`Global Exception: ${err.message || err}`)
     }
 
-    // Si ambos sistemas fallaron, mostrar error real al candidato — NO guardar ni avanzar
+    // Si ambos sistemas fallaron, mostrar error real al candidato y registrar el error en la base de datos
     if (!urlVideo) {
       setSubiendo(false)
       setErrorUpload(true)
+      
+      try {
+        await supabase.from('respuestas_video').insert({
+          pregunta_id: preguntas[preguntaActual].id,
+          candidato_id: candidatoId || null,
+          entrevista_id: entrevistaId,
+          url_video: null,
+          duracion: preguntas[preguntaActual].tiempo_respuesta,
+          estado: 'error_upload',
+          transcripcion: logs.join(' | '),
+          analisis: extraData
+        })
+      } catch (logErr) {
+        console.error('Error insertando log en respuestas_video:', logErr)
+      }
       return
     }
 
