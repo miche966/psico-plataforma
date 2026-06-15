@@ -87,7 +87,7 @@ export default function SjtCobranzasPage() {
     const resultado = { correctas, total: todosLosItems.length, porcentaje: Math.round((correctas / todosLosItems.length) * 100), por_factor: porFactor }
     setFinalizado(true)
     const { data: sesion, error } = await supabase.from('sesiones').insert({
-      test_id: 'b2c3d4e5-f6a7-8901-bcde-222222222222',
+      test_id: 'e9b2c3d4-f5a6-7890-bcde-999999999999',
       candidato_id: candidatoId || null,
       proceso_id: procesoId || null,
       estado: 'finalizado',
