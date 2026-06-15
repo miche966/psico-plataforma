@@ -162,7 +162,8 @@ export default function PortalCandidatoPage() {
         '74371411-603e-49a3-8fd4-732fe2882ba1', // Ihara Cid
         '8cda2c12-ea0d-4e9b-8fac-72018b00adb5', // Nicolás Menciones
         'ff323c32-e68b-4232-82a9-5df002773114', // Belén García
-        '54bbd3ba-55ca-4ccb-ab1f-840eea8c4412'  // Angelica Garrel
+        '54bbd3ba-55ca-4ccb-ab1f-840eea8c4412', // Angelica Garrel
+        'dce41dac-d561-4903-b833-09460ff22423'  // Federica Duran
       ]
 
       if (searchParams.get('reset') === '1' || (candidatoId && RESET_CANDIDATE_IDS.includes(candidatoId))) {
