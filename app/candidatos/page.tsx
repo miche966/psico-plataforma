@@ -2900,20 +2900,27 @@ function getAnalisisGlobal(testId: string, promedio: number, puntajes?: any): st
 
   if (matches('estres') || matches('bienestar') || matches('dass')) {
     if (nivel === 'alto') return 'Se encuentra en un momento de gran equilibrio personal, lo que le permite tomar decisiones con mucha claridad incluso bajo presión. Gestiona muy bien su energía y suele ser un apoyo positivo para sus compañeros de trabajo.'
-    if (nivel === 'moderado') return 'Maneja la carga de trabajo diaria de forma profesional y equilibrada. Sabe compensar las exigencias externas con sus propios recursos, manteniendo un desempeño constante sin que su estado de ánimo se vea afectado.'
-    return 'Se perciben señales de que el volumen de trabajo actual le está pesando un poco más de lo habitual. Responderá muy bien si se le ayuda a organizar sus tareas de forma más estratégica, permitiéndole recuperar el foco y la tranquilidad operativa.'
+    if (nivel === 'moderado') return 'Maneja la carga de trabajo diaria de forma profesional, aunque experimenta algunas tensiones y fluctuaciones en su estado de ánimo o motivación ante demandas elevadas. Se beneficia de un clima de apoyo y de pautas de desconexión preventiva.'
+    return 'Se perciben claras señales de desgaste emocional o tensión acumulada. El volumen de demandas actual le resulta difícil de asimilar, por lo que es prioritario revisar la distribución de sus tareas, brindarle soporte empático y espacios para recuperar la tranquilidad operativa.'
   }
 
   return 'Se observa un perfil profesional alineado con un nivel de ajuste ' + nivel + '. Es una persona con ganas de aportar al equipo, cuyas áreas de mejora pueden ser potenciadas fácilmente con el acompañamiento adecuado del área.'
 }
 
 function getPuntoTension(testId: string, promedio: number, puntajes?: any): string {
-  const isClinical = testId.toLowerCase().includes('dass') || testId.toLowerCase().includes('estres') || testId.toLowerCase().includes('bienestar')
+  const nameLower = (TEST_NAMES[testId] || '').toLowerCase()
+  const isClinical = testId.toLowerCase().includes('dass') || 
+                     testId.toLowerCase().includes('estres') || 
+                     testId.toLowerCase().includes('bienestar') ||
+                     testId.toLowerCase() === '7a8b9c0d-e1f2-4356-abcd-999999999999' ||
+                     nameLower.includes('dass') ||
+                     nameLower.includes('estrés') ||
+                     nameLower.includes('bienestar')
   
   if (isClinical) {
-    if (promedio < 1.5) return 'Su mayor fortaleza hoy es la calma y la estabilidad ante los imprevistos. No se deja llevar por la urgencia del momento.'
-    if (promedio < 3.5) return 'Maneja bien la tensión diaria, aunque el desafío será no descuidar el detalle cuando los plazos de entrega se vuelven muy cortos.'
-    return 'Se siente algo sobrepasado por las demandas externas. El riesgo es que el cansancio le haga perder de vista las prioridades más importantes del puesto.'
+    if (promedio < 1.5) return 'Se siente significativamente sobrepasado por las demandas externas. El riesgo principal es que la fatiga o el desánimo afecten su concentración y rendimiento.'
+    if (promedio < 3.5) return 'Maneja bien la tensión diaria en general, aunque el desafío será prevenir la acumulación de fatiga cuando las demandas se intensifican.'
+    return 'Su mayor fortaleza hoy es la calma, el equilibrio y la estabilidad ante imprevistos. Mantiene el temple y no se deja llevar por la urgencia del momento.'
   }
 
   if (promedio < 2.5) return 'Se siente más cómodo en puestos con tareas bien definidas. Su mayor desafío será ganar confianza cuando los objetivos no son del todo claros.'
@@ -2922,12 +2929,19 @@ function getPuntoTension(testId: string, promedio: number, puntajes?: any): stri
 }
 
 function getAcompanamiento(testId: string, promedio: number, puntajes?: any): string {
-  const isClinical = testId.toLowerCase().includes('dass') || testId.toLowerCase().includes('estres') || testId.toLowerCase().includes('bienestar')
+  const nameLower = (TEST_NAMES[testId] || '').toLowerCase()
+  const isClinical = testId.toLowerCase().includes('dass') || 
+                     testId.toLowerCase().includes('estres') || 
+                     testId.toLowerCase().includes('bienestar') ||
+                     testId.toLowerCase() === '7a8b9c0d-e1f2-4356-abcd-999999999999' ||
+                     nameLower.includes('dass') ||
+                     nameLower.includes('estrés') ||
+                     nameLower.includes('bienestar')
   
   if (isClinical) {
-    if (promedio > 3.5) return 'Se recomienda ayudarle a organizar sus tareas prioritarias y darle espacios para que pueda recargar energías y recuperar su enfoque.'
-    if (promedio > 1.5) return 'Fomentar que trabaje más en equipo; sentirse apoyado por sus compañeros le ayudará a manejar mejor las rachas de mucho trabajo.'
-    return 'Es ideal para puestos de mucha responsabilidad. Se le pueden dar desafíos importantes que requieran temple y saber manejar situaciones de crisis.'
+    if (promedio < 1.5) return 'Se recomienda de forma prioritaria revisar su carga laboral, brindarle pautas muy claras y facilitar espacios de desconexión para preservar su salud emocional.'
+    if (promedio < 3.5) return 'Fomentar el trabajo en equipo y el apoyo entre compañeros; sentirse respaldado le ayudará a dosificar esfuerzos y evitar la acumulación de tensión.'
+    return 'Es una persona muy estable y con buen temple. Se le pueden delegar responsabilidades importantes que exijan gestionar situaciones complejas y mantener la calma.'
   }
 
   if (promedio < 3) return 'Darle una guía paso a paso con metas a corto plazo. Felicitar sus avances técnicos le ayudará mucho a integrarse con seguridad al equipo.'
@@ -2939,6 +2953,12 @@ function conclusionGeneral(testId: string, promedio: number): string {
   const idLower = testId.toLowerCase()
   const nameLower = (TEST_NAMES[testId] || '').toLowerCase()
   const matches = (str: string) => idLower.includes(str) || nameLower.includes(str)
+
+  if (matches('estres') || matches('bienestar') || matches('dass')) {
+    if (nivel === 'alto') return 'En resumen, el evaluado demuestra un excelente estado de equilibrio emocional y manejo de la presión, lo que le permite integrarse al equipo de forma muy saludable.'
+    if (nivel === 'moderado') return 'En resumen, el evaluado presenta niveles de tensión y fluctuaciones de ánimo moderadas que requieren pautas de soporte. Con una estructura clara de tareas y un buen clima laboral, logrará una integración muy satisfactoria.'
+    return 'En resumen, los indicadores clínicos advierten un nivel de desgaste o saturación emocional significativo. Se recomienda priorizar el cuidado de la salud del colaborador y proporcionarle un plan de acompañamiento preventivo.'
+  }
 
   if (matches('bigfive') || matches('personality') || matches('hexaco') || matches('integridad')) {
     if (nivel === 'alto') return 'Es un profesional muy sólido y equilibrado. Aporta tranquilidad y una forma de trabajar ética que ayuda a que todo el equipo rinda mejor.'
