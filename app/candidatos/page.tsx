@@ -2063,15 +2063,27 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
         q: '¿Cómo utiliza su optimismo natural para ayudar a un equipo que está pasando por una etapa de pesimismo o estancamiento?'
       },
       moderado: {
-        desc: 'Mantiene un estado de ánimo funcional y adaptado a las exigencias laborales. Muestra fluctuaciones normales de motivación consistentes con el ciclo de trabajo, logrando mantener el compromiso con sus tareas y una interacción social adecuada con sus pares. Posee la resiliencia básica para superar periodos de alta carga emocional.',
-        q: '¿Qué aspectos de su trabajo actual son los que más contribuyen a mantener su entusiasmo y compromiso a largo plazo?'
+        desc: 'Se observan indicios de desánimo o sintomatología depresiva de nivel leve a moderado. En el ámbito profesional, esto puede manifestarse como fluctuaciones en los niveles de energía, desmotivación o desgano ante tareas de alta demanda. Se beneficia de metas estructuradas a corto plazo y un clima de soporte.',
+        q: 'Cuando siente que su energía o motivación está baja, ¿qué herramientas o hábitos utiliza para cumplir con sus compromisos profesionales?'
       },
       bajo: {
-        desc: 'Los indicadores sugieren una disminución temporal en los niveles de energía vital y motivación intrínseca. En el ámbito profesional, esto puede reflejarse como una menor proactividad o una visión más pesimista ante nuevos desafíos. El evaluado puede beneficiarse de objetivos a muy corto plazo, feedback positivo frecuente y un liderazgo empático que fomente la reconexión con el propósito de su rol.',
-        q: 'Cuando siente que su energía o motivación está baja, ¿qué herramientas o hábitos utiliza para cumplir con sus compromisos profesionales?'
+        desc: 'Se identifican indicios clínicamente significativos de desánimo y sintomatología depresiva de nivel moderado a severo. Presenta una disminución marcada de la energía vital, apatía y alto riesgo de desmotivación profunda. Se recomienda una revisión de su carga laboral y acompañamiento cercano.',
+        q: '¿Qué tipo de apoyo o condiciones laborales siente que le ayudarían a recuperar su bienestar y motivación en momentos difíciles?'
       }
     },
     estres: {
+      alto: {
+        desc: 'Manifiesta un estado de calma operativa y bienestar en el puesto. Su percepción de las demandas externas es de control absoluto, lo que le permite mantener un clima de tranquilidad y una ejecución técnica fluida y sin ruidos emocionales.',
+        q: 'En momentos de calma extrema, ¿cómo se asegura de mantener el nivel de energía y proactividad necesario para el negocio?'
+      },
+      moderado: {
+        desc: 'Muestra un nivel de estrés laboral dentro de los parámetros de adaptabilidad profesional. Es capaz de navegar las demandas del rol con equilibrio, aunque posee áreas de sensibilidad que requieren una gestión consciente de los tiempos de descanso.',
+        q: '¿Qué señales físicas o mentales le indican que está llegando a su límite de saturación y qué hace para revertirlo?'
+      },
+      bajo: {
+        desc: 'Presenta una percepción elevada de tensión en el entorno laboral. Esta intensidad sugiere una fase de alerta que podría afectar la toma de decisiones objetiva a largo plazo si no se implementan estrategias de recuperación y dosificación de esfuerzos.',
+        q: '¿Cuáles son los factores específicos del entorno que están generando mayor tensión en este momento y cómo intenta aislarlos de sus decisiones clave?'
+      }
     },
     burnout: {
       alto: {
@@ -2723,35 +2735,7 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
         q: '¿Cómo se siente trabajando con grandes tablas de números y qué hace para que la fatiga visual no afecte su precisión?'
       }
     },
-    // Salud Mental / Riesgos / Estrés
-    estres: {
-      alto: {
-        desc: 'Presenta una percepción elevada de tensión en el entorno laboral. Esta intensidad sugiere una fase de alerta que podría afectar la toma de decisiones objetiva a largo plazo si no se implementan estrategias de recuperación y dosificación de esfuerzos.',
-        q: '¿Cuáles son los factores específicos del entorno que están generando mayor tensión en este momento y cómo intenta aislarlos de sus decisiones clave?'
-      },
-      moderado: {
-        desc: 'Muestra un nivel de estrés laboral dentro de los parámetros de adaptabilidad profesional. Es capaz de navegar las demandas del rol con equilibrio, aunque posee áreas de sensibilidad que requieren una gestión consciente de los tiempos de descanso.',
-        q: '¿Qué señales físicas o mentales le indican que está llegando a su límite de saturación y qué hace para revertirlo?'
-      },
-      bajo: {
-        desc: 'Manifiesta un estado de calma operativa y bienestar en el puesto. Su percepción de las demandas externas es de control absoluto, lo que le permite mantener un clima de tranquilidad y una ejecución técnica fluida y sin ruidos emocionales.',
-        q: 'En momentos de calma extrema, ¿cómo se asegura de mantener el nivel de energía y proactividad necesario para el negocio?'
-      }
-    },
-    burnout: {
-      alto: {
-        desc: 'Los indicadores sugieren un desgaste acumulado significativo que compromete la energía psíquica del colaborador. Es vital revisar la distribución de responsabilidades para prevenir la apatía operativa o el agotamiento crónico a corto plazo.',
-        q: '¿Siente que su capacidad de disfrute de los logros laborales ha disminuido? ¿A qué atribuye esta sensación de cansancio persistente?'
-      },
-      moderado: {
-        desc: 'Se observa una fatiga propia de ciclos de alta exigencia. Si bien mantiene la funcionalidad, se encuentra en un punto donde la prevención es clave para evitar que el cansancio impacte en su compromiso a largo plazo.',
-        q: '¿Qué actividades o cambios en su rutina laboral le ayudan a "recargar baterías" de forma efectiva?'
-      },
-      bajo: {
-        desc: 'Posee un sólido blindaje emocional contra el agotamiento. Su vitalidad y entusiasmo se mantienen intactos, reflejando una excelente higiene mental y una integración saludable de las demandas laborales.',
-        q: '¿Cuál es su secreto para mantener la motivación alta incluso después de semanas de trabajo intenso?'
-      }
-    },
+    // Salud Mental / Riesgos / Estrés (Duplicados removidos)
     carga_laboral: {
       alto: {
         desc: 'Percibe un volumen de tareas que excede su capacidad de procesamiento óptimo. Esta sobrecarga puede derivar en una sensación de asfixia operativa que requiere una revisión urgente de la priorización estratégica.',
