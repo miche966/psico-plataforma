@@ -148,13 +148,23 @@ export default function PortalCandidatoPage() {
       // 1. Cargar desde LocalStorage
       const completadosLocal = JSON.parse(localStorage.getItem(`completados_${candidatoId}_${procesoId}`) || '[]')
       
-      // Lógica de rescate: Si viene el parámetro reset=1 o es alguno de los IDs de Shanaia, Avril, Julieta o Maittena que están bloqueados, limpiamos el localStorage local
-      if (searchParams.get('reset') === '1' || 
-          candidatoId === 'ac05a547-c3c4-48e7-85b3-a9c2b4835076' || 
-          candidatoId === 'd8804cc9-9c85-4916-a33f-1b892604b679' ||
-          candidatoId === '1d61c2b7-ac7a-4c8c-89a1-548ef04f64eb' ||
-          candidatoId === '161a2f19-4d21-4f97-8171-3b134bbe4211' ||
-          candidatoId === '1a96285b-2518-4fb0-872b-5d2f7c27fcd9') {
+      // Lógica de rescate: Si viene el parámetro reset=1 o es alguno de los IDs de candidatos que están bloqueados o necesitan reset, limpiamos el localStorage local
+      const RESET_CANDIDATE_IDS = [
+        'ac05a547-c3c4-48e7-85b3-a9c2b4835076', // Shanaia
+        'd8804cc9-9c85-4916-a33f-1b892604b679',
+        '1d61c2b7-ac7a-4c8c-89a1-548ef04f64eb', // Avril Rosito
+        '161a2f19-4d21-4f97-8171-3b134bbe4211', // Julieta Moizo
+        '1a96285b-2518-4fb0-872b-5d2f7c27fcd9', // Maittena Esain
+        '4a32b89f-9a11-41f6-8606-4e0469364919', // Indahara Burgos
+        '9cad1f0d-d6df-4a04-9ac0-cb25256b0a99', // Guadalupe Perdomo
+        '91578c0c-076a-45ca-92fe-89d92a73807e', // Camila Tapia
+        'd633194e-63e6-424d-99d9-31593dbda2f5', // Thaira Gonzalez
+        '74371411-603e-49a3-8fd4-732fe2882ba1', // Ihara Cid
+        '8cda2c12-ea0d-4e9b-8fac-72018b00adb5', // Nicolás Menciones
+        'ff323c32-e68b-4232-82a9-5df002773114'  // Belén García
+      ]
+
+      if (searchParams.get('reset') === '1' || (candidatoId && RESET_CANDIDATE_IDS.includes(candidatoId))) {
         localStorage.removeItem(`completados_${candidatoId}_${procesoId}`)
         localStorage.removeItem(`last_started_${candidatoId}_${procesoId}`)
         if (searchParams.get('reset') === '1') {
