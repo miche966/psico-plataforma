@@ -27,7 +27,8 @@ const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
   'Autocontrol': { neuroticismo: 1, amabilidad: 4 },
   'Responsabilidad': { responsabilidad: 5 },
   'Ética profesional': { etica: 5, normas: 5 },
-  'Conciencia organizacional': { normas: 4.5, responsabilidad: 4.5 }
+  'Conciencia organizacional': { normas: 4.5, responsabilidad: 4.5 },
+  'Flexibilidad': { apertura: 5, amabilidad: 4 }
 }
 
 function calcularMatch(puntaje: any, reqs: any[]) {
@@ -167,6 +168,7 @@ const TEST_IDS: Record<string, string> = {
   'b8c9d0e1-f2a3-4567-bcde-888888888888': 'atencion-detalle',
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'sjt-atencion',
   '7a8b9c0d-e1f2-4356-abcd-999999999999': 'dass21',
+  'e9b2c3d4-f5a6-7890-bcde-999999999999': 'sjt-cobranzas',
 }
 
 const TEST_NAMES: Record<string, string> = {
@@ -187,6 +189,7 @@ const TEST_NAMES: Record<string, string> = {
   'b8c9d0e1-f2a3-4567-bcde-888888888888': 'Atención al Detalle',
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'SJT Atención al Cliente',
   '7a8b9c0d-e1f2-4356-abcd-999999999999': 'DASS-21 (Salud Mental)',
+  'e9b2c3d4-f5a6-7890-bcde-999999999999': 'SJT Cobranzas',
 }
 
 const colores: Record<string, string> = {

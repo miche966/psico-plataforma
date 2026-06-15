@@ -38,6 +38,7 @@ export default function TestPage() {
   const [finalizado, setFinalizado] = useState(false)
   const enEvaluacion = useEvaluacionRedirect(finalizado)
   const [sesionIdActual, setSesionIdActual] = useState<string | null>(null)
+  const [resultado, setResultado] = useState<Record<string, number>>({})
   const BIG_FIVE_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
 
   useEffect(() => {

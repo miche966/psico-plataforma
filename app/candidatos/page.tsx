@@ -416,6 +416,12 @@ export default function CandidatosPage() {
                         {(sesionesCount[candidato.id] || 0) === 0 && (
                           <span className="text-[9px] text-slate-400 italic">Sin actividad registrada</span>
                         )}
+                        {sesionesData.some(s => s.candidato_id === candidato.id && s.estado === 'interrumpido') && (
+                          <div className="mt-1.5 flex items-center gap-1 text-[10px] text-red-600 bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded border border-red-100 dark:border-red-900/30 w-fit font-bold">
+                            <ShieldAlert className="w-3 h-3 text-red-500 animate-pulse" />
+                            <span>Sesión Interrumpida</span>
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-600">
@@ -488,9 +494,9 @@ export default function CandidatosPage() {
                     <td className="px-5 py-4 text-right flex justify-end gap-2">
                       <button
                         onClick={() => resetearSesiones(candidato.id, `${candidato.nombre} ${candidato.apellido}`)}
-                        disabled={reseteando === candidato.id || (sesionesCount[candidato.id] || 0) === 0}
+                        disabled={reseteando === candidato.id || !sesionesData.some(s => s.candidato_id === candidato.id)}
                         className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
-                          (sesionesCount[candidato.id] || 0) === 0 
+                          !sesionesData.some(s => s.candidato_id === candidato.id)
                             ? 'bg-slate-50 text-slate-300 cursor-not-allowed' 
                             : 'bg-amber-50 text-amber-600 hover:bg-amber-100 hover:text-amber-700'
                         }`}

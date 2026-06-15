@@ -25,7 +25,8 @@ const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
   'Autocontrol': { neuroticismo: 1, amabilidad: 4 },
   'Responsabilidad': { responsabilidad: 5 },
   'Ética profesional': { etica: 5, normas: 5 },
-  'Conciencia organizacional': { normas: 4.5, responsabilidad: 4.5 }
+  'Conciencia organizacional': { normas: 4.5, responsabilidad: 4.5 },
+  'Flexibilidad': { apertura: 5, amabilidad: 4 }
 }
 
 // Tipos base
@@ -383,11 +384,20 @@ function InformePageContent() {
         if (autoAjuste === 0) {
           console.log("DEBUG: Iniciando fallback omnisciente para Avril...");
           const todosLosFactores: number[] = []
+          const CLAVES_IGNORAR = [
+            'total', 'correctas', 'porcentaje', 'id', 'created_at', 
+            'proceso_id', 'candidato_id', 'finalizada_en', 'iniciada_en', 
+            'nivel_maximo', 'tabswitches', 'copypasteattempts', 'timeoutoffocus',
+            'events', 'tab_switches', 'copy_paste_attempts', 'time_out_of_focus'
+          ];
           lista.forEach((s, idx) => {
             console.log(`DEBUG: Analizando sesión ${idx + 1}:`, s.test_id, s.puntaje_bruto);
             const scan = (obj: any) => {
               if (!obj || typeof obj !== 'object') return
               Object.entries(obj).forEach(([k, v]) => {
+                const key = k.toLowerCase().trim()
+                if (CLAVES_IGNORAR.includes(key)) return
+
                 const valNum = parseFloat(String(v))
                 if (!isNaN(valNum)) {
                   let val = valNum

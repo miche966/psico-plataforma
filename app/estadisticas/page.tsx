@@ -82,6 +82,7 @@ const TEST_IDS: Record<string, string> = {
   'b8c9d0e1-f2a3-4567-bcde-888888888888': 'atencion-detalle',
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'sjt-atencion',
   'e9b2c3d4-f5a6-7890-bcde-999999999999': 'sjt-cobranzas',
+  '7a8b9c0d-e1f2-4356-abcd-999999999999': 'dass21',
 }
 
 export default function EstadisticasPage() {

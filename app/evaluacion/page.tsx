@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { CheckCircle2, PlayCircle, Clock, CheckCircle, Video, Camera, Mic } from 'lucide-react'
+import { CheckCircle2, PlayCircle, Clock, CheckCircle, Video, Camera, Mic, ShieldAlert } from 'lucide-react'
 
 const RUTAS: Record<string, string> = {
   bigfive: '/test',
@@ -44,6 +44,7 @@ const NOMBRES_TESTS: Record<string, { nombre: string, duracion: string }> = {
   'estres-laboral': { nombre: 'Afrontamiento del Estrés', duracion: '15 min' },
   creatividad: { nombre: 'Creatividad e Innovación', duracion: '15 min' },
   'sjt-problemas': { nombre: 'Resolución de Problemas', duracion: '20 min' },
+  dass21: { nombre: 'Screening de Salud Mental (DASS-21)', duracion: '10 min' },
 }
 
 // Mapeo de IDs de base de datos a llaves de test
@@ -64,6 +65,13 @@ const TEST_IDS: Record<string, string> = {
   'a1b2c3d4-e5f6-7890-abcd-111111111111': 'comercial',
   'b8c9d0e1-f2a3-4567-bcde-888888888888': 'atencion-detalle',
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'sjt-atencion',
+  '7a8b9c0d-e1f2-4356-abcd-999999999999': 'dass21',
+  'e9b2c3d4-f5a6-7890-bcde-999999999999': 'sjt-cobranzas',
+}
+
+const TEST_KEY_TO_ID: Record<string, string> = {}
+for (const [id, key] of Object.entries(TEST_IDS)) {
+  TEST_KEY_TO_ID[key] = id
 }
 
 export default function PortalCandidatoPage() {
@@ -83,6 +91,9 @@ export default function PortalCandidatoPage() {
 
   const [mostrarSetup, setMostrarSetup] = useState(false)
   const [stream, setStream] = useState<MediaStream | null>(null)
+
+  const [bloqueado, setBloqueado] = useState(false)
+  const [testBloqueado, setTestBloqueado] = useState<string | null>(null)
 
   useEffect(() => {
     if (!candidatoId || !procesoId) {
@@ -137,9 +148,15 @@ export default function PortalCandidatoPage() {
       // 1. Cargar desde LocalStorage
       const completadosLocal = JSON.parse(localStorage.getItem(`completados_${candidatoId}_${procesoId}`) || '[]')
       
-      // Lógica de rescate: Si viene el parámetro reset=1 o es alguno de los IDs de Shanaia que están bloqueados, limpiamos el localStorage local
-      if (searchParams.get('reset') === '1' || candidatoId === 'ac05a547-c3c4-48e7-85b3-a9c2b4835076' || candidatoId === 'd8804cc9-9c85-4916-a33f-1b892604b679') {
+      // Lógica de rescate: Si viene el parámetro reset=1 o es alguno de los IDs de Shanaia, Avril, Julieta o Maittena que están bloqueados, limpiamos el localStorage local
+      if (searchParams.get('reset') === '1' || 
+          candidatoId === 'ac05a547-c3c4-48e7-85b3-a9c2b4835076' || 
+          candidatoId === 'd8804cc9-9c85-4916-a33f-1b892604b679' ||
+          candidatoId === '1d61c2b7-ac7a-4c8c-89a1-548ef04f64eb' ||
+          candidatoId === '161a2f19-4d21-4f97-8171-3b134bbe4211' ||
+          candidatoId === '1a96285b-2518-4fb0-872b-5d2f7c27fcd9') {
         localStorage.removeItem(`completados_${candidatoId}_${procesoId}`)
+        localStorage.removeItem(`last_started_${candidatoId}_${procesoId}`)
         if (searchParams.get('reset') === '1') {
           const newUrl = window.location.pathname + '?' + 
             searchParams.toString().replace(/&?reset=1/, '').replace(/^&/, '')
@@ -151,12 +168,11 @@ export default function PortalCandidatoPage() {
       // 2. Cargar desde DB (Sesiones de Tests) - Filtered by process to avoid cross-contamination
       const { data: sesiones, error: errSes } = await supabase
         .from('sesiones')
-        .select('test_id, estado')
+        .select('id, test_id, estado')
         .eq('candidato_id', candidatoId)
         .eq('proceso_id', procesoId)
       
       if (errSes) console.error('Error DB Sesiones:', errSes)
-      setSesionesPortal(sesiones || [])
 
       // 3. Cargar desde DB (Respuestas de Videoentrevistas)
       const { data: respuestasVideo, error: errVid } = await supabase
@@ -184,8 +200,116 @@ export default function PortalCandidatoPage() {
       }
 
       const merge = Array.from(new Set([...completadosLocal, ...completadosDB]))
+      
+      // Si viene con completed=1, asumimos que el test actual (lastStartedKey) se completó
+      // y evitamos bloquearlo por demoras de base de datos o redirección rápida.
+      const completedParam = searchParams.get('completed') === '1'
+      const lastStartedKey = localStorage.getItem(`last_started_${candidatoId}_${procesoId}`)
+      if (completedParam && lastStartedKey && !merge.includes(lastStartedKey)) {
+        merge.push(lastStartedKey)
+      }
+
       setTestsCompletados(merge)
       localStorage.setItem(`completados_${candidatoId}_${procesoId}`, JSON.stringify(merge))
+
+      // --- LÓGICA DE AUDITORÍA Y LOCKOUT (OPCIÓN A) ---
+      
+      // 1. Eliminar duplicados no finalizados para tests que ya se completaron
+      const completedTestIds = (sesiones || [])
+        .filter(s => s.estado === 'finalizado')
+        .map(s => s.test_id)
+      
+      const duplicateSessionsToDelete = (sesiones || []).filter(s => 
+        s.estado !== 'finalizado' && completedTestIds.includes(s.test_id)
+      )
+
+      if (duplicateSessionsToDelete.length > 0) {
+        for (const s of duplicateSessionsToDelete) {
+          await supabase.from('sesiones').delete().eq('id', s.id)
+        }
+        // Filtrar localmente
+        const filtradas = (sesiones || []).filter(s => 
+          !(s.estado !== 'finalizado' && completedTestIds.includes(s.test_id))
+        )
+        setSesionesPortal(filtradas)
+      } else {
+        setSesionesPortal(sesiones || [])
+      }
+
+      // 2. Verificar sesiones reseteadas por el reclutador (estado 'en_progreso' en DB)
+      const sesionesEnProgreso = (sesiones || []).filter(s => {
+        const key = TEST_IDS[s.test_id]
+        return s.estado === 'en_progreso' && key && !merge.includes(key)
+      })
+
+      if (sesionesEnProgreso.length > 0) {
+        for (const s of sesionesEnProgreso) {
+          const key = TEST_IDS[s.test_id]
+          if (key) {
+            const lastStarted = localStorage.getItem(`last_started_${candidatoId}_${procesoId}`)
+            if (lastStarted === key) {
+              localStorage.removeItem(`last_started_${candidatoId}_${procesoId}`)
+            }
+            // Cambiar a pendiente en la base de datos para que inicie limpio
+            await supabase
+              .from('sesiones')
+              .update({ estado: 'pendiente' })
+              .eq('id', s.id)
+          }
+        }
+        // Actualizar localmente el estado de las sesiones a pendiente
+        if (sesiones) {
+          sesiones.forEach(s => {
+            if (s.estado === 'en_progreso') {
+              const key = TEST_IDS[s.test_id]
+              if (key && !merge.includes(key)) {
+                s.estado = 'pendiente'
+              }
+            }
+          })
+          setSesionesPortal([...sesiones])
+        }
+      }
+
+      // 3. Buscar si hay registro de sesión interrumpida en la DB para un test no finalizado
+      const sesionInterrumpidaDb = (sesiones || []).find(s => {
+        const key = TEST_IDS[s.test_id]
+        return s.estado === 'interrumpido' && key && !merge.includes(key)
+      })
+
+      // 4. Buscar si hay un test en localStorage que se inició pero no se completó (abandono)
+      // (lastStartedKey ya fue declarado y cargado de localStorage arriba)
+
+      if (sesionInterrumpidaDb) {
+        const testKey = TEST_IDS[sesionInterrumpidaDb.test_id]
+        setBloqueado(true)
+        setTestBloqueado(testKey || 'test')
+      } else if (lastStartedKey && !merge.includes(lastStartedKey)) {
+        // Se detectó abandono (cerró ventana, volvió atrás, etc.)
+        setBloqueado(true)
+        setTestBloqueado(lastStartedKey)
+
+        const sesionExistente = (sesiones || []).find(s => TEST_IDS[s.test_id] === lastStartedKey)
+        if (sesionExistente) {
+          await supabase
+            .from('sesiones')
+            .update({ estado: 'interrumpido' })
+            .eq('id', sesionExistente.id)
+        } else {
+          const testIdDb = TEST_KEY_TO_ID[lastStartedKey]
+          if (testIdDb) {
+            await supabase
+              .from('sesiones')
+              .insert({
+                candidato_id: candidatoId,
+                proceso_id: procesoId,
+                test_id: testIdDb,
+                estado: 'interrumpido',
+                iniciada_en: new Date().toISOString()
+              })
+          }
+        }
+      }
       
       if (searchParams.get('debug') === '1') {
         (window as any).debugInfo = { ...debugData, merge, bateria: bat }
@@ -255,6 +379,64 @@ export default function PortalCandidatoPage() {
       <div className="flex flex-col justify-center items-center h-screen bg-slate-50">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-4"></div>
         <p className="text-slate-500 font-medium">Preparando tu portal...</p>
+      </div>
+    )
+  }
+
+  if (bloqueado) {
+    const testInfo = NOMBRES_TESTS[testBloqueado || ''] || { nombre: testBloqueado || 'Evaluación', duracion: '' }
+    return (
+      <div className="min-h-screen bg-slate-900 py-12 px-4 flex items-center justify-center font-sans">
+        <div className="max-w-md w-full bg-slate-800/80 backdrop-blur-md rounded-3xl shadow-2xl overflow-hidden border border-slate-700/50 p-8 text-center relative animate-fade-in">
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-red-500 to-amber-500 rounded-3xl blur opacity-20 animate-pulse"></div>
+          
+          <div className="relative">
+            <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-8 border border-red-500/20 animate-pulse">
+              <ShieldAlert className="w-10 h-10" />
+            </div>
+            
+            <span className="text-[10px] font-bold text-red-400 bg-red-950/40 border border-red-900/30 px-3 py-1 rounded-full uppercase tracking-wider">
+              Acceso Bloqueado
+            </span>
+            
+            <h1 className="text-2xl font-black text-white mt-4 mb-3">
+              Evaluación Suspendida
+            </h1>
+            
+            <p className="text-slate-300 text-sm leading-relaxed mb-6">
+              Detectamos que saliste de la pestaña o cerraste la ventana del test <strong className="text-white">"{testInfo.nombre}"</strong> antes de finalizarlo.
+            </p>
+
+            <div className="bg-slate-900/60 rounded-2xl p-5 mb-8 text-left border border-slate-800">
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Por motivos de seguridad y validez científica de la prueba, no está permitido salir del entorno de evaluación. La sesión ha sido bloqueada automáticamente.
+              </p>
+              <p className="text-xs text-slate-400 leading-relaxed mt-3 font-semibold">
+                Para poder continuar, por favor comunícate con el equipo de selección para solicitar la habilitación de tu sesión.
+              </p>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-slate-700/50">
+              <div className="text-left space-y-3">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Contacto de Soporte</p>
+                
+                <div className="flex items-center gap-3 text-sm text-slate-300">
+                  <span className="text-base">📧</span>
+                  <a href="mailto:seleccion@republicamicrofinanzas.com.uy" className="hover:text-red-400 transition-colors">
+                    seleccion@republicamicrofinanzas.com.uy
+                  </a>
+                </div>
+                
+                <div className="flex items-center gap-3 text-sm text-slate-300">
+                  <span className="text-base">💬</span>
+                  <a href="https://wa.me/598092651770" className="hover:text-red-400 transition-colors font-semibold">
+                    WhatsApp: 092 651 770
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }

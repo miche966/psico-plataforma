@@ -25,6 +25,7 @@ const TESTS_DISPONIBLES = [
   { key: 'estres-laboral', label: 'Estrés Laboral' },
   { key: 'creatividad', label: 'Creatividad' },
   { key: 'sjt-problemas', label: 'SJT Problemas' },
+  { key: 'dass21', label: 'DASS-21' },
 ]
 
 const COMPETENCIAS_ALLES = [
@@ -64,6 +65,8 @@ const TEST_IDS: Record<string, string> = {
   'a1b2c3d4-e5f6-7890-abcd-111111111111': 'comercial',
   'b8c9d0e1-f2a3-4567-bcde-888888888888': 'atencion-detalle',
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'sjt-atencion',
+  '7a8b9c0d-e1f2-4356-abcd-999999999999': 'dass21',
+  'e9b2c3d4-f5a6-7890-bcde-999999999999': 'sjt-cobranzas',
 }
 
 interface Candidato {
