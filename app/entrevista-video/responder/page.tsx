@@ -158,17 +158,35 @@ export default function ResponderPage() {
         }
       }
 
-      // Si R2 falla o no está configurado, intentar Supabase como respaldo (opcional)
+      // Si R2 falla o no está configurado, intentar Supabase con URL firmada (para evitar RLS)
       if (!urlVideo) {
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('videos-entrevista')
-          .upload(fileName, blob, { contentType: 'video/webm' })
+        try {
+          const resSupaPresigned = await fetch('/api/supabase-presigned', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fileName })
+          })
 
-        if (!uploadError && uploadData) {
-          const { data: urlData } = supabase.storage
-            .from('videos-entrevista')
-            .getPublicUrl(fileName)
-          urlVideo = urlData.publicUrl
+          const { signedUrl: supaSignedUrl, token: supaToken, path: supaPath, error: supaError } = await resSupaPresigned.json()
+
+          if (supaSignedUrl && supaToken && supaPath) {
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('videos-entrevista')
+              .uploadToSignedUrl(supaPath, supaToken, blob, { contentType: 'video/webm' })
+
+            if (!uploadError && uploadData) {
+              const { data: urlData } = supabase.storage
+                .from('videos-entrevista')
+                .getPublicUrl(fileName)
+              urlVideo = urlData.publicUrl
+            } else if (uploadError) {
+              console.error("Error al subir a URL firmada de Supabase:", uploadError)
+            }
+          } else if (supaError) {
+            console.error("Error al generar URL firmada de Supabase:", supaError)
+          }
+        } catch (supaErr) {
+          console.error("Excepción en flujo de subida Supabase:", supaErr)
         }
       }
     } catch (err) {
