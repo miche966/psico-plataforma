@@ -1263,6 +1263,7 @@ const TEST_NAMES: Record<string, string> = {
   'a1b2c3d4-e5f6-7890-abcd-111111111111': 'Perfil Comercial',
   'b8c9d0e1-f2a3-4567-bcde-888888888888': 'Atención al Detalle',
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'SJT Atención al Cliente',
+  'e9b2c3d4-f5a6-7890-bcde-999999999999': 'SJT Cobranzas',
   '7a8b9c0d-e1f2-4356-abcd-999999999999': 'DASS-21',
 }
 
