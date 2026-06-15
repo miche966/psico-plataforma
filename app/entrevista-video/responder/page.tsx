@@ -157,7 +157,7 @@ export default function ResponderPage() {
         else console.warn('R2 upload falló con status:', uploadRes.status)
       }
 
-      // 2. Fallback: Supabase Storage con URL firmada
+      // 2. Fallback: Supabase Storage con URL firmada (PUT directo)
       if (!urlVideo) {
         try {
           const resSupaPresigned = await fetch('/api/supabase-presigned', {
@@ -165,20 +165,22 @@ export default function ResponderPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fileName })
           })
-          const { signedUrl: supaSignedUrl, token: supaToken, path: supaPath } = await resSupaPresigned.json()
+          const { signedUrl: supaSignedUrl } = await resSupaPresigned.json()
 
-          if (supaSignedUrl && supaToken && supaPath) {
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from('videos-entrevista')
-              .uploadToSignedUrl(supaPath, supaToken, blob, { contentType: 'video/webm' })
+          if (supaSignedUrl) {
+            const uploadRes = await fetch(supaSignedUrl, {
+              method: 'PUT',
+              body: blob,
+              headers: { 'Content-Type': 'video/webm' }
+            })
 
-            if (!uploadError && uploadData) {
+            if (uploadRes.ok) {
               const { data: urlData } = supabase.storage
                 .from('videos-entrevista')
                 .getPublicUrl(fileName)
               urlVideo = urlData.publicUrl
             } else {
-              console.warn('Supabase fallback falló:', uploadError)
+              console.warn('Supabase fallback direct PUT falló con status:', uploadRes.status)
             }
           }
         } catch (supaErr) {
