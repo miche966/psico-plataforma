@@ -714,6 +714,7 @@ export default function PanelEvaluador() {
                     .from('respuestas_video')
                     .select('*')
                     .eq('candidato_id', c.id)
+                    .eq('estado', 'completado')
                     .order('grabada_en', { ascending: true })
                   
                   let mappedVids: any[] = []

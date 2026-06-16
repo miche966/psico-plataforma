@@ -352,7 +352,7 @@ function InformePageContent() {
         setProceso(proc)
       }
 
-      const { data: vids } = await supabase.from('respuestas_video').select('*').eq('candidato_id', id)
+      const { data: vids } = await supabase.from('respuestas_video').select('*').eq('candidato_id', id).eq('estado', 'completado')
        
        let mappedVids: any[] = []
        if (vids && vids.length > 0) {
