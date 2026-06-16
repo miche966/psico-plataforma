@@ -163,7 +163,8 @@ export default function PortalCandidatoPage() {
         '8cda2c12-ea0d-4e9b-8fac-72018b00adb5', // Nicolás Menciones
         'ff323c32-e68b-4232-82a9-5df002773114', // Belén García
         '54bbd3ba-55ca-4ccb-ab1f-840eea8c4412', // Angelica Garrel
-        'dce41dac-d561-4903-b833-09460ff22423'  // Federica Duran
+        'dce41dac-d561-4903-b833-09460ff22423', // Federica Duran
+        '21933917-3a3a-482e-80b4-d895a4cc7c83'  // Belén Carachuela
       ]
 
       if (searchParams.get('reset') === '1' || (candidatoId && RESET_CANDIDATE_IDS.includes(candidatoId))) {
