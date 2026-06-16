@@ -712,12 +712,32 @@ export default function PanelEvaluador() {
                   
                   const { data: vids } = await supabase
                     .from('respuestas_video')
-                    .select('*, preguntas_video(pregunta)')
+                    .select('*')
                     .eq('candidato_id', c.id)
                     .order('grabada_en', { ascending: true })
                   
+                  let mappedVids: any[] = []
+                  if (vids && vids.length > 0) {
+                    const preguntaIds = vids.map(v => v.pregunta_id).filter(Boolean)
+                    let preguntas: any[] = []
+                    if (preguntaIds.length > 0) {
+                      const { data: pData } = await supabase
+                        .from('preguntas_video')
+                        .select('id, pregunta')
+                        .in('id', preguntaIds)
+                      if (pData) preguntas = pData
+                    }
+                    mappedVids = vids.map(v => {
+                      const q = preguntas.find(p => p.id === v.pregunta_id)
+                      return {
+                        ...v,
+                        preguntas_video: q ? { pregunta: q.pregunta } : null
+                      }
+                    })
+                  }
+                  
                   const vMap = new Map<string, any>()
-                  vids?.forEach(v => {
+                  mappedVids.forEach(v => {
                     const k = `${v.entrevista_id}:${v.pregunta_id}`
                     const ex = vMap.get(k)
                     if (!ex || new Date(v.grabada_en) > new Date(ex.grabada_en)) {

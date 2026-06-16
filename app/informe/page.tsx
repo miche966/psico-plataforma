@@ -352,8 +352,28 @@ function InformePageContent() {
         setProceso(proc)
       }
 
-      const { data: vids } = await supabase.from('respuestas_video').select('*, preguntas_video(pregunta)').eq('candidato_id', id)
-      setVideos(vids || [])
+      const { data: vids } = await supabase.from('respuestas_video').select('*').eq('candidato_id', id)
+       
+       let mappedVids: any[] = []
+       if (vids && vids.length > 0) {
+         const preguntaIds = vids.map(v => v.pregunta_id).filter(Boolean)
+         let preguntas: any[] = []
+         if (preguntaIds.length > 0) {
+           const { data: pData } = await supabase
+             .from('preguntas_video')
+             .select('id, pregunta')
+             .in('id', preguntaIds)
+           if (pData) preguntas = pData
+         }
+         mappedVids = vids.map(v => {
+           const q = preguntas.find(p => p.id === v.pregunta_id)
+           return {
+             ...v,
+             preguntas_video: q ? { pregunta: q.pregunta } : null
+           }
+         })
+       }
+       setVideos(mappedVids)
 
       // Cálculos de Auditoría y Potencial
       let aTab = 0, aCopia = 0, tDur = 0, sTime = 0
