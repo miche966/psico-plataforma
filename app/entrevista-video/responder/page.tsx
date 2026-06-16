@@ -107,7 +107,22 @@ export default function ResponderPage() {
   function iniciarGrabacion() {
     if (!streamRef.current) return
     chunksRef.current = []
-    const mediaRecorder = new MediaRecorder(streamRef.current)
+    
+    // Limitar el bitrate para evitar archivos gigantes (particularmente en iOS Safari)
+    // que exceden el límite de 50MB de Supabase Storage.
+    // 1.2 Mbps para video y 64 kbps para audio brindan excelente calidad con tamaños de ~9-15MB por minuto.
+    let mediaRecorder: MediaRecorder
+    try {
+      const options = {
+        videoBitsPerSecond: 1200000,
+        audioBitsPerSecond: 64000
+      }
+      mediaRecorder = new MediaRecorder(streamRef.current, options)
+    } catch (e) {
+      console.warn("Error al inicializar MediaRecorder con opciones de bitrate. Reintentando por defecto:", e)
+      mediaRecorder = new MediaRecorder(streamRef.current)
+    }
+
     mediaRecorderRef.current = mediaRecorder
     mediaRecorder.ondataavailable = e => {
       if (e.data.size > 0) chunksRef.current.push(e.data)
