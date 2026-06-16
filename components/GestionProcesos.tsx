@@ -542,7 +542,7 @@ export default function GestionProcesos() {
         }
       }
 
-      const { data: vData, error: ve } = await supabase.from('respuestas_video').select('candidato_id, entrevista_id')
+      const { data: vData, error: ve } = await supabase.from('respuestas_video').select('candidato_id, entrevista_id').eq('estado', 'completado')
 
       if (pe) console.error('Error Procesos:', pe)
       if (ce) console.error('Error Candidatos:', ce)

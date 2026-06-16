@@ -59,6 +59,7 @@ export default function RevisarPage() {
     const { data: respuestasData } = await supabase
       .from('respuestas_video').select('*')
       .eq('entrevista_id', entrevistaId)
+      .eq('estado', 'completado')
       .order('grabada_en', { ascending: false })
 
     const candidatoIds = respuestasData?.filter(r => r.candidato_id).map(r => r.candidato_id) || []

@@ -191,6 +191,7 @@ export default function PortalCandidatoPage() {
         .from('respuestas_video')
         .select('entrevista_id')
         .eq('candidato_id', candidatoId)
+        .eq('estado', 'completado')
       
       if (errVid) console.error('Error DB Videos:', errVid)
 

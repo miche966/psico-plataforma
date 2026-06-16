@@ -225,6 +225,7 @@ export default function ProcesosPage() {
         .from('respuestas_video')
         .select('candidato_id, entrevista_id')
         .in('candidato_id', ids)
+        .eq('estado', 'completado')
 
       const bateria = proceso.bateria_tests || []
       
