@@ -63,18 +63,39 @@ export default function CandidatosPage() {
       return
     }
 
-    const { data: sData } = await supabase
-      .from('sesiones')
-      .select('*')
+    // Chunk candidate IDs to avoid the 1000-row PostgREST select limit in Supabase
+    const candidateIds = data ? data.map((c: any) => c.id) : []
+    const chunkSize = 50
+    const chunks = []
+    for (let i = 0; i < candidateIds.length; i += chunkSize) {
+      chunks.push(candidateIds.slice(i, i + chunkSize))
+    }
+
+    let sData: any[] = []
+    try {
+      const results = await Promise.all(
+        chunks.map(chunk =>
+          supabase
+            .from('sesiones')
+            .select('*')
+            .in('candidato_id', chunk)
+        )
+      )
+      results.forEach(res => {
+        if (res.data) sData = sData.concat(res.data)
+      })
+    } catch (err) {
+      console.error('Error chunking sessions load:', err)
+    }
     
     const counts: Record<string, number> = {}
-    sData?.forEach(s => {
+    sData.forEach(s => {
       if (s.puntaje_bruto || s.puntajes || s.resultados) {
         counts[s.candidato_id] = (counts[s.candidato_id] || 0) + 1
       }
     })
 
-    setSesionesData(sData || [])
+    setSesionesData(sData)
     setSesionesCount(counts)
     setCandidatos(data || [])
     setCargando(false)

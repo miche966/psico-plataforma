@@ -511,7 +511,37 @@ export default function GestionProcesos() {
       const { data: pData, error: pe } = await supabase.from('procesos').select('*').order('creado_en', { ascending: false })
       const { data: cData, error: ce } = await supabase.from('candidatos').select('id, nombre, apellido, email').order('creado_en', { ascending: false })
       const { data: eData, error: ee } = await supabase.from('entrevistas_video').select('id, nombre').order('creada_en', { ascending: false })
-      const { data: sData, error: se } = await supabase.from('sesiones').select('*')
+      // Chunk candidate IDs to avoid the 1000-row PostgREST select limit in Supabase
+      const candidateIds = cData ? cData.map(c => c.id) : []
+      const chunkSize = 50
+      const chunks = []
+      for (let i = 0; i < candidateIds.length; i += chunkSize) {
+        chunks.push(candidateIds.slice(i, i + chunkSize))
+      }
+
+      let sData: any[] = []
+      let se: any = null
+      
+      if (candidateIds.length > 0) {
+        try {
+          const results = await Promise.all(
+            chunks.map(chunk =>
+              supabase
+                .from('sesiones')
+                .select('*')
+                .in('candidato_id', chunk)
+            )
+          )
+          results.forEach(res => {
+            if (res.data) sData = sData.concat(res.data)
+            if (res.error && !se) se = res.error
+          })
+        } catch (err: any) {
+          console.error('Error loading sessions in chunks:', err)
+          se = err
+        }
+      }
+
       const { data: vData, error: ve } = await supabase.from('respuestas_video').select('candidato_id, entrevista_id')
 
       if (pe) console.error('Error Procesos:', pe)

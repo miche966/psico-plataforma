@@ -32,16 +32,39 @@ export default function Dashboard() {
   async function cargarEstadisticas() {
     try {
       const [
-        { data: candidatos },
-        { data: procesos },
-        { data: sesiones }
+        { data: candidatos, error: ce },
+        { data: procesos, error: pe }
       ] = await Promise.all([
         supabase.from('candidatos').select('id, creado_en'),
-        supabase.from('procesos').select('id, nombre, cargo, bateria_tests'),
-        supabase.from('sesiones').select('*, candidatos(id), procesos(id, nombre)')
+        supabase.from('procesos').select('id, nombre, cargo, bateria_tests')
       ])
 
-      if (!sesiones || !procesos) return
+      if (ce || pe || !candidatos || !procesos) return
+
+      // Chunk candidate IDs to avoid the 1000-row PostgREST select limit in Supabase
+      const candidateIds = candidatos.map((c: any) => c.id)
+      const chunkSize = 50
+      const chunks = []
+      for (let i = 0; i < candidateIds.length; i += chunkSize) {
+        chunks.push(candidateIds.slice(i, i + chunkSize))
+      }
+
+      let sesiones: any[] = []
+      try {
+        const results = await Promise.all(
+          chunks.map(chunk =>
+            supabase
+              .from('sesiones')
+              .select('*, candidatos(id), procesos(id, nombre)')
+              .in('candidato_id', chunk)
+          )
+        )
+        results.forEach(res => {
+          if (res.data) sesiones = sesiones.concat(res.data)
+        })
+      } catch (err) {
+        console.error('Error chunking dashboard sessions load:', err)
+      }
 
       // 1. Resumen General
       const totalCandidatos = candidatos?.length || 0
