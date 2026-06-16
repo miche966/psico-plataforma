@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video, CheckCircle2, Settings2, BarChart2, LayoutDashboard, Sparkles } from 'lucide-react'
+import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video, CheckCircle2, Settings2, BarChart2, LayoutDashboard, Sparkles, Activity } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
 import GestionProcesos from '@/components/GestionProcesos'
 import Dashboard from '@/components/Dashboard'
 import AppLayout from '@/components/AppLayout'
+import DiagnosticoRealtime from '@/components/DiagnosticoRealtime'
 
 
 const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
@@ -264,7 +265,7 @@ async function generarResumenIA(candidato: CandidatoAgrupado) {
 
 
 export default function PanelEvaluador() {
-  const [tab, setTab] = useState<'evaluaciones' | 'gestion' | 'dashboard' | 'historial'>('evaluaciones')
+  const [tab, setTab] = useState<'evaluaciones' | 'gestion' | 'dashboard' | 'historial' | 'diagnostico'>('evaluaciones')
   const [candidatos, setCandidatos] = useState<CandidatoAgrupado[]>([])
   const [procesos, setProcesos] = useState<any[]>([])
   const [procesoSeleccionadoId, setProcesoSeleccionadoId] = useState<string>('todos')
@@ -545,6 +546,17 @@ export default function PanelEvaluador() {
             HISTORIAL
           </button>
           <button
+            onClick={() => setTab('diagnostico')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              tab === 'diagnostico' 
+                ? 'bg-white text-indigo-600 shadow-sm' 
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            DIAGNÓSTICO
+          </button>
+          <button
             onClick={() => setTab('gestion')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               tab === 'gestion' 
@@ -562,6 +574,8 @@ export default function PanelEvaluador() {
         <Dashboard />
       ) : tab === 'gestion' ? (
         <GestionProcesos />
+      ) : tab === 'diagnostico' ? (
+        <DiagnosticoRealtime />
       ) : tab === 'historial' ? (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-220px)]">
           <div className="flex justify-between items-center mb-6">
