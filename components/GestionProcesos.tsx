@@ -100,6 +100,7 @@ export default function GestionProcesos() {
   const [textoMasivo, setTextoMasivo] = useState('')
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'completado' | 'incompleto' | 'pendiente'>('todos')
   const [videoRespuestas, setVideoRespuestas] = useState<any[]>([])
+  const [preguntasVideo, setPreguntasVideo] = useState<any[]>([])
 
   useEffect(() => {
     cargarDatos()
@@ -542,7 +543,8 @@ export default function GestionProcesos() {
         }
       }
 
-      const { data: vData, error: ve } = await supabase.from('respuestas_video').select('candidato_id, entrevista_id').eq('estado', 'completado')
+      const { data: vData, error: ve } = await supabase.from('respuestas_video').select('candidato_id, entrevista_id, pregunta_id').eq('estado', 'completado')
+      const { data: qData } = await supabase.from('preguntas_video').select('id, entrevista_id')
 
       if (pe) console.error('Error Procesos:', pe)
       if (ce) console.error('Error Candidatos:', ce)
@@ -560,6 +562,7 @@ export default function GestionProcesos() {
       if (eData) setEntrevistas(eData)
       if (sData) setSesiones(sData)
       if (vData) setVideoRespuestas(vData)
+      if (qData) setPreguntasVideo(qData)
     } catch (err) {
       console.error('Falla total:', err)
     } finally {
@@ -963,14 +966,36 @@ export default function GestionProcesos() {
                           const misSesiones = sesiones.filter(s => s.candidato_id === c.id)
                           const misVideos = videoRespuestas.filter(v => v.candidato_id === c.id)
                           
+                          // Agrupar por pregunta_id para evitar duplicados
+                          const videosUnicosMap = new Map<string, any>()
+                          misVideos.forEach(v => {
+                            const k = `${v.entrevista_id}:${v.pregunta_id}`
+                            videosUnicosMap.set(k, v)
+                          })
+
                           const testsCompletadosIds = misSesiones.map(s => s.test_id)
-                          const videosCompletadosIds = misVideos.map(v => v.entrevista_id)
+
+                          // Contar respuestas válidas por entrevista para este candidato
+                          const respuestasPorEntrevista: Record<string, number> = {}
+                          Array.from(videosUnicosMap.values()).forEach(v => {
+                            respuestasPorEntrevista[v.entrevista_id] = (respuestasPorEntrevista[v.entrevista_id] || 0) + 1
+                          })
+
+                          // Contar preguntas totales por entrevista
+                          const preguntasPorEntrevista: Record<string, number> = {}
+                          preguntasVideo.forEach(p => {
+                            preguntasPorEntrevista[p.entrevista_id] = (preguntasPorEntrevista[p.entrevista_id] || 0) + 1
+                          })
                           
                           const uniqueCompletados = new Set<string>()
                           testsAsignadosSlugs.forEach(slug => {
                             if (slug.startsWith('entrevista:')) {
                               const entId = slug.split(':')[1]
-                              if (videosCompletadosIds.includes(entId)) uniqueCompletados.add(slug)
+                              const cantRespuestas = respuestasPorEntrevista[entId] || 0
+                              const cantPreguntas = preguntasPorEntrevista[entId] || 0
+                              if (cantRespuestas >= cantPreguntas && cantPreguntas > 0) {
+                                uniqueCompletados.add(slug)
+                              }
                             } else {
                               const id = SLUG_TO_ID[slug]
                               // Verificación redundante para asegurar match

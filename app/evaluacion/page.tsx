@@ -164,7 +164,8 @@ export default function PortalCandidatoPage() {
         'ff323c32-e68b-4232-82a9-5df002773114', // Belén García
         '54bbd3ba-55ca-4ccb-ab1f-840eea8c4412', // Angelica Garrel
         'dce41dac-d561-4903-b833-09460ff22423', // Federica Duran
-        '21933917-3a3a-482e-80b4-d895a4cc7c83'  // Belén Carachuela
+        '21933917-3a3a-482e-80b4-d895a4cc7c83', // Belén Carachuela
+        'c8d4a912-893d-4886-aedd-328fca65fd38'  // Natalia Franco
       ]
 
       if (searchParams.get('reset') === '1' || (candidatoId && RESET_CANDIDATE_IDS.includes(candidatoId))) {
@@ -190,11 +191,16 @@ export default function PortalCandidatoPage() {
       // 3. Cargar desde DB (Respuestas de Videoentrevistas)
       const { data: respuestasVideo, error: errVid } = await supabase
         .from('respuestas_video')
-        .select('entrevista_id')
+        .select('entrevista_id, pregunta_id')
         .eq('candidato_id', candidatoId)
         .eq('estado', 'completado')
       
       if (errVid) console.error('Error DB Videos:', errVid)
+
+      // 4. Cargar todas las preguntas de video para validar completitud de cada entrevista
+      const { data: todasPreguntas } = await supabase
+        .from('preguntas_video')
+        .select('id, entrevista_id')
 
       const completadosDB: string[] = []
       const debugData: any = { raw_sessions: sesiones, raw_videos: respuestasVideo }
@@ -206,10 +212,32 @@ export default function PortalCandidatoPage() {
         })
       }
 
-      if (respuestasVideo) {
-        const idsUnicos = Array.from(new Set(respuestasVideo.map(rv => rv.entrevista_id)))
-        idsUnicos.forEach(id => {
-          completadosDB.push(`entrevista:${id}`)
+      if (respuestasVideo && todasPreguntas) {
+        // Agrupar videos únicos por pregunta_id para evitar duplicaciones
+        const videosUnicosMap = new Map<string, any>()
+        respuestasVideo.forEach(rv => {
+          const k = `${rv.entrevista_id}:${rv.pregunta_id}`
+          videosUnicosMap.set(k, rv)
+        })
+
+        // Contar respuestas válidas por entrevista
+        const respuestasPorEntrevista: Record<string, number> = {}
+        Array.from(videosUnicosMap.values()).forEach(v => {
+          respuestasPorEntrevista[v.entrevista_id] = (respuestasPorEntrevista[v.entrevista_id] || 0) + 1
+        })
+
+        // Contar preguntas por entrevista
+        const preguntasPorEntrevista: Record<string, number> = {}
+        todasPreguntas.forEach(p => {
+          preguntasPorEntrevista[p.entrevista_id] = (preguntasPorEntrevista[p.entrevista_id] || 0) + 1
+        })
+
+        // Solo marcar como completada si tiene respuestas para todas las preguntas
+        Object.entries(preguntasPorEntrevista).forEach(([entrevistaId, cantPreguntas]) => {
+          const cantRespuestas = respuestasPorEntrevista[entrevistaId] || 0
+          if (cantRespuestas >= cantPreguntas && cantPreguntas > 0) {
+            completadosDB.push(`entrevista:${entrevistaId}`)
+          }
         })
       }
 

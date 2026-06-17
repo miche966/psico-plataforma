@@ -327,6 +327,17 @@ export default function PanelEvaluador() {
     const { data: respuestasVideo } = await supabase
       .from('respuestas_video')
       .select('candidato_id, entrevista_id, pregunta_id, grabada_en')
+      .eq('estado', 'completado')
+
+    // 3.5 Obtener todas las preguntas de video para saber la cantidad de preguntas por entrevista
+    const { data: todasPreguntas } = await supabase
+      .from('preguntas_video')
+      .select('id, entrevista_id')
+
+    const preguntasPorEntrevista: Record<string, number> = {}
+    todasPreguntas?.forEach(p => {
+      preguntasPorEntrevista[p.entrevista_id] = (preguntasPorEntrevista[p.entrevista_id] || 0) + 1
+    })
 
     const grupos: Record<string, CandidatoAgrupado> = {}
 
@@ -406,7 +417,20 @@ export default function PanelEvaluador() {
         const slug = TEST_IDS[s.test_id] || s.test_id
         if (slug && s.estado === 'finalizado') idsCompletados.add(slug)
       })
-      Array.from(videosUnicosMap.values()).forEach(v => idsCompletados.add(`entrevista:${v.entrevista_id}`))
+
+      // Contar respuestas válidas por entrevista para este candidato
+      const respuestasPorEntrevista: Record<string, number> = {}
+      Array.from(videosUnicosMap.values()).forEach(v => {
+        respuestasPorEntrevista[v.entrevista_id] = (respuestasPorEntrevista[v.entrevista_id] || 0) + 1
+      })
+
+      // Solo marcar la entrevista como completada si el número de respuestas válidas coincide con el total de preguntas de esa entrevista
+      Object.entries(respuestasPorEntrevista).forEach(([entrevistaId, cantRespuestas]) => {
+        const cantPreguntas = preguntasPorEntrevista[entrevistaId] || 0
+        if (cantRespuestas >= cantPreguntas && cantPreguntas > 0) {
+          idsCompletados.add(`entrevista:${entrevistaId}`)
+        }
+      })
 
       const totalBateria = bateria.length
       const finalCompletados = totalBateria > 0

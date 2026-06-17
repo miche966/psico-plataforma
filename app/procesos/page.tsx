@@ -223,9 +223,19 @@ export default function ProcesosPage() {
       // 3. Obtener respuestas de video para estos candidatos
       const { data: respVideo } = await supabase
         .from('respuestas_video')
-        .select('candidato_id, entrevista_id')
+        .select('candidato_id, entrevista_id, pregunta_id')
         .in('candidato_id', ids)
         .eq('estado', 'completado')
+
+      // 3.5 Obtener todas las preguntas de video para saber la cantidad de preguntas por entrevista
+      const { data: todasPreguntas } = await supabase
+        .from('preguntas_video')
+        .select('id, entrevista_id')
+
+      const preguntasPorEntrevista: Record<string, number> = {}
+      todasPreguntas?.forEach(p => {
+        preguntasPorEntrevista[p.entrevista_id] = (preguntasPorEntrevista[p.entrevista_id] || 0) + 1
+      })
 
       const bateria = proceso.bateria_tests || []
       
@@ -233,6 +243,13 @@ export default function ProcesosPage() {
         const misSesiones = sesiones?.filter(s => s.candidato_id === c.id) || []
         const misVideos = respVideo?.filter(rv => rv.candidato_id === c.id) || []
         
+        // Agrupar videos únicos por pregunta_id
+        const videosUnicosMap = new Map<string, any>()
+        misVideos.forEach(v => {
+          const k = `${v.entrevista_id}:${v.pregunta_id}`
+          videosUnicosMap.set(k, v)
+        })
+
         const completadosLocal: string[] = []
         
         misSesiones.forEach(s => {
@@ -240,9 +257,19 @@ export default function ProcesosPage() {
           if (key && bateria.includes(key)) completadosLocal.push(key)
         })
         
-        misVideos.forEach(v => {
-          const key = `entrevista:${v.entrevista_id}`
-          if (bateria.includes(key)) completadosLocal.push(key)
+        // Contar respuestas válidas por entrevista para este candidato
+        const respuestasPorEntrevista: Record<string, number> = {}
+        Array.from(videosUnicosMap.values()).forEach(v => {
+          respuestasPorEntrevista[v.entrevista_id] = (respuestasPorEntrevista[v.entrevista_id] || 0) + 1
+        })
+
+        // Solo marcar la entrevista como completada si el número de respuestas válidas coincide con el total de preguntas de esa entrevista
+        Object.entries(respuestasPorEntrevista).forEach(([entrevistaId, cantRespuestas]) => {
+          const cantPreguntas = preguntasPorEntrevista[entrevistaId] || 0
+          const key = `entrevista:${entrevistaId}`
+          if (cantRespuestas >= cantPreguntas && cantPreguntas > 0 && bateria.includes(key)) {
+            completadosLocal.push(key)
+          }
         })
 
         const unicos = Array.from(new Set(completadosLocal))
