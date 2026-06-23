@@ -311,11 +311,17 @@ export default function PanelEvaluador() {
         creado_en
       `)
 
-    // 2. Obtener todas las sesiones (Históricas y actuales)
+    // 2. Obtener todas las sesiones (Históricas y actuales) sin traer el campo pesado 'respuestas'
     const { data: sesionesData } = await supabase
       .from('sesiones')
       .select(`
-        *,
+        id,
+        test_id,
+        candidato_id,
+        proceso_id,
+        estado,
+        finalizada_en,
+        puntaje_bruto,
         candidatos (id, nombre, apellido, email),
         procesos (id, nombre, cargo, competencias_requeridas, bateria_tests)
       `)

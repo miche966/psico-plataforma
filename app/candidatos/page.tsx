@@ -77,7 +77,7 @@ export default function CandidatosPage() {
         chunks.map(chunk =>
           supabase
             .from('sesiones')
-            .select('*')
+            .select('id, test_id, candidato_id, proceso_id, estado, finalizada_en, puntaje_bruto')
             .in('candidato_id', chunk)
         )
       )
