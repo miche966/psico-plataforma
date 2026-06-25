@@ -264,6 +264,35 @@ async function generarResumenIA(candidato: CandidatoAgrupado) {
 
 
 
+function obtenerTextoAnalisis(analisis: any): string {
+  if (!analisis) return ''
+  if (typeof analisis === 'string') return analisis
+  
+  if (typeof analisis === 'object') {
+    if (analisis.actitud) {
+      if (typeof analisis.actitud === 'string') return analisis.actitud
+      if (typeof analisis.actitud === 'object') {
+        return Object.entries(analisis.actitud)
+          .map(([key, val]) => `${key.replace(/_/g, ' ').toUpperCase()}: ${val}`)
+          .join(' | ')
+      }
+    }
+    if (analisis.resumen && typeof analisis.resumen === 'string') return analisis.resumen
+    if (analisis.analisis && typeof analisis.analisis === 'string') return analisis.analisis
+
+    // Fallback: mapear todas las propiedades excluyendo transcripción
+    return Object.entries(analisis)
+      .filter(([k]) => k !== 'transcripcion')
+      .map(([key, val]) => {
+        const readableKey = key.replace(/_/g, ' ').toUpperCase()
+        const readableVal = typeof val === 'object' ? JSON.stringify(val) : String(val)
+        return `${readableKey}: ${readableVal}`
+      })
+      .join(' | ')
+  }
+  return String(analisis)
+}
+
 export default function PanelEvaluador() {
   const [tab, setTab] = useState<'evaluaciones' | 'gestion' | 'dashboard' | 'historial' | 'diagnostico'>('evaluaciones')
   const [candidatos, setCandidatos] = useState<CandidatoAgrupado[]>([])
@@ -949,7 +978,7 @@ export default function PanelEvaluador() {
                                    <span className="text-[10px] font-bold text-indigo-800 uppercase tracking-widest">Análisis de Actitud e IA</span>
                                  </div>
                                  <p className="text-[11px] text-slate-600 leading-relaxed">
-                                   {typeof v.analisis_ia === 'string' ? v.analisis_ia : (v.analisis_ia.actitud || v.analisis_ia.resumen || v.analisis_ia.analisis)}
+                                   {obtenerTextoAnalisis(v.analisis_ia)}
                                  </p>
                                </div>
                              )}

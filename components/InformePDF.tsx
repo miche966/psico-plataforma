@@ -12,6 +12,35 @@ Font.register({
   ],
 });
 
+function obtenerTextoAnalisis(analisis: any): string {
+  if (!analisis) return ''
+  if (typeof analisis === 'string') return analisis
+  
+  if (typeof analisis === 'object') {
+    if (analisis.actitud) {
+      if (typeof analisis.actitud === 'string') return analisis.actitud
+      if (typeof analisis.actitud === 'object') {
+        return Object.entries(analisis.actitud)
+          .map(([key, val]) => `${key.replace(/_/g, ' ').toUpperCase()}: ${val}`)
+          .join(' | ')
+      }
+    }
+    if (analisis.resumen && typeof analisis.resumen === 'string') return analisis.resumen
+    if (analisis.analisis && typeof analisis.analisis === 'string') return analisis.analisis
+
+    // Fallback: mapear todas las propiedades excluyendo transcripción
+    return Object.entries(analisis)
+      .filter(([k]) => k !== 'transcripcion')
+      .map(([key, val]) => {
+        const readableKey = key.replace(/_/g, ' ').toUpperCase()
+        const readableVal = typeof val === 'object' ? JSON.stringify(val) : String(val)
+        return `${readableKey}: ${readableVal}`
+      })
+      .join(' | ')
+  }
+  return String(analisis)
+}
+
 const styles = StyleSheet.create({
   page: { padding: 40, fontFamily: 'Roboto', backgroundColor: '#ffffff', fontSize: 9, color: '#1e293b' },
   header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, borderBottomWidth: 2, borderBottomColor: '#0f172a', paddingBottom: 10 },
@@ -415,7 +444,7 @@ export const InformePDF = ({ data }: any) => {
                   <View style={{ marginTop: 5, padding: 5, backgroundColor: '#f0f4f8', borderRadius: 4 }}>
                     <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#1e40af', marginBottom: 2 }}>Análisis de Actitud e IA:</Text>
                     <Text style={{ fontSize: 8, color: '#334155', lineHeight: 1.3 }}>
-                      {typeof v.analisis_ia === 'string' ? v.analisis_ia : (v.analisis_ia.actitud || v.analisis_ia.resumen || v.analisis_ia.analisis)}
+                      {obtenerTextoAnalisis(v.analisis_ia)}
                     </Text>
                   </View>
                 )}
