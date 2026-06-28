@@ -309,8 +309,316 @@ export default function PanelEvaluador() {
   const [videosCandidato, setVideosCandidato] = useState<any[]>([])
   const [sesionesGlobales, setSesionesGlobales] = useState<any[]>([])
   const [informeCandidato, setInformeCandidato] = useState<any>(null)
+  const [seleccionados, setSeleccionados] = useState<string[]>([])
+  const [procesandoLote, setProcesandoLote] = useState(false)
+  const [procesandoZip, setProcesandoZip] = useState(false)
   const [analizandoFrases, setAnalizandoFrases] = useState(false)
   const router = useRouter()
+
+  // Helper para cálculo de Ajuste en lote
+  function calcularAjusteLote(reqs: any[], sesionesList: any[]) {
+    if (!reqs || reqs.length === 0) {
+      const todosLosFactores: number[] = []
+      sesionesList.forEach(s => {
+        const scan = (obj: any) => {
+          if (!obj || typeof obj !== 'object') return
+          Object.entries(obj).forEach(([k, v]) => {
+            const key = k.toLowerCase().trim()
+            if (['total', 'correctas', 'porcentaje', 'id', 'created_at'].includes(key)) return
+            const valNum = parseFloat(String(v))
+            if (!isNaN(valNum)) {
+              let val = valNum
+              if (val > 5 && val <= 20) val = (val / 20) * 5
+              else if (val > 20 && val <= 100) val = (val / 100) * 5
+              if (val > 0 && val <= 5) todosLosFactores.push(val)
+            }
+          })
+        }
+        scan(s.puntaje_bruto)
+      })
+      if (todosLosFactores.length === 0) return 0
+      const avg = todosLosFactores.reduce((a, b) => a + b, 0) / todosLosFactores.length
+      return Math.round((avg / 5) * 100)
+    }
+
+    const scores: number[] = []
+    reqs.forEach(r => {
+      const compName = r.competencia || r.nombre;
+      const reqLevelVal = r.nivel === 'A' ? 5 : r.nivel === 'B' ? 4 : r.nivel === 'C' ? 3 : 2;
+      let valorCandidato = -1
+
+      for (const s of sesionesList) {
+        if (!s.puntaje_bruto || valorCandidato !== -1) continue
+        const buscar = (obj: any) => {
+          if (!obj || typeof obj !== 'object' || valorCandidato !== -1) return
+          Object.entries(obj).forEach(([f, v]: any) => {
+            if (valorCandidato !== -1) return
+            const keyNormalizada = f?.toLowerCase()?.trim()
+            if (keyNormalizada === compName?.toLowerCase()?.trim()) {
+              valorCandidato = Number(v)
+            }
+          })
+        }
+        buscar(s.puntaje_bruto)
+      }
+      if (valorCandidato === -1) valorCandidato = 0
+      if (valorCandidato > 5) valorCandidato = (valorCandidato / 100) * 5
+      
+      const pct = Math.min(100, Math.round((valorCandidato / reqLevelVal) * 100))
+      scores.push(pct)
+    })
+
+    return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0
+  }
+
+  async function analizarSeleccionadosLote() {
+    if (procesandoLote) return
+    setProcesandoLote(true)
+
+    try {
+      let analizadosCount = 0
+      for (const cId of seleccionados) {
+        const c = candidatos.find(cand => cand.id === cId)
+        if (!c) continue
+
+        // Cargar respuestas de video
+        const { data: vids } = await supabase
+          .from('respuestas_video')
+          .select('*')
+          .eq('candidato_id', cId)
+          .eq('estado', 'completado')
+          .order('grabada_en', { ascending: true })
+
+        let mappedVids: any[] = []
+        if (vids && vids.length > 0) {
+          const preguntaIds = vids.map(v => v.pregunta_id).filter(Boolean)
+          let preguntas: any[] = []
+          if (preguntaIds.length > 0) {
+            const { data: pData } = await supabase
+              .from('preguntas_video')
+              .select('id, pregunta')
+              .in('id', preguntaIds)
+            if (pData) preguntas = pData
+          }
+          mappedVids = vids.map(v => {
+            const q = preguntas.find(p => p.id === v.pregunta_id)
+            return { ...v, preguntas_video: q ? { pregunta: q.pregunta } : null }
+          })
+        }
+
+        const vMap = new Map<string, any>()
+        mappedVids.forEach(v => {
+          const k = `${v.entrevista_id}:${v.pregunta_id}`
+          const ex = vMap.get(k)
+          if (!ex || new Date(v.grabada_en) > new Date(ex.grabada_en)) vMap.set(k, v)
+        })
+        const finalVids = Array.from(vMap.values())
+
+        const autoAjuste = calcularAjusteLote(c.competencias_requeridas || [], c.sesiones)
+
+        const res = await fetch('/api/generar-informe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            candidato: { id: c.id, nombre: c.nombre, apellido: c.apellido, documento: (c as any).documento || '' },
+            proceso: { cargo: c.proceso_cargo || 'S/C' },
+            sesiones: c.sesiones,
+            videos: finalVids,
+            actual: { ajusteCargo: { score: autoAjuste, analisis: '' } }
+          })
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          await supabase.from('informes_psicometricos').upsert({
+            candidato_id: c.id,
+            contenido: data,
+            actualizado_en: new Date().toISOString()
+          }, { onConflict: 'candidato_id' })
+          analizadosCount++
+        }
+      }
+
+      alert(`Se generaron y guardaron con éxito ${analizadosCount} informes en lote.`);
+      setSeleccionados([]);
+      router.refresh();
+    } catch (err: any) {
+      console.error(err)
+      alert(`Error en análisis en lote: ${err.message}`)
+    } finally {
+      setProcesandoLote(false)
+    }
+  }
+
+  async function descargarSeleccionadosZip() {
+    if (procesandoZip) return
+    setProcesandoZip(true)
+
+    try {
+      const JSZip = (await import('jszip')).default
+      const { saveAs } = (await import('file-saver'))
+      const { pdf } = await import('@react-pdf/renderer')
+      const { InformePDF } = await import('@/components/InformePDF')
+
+      const zip = new JSZip()
+      let pdfsCount = 0
+
+      for (const cId of seleccionados) {
+        const c = candidatos.find(cand => cand.id === cId)
+        if (!c) continue
+
+        const { data: infData } = await supabase
+          .from('informes_psicometricos')
+          .select('contenido')
+          .eq('candidato_id', cId)
+          .maybeSingle()
+
+        const inf = infData?.contenido
+        if (!inf) {
+          console.log(`Candidato ${c.nombre} no tiene informe generado aún.`);
+          continue
+        }
+
+        const { data: vids } = await supabase
+          .from('respuestas_video')
+          .select('*')
+          .eq('candidato_id', cId)
+          .eq('estado', 'completado')
+          .order('grabada_en', { ascending: true })
+
+        let mappedVids: any[] = []
+        if (vids && vids.length > 0) {
+          const preguntaIds = vids.map(v => v.pregunta_id).filter(Boolean)
+          let preguntas: any[] = []
+          if (preguntaIds.length > 0) {
+            const { data: pData } = await supabase
+              .from('preguntas_video')
+              .select('id, pregunta')
+              .in('id', preguntaIds)
+            if (pData) preguntas = pData
+          }
+          mappedVids = vids.map(v => {
+            const q = preguntas.find(p => p.id === v.pregunta_id)
+            return { ...v, preguntas_video: q ? { pregunta: q.pregunta } : null }
+          })
+        }
+
+        const vMap = new Map<string, any>()
+        mappedVids.forEach(v => {
+          const k = `${v.entrevista_id}:${v.pregunta_id}`
+          const ex = vMap.get(k)
+          if (!ex || new Date(v.grabada_en) > new Date(ex.grabada_en)) vMap.set(k, v)
+        })
+        const finalVids = Array.from(vMap.values())
+
+        const esHEXACO = (pb: any) => pb && 'honestidad' in pb
+        const esBienestar = (pb: any) => pb && 'burnout' in pb
+
+        const hasP = c.sesiones.some(s => esBigFive(s.puntaje_bruto) || esHEXACO(s.puntaje_bruto))
+        const hasC = c.sesiones.some(s => esCognitivo(s.puntaje_bruto))
+        const hasK = c.sesiones.some(s => esSJT(s.puntaje_bruto))
+        const hasV = c.sesiones.some(s => esBienestar(s.puntaje_bruto))
+
+        const sesBF = c.sesiones.find(s => esBigFive(s.puntaje_bruto))
+        const sesHX = c.sesiones.find(s => esHEXACO(s.puntaje_bruto))
+        const sesCog = c.sesiones.find(s => esCognitivo(s.puntaje_bruto))
+        const sesComp = c.sesiones.find(s => esSJT(s.puntaje_bruto))
+        const sesBien = c.sesiones.find(s => esBienestar(s.puntaje_bruto))
+
+        const cogData = sesCog ? { correctas: (sesCog.puntaje_bruto as any).correctas || 0, total: (sesCog.puntaje_bruto as any).total || 20, pct: (sesCog.puntaje_bruto as any).porcentaje || 0 } : null
+
+        const blob = await pdf(
+          <InformePDF data={{
+            candidato: { id: c.id, nombre: c.nombre, apellido: c.apellido, documento: (c as any).documento || '' },
+            proceso: { cargo: c.proceso_cargo || 'S/C' },
+            sesiones: c.sesiones,
+            videos: finalVids,
+            inf,
+            helpers: {
+              hoy: () => new Date().toLocaleDateString(),
+              clrOf: (v: number) => v >= 4 ? '#059669' : v >= 3 ? '#2563eb' : v >= 2 ? '#d97706' : '#dc2626',
+              hasP, hasC, hasK, hasV, sesBF, sesHX, sesCog, sesComp, sesBien, cogData,
+              estimarMBTI: (pb: any) => {
+                if (!pb) return 'N/A'
+                const findVal = (key: string) => {
+                  let found = 2.5
+                  const searchVal = (obj: any) => {
+                    Object.entries(obj).forEach(([f, v]) => {
+                      if (f.toLowerCase().includes(key)) {
+                        found = ((v as any)?.correctas ? ((v as any).correctas / ((v as any).total || 1)) * 5 : (typeof v === 'number' ? v : 0)) || 2.5
+                      } else if (typeof v === 'object' && v !== null) {
+                        searchVal(v)
+                      }
+                    })
+                  }
+                  searchVal(pb)
+                  return found
+                }
+                const E = findVal('extraver') >= 2.7 ? 'E' : 'I'
+                const S = findVal('apertura') < 2.7 ? 'S' : 'N'
+                const T = findVal('amabilid') < 2.7 ? 'T' : 'F'
+                const J = findVal('responsab') >= 2.7 ? 'J' : 'P'
+                return `${E}${S}${T}${J}`
+              },
+              MBTI_DESC: {
+                'ISTJ': 'Organizado y formal...',
+                'ISFJ': 'Comprometido y fiel...',
+                'INFJ': 'Analítico e idealista...',
+                'INTJ': 'Estratégico e independiente...',
+                'ISTP': 'Pragmático y resolutivo...',
+                'ISFP': 'Caluroso y adaptativo...',
+                'INFP': 'Idealista y empático...',
+                'INTP': 'Teórico y lógico...',
+                'ESTP': 'Dinámico y pragmático...',
+                'ESFP': 'Sociable y entusiasta...',
+                'ENFP': 'Creativo y entusiasta...',
+                'ENTP': 'Innovador y analítico...',
+                'ESTJ': 'Eficiente y directivo...',
+                'ESFJ': 'Colaborador y servicial...',
+                'ENFJ': 'Líder empático y carismático...',
+                'ENTJ': 'Líder estratégico y decidido...'
+              },
+              ETQ: {
+                extraversion: 'Extraversión',
+                amabilidad: 'Amabilidad',
+                responsabilidad: 'Responsabilidad',
+                neuroticismo: 'Neuroticismo',
+                apertura: 'Apertura',
+                relaciones: 'Relaciones',
+                claridad_rol: 'Claridad de Rol',
+                burnout: 'Burnout',
+                equilibrio: 'Equilibrio'
+              },
+              DOMINIOS: {
+                PERSONALIDAD: ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura'],
+                COGNITIVO: ['atencion-detalle', 'verbal', 'numerico', 'icar'],
+                COMPETENCIAS: ['comunicacion', 'liderazgo', 'trabajo_equipo', 'adaptabilidad', 'resolucion_problemas', 'etica', 'negociacion', 'manejo_emocional', 'tolerancia_frustracion'],
+                BIENESTAR: ['burnout', 'equilibrio', 'relaciones', 'claridad_rol', 'nivel_estres', 'carga_laboral', 'autonomia', 'expectativas', 'resiliencia', 'manejo_estres', 'autoesteem', 'autoestima']
+              }
+            }
+          }} />
+        ).toBlob()
+
+        const filename = `Informe_${c.nombre}_${c.apellido}.pdf`.replace(/\s+/g, '_')
+        zip.file(filename, blob)
+        pdfsCount++
+      }
+
+      if (pdfsCount === 0) {
+        alert("Ninguno de los candidatos seleccionados tiene un informe generado aún. Por favor, genéralos primero.");
+        return
+      }
+
+      const content = await zip.generateAsync({ type: 'blob' })
+      saveAs(content, `informes_seleccionados_${new Date().toISOString().slice(0, 10)}.zip`)
+      setSeleccionados([])
+    } catch (err: any) {
+      console.error(err)
+      alert(`Error de descarga masiva: ${err.message}`)
+    } finally {
+      setProcesandoZip(false)
+    }
+  }
 
   async function analizarFrasesConIA(sesion: any) {
     if (analizandoFrases) return
@@ -809,7 +1117,10 @@ export default function PanelEvaluador() {
           <Settings2 className="w-4 h-4 text-slate-400" />
           <select
             value={procesoSeleccionadoId}
-            onChange={(e) => setProcesoSeleccionadoId(e.target.value)}
+            onChange={(e) => {
+              setProcesoSeleccionadoId(e.target.value)
+              setSeleccionados([]) // Limpiar seleccionados al cambiar filtro
+            }}
             className="flex-1 md:w-64 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium text-slate-700"
           >
             <option value="todos">Todos los procesos</option>
@@ -820,6 +1131,17 @@ export default function PanelEvaluador() {
             ))}
           </select>
         </div>
+
+        <button
+          onClick={() => {
+            const todosIds = candidatosFiltrados.map(c => c.id)
+            const todosMarcados = todosIds.length === seleccionados.length
+            setSeleccionados(todosMarcados ? [] : todosIds)
+          }}
+          className="px-4 py-2 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-600 bg-slate-50/50 hover:bg-slate-50 transition-all shrink-0 w-full md:w-auto"
+        >
+          {candidatosFiltrados.map(c => c.id).length === seleccionados.length ? 'Deseleccionar Todos' : 'Seleccionar Todos'}
+        </button>
       </div>
 
       {candidatos.length === 0 ? (
@@ -891,6 +1213,18 @@ export default function PanelEvaluador() {
                 }`}
               >
                 <div className="flex gap-4 items-center w-full overflow-hidden">
+                  {/* CHECKBOX DE SELECCION MULTIPLE */}
+                  <input
+                    type="checkbox"
+                    checked={seleccionados.includes(c.id)}
+                    onChange={(e) => {
+                      e.stopPropagation()
+                      setSeleccionados(prev => 
+                        prev.includes(c.id) ? prev.filter(id => id !== c.id) : [...prev, c.id]
+                      )
+                    }}
+                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                  />
                   {/* INDICADOR DE ESTADO IZQUIERDO */}
                   <div className="relative shrink-0">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border-2 ${
@@ -1202,6 +1536,43 @@ export default function PanelEvaluador() {
                 <p className="text-xs text-slate-500">Selecciona un candidato para analizar</p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* BARRA DE ACCIONES MASIVAS FLOTANTE */}
+      {seleccionados.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md border border-slate-800 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 z-50 animate-bounce-short">
+          <div className="flex items-center gap-3 border-r border-slate-800 pr-6">
+            <div className="w-6 h-6 rounded-full bg-indigo-600 text-[10px] font-black flex items-center justify-center">
+              {seleccionados.length}
+            </div>
+            <span className="text-xs font-bold text-slate-300">perfiles seleccionados</span>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => analizarSeleccionadosLote()}
+              disabled={procesandoLote}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-800 disabled:text-slate-500 text-xs font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
+            >
+              {procesandoLote ? 'Analizando...' : '✦ Analizar en Lote'}
+            </button>
+            
+            <button
+              onClick={() => descargarSeleccionadosZip()}
+              disabled={procesandoZip}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-800 disabled:text-slate-500 text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-1.5"
+            >
+              {procesandoZip ? 'Generando ZIP...' : '📥 Descargar PDFs (.zip)'}
+            </button>
+            
+            <button
+              onClick={() => setSeleccionados([])}
+              className="px-3 py-2 hover:bg-slate-800 text-xs font-bold text-slate-400 hover:text-white rounded-xl transition-all"
+            >
+              Cancelar
+            </button>
           </div>
         </div>
       )}
