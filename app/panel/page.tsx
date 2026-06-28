@@ -312,6 +312,8 @@ export default function PanelEvaluador() {
   const [seleccionados, setSeleccionados] = useState<string[]>([])
   const [procesandoLote, setProcesandoLote] = useState(false)
   const [procesandoZip, setProcesandoZip] = useState(false)
+  const [dropdownAbierto, setDropdownAbierto] = useState(false)
+  const [busquedaDropdown, setBusquedaDropdown] = useState('')
   const [analizandoFrases, setAnalizandoFrases] = useState(false)
   const router = useRouter()
 
@@ -1142,6 +1144,63 @@ export default function PanelEvaluador() {
         >
           {candidatosFiltrados.map(c => c.id).length === seleccionados.length ? 'Deseleccionar Todos' : 'Seleccionar Todos'}
         </button>
+
+        {/* DROPDOWN SELECTOR DE CANDIDATOS */}
+        <div className="relative w-full md:w-auto shrink-0">
+          <button
+            onClick={() => setDropdownAbierto(!dropdownAbierto)}
+            className="px-4 py-2 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-600 bg-slate-50/50 hover:bg-slate-50 transition-all flex items-center justify-between gap-2 w-full md:w-auto"
+          >
+            <span>Buscar evaluados ({seleccionados.length})</span>
+            <span className="text-[10px] text-slate-400">▼</span>
+          </button>
+
+          {dropdownAbierto && (
+            <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-3">
+              <div className="relative mb-3">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Filtrar por nombre..."
+                  value={busquedaDropdown}
+                  onChange={(e) => setBusquedaDropdown(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                />
+              </div>
+
+              <div className="max-h-60 overflow-y-auto space-y-1 custom-scrollbar-visible pr-1">
+                {candidatosFiltrados
+                  .filter(c => `${c.nombre} ${c.apellido}`.toLowerCase().includes(busquedaDropdown.toLowerCase()))
+                  .map(c => {
+                    const isChecked = seleccionados.includes(c.id)
+                    return (
+                      <label
+                        key={c.id}
+                        className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors text-xs font-medium text-slate-700"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            setSeleccionados(prev => 
+                              prev.includes(c.id) ? prev.filter(id => id !== c.id) : [...prev, c.id]
+                            )
+                          }}
+                          className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        />
+                        <span className="truncate">{c.nombre} {c.apellido}</span>
+                      </label>
+                    )
+                  })}
+                {candidatosFiltrados.filter(c => `${c.nombre} ${c.apellido}`.toLowerCase().includes(busquedaDropdown.toLowerCase())).length === 0 && (
+                  <div className="text-center py-4 text-xs text-slate-400 italic">
+                    Sin coincidencias
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {candidatos.length === 0 ? (
