@@ -82,6 +82,21 @@ PERFIL CONDUCTUAL (MBTI): ${mbtiType}
 DATOS PARA ANÁLISIS (FACTORES PSICOMÉTRICOS):
 ${JSON.stringify(factoresCrudos)}
 
+GUÍA DE INTERPRETACIÓN DE FACTORES (MUY IMPORTANTE PARA EVITAR CONTRADICCIONES):
+- Factores de Protección (Mayor puntaje es SALUDABLE/ÓPTIMO, menor puntaje [ej: < 2.5] es CRÍTICO/DESFAVORABLE):
+  * "equilibrio" (Balance Vida-Trabajo): 5.0 es balance excelente. Puntajes bajos (ej: 1.0 - 2.0) representan un desbalance severo e invasión de la vida personal por lo laboral. Redacta un análisis de conflicto/agobio.
+  * "relaciones" (Relaciones Interpersonales): 5.0 es clima de gran confianza y sociabilidad. Puntajes bajos (ej: 1.0 - 2.0) representan aislamiento, dificultades relacionales o tensión en el clima. Redacta un análisis de aislamiento/distancia.
+  * "claridad_rol" (Claridad de funciones): 5.0 es conocimiento pleno del rol. Puntajes bajos (ej: 1.0 - 2.0) indican alta ambigüedad de funciones e inseguridad que requiere de guías estructuradas externas.
+  * "autonomia": 5.0 es alta autogestión e independencia. Puntajes bajos (ej: 1.0 - 2.0) indican dependencia y necesidad de supervisión constante.
+  * "expectativas" (Alineación con el rol): 5.0 es alta motivación. Puntajes bajos indican brecha y desmotivación con la propuesta de valor.
+  * "resiliencia": 5.0 es adaptabilidad soberbia a la crisis. Puntajes bajos indican vulnerabilidad emocional y necesidad de validación externa.
+  * "autoesteem" / "autoestima": 5.0 es alta seguridad. Puntajes bajos representan inseguridad técnica y temor marcado a cometer errores.
+
+- Factores de Riesgo (Menor puntaje es SALUDABLE/ÓPTIMO, mayor puntaje [ej: > 3.0] es CRÍTICO/DESFAVORABLE):
+  * "burnout" (Agotamiento crónico): 1.0 es vitalidad y energía excelente. Puntajes altos (ej: 4.0 - 5.0) indican un desgaste emocional y físico severo que pone en riesgo la operativa.
+  * "nivel_estres" / "estres" (Tensión operativa): 1.0 es calma operativa óptima. Puntajes altos indican un estado de tensión y agobio severo bajo demanda.
+  * "carga_laboral" (Saturación de tareas): 1.0 es volumen de trabajo cómodo y manejable. Puntajes altos indican sobrecarga, saturación y desorganización operativa.
+
 ${discursoVideos ? `TRANSCRIPCIONES Y DISCURSO DE LA VIDEO-ENTREVISTA CONDUCTUAL:\n${discursoVideos}` : ''}
 
 INSTRUCCIÓN ESPECIAL PARA VIDEO-ENTREVISTA:
