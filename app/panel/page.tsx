@@ -82,6 +82,7 @@ interface Sesion {
   puntaje_bruto: Record<string, unknown>
   candidato_id: string | null
   candidato?: Candidato
+  estado?: string
 }
 
 const BIG_FIVE_KEYS = ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura']
@@ -170,6 +171,7 @@ const TEST_IDS: Record<string, string> = {
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'sjt-atencion',
   '7a8b9c0d-e1f2-4356-abcd-999999999999': 'dass21',
   'e9b2c3d4-f5a6-7890-bcde-999999999999': 'sjt-cobranzas',
+  'f7a8b9c0-d1e2-4356-abcd-888888888888': 'frases-incompletas',
 }
 
 const TEST_NAMES: Record<string, string> = {
@@ -191,6 +193,7 @@ const TEST_NAMES: Record<string, string> = {
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'SJT Atención al Cliente',
   '7a8b9c0d-e1f2-4356-abcd-999999999999': 'DASS-21 (Salud Mental)',
   'e9b2c3d4-f5a6-7890-bcde-999999999999': 'SJT Cobranzas',
+  'f7a8b9c0-d1e2-4356-abcd-888888888888': 'Frases Incompletas',
 }
 
 const colores: Record<string, string> = {
@@ -305,7 +308,57 @@ export default function PanelEvaluador() {
   const [filtro, setFiltro] = useState('')
   const [videosCandidato, setVideosCandidato] = useState<any[]>([])
   const [sesionesGlobales, setSesionesGlobales] = useState<any[]>([])
+  const [analizandoFrases, setAnalizandoFrases] = useState(false)
   const router = useRouter()
+
+  async function analizarFrasesConIA(sesion: any) {
+    if (analizandoFrases) return
+    setAnalizandoFrases(true)
+    try {
+      const res = await fetch('/api/analizar-frases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidato: agrupadoSeleccionado,
+          proceso: { cargo: agrupadoSeleccionado?.proceso_cargo, nombre: agrupadoSeleccionado?.proceso_nombre },
+          respuestas: sesion.puntaje_bruto?.respuestas || sesion.puntaje_bruto
+        })
+      })
+      if (!res.ok) throw new Error('Error al analizar frases')
+      const data = await res.json()
+      
+      const nuevoPuntajeBruto = {
+        respuestas: sesion.puntaje_bruto?.respuestas || sesion.puntaje_bruto,
+        analisis_ia: data
+      }
+      
+      const { error } = await supabase
+        .from('sesiones')
+        .update({ puntaje_bruto: nuevoPuntajeBruto })
+        .eq('id', sesion.id)
+      
+      if (error) throw error
+      
+      setSesionSeleccionada({
+        ...sesion,
+        puntaje_bruto: nuevoPuntajeBruto
+      })
+      
+      setAgrupadoSeleccionado(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          sesiones: prev.sesiones.map(s => s.id === sesion.id ? { ...s, puntaje_bruto: nuevoPuntajeBruto } : s)
+        }
+      })
+      
+    } catch (err: any) {
+      console.error(err)
+      alert("Error al analizar el test: " + err.message)
+    } finally {
+      setAnalizandoFrases(false)
+    }
+  }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -999,6 +1052,9 @@ export default function PanelEvaluador() {
                       {sesionSeleccionada.puntaje_bruto && (() => {
                         const pb = sesionSeleccionada.puntaje_bruto as any
                         const metricas = pb.metricas_fraude
+                        if (sesionSeleccionada.test_id === 'f7a8b9c0-d1e2-4356-abcd-888888888888') {
+                          return renderFrasesIncompletas(sesionSeleccionada, analizarFrasesConIA)
+                        }
                         return (
                           <div className="space-y-6">
                             {/* MÉTRICAS DE FRAUDE */}
@@ -1266,4 +1322,175 @@ function interpretacion(factor: string, valor: number): string {
     }
   }
   return textos[factor]?.[nivel] || ''
+}
+
+function renderFrasesIncompletas(sesion: any, analizarFrasesConIA: any) {
+  const pb = sesion.puntaje_bruto || {}
+  const respuestas = pb.respuestas || pb
+  const analisis = pb.analisis_ia
+
+  const FRASES_ESTIMULO: Record<number, string> = {
+    1: 'Siempre me gustó',
+    2: 'Cuando me enfrento a varias opciones',
+    3: 'Lo más importante en la vida es',
+    4: 'Siempre me preocupó',
+    5: 'Creo que soy hábil para',
+    6: 'Lo más difícil para mí es',
+    7: 'Controlarme es muy difícil para mí cuando',
+    8: 'Cuando las cosas no se dan como yo esperaba',
+    9: 'En un grupo yo',
+    10: 'En el futuro me veo',
+    11: 'Nunca imaginé que yo',
+    12: 'Me fastidia',
+    13: 'No sé explicar por qué todos dicen',
+    14: 'No estoy de acuerdo',
+    15: 'Me aburre',
+    16: 'El mayor cambio de mi vida',
+    17: 'Cuando me enfrento a un cambio',
+    18: 'Este cargo significa para mí',
+    19: 'Mis jefes',
+    20: 'Me gusta trabajar con',
+    21: 'Mi mayor desafío ha sido',
+    22: 'En síntesis, yo'
+  }
+
+  const errorDetalles = analisis?.auditoriaOrtografica?.detalles || []
+
+  return (
+    <div className="space-y-6 font-sans">
+      
+      {/* LISTADO DE RESPUESTAS CUALITATIVAS */}
+      <div className="bg-slate-50/50 rounded-2xl border border-slate-100 p-6 space-y-4">
+        <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Frases Completadas por el Candidato</h5>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[300px] overflow-y-auto pr-2">
+          {Object.entries(FRASES_ESTIMULO).map(([idStr, estimulo]) => {
+            const id = Number(idStr)
+            const resp = respuestas[id] || ''
+            return (
+              <div key={id} className="p-3 bg-white border border-slate-100 rounded-xl">
+                <p className="text-[10px] text-slate-400 font-bold">Frase {id}</p>
+                <p className="text-xs text-slate-800 leading-relaxed mt-1">
+                  <span className="font-bold text-indigo-700">{estimulo}...</span> {resp || <span className="text-rose-400 italic">No completada</span>}
+                </p>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ACCIÓN DE ANÁLISIS POR IA */}
+      {!analisis ? (
+        <div className="text-center py-6 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+          <p className="text-xs text-slate-500 mb-4">La IA de Gemini puede realizar un análisis psicométrico y ortográfico profundo de este test.</p>
+          <button
+            onClick={() => analizarFrasesConIA(sesion)}
+            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md disabled:bg-slate-300 disabled:cursor-not-allowed transition-all"
+          >
+            ✦ Analizar con IA
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          
+          {/* AUDITORÍA ORTOGRÁFICA */}
+          <div className={`p-5 rounded-2xl border ${analisis.auditoriaOrtografica?.tieneErrores ? 'bg-rose-50/30 border-rose-100' : 'bg-emerald-50/30 border-emerald-100'}`}>
+            <h5 className={`text-xs font-bold uppercase tracking-wider mb-3 ${analisis.auditoriaOrtografica?.tieneErrores ? 'text-rose-700' : 'text-emerald-700'}`}>
+              Auditoría Ortográfica
+            </h5>
+            {analisis.auditoriaOrtografica?.tieneErrores ? (
+              <div className="space-y-3">
+                <p className="text-xs text-slate-600">Se identificaron <strong>{analisis.auditoriaOrtografica.conteoErrores}</strong> errores ortográficos o de sintaxis:</p>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-rose-100 text-left text-xs">
+                    <thead>
+                      <tr className="text-rose-800 font-bold">
+                        <th className="py-2 pr-3">Frase</th>
+                        <th className="py-2 px-3">Escrito</th>
+                        <th className="py-2 px-3">Corrección</th>
+                        <th className="py-2 pl-3">Tipo</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-rose-50 text-slate-600">
+                      {errorDetalles.map((det: any, i: number) => (
+                        <tr key={i}>
+                          <td className="py-2 pr-3 font-semibold">Frase {det.frase}</td>
+                          <td className="py-2 px-3 line-through text-rose-500">{det.original}</td>
+                          <td className="py-2 px-3 font-semibold text-emerald-600">{det.corregida}</td>
+                          <td className="py-2 pl-3"><span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded text-[9px] font-bold">{det.tipo}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-emerald-600">✓ No se encontraron errores ortográficos ni de sintaxis en las respuestas del candidato. Redacción óptima.</p>
+            )}
+          </div>
+
+          {/* ANÁLISIS PSICOMÉTRICO */}
+          <div className="bg-slate-50/50 rounded-2xl border border-slate-100 p-5 space-y-4">
+            <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Análisis de Proyección Psicométrica</h5>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white p-4 border border-slate-100 rounded-xl shadow-sm">
+                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Dinámica Intelectual y Laboral</p>
+                <p className="text-xs text-slate-600 leading-relaxed">{analisis.analisisClinico?.dinamicaLaboral}</p>
+              </div>
+              <div className="bg-white p-4 border border-slate-100 rounded-xl shadow-sm">
+                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Actitud Interpersonal y Autoridad</p>
+                <p className="text-xs text-slate-600 leading-relaxed">{analisis.analisisClinico?.interpersonal}</p>
+              </div>
+              <div className="bg-white p-4 border border-slate-100 rounded-xl shadow-sm">
+                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Manejo Emocional y Resiliencia</p>
+                <p className="text-xs text-slate-600 leading-relaxed">{analisis.analisisClinico?.emocional}</p>
+              </div>
+              <div className="bg-white p-4 border border-slate-100 rounded-xl shadow-sm">
+                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Autoconcepto y Valores</p>
+                <p className="text-xs text-slate-600 leading-relaxed">{analisis.analisisClinico?.autoconcepto}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* CONCLUSIÓN EJECUTIVA */}
+          <div className="bg-slate-900 text-white rounded-2xl p-5 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h5 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Conclusiones del Evaluador</h5>
+              <span className={`px-3 py-1 rounded-full text-[9px] font-black tracking-wider ${
+                analisis.conclusion?.veredicto?.includes('RESERVAS') ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                analisis.conclusion?.veredicto?.includes('NO') ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
+                'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              }`}>
+                {analisis.conclusion?.veredicto}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="space-y-2">
+                <p className="font-bold text-emerald-400 flex items-center gap-1.5">🟢 Fortalezas Claras</p>
+                <ul className="list-disc pl-4 space-y-1 text-slate-300">
+                  {analisis.conclusion?.fortalezas?.map((f: string, i: number) => <li key={i}>{f}</li>)}
+                </ul>
+              </div>
+              <div className="space-y-2">
+                <p className="font-bold text-amber-400 flex items-center gap-1.5">🟡 Áreas de Atención</p>
+                <ul className="list-disc pl-4 space-y-1 text-slate-300">
+                  {analisis.conclusion?.areasAtencion?.map((a: string, i: number) => <li key={i}>{a}</li>)}
+                </ul>
+              </div>
+            </div>
+
+            {analisis.conclusion?.recomendacionGestion && (
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 mt-2">
+                <p className="text-[10px] text-indigo-400 font-bold uppercase mb-1">Guía de Gestión de Liderazgo</p>
+                <p className="text-xs text-slate-300 leading-relaxed">{analisis.conclusion.recomendacionGestion}</p>
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+
+    </div>
+  )
 }

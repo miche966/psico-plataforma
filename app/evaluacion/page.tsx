@@ -24,6 +24,7 @@ const RUTAS: Record<string, string> = {
   'estres-laboral': '/estres-laboral',
   creatividad: '/creatividad',
   'sjt-problemas': '/sjt-problemas',
+  'frases-incompletas': '/frases-incompletas',
 }
 
 const NOMBRES_TESTS: Record<string, { nombre: string, duracion: string }> = {
@@ -45,6 +46,7 @@ const NOMBRES_TESTS: Record<string, { nombre: string, duracion: string }> = {
   creatividad: { nombre: 'Creatividad e Innovación', duracion: '15 min' },
   'sjt-problemas': { nombre: 'Resolución de Problemas', duracion: '20 min' },
   dass21: { nombre: 'Screening de Salud Mental (DASS-21)', duracion: '10 min' },
+  'frases-incompletas': { nombre: 'Test de Frases Incompletas', duracion: '15 min' },
 }
 
 // Mapeo de IDs de base de datos a llaves de test
@@ -67,6 +69,7 @@ const TEST_IDS: Record<string, string> = {
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'sjt-atencion',
   '7a8b9c0d-e1f2-4356-abcd-999999999999': 'dass21',
   'e9b2c3d4-f5a6-7890-bcde-999999999999': 'sjt-cobranzas',
+  'f7a8b9c0-d1e2-4356-abcd-888888888888': 'frases-incompletas',
 }
 
 const TEST_KEY_TO_ID: Record<string, string> = {}

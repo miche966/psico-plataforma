@@ -173,6 +173,8 @@ export const InformePDF = ({ data }: any) => {
 
     const filter = (dom: string[], prefix?: string) => sesiones.filter((s: any) => {
       if (prefix && s.test_id?.toLowerCase().startsWith(prefix)) return true;
+      // Evitar que la sesión de estrés (bienestar) meta ruido en el dominio de personalidad
+      if (dom === DOMINIOS.PERSONALIDAD && s.test_id === 'd0e1f2a3-b4c5-6789-defa-000000000001') return false;
       const pb = s.puntaje_bruto || {};
       const keys = Object.keys(pb).map(k => k.toLowerCase());
       return keys.some(k => dom.includes(k)) || (pb.por_factor && Object.keys(pb.por_factor).some(k => dom.includes(k.toLowerCase())));
@@ -200,6 +202,9 @@ export const InformePDF = ({ data }: any) => {
   })();
 
   const clrOf = (v: number) => v >= 4 ? '#059669' : v >= 3 ? '#2563eb' : v >= 2 ? '#d97706' : '#dc2626';
+
+  const sesionFrases = sesiones.find((s: any) => s.test_id === 'f7a8b9c0-d1e2-4356-abcd-888888888888');
+  const analisisFrases = sesionFrases?.puntaje_bruto?.analisis_ia;
 
   const renderFactores = (dominio: string[], sesionesFilt: any[]) => {
     const mapa = new Map<string, any>();
@@ -232,7 +237,7 @@ export const InformePDF = ({ data }: any) => {
       finalV = (finalV / max) * 5;
 
       // Inversión lógica
-      if (['neuroticismo', 'nivel_estres', 'burnout'].includes(k)) {
+      if (['neuroticismo', 'nivel_estres', 'burnout', 'equilibrio', 'relaciones', 'carga_laboral'].includes(k)) {
         finalV = Math.max(0, 6 - finalV);
       } else if (k === 'errores_texto') {
         finalV = Math.max(0, 5 - finalV);
@@ -245,7 +250,7 @@ export const InformePDF = ({ data }: any) => {
       // Narrativas fallback e integración con IA profunda
       const desc = inf.interpretacionPorFactor?.[fk] || 
                    inf.interpretacionPorFactor?.[factor.toLowerCase()] || 
-                   'Muestra un desempeño funcional acorde a los requerimientos del cargo evaluado.';
+                   obtenerInterpretacionLocal(factor, vNorm);
 
       return (
         <View key={factor} style={styles.factorBlock}>
@@ -453,6 +458,59 @@ export const InformePDF = ({ data }: any) => {
           </View>
         )}
 
+        {analisisFrases && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>IX. Análisis de Frases Incompletas (Sacks/Rotter)</Text>
+            
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+              <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 8, borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#0f172a', marginBottom: 2 }}>DINÁMICA INTELECTUAL Y LABORAL</Text>
+                <Text style={styles.cardText}>{analisisFrases.analisisClinico?.dinamicaLaboral}</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 8, borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#0f172a', marginBottom: 2 }}>ACTITUD INTERPERSONAL Y AUTORIDAD</Text>
+                <Text style={styles.cardText}>{analisisFrases.analisisClinico?.interpersonal}</Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+              <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 8, borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#0f172a', marginBottom: 2 }}>MANEJO EMOCIONAL Y RESILIENCIA</Text>
+                <Text style={styles.cardText}>{analisisFrases.analisisClinico?.emocional}</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 8, borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#0f172a', marginBottom: 2 }}>AUTOCONCEPTO Y VALORES</Text>
+                <Text style={styles.cardText}>{analisisFrases.analisisClinico?.autoconcepto}</Text>
+              </View>
+            </View>
+
+            {/* AUDITORÍA ORTOGRÁFICA */}
+            <View style={[styles.card, { backgroundColor: analisisFrases.auditoriaOrtografica?.tieneErrores ? '#fff5f5' : '#f0fdf4', borderColor: analisisFrases.auditoriaOrtografica?.tieneErrores ? '#feb2b2' : '#bbf7d0' }]}>
+              <Text style={{ fontSize: 7, fontWeight: 'bold', color: analisisFrases.auditoriaOrtografica?.tieneErrores ? '#c53030' : '#15803d', marginBottom: 4 }}>
+                AUDITORÍA ORTOGRÁFICA Y DE REDACCIÓN: {analisisFrases.auditoriaOrtografica?.tieneErrores ? `${analisisFrases.auditoriaOrtografica.conteoErrores} Errores detectados` : 'Redacción Óptima'}
+              </Text>
+              {analisisFrases.auditoriaOrtografica?.tieneErrores ? (
+                <View style={{ marginTop: 2 }}>
+                  {analisisFrases.auditoriaOrtografica.detalles?.map((det: any, i: number) => (
+                    <Text key={i} style={{ fontSize: 7, color: '#4a5568', marginBottom: 1 }}>
+                      • Frase {det.frase}: palabra "{det.original}" corregida a "{det.corregida}" ({det.tipo})
+                    </Text>
+                  ))}
+                </View>
+              ) : (
+                <Text style={{ fontSize: 7, color: '#166534' }}>El candidato demuestra excelente ortografía y dominio de las reglas ortográficas en todas sus respuestas redactadas.</Text>
+              )}
+            </View>
+
+            {/* RECOMENDACIÓN DE GESTIÓN */}
+            <View style={{ backgroundColor: '#1e293b', padding: 8, borderRadius: 6, marginTop: 5 }}>
+              <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#818cf8', marginBottom: 2, textTransform: 'uppercase' }}>Guía Práctica de Gestión y Liderazgo</Text>
+              <Text style={{ fontSize: 8, color: '#e2e8f0', lineHeight: 1.3 }}>{analisisFrases.conclusion?.recomendacionGestion}</Text>
+            </View>
+
+          </View>
+        )}
+
         <View style={{ marginTop: 20, padding: 15, borderTop: 1, borderTopColor: '#e2e8f0' }}>
           <Text style={{ fontSize: 10, fontWeight: 'bold', color: clrOf(inf.recomendacion === 'recomendado' ? 5 : inf.recomendacion === 'con_reservas' ? 3 : 1) }}>
             DICTAMEN FINAL: {inf.recomendacion?.replace('_', ' ').toUpperCase()}
@@ -469,3 +527,88 @@ export const InformePDF = ({ data }: any) => {
     </Document>
   );
 };
+
+function obtenerInterpretacionLocal(factor: string, valor: number): string {
+  const k = factor.toLowerCase().trim();
+  const nivel = valor >= 4 ? 'alto' : valor >= 3 ? 'moderado' : 'bajo';
+  
+  const textos: Record<string, Record<string, string>> = {
+    extraversion: {
+      alto: 'Persona sociable, enérgica y orientada hacia el mundo externo. Disfruta del trabajo en equipo y los entornos dinámicos.',
+      moderado: 'Equilibrio entre sociabilidad y reserva. Se adapta tanto a trabajos en equipo como a tareas individuales.',
+      bajo: 'Persona reservada y reflexiva. Prefiere entornos tranquilos y el trabajo independiente.'
+    },
+    amabilidad: {
+      alto: 'Alta orientación hacia los demás, cooperativa y empática. Facilita el trabajo en equipo y las relaciones interpersonales.',
+      moderado: 'Equilibrio entre cooperación y asertividad. Puede trabajar bien con otros sin perder independencia de criterio.',
+      bajo: 'Persona directa y orientada a resultados. Puede ser más competitiva que colaborativa.'
+    },
+    responsabilidad: {
+      alto: 'Alta organización, disciplina y orientación al logro. Cumple compromisos y mantiene altos estándares de trabajo.',
+      moderado: 'Nivel adecuado de organización y compromiso. Puede adaptarse a distintos niveles de estructura.',
+      bajo: 'Estilo flexible y espontáneo. Puede tener dificultades con tareas que requieren alta planificación.'
+    },
+    neuroticismo: {
+      alto: 'Mayor estabilidad emocional y resiliencia. Maneja de manera adecuada la presión y los entornos de alta demanda.',
+      moderado: 'Respuesta emocional equilibrada ante el estrés. Maneja bien la mayoría de las situaciones laborales.',
+      bajo: 'Mayor sensibilidad emocional y tendencia a experimentar estrés. Puede requerir entornos de trabajo estables.'
+    },
+    apertura: {
+      alto: 'Alta curiosidad intelectual, creatividad y apertura al cambio. Destaca en roles que requieren innovación.',
+      moderado: 'Equilibrio entre creatividad y pragmatismo. Se adapta tanto a entornos estructurados como creativos.',
+      bajo: 'Preferencia por métodos conocidos y entornos predecibles. Destaca en roles con procesos claros y definidos.'
+    },
+    honestidad: {
+      alto: 'Muestra una actitud de sinceridad y franqueza en su estilo de trabajo, prefiriendo la transparencia en sus interacciones.',
+      moderado: 'Mantiene un estilo de comunicación honesto y adecuado a las demandas del entorno profesional.',
+      bajo: 'Presenta posibles tendencias a la reserva o a omitir detalles para evitar la confrontación o favorecer la aceptación.'
+    },
+    normas: {
+      alto: 'Alto apego a normas y ética profesional. Respeta los procedimientos establecidos de forma consistente.',
+      moderado: 'Cumple con los reglamentos y normas generales del entorno de trabajo.',
+      bajo: 'Riesgo de omitir o flexibilizar normas organizacionales en beneficio de la rapidez o la comodidad personal.'
+    },
+    promedio_general: {
+      alto: 'Demuestra una sólida base ética general y alta consistencia en sus valores profesionales.',
+      moderado: 'Muestra un desempeño ético y funcional acorde a los requerimientos estándar del puesto.',
+      bajo: 'Se aprecian desvíos o inconsistencias en los indicadores generales de probidad. Se sugeriría validar detalladamente.'
+    },
+    metricas_fraude: {
+      alto: 'El perfil de respuestas muestra un nivel normal y honesto de autorreporte, libre de fingimiento.',
+      moderado: 'Muestra un perfil de respuestas aceptable, con baja influencia de deseabilidad social.',
+      bajo: 'Nivel crítico de deseabilidad social. El candidato pudo haber manipulado sus respuestas para agradar al evaluador.'
+    },
+    burnout: {
+      alto: 'Presenta una muy baja propensión a experimentar agotamiento, gestionando su energía de manera efectiva.',
+      moderado: 'Nivel controlado de cansancio. Mantiene un ritmo operativo razonable.',
+      bajo: 'Muestra señales de desgaste o agotamiento percibido. Se beneficia de revisión de tareas y apoyo.'
+    },
+    equilibrio: {
+      alto: 'Demuestra una capacidad para mantener un sano balance entre sus responsabilidades laborales y su bienestar personal.',
+      moderado: 'Mantiene un equilibrio adecuado en situaciones ordinarias de trabajo.',
+      bajo: 'Se observa una afectación en el balance vida-trabajo, lo que puede influir en su salud laboral a mediano plazo.'
+    },
+    relaciones: {
+      alto: 'La persona tiende a establecer vínculos cordiales y a mantener un ambiente de trabajo armonioso.',
+      moderado: 'Se relaciona de forma profesional y correcta con sus compañeros.',
+      bajo: 'Puede experimentar fricciones o dificultades de comunicación con compañeros y superiores.'
+    },
+    claridad_rol: {
+      alto: 'Muestra una excelente comprensión de sus tareas y responsabilidades del puesto.',
+      moderado: 'Comprende adecuadamente sus funciones generales, aunque requiere aclaraciones de vez en cuando.',
+      bajo: 'Siente confusión o falta de claridad respecto a las expectativas de su puesto. Se beneficia de una guía estructurada.'
+    },
+    nivel_estres: {
+      alto: 'Bajo nivel de tensión psicológica percibido. Afronta de forma serena el entorno laboral.',
+      moderado: 'Nivel de tensión estándar del puesto. Manejo adaptativo en el día a día.',
+      bajo: 'Alta tensión psicológica percibida. Afronta altos niveles de estrés que pueden condicionar su desempeño.'
+    },
+    carga_laboral: {
+      alto: 'Manejo eficiente de las cargas de trabajo. Percibe las demandas como razonables.',
+      moderado: 'Afronta las cargas habituales con normalidad, pudiendo requerir apoyos puntuales.',
+      bajo: 'Percibe una alta sobrecarga en las demandas de su puesto. Requiere revisión de procesos.'
+    }
+  };
+
+  return textos[k]?.[nivel] || 'Muestra un desempeño funcional acorde a los requerimientos del cargo evaluado.';
+}

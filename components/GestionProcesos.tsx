@@ -26,6 +26,7 @@ const TESTS_DISPONIBLES = [
   { key: 'creatividad', label: 'Creatividad' },
   { key: 'sjt-problemas', label: 'SJT Problemas' },
   { key: 'dass21', label: 'DASS-21' },
+  { key: 'frases-incompletas', label: 'Frases Incompletas' },
 ]
 
 const COMPETENCIAS_ALLES = [
@@ -74,6 +75,7 @@ const SLUG_TO_ID: Record<string, string> = {
   'sjt-atencion': 'f6a7b8c9-d0e1-2345-fabc-666666666666',
   'sjt-cobranzas': 'e9b2c3d4-f5a6-7890-bcde-999999999999',
   'dass21': '7a8b9c0d-e1f2-4356-abcd-999999999999',
+  'frases-incompletas': 'f7a8b9c0-d1e2-4356-abcd-888888888888',
 }
 
 export default function GestionProcesos() {
