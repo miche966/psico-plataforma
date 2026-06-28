@@ -458,9 +458,40 @@ export const InformePDF = ({ data }: any) => {
           </View>
         )}
 
+        {inf.analisisEntrevista && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>IX. Perfil de Entrevista Laboral Integrada</Text>
+            
+            <View style={[styles.card, { marginBottom: 6 }]}>
+              <Text style={styles.cardTitle}>1. Trayectoria, Estabilidad y Motivación Laboral</Text>
+              <Text style={styles.cardText}>{inf.analisisEntrevista.trayectoriaMotivacion}</Text>
+            </View>
+
+            <View style={[styles.card, { marginBottom: 6 }]}>
+              <Text style={styles.cardTitle}>2. Estilo de Trabajo y Relación con la Autoridad</Text>
+              <Text style={styles.cardText}>{inf.analisisEntrevista.estiloTrabajoAutoridad}</Text>
+            </View>
+
+            <View style={[styles.card, { marginBottom: 6 }]}>
+              <Text style={styles.cardTitle}>3. Atención al Cliente y Gestión de Conflictos</Text>
+              <Text style={styles.cardText}>{inf.analisisEntrevista.gestionConflictos}</Text>
+            </View>
+
+            <View style={[styles.card, { marginBottom: 6 }]}>
+              <Text style={styles.cardTitle}>4. Tolerancia a la Frustración y Resiliencia</Text>
+              <Text style={styles.cardText}>{inf.analisisEntrevista.resilienciaFrustracion}</Text>
+            </View>
+
+            <View style={[styles.card, { marginBottom: 6 }]}>
+              <Text style={styles.cardTitle}>5. Autoconcepto, Madurez y Proyección de Futuro</Text>
+              <Text style={styles.cardText}>{inf.analisisEntrevista.autoconceptoMetas}</Text>
+            </View>
+          </View>
+        )}
+
         {analisisFrases && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>IX. Análisis de Frases Incompletas (Sacks/Rotter)</Text>
+            <Text style={styles.sectionTitle}>X. Análisis de Frases Incompletas (Sacks/Rotter)</Text>
             
             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
               <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 8, borderRadius: 6, border: '1px solid #e2e8f0' }}>

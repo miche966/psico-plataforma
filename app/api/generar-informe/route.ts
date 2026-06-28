@@ -4,7 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 export async function POST(req: Request) {
   try {
     const payload = await req.json();
-    const { candidato, proceso, sesiones, actual } = payload;
+    const { candidato, proceso, sesiones, actual, videos } = payload;
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: 'Falta llave de API.' }, { status: 500 });
@@ -49,8 +49,22 @@ export async function POST(req: Request) {
         scan(s.puntaje_bruto);
     });
 
+    // 3. COMPILACIÓN DE TRANSCRIPCIONES DE VIDEO-ENTREVISTAS
+    let discursoVideos = '';
+    const tieneVideos = videos && Array.isArray(videos) && videos.length > 0;
+    if (tieneVideos) {
+      videos.forEach((v: any, index: number) => {
+        const preg = v.preguntas_video?.pregunta || `Pregunta ${index + 1}`;
+        const trans = v.transcripcion || '';
+        const act = v.analisis_ia ? (typeof v.analisis_ia === 'string' ? v.analisis_ia : JSON.stringify(v.analisis_ia)) : '';
+        if (trans.trim()) {
+          discursoVideos += `PREGUNTA: ${preg}\nTRANSCRIPCIÓN RESPUESTA DEL CANDIDATO: "${trans}"\nACTITUD OBSERVADA: ${act}\n\n`;
+        }
+      });
+    }
+
     const prompt = `
-Eres un Consultor Senior en Desarrollo Humano. Tu misión es redactar un informe ejecutivo de alta gama que sea profundamente humano pero estrictamente profesional.
+Eres un Consultor Senior en Desarrollo Humano y Psicólogo Organizacional. Tu misión es redactar un informe ejecutivo de alta gama que sea profundamente humano pero estrictamente profesional.
 
 REGLAS DE ORO DE REDACCIÓN:
 1. TONO: Cercano, empático y profesional. Habla de comportamientos y situaciones, NO de puntajes.
@@ -65,8 +79,13 @@ CONTEXTO DEL PUESTO: ${proceso?.cargo || 'N/A'}
 AJUSTE ESTIMADO: ${scoreFinal}%
 PERFIL CONDUCTUAL (MBTI): ${mbtiType}
 
-DATOS PARA ANÁLISIS (FACTORES):
+DATOS PARA ANÁLISIS (FACTORES PSICOMÉTRICOS):
 ${JSON.stringify(factoresCrudos)}
+
+${discursoVideos ? `TRANSCRIPCIONES Y DISCURSO DE LA VIDEO-ENTREVISTA CONDUCTUAL:\n${discursoVideos}` : ''}
+
+INSTRUCCIÓN ESPECIAL PARA VIDEO-ENTREVISTA:
+Si las transcripciones de la video-entrevista están provistas arriba, realiza un análisis clínico integrado y redacta 5 párrafos cualitativos detallados que formarán el "Perfil de Entrevista Laboral Integrada", mapeando el comportamiento del candidato en las 5 dimensiones clave. Si no hay transcripciones provistas, devuelve null en esa propiedad.
 
 Devuelve UNICAMENTE un objeto JSON con esta estructura:
 {
@@ -94,9 +113,16 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
     "resiliencia": 0, 
     "colaboracion": 0, 
     "comunicacion": 0 
-  }
+  },
+  "analisisEntrevista": ${tieneVideos ? `{
+    "trayectoriaMotivacion": "Un párrafo sobre trayectoria, estabilidad y motivación laboral del perfil.",
+    "estiloTrabajoAutoridad": "Un párrafo sobre estilo de trabajo y relación de subordinación con la autoridad.",
+    "gestionConflictos": "Un párrafo sobre su capacidad en front-office y gestión de situaciones conflictivas.",
+    "resilienciaFrustracion": "Un párrafo sobre sus mecanismos de resiliencia y tolerancia a la frustración.",
+    "autoconceptoMetas": "Un párrafo sobre su autoconcepto, madurez y proyección profesional de cara al puesto."
+  }` : 'null'}
 }
-*Nota: En metaCompetencias, sustituye los 0 por números enteros del 1 al 100 estimados según el perfil. Para cargos de soporte u operativos (que no sean directivos/jefes), el puntaje en la clave "liderazgo" debe representar el potencial de "Autogestión" (iniciativa, autodisciplina y autonomía).*
+*Nota: En metaCompetencias, sustituye los 0 por números enteros del 1 al 100 estimados según el perfil.*
 `;
 
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });

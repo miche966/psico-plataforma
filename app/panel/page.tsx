@@ -308,6 +308,7 @@ export default function PanelEvaluador() {
   const [filtro, setFiltro] = useState('')
   const [videosCandidato, setVideosCandidato] = useState<any[]>([])
   const [sesionesGlobales, setSesionesGlobales] = useState<any[]>([])
+  const [informeCandidato, setInformeCandidato] = useState<any>(null)
   const [analizandoFrases, setAnalizandoFrases] = useState(false)
   const router = useRouter()
 
@@ -873,6 +874,15 @@ export default function PanelEvaluador() {
                   })
                   
                   setVideosCandidato(Array.from(vMap.values()))
+
+                  // Cargar informe psicométrico para entrevista integrada
+                  const { data: infData } = await supabase
+                    .from('informes_psicometricos')
+                    .select('contenido')
+                    .eq('candidato_id', c.id)
+                    .maybeSingle()
+                  
+                  setInformeCandidato(infData?.contenido || null)
                 }}
                 className={`p-4 rounded-xl border bg-white cursor-pointer transition-all duration-200 hover:shadow-md ${
                   agrupadoSeleccionado?.id === c.id 
@@ -947,7 +957,7 @@ export default function PanelEvaluador() {
                     <h2 className="text-xl font-bold text-slate-900">{agrupadoSeleccionado.nombre} {agrupadoSeleccionado.apellido}</h2>
                     <p className="text-sm text-slate-500">{agrupadoSeleccionado.email}</p>
                   </div>
-                  <button onClick={() => setAgrupadoSeleccionado(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                  <button onClick={() => { setAgrupadoSeleccionado(null); setInformeCandidato(null); }} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -977,6 +987,39 @@ export default function PanelEvaluador() {
                       <p className="text-[10px] text-slate-400 italic">Analiza todos los tests y videos para generar un resumen profesional.</p>
                     )}
                   </div>
+
+                  {/* ANÁLISIS DE ENTREVISTA INTEGRADA (SI EXISTE) */}
+                  {informeCandidato?.analisisEntrevista && (
+                    <div className="mb-8 p-5 bg-gradient-to-br from-teal-50/40 to-white rounded-2xl border border-teal-100/70 shadow-sm">
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-1.5 h-1.5 bg-teal-600 rounded-full animate-pulse" />
+                        <h3 className="text-[10px] font-bold text-teal-900 uppercase tracking-widest">Entrevista Conductual Integrada</h3>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-[9px] font-bold text-teal-700 uppercase tracking-wide">1. Trayectoria y Motivación</p>
+                          <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{informeCandidato.analisisEntrevista.trayectoriaMotivacion}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-bold text-teal-700 uppercase tracking-wide">2. Estilo de Trabajo y Autoridad</p>
+                          <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{informeCandidato.analisisEntrevista.estiloTrabajoAutoridad}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-bold text-teal-700 uppercase tracking-wide">3. Gestión de Conflictos</p>
+                          <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{informeCandidato.analisisEntrevista.gestionConflictos}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-bold text-teal-700 uppercase tracking-wide">4. Resiliencia y Afrontamiento</p>
+                          <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{informeCandidato.analisisEntrevista.resilienciaFrustracion}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-bold text-teal-700 uppercase tracking-wide">5. Autoconcepto y Metas</p>
+                          <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{informeCandidato.analisisEntrevista.autoconceptoMetas}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mb-6">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Historial de Evaluaciones (Test por Test)</p>

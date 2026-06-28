@@ -42,6 +42,7 @@ interface InformeState {
   interpretacionPorFactor: Record<string, string>
   nombreEvaluador: string
   mbti?: string
+  mbtiType?: string
   ajusteMbti?: string
   liderazgo: number
   adaptabilidad: number
@@ -52,6 +53,13 @@ interface InformeState {
   alertasTab: number
   alertasCopia: number
   tiempoPromedio: number
+  analisisEntrevista?: {
+    trayectoriaMotivacion: string
+    estiloTrabajoAutoridad: string
+    gestionConflictos: string
+    resilienciaFrustracion: string
+    autoconceptoMetas: string
+  } | null
 }
 
 const ETQ: Record<string, string> = {
@@ -322,7 +330,8 @@ function InformePageContent() {
     confianza: 100,
     alertasTab: 0,
     alertasCopia: 0,
-    tiempoPromedio: 0
+    tiempoPromedio: 0,
+    analisisEntrevista: null
   })
 
   useEffect(() => {
@@ -787,7 +796,14 @@ function InformePageContent() {
             analisis: humanizar(rawRes.ajusteCargo?.analisis || rawRes.fundamentacion || '')
           },
           ajusteMbti: humanizar(rawRes.ajusteMbti || ''),
-          recomendacion: scoreFrontend >= 85 ? 'recomendado' : scoreFrontend >= 70 ? 'con_reservas' : 'no_recomendado'
+          recomendacion: scoreFrontend >= 85 ? 'recomendado' : scoreFrontend >= 70 ? 'con_reservas' : 'no_recomendado',
+          analisisEntrevista: rawRes.analisisEntrevista ? {
+            trayectoriaMotivacion: humanizar(rawRes.analisisEntrevista.trayectoriaMotivacion),
+            estiloTrabajoAutoridad: humanizar(rawRes.analisisEntrevista.estiloTrabajoAutoridad),
+            gestionConflictos: humanizar(rawRes.analisisEntrevista.gestionConflictos),
+            resilienciaFrustracion: humanizar(rawRes.analisisEntrevista.resilienciaFrustracion),
+            autoconceptoMetas: humanizar(rawRes.analisisEntrevista.autoconceptoMetas)
+          } : null
         }
 
         setInf(prev => ({
@@ -1548,6 +1564,77 @@ PsicoPlataforma - Gestión Inteligente de Talento
                   </div>
                 )
               })}
+            </div>
+          </div>
+        )}
+
+        {/* ── SECCIÓN EXTRA: ANÁLISIS INTEGRATIVO DE VIDEO-ENTREVISTA ───────── */}
+        {inf.analisisEntrevista && (
+          <div style={s.card}>
+            <div style={s.cardHead}>
+              <span style={s.cardHeadTxt}>Análisis de Entrevista Conductual Integrada</span>
+              <span style={s.badge}>Evaluación de Discurso</span>
+            </div>
+            <div style={{ padding: '0 1.25rem 1.25rem' }}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={s.commentLabel}>Trayectoria, Estabilidad y Motivación Laboral</label>
+                <textarea 
+                  style={{ ...s.ta, minHeight: '80px' }} 
+                  value={inf.analisisEntrevista.trayectoriaMotivacion || ''} 
+                  onChange={e => {
+                    const ae = { ...inf.analisisEntrevista, trayectoriaMotivacion: e.target.value } as any;
+                    upd('analisisEntrevista', ae);
+                  }} 
+                />
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={s.commentLabel}>Estilo de Trabajo y Relación con la Autoridad</label>
+                <textarea 
+                  style={{ ...s.ta, minHeight: '80px' }} 
+                  value={inf.analisisEntrevista.estiloTrabajoAutoridad || ''} 
+                  onChange={e => {
+                    const ae = { ...inf.analisisEntrevista, estiloTrabajoAutoridad: e.target.value } as any;
+                    upd('analisisEntrevista', ae);
+                  }} 
+                />
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={s.commentLabel}>Atención al Cliente y Gestión de Conflictos</label>
+                <textarea 
+                  style={{ ...s.ta, minHeight: '80px' }} 
+                  value={inf.analisisEntrevista.gestionConflictos || ''} 
+                  onChange={e => {
+                    const ae = { ...inf.analisisEntrevista, gestionConflictos: e.target.value } as any;
+                    upd('analisisEntrevista', ae);
+                  }} 
+                />
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={s.commentLabel}>Tolerancia a la Frustración y Resiliencia</label>
+                <textarea 
+                  style={{ ...s.ta, minHeight: '80px' }} 
+                  value={inf.analisisEntrevista.resilienciaFrustracion || ''} 
+                  onChange={e => {
+                    const ae = { ...inf.analisisEntrevista, resilienciaFrustracion: e.target.value } as any;
+                    upd('analisisEntrevista', ae);
+                  }} 
+                />
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={s.commentLabel}>Autoconcepto, Madurez y Proyección</label>
+                <textarea 
+                  style={{ ...s.ta, minHeight: '80px' }} 
+                  value={inf.analisisEntrevista.autoconceptoMetas || ''} 
+                  onChange={e => {
+                    const ae = { ...inf.analisisEntrevista, autoconceptoMetas: e.target.value } as any;
+                    upd('analisisEntrevista', ae);
+                  }} 
+                />
+              </div>
             </div>
           </div>
         )}
