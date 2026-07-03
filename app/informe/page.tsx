@@ -694,7 +694,12 @@ function InformePageContent() {
       })
 
       if (!res.ok) {
-        throw new Error(`Servidor Vercel respondió con código ${res.status}. Esto suele ser un Timeout (10s) o un error de configuración.`);
+        let det = '';
+        try {
+          const errData = await res.json();
+          if (errData?.error) det = `: ${errData.error}`;
+        } catch (_) {}
+        throw new Error(`Servidor Vercel respondió con código ${res.status}${det || '. Esto suele ser un Timeout (10s) o un error de configuración.'}`);
       }
 
       const data = await res.json()
