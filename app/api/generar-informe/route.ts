@@ -151,6 +151,10 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
 
   } catch (error: any) {
     console.error('[FATAL ERROR]:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    let errorMsg = error.message || 'Error desconocido';
+    if (errorMsg.includes('dunning') || errorMsg.includes('billing') || errorMsg.includes('403')) {
+      errorMsg = 'La clave de Gemini API está temporalmente inhabilitada por Google Cloud debido a un problema de facturación del proyecto (tarjeta rechazada o saldo pendiente). Por favor, verifique la facturación en su consola de Google Cloud.';
+    }
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 }
