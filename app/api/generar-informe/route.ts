@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
+export const maxDuration = 60; // 60 segundos para evitar timeouts en plan Hobby de Vercel
+
 export async function POST(req: Request) {
   try {
     const payload = await req.json();
