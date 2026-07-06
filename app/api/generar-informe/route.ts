@@ -156,6 +156,8 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
     let errorMsg = error.message || 'Error desconocido';
     if (errorMsg.includes('dunning') || errorMsg.includes('billing') || errorMsg.includes('403')) {
       errorMsg = 'La clave de Gemini API está temporalmente inhabilitada por Google Cloud debido a un problema de facturación del proyecto (tarjeta rechazada o saldo pendiente). Por favor, verifique la facturación en su consola de Google Cloud.';
+    } else if (errorMsg.includes('credits') || errorMsg.includes('depleted') || errorMsg.includes('429')) {
+      errorMsg = 'Los créditos prepagos de tu cuenta de Gemini API se han agotado por completo (Prepayment credits are depleted). Por favor, ingresa a tu consola de Google AI Studio (https://aistudio.google.com/) o de Google Cloud y recarga saldo en tu cuenta de facturación.';
     }
     return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
