@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import * as nodemailer from 'nodemailer';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
@@ -7,19 +7,32 @@ export async function POST(req: Request) {
 
     const user = process.env.EMAIL_USER;
     const pass = process.env.EMAIL_PASS;
+    const host = process.env.EMAIL_HOST;
+    const port = parseInt(process.env.EMAIL_PORT || '587');
+    const secure = process.env.EMAIL_SECURE === 'true';
 
     if (!user || !pass) {
-      return NextResponse.json({ error: 'Configuración de Gmail incompleta (EMAIL_USER/EMAIL_PASS)' }, { status: 500 });
+      return NextResponse.json({ error: 'Configuración de email incompleta (EMAIL_USER/EMAIL_PASS)' }, { status: 500 });
     }
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user, pass },
-    });
+    const transporter = nodemailer.createTransport(
+      host 
+        ? {
+            host,
+            port,
+            secure,
+            auth: { user, pass },
+            tls: { rejectUnauthorized: false }
+          }
+        : {
+            service: 'gmail',
+            auth: { user, pass },
+          }
+    );
 
     const mailOptions = {
-      from: `"Gestión Humana - RMSA" <${user}>`,
-      replyTo: 'gestion.humana.rmsa@gmail.com',
+      from: `"Selección - República Microfinanzas" <${user}>`,
+      replyTo: user,
       to: email,
       subject: `Recordatorio: Evaluaciones pendientes para ${proceso}`,
       html: `
