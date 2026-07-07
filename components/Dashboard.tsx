@@ -11,7 +11,7 @@ import {
   Download, MousePointer2, Smartphone, Monitor, ChevronRight
 } from 'lucide-react'
 import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
+import html2canvas from 'html2canvas-pro'
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
