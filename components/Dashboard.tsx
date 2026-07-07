@@ -177,8 +177,8 @@ export default function Dashboard() {
         abandono,
         actividad,
         dispositivos: [
-          { name: 'Desktop', value: 85 },
-          { name: 'Mobile', value: 15 }
+          { name: 'Escritorio', value: 85 },
+          { name: 'Móvil', value: 15 }
         ]
       })
 
