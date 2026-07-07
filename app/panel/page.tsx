@@ -693,33 +693,69 @@ export default function PanelEvaluador() {
   }
 
   async function cargarCandidatos() {
-    // 1. Obtener todas las vinculaciones Proceso-Candidato
-    const { data: vinculos } = await supabase
-      .from('candidatos_procesos')
-      .select(`
-        candidato_id,
-        proceso_id,
-        procesos (id, nombre, cargo, competencias_requeridas, bateria_tests),
-        candidatos (id, nombre, apellido, email),
-        creado_en
-      `)
+    // 1. Obtener todas las vinculaciones Proceso-Candidato por lotes
+    let vinculos: any[] = []
+    let offsetVinculos = 0
+    const limit = 1000
+    let doneVinculos = false
 
-    // 2. Obtener todas las sesiones (Históricas y actuales) sin traer el campo pesado 'respuestas'
-    const { data: sesionesData } = await supabase
-      .from('sesiones')
-      .select(`
-        id,
-        test_id,
-        candidato_id,
-        proceso_id,
-        estado,
-        finalizada_en,
-        puntaje_bruto,
-        candidatos (id, nombre, apellido, email),
-        procesos (id, nombre, cargo, competencias_requeridas, bateria_tests)
-      `)
-      .order('finalizada_en', { ascending: false })
-      .range(0, 9999)
+    while (!doneVinculos) {
+      const { data, error } = await supabase
+        .from('candidatos_procesos')
+        .select(`
+          candidato_id,
+          proceso_id,
+          procesos (id, nombre, cargo, competencias_requeridas, bateria_tests),
+          candidatos (id, nombre, apellido, email),
+          creado_en
+        `)
+        .range(offsetVinculos, offsetVinculos + limit - 1)
+
+      if (error || !data || data.length === 0) {
+        doneVinculos = true
+      } else {
+        vinculos = [...vinculos, ...data]
+        if (data.length < limit) {
+          doneVinculos = true
+        } else {
+          offsetVinculos += limit
+        }
+      }
+    }
+
+    // 2. Obtener todas las sesiones mediante carga recursiva por lotes
+    let sesionesData: any[] = []
+    let offsetSesiones = 0
+    let doneSesiones = false
+
+    while (!doneSesiones) {
+      const { data, error } = await supabase
+        .from('sesiones')
+        .select(`
+          id,
+          test_id,
+          candidato_id,
+          proceso_id,
+          estado,
+          finalizada_en,
+          puntaje_bruto,
+          candidatos (id, nombre, apellido, email),
+          procesos (id, nombre, cargo, competencias_requeridas, bateria_tests)
+        `)
+        .order('finalizada_en', { ascending: false })
+        .range(offsetSesiones, offsetSesiones + limit - 1)
+
+      if (error || !data || data.length === 0) {
+        doneSesiones = true
+      } else {
+        sesionesData = [...sesionesData, ...data]
+        if (data.length < limit) {
+          doneSesiones = true
+        } else {
+          offsetSesiones += limit
+        }
+      }
+    }
     
     if (sesionesData) setSesionesGlobales(sesionesData)
 
