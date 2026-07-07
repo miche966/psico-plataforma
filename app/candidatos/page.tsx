@@ -193,6 +193,15 @@ export default function CandidatosPage() {
     })
   }
 
+  function obtenerFechaRealizacion(candidatoId: string) {
+    const sesionesCand = sesionesData.filter(s => s.candidato_id === candidatoId && s.finalizada_en)
+    if (sesionesCand.length === 0) return null
+    
+    const fechas = sesionesCand.map(s => new Date(s.finalizada_en).getTime())
+    const maxFecha = Math.max(...fechas)
+    return new Date(maxFecha).toISOString()
+  }
+
   const candidatosFiltrados = candidatos.filter(c => {
     const searchMatch = `${c.nombre} ${c.apellido}`.toLowerCase().includes(filtro.toLowerCase()) || 
       c.email.toLowerCase().includes(filtro.toLowerCase()) ||
@@ -389,6 +398,7 @@ export default function CandidatosPage() {
                 <tr className="bg-slate-50/50 border-b border-slate-200">
                   <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Candidato</th>
                   <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Documento</th>
+                  <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Realización / Actividad</th>
                   <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Links de evaluación (Copiar)</th>
                   <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Acciones</th>
                 </tr>
@@ -447,6 +457,22 @@ export default function CandidatosPage() {
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-600">
                       {candidato.documento || <span className="text-slate-300">—</span>}
+                    </td>
+                    <td className="px-5 py-4 text-sm text-slate-600">
+                      {(() => {
+                        const fechaRealizado = obtenerFechaRealizacion(candidato.id)
+                        if (fechaRealizado) {
+                          return (
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-slate-700">{formatearFecha(fechaRealizado)}</span>
+                              <span className="text-[10px] text-slate-400">
+                                {new Date(fechaRealizado).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })} hs
+                              </span>
+                            </div>
+                          )
+                        }
+                        return <span className="text-slate-400 italic text-xs">Sin actividad</span>
+                      })()}
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex flex-wrap gap-2 max-w-[400px]">
