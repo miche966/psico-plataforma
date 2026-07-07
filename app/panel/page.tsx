@@ -912,6 +912,10 @@ export default function PanelEvaluador() {
     // 2. Filtro por búsqueda de texto
     const searchStr = `${c.nombre} ${c.apellido} ${c.email} ${c.proceso_nombre}`.toLowerCase()
     return searchStr.includes(filtro.toLowerCase())
+  }).sort((a, b) => {
+    const tA = a.ultima_fecha ? new Date(a.ultima_fecha).getTime() : 0
+    const tB = b.ultima_fecha ? new Date(b.ultima_fecha).getTime() : 0
+    return tB - tA
   })
 
   if (cargando) {
