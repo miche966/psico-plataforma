@@ -217,6 +217,11 @@ interface CandidatoAgrupado {
   nombre: string
   apellido: string
   email: string
+  documento?: string
+  edad?: string
+  sexo?: string
+  formacion?: string
+  profesion?: string
   sesiones: Sesion[]
   ultima_fecha: string
   proceso_id?: string
@@ -706,7 +711,7 @@ export default function PanelEvaluador() {
           candidato_id,
           proceso_id,
           procesos (id, nombre, cargo, competencias_requeridas, bateria_tests),
-          candidatos (id, nombre, apellido, email),
+          candidatos (id, nombre, apellido, email, documento, edad, sexo, formacion, profesion),
           creado_en
         `)
         .range(offsetVinculos, offsetVinculos + limit - 1)
@@ -739,7 +744,7 @@ export default function PanelEvaluador() {
           estado,
           finalizada_en,
           puntaje_bruto,
-          candidatos (id, nombre, apellido, email),
+          candidatos (id, nombre, apellido, email, documento, edad, sexo, formacion, profesion),
           procesos (id, nombre, cargo, competencias_requeridas, bateria_tests)
         `)
         .order('finalizada_en', { ascending: false })
@@ -790,6 +795,11 @@ export default function PanelEvaluador() {
           nombre: c.nombre,
           apellido: c.apellido,
           email: c.email,
+          documento: c.documento || '',
+          edad: c.edad || '',
+          sexo: c.sexo || '',
+          formacion: c.formacion || '',
+          profesion: c.profesion || '',
           sesiones: [],
           ultima_fecha: v.creado_en || '',
           proceso_id: p.id,
@@ -819,6 +829,11 @@ export default function PanelEvaluador() {
           nombre: c.nombre,
           apellido: c.apellido,
           email: c.email,
+          documento: c.documento || '',
+          edad: c.edad || '',
+          sexo: c.sexo || '',
+          formacion: c.formacion || '',
+          profesion: c.profesion || '',
           sesiones: [],
           ultima_fecha: s.finalizada_en || s.creado_en,
           proceso_id: s.proceso_id || undefined,
@@ -901,6 +916,134 @@ export default function PanelEvaluador() {
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  function exportarPeopleAnalyticsCSV() {
+    if (candidatosFiltrados.length === 0) {
+      alert("No hay candidatos disponibles para exportar con los filtros actuales.")
+      return
+    }
+
+    const headers = [
+      "ID Candidato",
+      "Nombre",
+      "Apellido",
+      "Email",
+      "Documento",
+      "Edad",
+      "Sexo",
+      "Formacion",
+      "Profesion",
+      "Proceso",
+      "Cargo",
+      "Tests Completados",
+      "Tests Totales",
+      "Progreso %",
+      "Match Score %",
+      "Alertas Fraude",
+      "Estabilidad Emocional (BF)",
+      "Amabilidad (BF)",
+      "Extraversion (BF)",
+      "Responsabilidad (BF)",
+      "Apertura (BF)",
+      "Efectividad Cognitiva %"
+    ]
+
+    const rows = candidatosFiltrados.map(c => {
+      // 1. Calcular alertas de fraude acumuladas
+      let alertasFraude = 0
+      c.sesiones.forEach(s => {
+        const m = s.puntaje_bruto?.metricas_fraude as any
+        if (m) {
+          alertasFraude += (m.tabSwitches || 0) + (m.copyPasteAttempts || 0)
+        }
+      })
+
+      // 2. Extraer rasgos de Big Five
+      const sesionBigFive = c.sesiones.find(s => TEST_IDS[s.test_id] === 'bigfive')
+      const bf = (sesionBigFive?.puntaje_bruto || {}) as any
+      
+      let estabilidadEmocional = "—"
+      if (bf.estabilidad_emocional != null) {
+        estabilidadEmocional = String(bf.estabilidad_emocional)
+      } else if (bf.estabilidad != null) {
+        estabilidadEmocional = String(bf.estabilidad)
+      } else if (bf.neuroticismo != null) {
+        estabilidadEmocional = String(6 - Number(bf.neuroticismo))
+      }
+      
+      const amabilidad = bf.amabilidad != null ? bf.amabilidad : "—"
+      const extraversion = bf.extraversion != null ? bf.extraversion : "—"
+      const responsabilidad = bf.responsabilidad != null ? bf.responsabilidad : "—"
+      const apertura = bf.apertura != null ? bf.apertura : "—"
+
+      // 3. Calcular efectividad cognitiva consolidada
+      let correctasCognitivo = 0
+      let totalCognitivo = 0
+
+      c.sesiones.forEach(s => {
+        const slug = TEST_IDS[s.test_id]
+        if (s.estado === 'finalizado' && (slug === 'icar' || slug === 'numerico' || slug === 'verbal' || slug === 'comercial' || slug === 'atencion-detalle')) {
+          const correctas = s.puntaje_bruto?.correctas || s.puntaje_bruto?.puntaje || 0
+          const total = s.puntaje_bruto?.total || 10
+          correctasCognitivo += Number(correctas)
+          totalCognitivo += Number(total)
+        }
+      })
+
+      const efectividadCognitiva = totalCognitivo > 0 
+        ? Math.round((correctasCognitivo / totalCognitivo) * 100) 
+        : "—"
+
+      const progresoPorcentaje = c.progreso 
+        ? Math.round((c.progreso.completados / c.progreso.total) * 100)
+        : 0
+
+      return [
+        c.id,
+        c.nombre || "—",
+        c.apellido || "—",
+        c.email || "—",
+        c.documento || "—",
+        c.edad || "—",
+        c.sexo || "—",
+        c.formacion || "—",
+        c.profesion || "—",
+        c.proceso_nombre || "—",
+        c.proceso_cargo || "—",
+        c.progreso?.completados || 0,
+        c.progreso?.total || 0,
+        `${progresoPorcentaje}%`,
+        c.matchScore != null ? `${c.matchScore}%` : "—",
+        alertasFraude,
+        estabilidadEmocional,
+        amabilidad,
+        extraversion,
+        responsabilidad,
+        apertura,
+        efectividadCognitiva !== "—" ? `${efectividadCognitiva}%` : "—"
+      ]
+    })
+
+    // Construir el CSV
+    const csvContent = [
+      headers.join(";"),
+      ...rows.map(row => row.map(val => {
+        const cleanVal = String(val).replace(/;/g, ",").replace(/\r?\n|\r/g, " ")
+        return `"${cleanVal}"`
+      }).join(";"))
+    ].join("\n")
+
+    // Descarga del archivo con UTF-8 BOM
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute("download", `Reporte_People_Analytics_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   async function enviarRecordatorio(c: CandidatoAgrupado) {
@@ -1184,6 +1327,14 @@ export default function PanelEvaluador() {
           className="px-4 py-2 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-600 bg-slate-50/50 hover:bg-slate-50 transition-all shrink-0 w-full md:w-auto"
         >
           {candidatosFiltrados.map(c => c.id).length === seleccionados.length ? 'Deseleccionar Todos' : 'Seleccionar Todos'}
+        </button>
+
+        <button
+          onClick={exportarPeopleAnalyticsCSV}
+          className="px-4 py-2 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-600 bg-slate-50/50 hover:bg-slate-50 transition-all shrink-0 w-full md:w-auto flex items-center justify-center gap-1.5"
+        >
+          <Download className="w-3.5 h-3.5 text-indigo-500" />
+          Exportar People Analytics
         </button>
 
         {/* DROPDOWN SELECTOR DE CANDIDATOS */}
