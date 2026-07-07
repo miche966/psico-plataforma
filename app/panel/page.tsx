@@ -719,6 +719,7 @@ export default function PanelEvaluador() {
         procesos (id, nombre, cargo, competencias_requeridas, bateria_tests)
       `)
       .order('finalizada_en', { ascending: false })
+      .range(0, 9999)
     
     if (sesionesData) setSesionesGlobales(sesionesData)
 
