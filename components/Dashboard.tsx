@@ -55,7 +55,7 @@ export default function Dashboard() {
           chunks.map(chunk =>
             supabase
               .from('sesiones')
-              .select('*, candidatos(id), procesos(id, nombre)')
+              .select('*, candidatos(id), procesos(id, nombre, bateria_tests)')
               .in('candidato_id', chunk)
           )
         )
@@ -66,9 +66,65 @@ export default function Dashboard() {
         console.error('Error chunking dashboard sessions load:', err)
       }
 
+      // Agrupación de progreso real por candidato para estadísticas fidedignas
+      const TEST_IDS_MAP: Record<string, string> = {
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890': 'bigfive',
+        'f6a7b8c9-d0e1-2345-fabc-456789012345': 'icar',
+        'd0e1f2a3-b4c5-6789-defa-000000000001': 'estres-laboral',
+        'e1f2a3b4-c5d6-7890-efab-111222333444': 'creatividad',
+        'e5f6a7b8-c9d0-1234-efab-345678901234': 'integridad',
+        'b2c3d4e5-f6a7-8901-bcde-f12345678901': 'hexaco',
+        'c3d4e5f6-a7b8-9012-cdef-123456789012': 'numerico',
+        'd4e5f6a7-b8c9-0123-defa-234567890123': 'verbal',
+        'a7b8c9d0-e1f2-3456-abcd-777777777777': 'sjt-ventas',
+        'e5f6a7b8-c9d0-1234-efab-555555555555': 'tolerancia-frustracion',
+        'f2a3b4c5-d6e7-8901-fabc-222333444555': 'sjt-problemas',
+        'c9d0e1f2-a3b4-5678-cdef-999999999999': 'sjt-legal',
+        'b2c3d4e5-f6a7-8901-bcde-222222222222': 'sjt-comercial',
+        'a1b2c3d4-e5f6-7890-abcd-111111111111': 'comercial',
+        'b8c9d0e1-f2a3-4567-bcde-888888888888': 'atencion-detail',
+        'f6a7b8c9-d0e1-2345-fabc-666666666666': 'sjt-atencion',
+        '7a8b9c0d-e1f2-4356-abcd-999999999999': 'dass21',
+        'e9b2c3d4-f5a6-7890-bcde-999999999999': 'sjt-cobranzas',
+        'f7a8b9c0-d1e2-4356-abcd-888888888888': 'frases-incompletas',
+      }
+
+      const candidatosStats: Record<string, { completados: Set<string>; total: number }> = {}
+      sesiones.forEach(s => {
+        const cId = s.candidato_id
+        if (!cId) return
+
+        if (!candidatosStats[cId]) {
+          const bateria = s.procesos?.bateria_tests || []
+          candidatosStats[cId] = {
+            completados: new Set(),
+            total: (bateria.filter((b: string) => !b.startsWith('entrevista:')).length) || 1
+          }
+        }
+
+        const slug = TEST_IDS_MAP[s.test_id] || s.test_id
+        if (s.estado === 'finalizado') {
+          candidatosStats[cId].completados.add(slug)
+        }
+      })
+
+      let parcialesCount = 0
+      let terminadosCount = 0
+
+      Object.values(candidatosStats).forEach(c => {
+        const compCount = c.completados.size
+        if (compCount === 0) return
+
+        if (compCount >= c.total) {
+          terminadosCount++
+        } else {
+          parcialesCount++
+        }
+      })
+
       // 1. Resumen General
       const totalCandidatos = candidatos?.length || 0
-      const terminados = new Set(sesiones.filter(s => s.estado === 'completado').map(s => s.candidato_id)).size
+      const terminados = terminadosCount
       
       let totalAlertas = 0
       let tiempos: number[] = []
@@ -95,7 +151,7 @@ export default function Dashboard() {
       // 3. Embudo de Reclutamiento (Candidatos Únicos)
       const invitados = new Set(sesiones.map(s => s.candidato_id)).size
       const iniciaron = new Set(sesiones.filter(s => s.test_id).map(s => s.candidato_id)).size
-      const avanceParcial = new Set(sesiones.filter(s => s.estado === 'completado').map(s => s.candidato_id)).size
+      const avanceParcial = parcialesCount
       
       const abandono = [
         { name: 'Candidatos Invitados', valor: invitados },
