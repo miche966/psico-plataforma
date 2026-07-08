@@ -359,7 +359,7 @@ export default function CrearPreguntasPage() {
                  const textoLimpio = txt.replace(/^\[CON_EXP\]\s*|^\[SIN_EXP\]\s*|^\[GENERAL\]\s*/i, '')
 
                  return (
-                   <div key={pregunta.id} style={{ ...s.preguntaCard, border: editandoPreguntaId === pregunta.id ? '1px solid #2563eb' : '1px solid #e2e8f0' }}>
+                   <div key={pregunta.id} style={{ ...s.preguntaCard, borderColor: editandoPreguntaId === pregunta.id ? '#2563eb' : '#e2e8f0', borderWidth: editandoPreguntaId === pregunta.id ? '2px' : '1px' }}>
                      <div style={s.preguntaNum}>{index + 1}</div>
                      <div style={s.preguntaContenido}>
                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', flexWrap: 'wrap' }}>
@@ -521,7 +521,7 @@ const s = {
   seccionTitulo: { fontSize: '11px', fontWeight: '500', textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.75rem' } as React.CSSProperties,
   vacio: { textAlign: 'center' as const, padding: '2rem', color: '#64748b', fontSize: '0.875rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' } as React.CSSProperties,
   listaPreguntas: { display: 'flex', flexDirection: 'column' as const, gap: '0.75rem' } as React.CSSProperties,
-  preguntaCard: { display: 'flex', gap: '10px', alignItems: 'flex-start', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.875rem' } as React.CSSProperties,
+  preguntaCard: { display: 'flex', gap: '10px', alignItems: 'flex-start', background: '#fff', borderWidth: '1px', borderStyle: 'solid', borderColor: '#e2e8f0', borderRadius: '10px', padding: '0.875rem' } as React.CSSProperties,
   preguntaNum: { display: 'inline-flex', width: '24px', height: '24px', borderRadius: '50%', background: '#E6F1FB', color: '#0C447C', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '600', flexShrink: 0 } as React.CSSProperties,
   preguntaContenido: { flex: 1 } as React.CSSProperties,
   preguntaTexto: { fontSize: '0.875rem', color: '#1e293b', lineHeight: '1.5', marginBottom: '4px' } as React.CSSProperties,
