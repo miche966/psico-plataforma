@@ -142,8 +142,13 @@ export default function PortalCandidatoPage() {
       setCandidato(cand)
       setProceso(proc)
       
+      // Reordenamiento estratégico: Colocar cualquier video entrevista al principio de la batería
+      // para obligar al candidato a realizarla como primer paso ineludible.
       const bat = proc.bateria_tests || []
-      setBateria(bat)
+      const entrevistas = bat.filter((t: string) => t.startsWith('entrevista:'))
+      const otrosTests = bat.filter((t: string) => !t.startsWith('entrevista:'))
+      const batReordenada = [...entrevistas, ...otrosTests]
+      setBateria(batReordenada)
 
       // Determinar si mostrar setup (si es la primera vez o hay entrevistas)
       const yaMostro = localStorage.getItem(`setup_done_${candidatoId}`)
