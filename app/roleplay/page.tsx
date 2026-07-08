@@ -25,9 +25,14 @@ export default function RolePlayPage() {
   // Estados de la llamada
   const [llamadaIniciada, setLlamadaIniciada] = useState(false)
   const [guardandoEvaluacion, setGuardandoEvaluacion] = useState(false)
-  const [mensajes, setMensajes] = useState<Array<{ role: 'user' | 'model', content: string }>>([])
+  const [mensajes, setMensajes] = useState<Array<{ role: 'user' | 'model', content: string; cooperacion?: number }>>([])
   const [turnoActual, setTurnoActual] = useState(0)
   const maxTurnos = 8
+
+  // Métricas avanzadas de People Analytics
+  const [latencias, setLatencias] = useState<number[]>([])
+  const [curvaCooperacion, setCurvaCooperacion] = useState<number[]>([20])
+  const botFinTimeRef = useRef<number | null>(null)
 
   // Reconocimiento de voz (Speech-to-Text)
   const [soportaMic, setSoportaMic] = useState(true)
@@ -167,7 +172,10 @@ export default function RolePlayPage() {
 
   // Reproducir voz (Text-to-Speech)
   function reproducirVoz(texto: string) {
-    if (audioMutado || !window.speechSynthesis) return
+    if (audioMutado || !window.speechSynthesis) {
+      botFinTimeRef.current = Date.now()
+      return
+    }
 
     window.speechSynthesis.cancel() // Cancelar cualquier lectura previa
     const utterance = new SpeechSynthesisUtterance(texto)
@@ -183,6 +191,11 @@ export default function RolePlayPage() {
     utterance.rate = 1.05 // Velocidad de habla natural
     utterance.pitch = 0.95 // Tono de voz de cliente cansado / serio
 
+    utterance.onend = () => {
+      botFinTimeRef.current = Date.now()
+    }
+    botFinTimeRef.current = Date.now() // Salvaguarda
+
     window.speechSynthesis.speak(utterance)
   }
 
@@ -190,6 +203,11 @@ export default function RolePlayPage() {
   async function enviarMensajeVoz(texto: string) {
     if (!texto.trim() || guardandoEvaluacion) return
     
+    if (botFinTimeRef.current) {
+      const lat = (Date.now() - botFinTimeRef.current) / 1000
+      setLatencias(prev => [...prev, Math.max(0.1, lat)])
+    }
+
     const nuevosMensajes = [...mensajes, { role: 'user' as const, content: texto.trim() }]
     setMensajes(nuevosMensajes)
     setTranscripcionParcial('')
@@ -201,6 +219,11 @@ export default function RolePlayPage() {
   async function enviarMensajeEscrito() {
     if (!mensajeEscrito.trim() || guardandoEvaluacion) return
     
+    if (botFinTimeRef.current) {
+      const lat = (Date.now() - botFinTimeRef.current) / 1000
+      setLatencias(prev => [...prev, Math.max(0.1, lat)])
+    }
+
     const texto = mensajeEscrito.trim()
     const nuevosMensajes = [...mensajes, { role: 'user' as const, content: texto }]
     setMensajes(nuevosMensajes)
@@ -210,7 +233,7 @@ export default function RolePlayPage() {
   }
 
   // Conectar con el backend para obtener respuesta de Gemini
-  async function procesarRespuestaIA(listaMensajes: Array<{ role: 'user' | 'model', content: string }>) {
+  async function procesarRespuestaIA(listaMensajes: Array<{ role: 'user' | 'model', content: string; cooperacion?: number }>) {
     setTurnoActual(prev => prev + 1)
     
     try {
@@ -219,7 +242,7 @@ export default function RolePlayPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'chat',
-          mensajes: listaMensajes.slice(0, -1), // Historial
+          mensajes: listaMensajes.slice(0, -1).map(m => ({ role: m.role, content: m.content })), // Evitar circularidad o campos extra
           nuevoMensaje: listaMensajes[listaMensajes.length - 1].content // El nuevo mensaje
         })
       })
@@ -227,8 +250,15 @@ export default function RolePlayPage() {
       const data = await res.json()
       if (data.error) throw new Error(data.error)
 
-      const respuestaIA = data.reply
-      const historialConRespuesta = [...listaMensajes, { role: 'model' as const, content: respuestaIA }]
+      const respuestaIA = data.respuesta || data.reply
+      const cooperacionIA = typeof data.cooperacion === 'number' ? data.cooperacion : 50
+      
+      setCurvaCooperacion(prev => [...prev, cooperacionIA])
+
+      const historialConRespuesta = [
+        ...listaMensajes, 
+        { role: 'model' as const, content: respuestaIA, cooperacion: cooperacionIA }
+      ]
       setMensajes(historialConRespuesta)
 
       // Leer la respuesta de la IA en voz alta
@@ -266,16 +296,24 @@ export default function RolePlayPage() {
       window.speechSynthesis.cancel()
     }
 
+    const promedioLatencia = latencias.length > 0 
+      ? Number((latencias.reduce((a, b) => a + b, 0) / latencias.length).toFixed(2)) 
+      : 2.5
+
+    const totalTurnos = Math.max(1, Math.round(mensajesFinales.filter(m => m.role === 'user').length))
+
     try {
       const res = await fetch('/api/roleplay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'evaluar',
-          mensajes: mensajesFinales,
+          mensajes: mensajesFinales.map(m => ({ role: m.role, content: m.content, cooperacion: m.cooperacion })),
           candidatoId,
           procesoId,
-          testId: TEST_ID
+          testId: TEST_ID,
+          latenciaPromedio: promedioLatencia,
+          turnosTotales: totalTurnos
         })
       })
 

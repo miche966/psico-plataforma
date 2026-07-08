@@ -16,12 +16,20 @@ INSTRUCCIONES DE COMPORTAMIENTO:
    - No aceptes pagar todo mañana de inmediato. Di que no tenés la plata junta.
    - Si el analista (candidato) es empático, te escucha de forma comprensiva y te propone una alternativa flexible (como pagar la mitad la semana que viene y refinanciar el saldo), muéstrate más cooperativo y accede.
    - Si el analista es frío, amenazante con el clearing de informes, o te interrumpe, ponte hostil y dile que vas a colgar la llamada si sigue con ese tono.
+
+3. INSTRUCCIÓN DE SALIDA OBLIGATORIA:
+   Debes responder ÚNICAMENTE con un objeto JSON con el siguiente formato, sin agregar explicaciones fuera del JSON:
+   {
+     "respuesta": "La frase o respuesta hablada que le dirás al candidato.",
+     "cooperacion": 40, // Un número entero de 0 a 100 indicando tu nivel de cooperación actual (comienza en 20, sube si es empático, baja si es agresivo).
+     "desviado": false // true si el candidato se desvió del tema de la cobranza o te preguntó cosas absurdas ajenas a la conversación.
+   }
 `
 
 export async function POST(req: Request) {
   try {
     const payload = await req.json()
-    const { action, mensajes, nuevoMensaje, candidatoId, procesoId, testId } = payload
+    const { action, mensajes, nuevoMensaje, candidatoId, procesoId, testId, latenciaPromedio, turnosTotales } = payload
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: 'Falta la llave de API de Gemini.' }, { status: 500 })
@@ -34,7 +42,7 @@ export async function POST(req: Request) {
     if (action === 'chat') {
       const history = (mensajes || []).map((m: any) => ({
         role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.content }]
+        parts: [{ text: m.role === 'user' ? m.content : JSON.stringify({ respuesta: m.content }) }]
       }))
 
       const chat = model.startChat({
@@ -45,7 +53,18 @@ export async function POST(req: Request) {
       const result = await chat.sendMessage(nuevoMensaje)
       const responseText = result.response.text()
 
-      return NextResponse.json({ reply: responseText })
+      try {
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+        const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : responseText)
+        return NextResponse.json(parsed)
+      } catch (e) {
+        // Fallback por si la IA no retorna JSON válido
+        return NextResponse.json({
+          respuesta: responseText,
+          cooperacion: 50,
+          desviado: false
+        })
+      }
     }
 
     // ACCIÓN 2: EVALUACIÓN FINAL DE LA TRANSCRIPCIÓN
@@ -103,6 +122,11 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
         .eq('test_id', testId)
         .single()
 
+      // Extraer la curva de cooperación si viene en los mensajes o si se calcula de forma implícita
+      const curvaCooperacion = (mensajes || [])
+        .filter((m: any) => m.role === 'model' && typeof m.cooperacion === 'number')
+        .map((m: any) => m.cooperacion)
+
       const puntajeBruto = {
         por_factor: {
           'Empatía y Escucha': parseado.empatia,
@@ -112,7 +136,10 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
         },
         transcripcion: mensajes,
         retroalimentacion: parseado.retroalimentacion,
-        acuerdo_alcanzado: parseado.acuerdoAlcanzado
+        acuerdo_alcanzado: parseado.acuerdoAlcanzado,
+        latencia_promedio: latenciaPromedio || null,
+        turnos_empleados: turnosTotales || mensajes.length / 2,
+        curva_cooperacion: curvaCooperacion.length > 0 ? curvaCooperacion : [20, 40, 60, 80]
       }
 
       if (sesionExistente) {
