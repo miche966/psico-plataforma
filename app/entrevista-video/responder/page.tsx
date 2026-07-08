@@ -23,6 +23,8 @@ type Estado = 'bienvenida' | 'preparacion' | 'grabando' | 'confirmacion' | 'fina
 export default function ResponderPage() {
   const [entrevista, setEntrevista] = useState<Entrevista | null>(null)
   const [preguntas, setPreguntas] = useState<Pregunta[]>([])
+  const [todasLasPreguntas, setTodasLasPreguntas] = useState<Pregunta[]>([])
+  const [tieneExperiencia, setTieneExperiencia] = useState<boolean | null>(null)
   const [preguntaActual, setPreguntaActual] = useState(0)
   const [estado, setEstado] = useState<Estado>('bienvenida')
   const enEvaluacion = useEvaluacionRedirect(estado === 'finalizado')
@@ -86,7 +88,42 @@ export default function ResponderPage() {
       .from('preguntas_video').select('*')
       .eq('entrevista_id', entrevistaId).order('orden')
     setPreguntas(preguntasData || [])
+    setTodasLasPreguntas(preguntasData || [])
     setCargando(false)
+  }
+
+  function seleccionarExperiencia(siTiene: boolean) {
+    setTieneExperiencia(siTiene)
+    const filtradas = todasLasPreguntas.filter(p => {
+      const txt = p.pregunta || ''
+      if (txt.startsWith('[CON_EXP]')) return siTiene === true
+      if (txt.startsWith('[SIN_EXP]')) return siTiene === false
+      return true
+    })
+    setPreguntas(filtradas)
+  }
+
+  async function iniciarCamaraConExperiencia(siTiene: boolean) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        videoRef.current.muted = true
+      }
+      setEstado('preparacion')
+      
+      const filtradas = todasLasPreguntas.filter(p => {
+        const txt = p.pregunta || ''
+        if (txt.startsWith('[CON_EXP]')) return siTiene === true
+        if (txt.startsWith('[SIN_EXP]')) return siTiene === false
+        return true
+      })
+      setPreguntas(filtradas)
+      setTiempoRestante(filtradas[0]?.tiempo_preparacion || 30)
+    } catch {
+      alert('No se pudo acceder a la cámara. Verificá los permisos del navegador.')
+    }
   }
 
   async function iniciarCamara() {
@@ -289,13 +326,16 @@ export default function ResponderPage() {
       setTiempoRestante(preguntas[preguntaActual + 1]?.tiempo_preparacion || 30)
     }
   }
-
   function repetirGrabacion() {
     chunksRef.current = []
     setChunks([])
     setEstado('preparacion')
     setTiempoRestante(preguntas[preguntaActual]?.tiempo_preparacion || 30)
   }
+
+  const tienePreguntasCondicionales = todasLasPreguntas.some((p: any) => 
+    (p.pregunta || '').startsWith('[CON_EXP]') || (p.pregunta || '').startsWith('[SIN_EXP]')
+  )
 
   if (cargando) return <div style={s.centro}><p>Cargando entrevista...</p></div>
 
@@ -317,10 +357,12 @@ export default function ResponderPage() {
       </p>
       <div style={s.contactoBox}>
         <p style={s.contactoTitulo}>Próximos pasos</p>
-        <p style={s.contactoTexto}>El equipo de selección revisará tus respuestas y se pondrá en contacto a la brevedad.</p>
+        <p style={s.contactoTexto}>
+          El equipo de selección analizará tus respuestas a la brevedad. Si tenés dudas, podés contactarnos:
+        </p>
         <div style={s.contactoDetalle}>
-          <p style={s.contactoItem}>📧 <a href="mailto:seleccion@republicamicrofinanzas.com.uy" style={s.link}>seleccion@republicamicrofinanzas.com.uy</a></p>
-          <p style={s.contactoItem}>💬 WhatsApp: <a href="https://wa.me/598092651770" style={s.link}>092 651 770</a></p>
+          <p style={s.contactoItem}>📧 seleccion@republicamicrofinanzas.com.uy</p>
+          <p style={s.contactoItem}>💬 WhatsApp: 092 651 770</p>
         </div>
       </div>
     </div>
@@ -335,10 +377,10 @@ export default function ResponderPage() {
       {estado !== 'bienvenida' && (
         <div style={s.encabezado}>
           <div style={s.encabezadoTop}>
-            <span style={s.testNombre}>Entrevista en Video — {entrevista.nombre}</span>
-            {estado !== 'confirmacion' && (
-              <span style={{ ...s.cronometro, color: tiempoColor }}>{tiempoRestante}s</span>
-            )}
+            <span style={s.testNombre}>Entrevista en Video</span>
+            <div style={{ ...s.cronometro, color: tiempoColor }}>
+              {tiempoRestante}s
+            </div>
           </div>
           <div style={s.progresoInfo}>
             <span style={s.progresoTexto}>Pregunta {preguntaActual + 1} de {preguntas.length}</span>
@@ -368,9 +410,36 @@ export default function ResponderPage() {
             <div style={s.instruccionItem}>🔄 Podés repetir cada respuesta si no quedás conforme</div>
             <div style={s.instruccionItem}>📋 Son {preguntas.length} pregunta{preguntas.length !== 1 ? 's' : ''} en total</div>
           </div>
-          <button style={s.botonGrande} onClick={iniciarCamara}>
-            Comenzar entrevista
-          </button>
+          
+          {tienePreguntasCondicionales && tieneExperiencia === null ? (
+            <div style={s.selectorExperienciaBox}>
+              <p style={s.selectorExperienciaTitulo}>Antes de iniciar, seleccioná tu perfil de experiencia laboral:</p>
+              <div style={s.botonesExperiencia}>
+                <button 
+                  style={{ ...s.botonGrande, background: '#2563eb', marginBottom: '12px' }} 
+                  onClick={() => {
+                    seleccionarExperiencia(true)
+                    iniciarCamaraConExperiencia(true)
+                  }}
+                >
+                  💼 Tengo experiencia laboral
+                </button>
+                <button 
+                  style={{ ...s.botonGrande, background: '#0284c7' }} 
+                  onClick={() => {
+                    seleccionarExperiencia(false)
+                    iniciarCamaraConExperiencia(false)
+                  }}
+                >
+                  🎓 No tengo experiencia laboral previa
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button style={s.botonGrande} onClick={iniciarCamara}>
+              Comenzar entrevista
+            </button>
+          )}
         </div>
       )}
 
@@ -378,7 +447,7 @@ export default function ResponderPage() {
         <>
           <div style={s.preguntaBox}>
             <div style={s.preguntaLabel}>Pregunta {preguntaActual + 1}</div>
-            <p style={s.preguntaTexto}>{pregunta.pregunta}</p>
+            <p style={s.preguntaTexto}>{(pregunta.pregunta || '').replace(/^\[CON_EXP\]\s*|^\[SIN_EXP\]\s*|^\[GENERAL\]\s*/i, '')}</p>
           </div>
 
           <div style={s.videoWrapper}>
@@ -461,6 +530,9 @@ export default function ResponderPage() {
 
 const s = {
   centro: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' } as React.CSSProperties,
+  selectorExperienciaBox: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.5rem', marginTop: '1.5rem', textAlign: 'center' as const } as React.CSSProperties,
+  selectorExperienciaTitulo: { fontSize: '0.9rem', fontWeight: '700', color: '#334155', marginBottom: '1.25rem' } as React.CSSProperties,
+  botonesExperiencia: { display: 'flex', flexDirection: 'column' as const, gap: '0.5rem', maxWidth: '360px', margin: '0 auto' } as React.CSSProperties,
   contenedor: { maxWidth: '680px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' } as React.CSSProperties,
   encabezado: { marginBottom: '1.5rem' } as React.CSSProperties,
   encabezadoTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' } as React.CSSProperties,
