@@ -281,9 +281,20 @@ export default function CrearPreguntasPage() {
                       <div style={s.arbolColumnaVacia}>Sin preguntas configuradas</div>
                     ) : (
                       preguntas.filter(p => (p.pregunta || '').startsWith('[CON_EXP]')).map((p, index) => {
+                        const esEditando = editandoPreguntaId === p.id
                         const textoLimpio = p.pregunta.replace(/^\[CON_EXP\]\s*/i, '')
                         return (
-                          <div key={p.id} style={{ ...s.arbolPreguntaCard, borderLeft: '3px solid #2563eb', border: editandoPreguntaId === p.id ? '2px solid #2563eb' : '' }} onClick={() => iniciarEdicion(p)}>
+                          <div 
+                            key={p.id} 
+                            style={{ 
+                              ...s.arbolPreguntaCard, 
+                              borderLeft: '3px solid #2563eb',
+                              borderTop: esEditando ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                              borderRight: esEditando ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                              borderBottom: esEditando ? '2px solid #2563eb' : '1px solid #e2e8f0'
+                            }} 
+                            onClick={() => iniciarEdicion(p)}
+                          >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
                               <div style={s.arbolPreguntaNum}>P{index + 1}</div>
                               <div style={{ display: 'flex', gap: '4px' }}>
@@ -309,9 +320,20 @@ export default function CrearPreguntasPage() {
                       <div style={s.arbolColumnaVacia}>Sin preguntas configuradas</div>
                     ) : (
                       preguntas.filter(p => (p.pregunta || '').startsWith('[SIN_EXP]')).map((p, index) => {
+                        const esEditando = editandoPreguntaId === p.id
                         const textoLimpio = p.pregunta.replace(/^\[SIN_EXP\]\s*/i, '')
                         return (
-                          <div key={p.id} style={{ ...s.arbolPreguntaCard, borderLeft: '3px solid #0e7490', border: editandoPreguntaId === p.id ? '2px solid #2563eb' : '' }} onClick={() => iniciarEdicion(p)}>
+                          <div 
+                            key={p.id} 
+                            style={{ 
+                              ...s.arbolPreguntaCard, 
+                              borderLeft: '3px solid #0e7490',
+                              borderTop: esEditando ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                              borderRight: esEditando ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                              borderBottom: esEditando ? '2px solid #2563eb' : '1px solid #e2e8f0'
+                            }} 
+                            onClick={() => iniciarEdicion(p)}
+                          >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
                               <div style={s.arbolPreguntaNum}>P{index + 1}</div>
                               <div style={{ display: 'flex', gap: '4px' }}>
@@ -474,7 +496,7 @@ const s = {
   arbolColumnaPreguntas: { padding: '10px', display: 'flex', flexDirection: 'column' as const, gap: '8px' } as React.CSSProperties,
   arbolColumnaVacia: { padding: '1.5rem', color: '#94a3b8', fontSize: '11px', fontStyle: 'italic' as const } as React.CSSProperties,
 
-  arbolPreguntaCard: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px', cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left' as const } as React.CSSProperties,
+  arbolPreguntaCard: { background: '#fff', borderRadius: '8px', padding: '8px', cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left' as const } as React.CSSProperties,
   arbolPreguntaCardComun: { background: '#fff', border: '1px solid #e2e8f0', borderTop: '3px solid #64748b', borderRadius: '8px', padding: '8px', cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left' as const } as React.CSSProperties,
   arbolPreguntaNum: { display: 'inline-flex', padding: '1px 6px', background: '#f1f5f9', color: '#475569', borderRadius: '4px', fontSize: '8px', fontWeight: '700', marginBottom: '4px' } as React.CSSProperties,
   arbolPreguntaTexto: { fontSize: '11px', color: '#1e293b', lineHeight: '1.4', marginBottom: '6px', fontWeight: '500' } as React.CSSProperties,
