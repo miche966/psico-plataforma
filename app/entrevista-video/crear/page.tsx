@@ -26,7 +26,7 @@ export default function CrearPreguntasPage() {
   const [nuevaPregunta, setNuevaPregunta] = useState('')
   const [tiempoPrep, setTiempoPrep] = useState('30')
   const [tiempoResp, setTiempoResp] = useState('60')
-  const [perfilCandidato, setPerfilCandidato] = useState<'general' | 'con_experiencia' | 'sin_experiencia'>('general')
+  const [perfilCandidato, setPerfilCandidato] = useState<'con_experiencia' | 'sin_experiencia'>('con_experiencia')
   const [vistaActiva, setVistaActiva] = useState<'arbol' | 'lista'>('arbol')
   const [guardando, setGuardando] = useState(false)
   const [linkCopiado, setLinkCopiado] = useState<string | null>(null)
@@ -103,10 +103,8 @@ export default function CrearPreguntasPage() {
 
     if (perfilCandidato === 'con_experiencia') {
       textoFinal = `[CON_EXP] ${textoFinal}`
-    } else if (perfilCandidato === 'sin_experiencia') {
-      textoFinal = `[SIN_EXP] ${textoFinal}`
     } else {
-      textoFinal = `[GENERAL] ${textoFinal}`
+      textoFinal = `[SIN_EXP] ${textoFinal}`
     }
 
     if (editandoPreguntaId) {
@@ -133,7 +131,7 @@ export default function CrearPreguntasPage() {
     setNuevaPregunta('')
     setTiempoPrep('30')
     setTiempoResp('60')
-    setPerfilCandidato('general')
+    setPerfilCandidato('con_experiencia')
     cargarDatos()
     setGuardando(false)
   }
@@ -146,7 +144,7 @@ export default function CrearPreguntasPage() {
 
   function iniciarEdicion(p: Pregunta) {
     const txt = p.pregunta || ''
-    let perfil: 'general' | 'con_experiencia' | 'sin_experiencia' = 'general'
+    let perfil: 'con_experiencia' | 'sin_experiencia' = 'con_experiencia'
     let textoLimpio = txt
 
     if (txt.startsWith('[CON_EXP]')) {
@@ -156,7 +154,7 @@ export default function CrearPreguntasPage() {
       perfil = 'sin_experiencia'
       textoLimpio = txt.replace(/^\[SIN_EXP\]\s*/, '')
     } else if (txt.startsWith('[GENERAL]')) {
-      perfil = 'general'
+      perfil = 'con_experiencia'
       textoLimpio = txt.replace(/^\[GENERAL\]\s*/, '')
     }
 
@@ -329,37 +327,6 @@ export default function CrearPreguntasPage() {
                   </div>
                 </div>
               </div>
-
-              {/* Conector Tronco Común */}
-              <div style={s.arbolConectorComun}>
-                <div style={s.arbolLineaVerticalComun} />
-              </div>
-
-              {/* Tronco Común - Preguntas Generales */}
-              <div style={s.arbolNodoComun}>
-                <div style={s.arbolNodoComunHeader}>
-                  📋 Preguntas Generales (Comunes a ambos perfiles)
-                </div>
-                <div style={s.arbolNodoComunPreguntas}>
-                  {preguntas.filter(p => (p.pregunta || '').startsWith('[GENERAL]') || (!(p.pregunta || '').startsWith('[CON_EXP]') && !(p.pregunta || '').startsWith('[SIN_EXP]'))).length === 0 ? (
-                    <div style={s.arbolColumnaVacia}>Sin preguntas configuradas</div>
-                  ) : (
-                    preguntas.filter(p => (p.pregunta || '').startsWith('[GENERAL]') || (!(p.pregunta || '').startsWith('[CON_EXP]') && !(p.pregunta || '').startsWith('[SIN_EXP]'))).map((p, index) => {
-                      const textoLimpio = p.pregunta.replace(/^\[GENERAL\]\s*/i, '')
-                      return (
-                        <div key={p.id} style={{ ...s.arbolPreguntaCardComun, border: editandoPreguntaId === p.id ? '2px solid #2563eb' : '1px solid #e2e8f0' }} onClick={() => iniciarEdicion(p)}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px', marginBottom: '4px' }}>
-                            <div style={{ ...s.arbolPreguntaNum, background: '#f1f5f9', color: '#475569' }}>PG{index + 1}</div>
-                            <button style={s.arbolBotonMini} onClick={(e) => { e.stopPropagation(); eliminarPregunta(p.id); }} title="Eliminar">✕</button>
-                          </div>
-                          <div style={s.arbolPreguntaTexto}>{textoLimpio}</div>
-                          <div style={s.arbolPreguntaMeta}>⏱ {p.tiempo_preparacion}s prep / {p.tiempo_respuesta}s resp</div>
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-              </div>
             </div>
           ) : (
             <div style={s.listaPreguntas}>
@@ -430,7 +397,6 @@ export default function CrearPreguntasPage() {
             <div style={s.campo}>
               <label style={s.label}>Perfil del Candidato (Ramificación) *</label>
               <select style={s.input} value={perfilCandidato} onChange={e => setPerfilCandidato(e.target.value as any)}>
-                <option value="general">📋 General (Todos los candidatos)</option>
                 <option value="con_experiencia">💼 Con Experiencia Laboral</option>
                 <option value="sin_experiencia">🎓 Sin Experiencia Laboral</option>
               </select>
