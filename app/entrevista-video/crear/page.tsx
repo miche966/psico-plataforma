@@ -26,6 +26,7 @@ export default function CrearPreguntasPage() {
   const [nuevaPregunta, setNuevaPregunta] = useState('')
   const [tiempoPrep, setTiempoPrep] = useState('30')
   const [tiempoResp, setTiempoResp] = useState('60')
+  const [perfilCandidato, setPerfilCandidato] = useState<'general' | 'con_experiencia' | 'sin_experiencia'>('general')
   const [guardando, setGuardando] = useState(false)
   const [linkCopiado, setLinkCopiado] = useState<string | null>(null)
   const searchParams = useSearchParams()
@@ -95,11 +96,23 @@ export default function CrearPreguntasPage() {
     if (!nuevaPregunta.trim() || !entrevistaId) return
     setGuardando(true)
 
+    let textoFinal = nuevaPregunta.trim()
+    // Limpiar prefijos previos para evitar duplicaciones
+    textoFinal = textoFinal.replace(/^\[CON_EXP\]\s*|^\[SIN_EXP\]\s*|^\[GENERAL\]\s*/i, '')
+
+    if (perfilCandidato === 'con_experiencia') {
+      textoFinal = `[CON_EXP] ${textoFinal}`
+    } else if (perfilCandidato === 'sin_experiencia') {
+      textoFinal = `[SIN_EXP] ${textoFinal}`
+    } else {
+      textoFinal = `[GENERAL] ${textoFinal}`
+    }
+
     if (editandoPreguntaId) {
       // Actualizar existente
       await supabase.from('preguntas_video')
         .update({
-          pregunta: nuevaPregunta.trim(),
+          pregunta: textoFinal,
           tiempo_preparacion: parseInt(tiempoPrep),
           tiempo_respuesta: parseInt(tiempoResp)
         })
@@ -110,7 +123,7 @@ export default function CrearPreguntasPage() {
       await supabase.from('preguntas_video').insert({
         entrevista_id: entrevistaId,
         orden: preguntas.length + 1,
-        pregunta: nuevaPregunta.trim(),
+        pregunta: textoFinal,
         tiempo_preparacion: parseInt(tiempoPrep),
         tiempo_respuesta: parseInt(tiempoResp)
       })
@@ -119,6 +132,7 @@ export default function CrearPreguntasPage() {
     setNuevaPregunta('')
     setTiempoPrep('30')
     setTiempoResp('60')
+    setPerfilCandidato('general')
     cargarDatos()
     setGuardando(false)
   }
@@ -130,10 +144,26 @@ export default function CrearPreguntasPage() {
   }
 
   function iniciarEdicion(p: Pregunta) {
+    const txt = p.pregunta || ''
+    let perfil: 'general' | 'con_experiencia' | 'sin_experiencia' = 'general'
+    let textoLimpio = txt
+
+    if (txt.startsWith('[CON_EXP]')) {
+      perfil = 'con_experiencia'
+      textoLimpio = txt.replace(/^\[CON_EXP\]\s*/, '')
+    } else if (txt.startsWith('[SIN_EXP]')) {
+      perfil = 'sin_experiencia'
+      textoLimpio = txt.replace(/^\[SIN_EXP\]\s*/, '')
+    } else if (txt.startsWith('[GENERAL]')) {
+      perfil = 'general'
+      textoLimpio = txt.replace(/^\[GENERAL\]\s*/, '')
+    }
+
     setEditandoPreguntaId(p.id)
-    setNuevaPregunta(p.pregunta)
+    setNuevaPregunta(textoLimpio)
     setTiempoPrep(p.tiempo_preparacion.toString())
     setTiempoResp(p.tiempo_respuesta.toString())
+    setPerfilCandidato(perfil)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -210,33 +240,54 @@ export default function CrearPreguntasPage() {
             </div>
           ) : (
             <div style={s.listaPreguntas}>
-              {preguntas.map((pregunta, index) => (
-                <div key={pregunta.id} style={{ ...s.preguntaCard, border: editandoPreguntaId === pregunta.id ? '1px solid #2563eb' : '1px solid #e2e8f0' }}>
-                  <div style={s.preguntaNum}>{index + 1}</div>
-                  <div style={s.preguntaContenido}>
-                    <div style={s.preguntaTexto}>{pregunta.pregunta}</div>
-                    <div style={s.preguntaMeta}>
-                      Preparación: {pregunta.tiempo_preparacion}s · Respuesta: {pregunta.tiempo_respuesta}s
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      style={{ ...s.botonEliminar, color: '#64748b' }}
-                      onClick={() => iniciarEdicion(pregunta)}
-                      title="Editar pregunta"
-                    >
-                      ✎
-                    </button>
-                    <button
-                      style={s.botonEliminar}
-                      onClick={() => eliminarPregunta(pregunta.id)}
-                      title="Eliminar pregunta"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-              ))}
+               {preguntas.map((pregunta, index) => {
+                 const txt = pregunta.pregunta || ''
+                 const esConExp = txt.startsWith('[CON_EXP]')
+                 const esSinExp = txt.startsWith('[SIN_EXP]')
+                 const textoLimpio = txt.replace(/^\[CON_EXP\]\s*|^\[SIN_EXP\]\s*|^\[GENERAL\]\s*/i, '')
+
+                 return (
+                   <div key={pregunta.id} style={{ ...s.preguntaCard, border: editandoPreguntaId === pregunta.id ? '1px solid #2563eb' : '1px solid #e2e8f0' }}>
+                     <div style={s.preguntaNum}>{index + 1}</div>
+                     <div style={s.preguntaContenido}>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                         <span style={{
+                           fontSize: '8px',
+                           fontWeight: 'bold',
+                           padding: '2px 8px',
+                           borderRadius: '99px',
+                           background: esConExp ? '#eff6ff' : esSinExp ? '#ecfeff' : '#f1f5f9',
+                           color: esConExp ? '#1e40af' : esSinExp ? '#0e7490' : '#475569',
+                           border: esConExp ? '1px solid #bfdbfe' : esSinExp ? '1px solid #c5f2f7' : '1px solid #e2e8f0',
+                           textTransform: 'uppercase'
+                         }}>
+                           {esConExp ? '💼 Con Experiencia' : esSinExp ? '🎓 Sin Experiencia' : '📋 General'}
+                         </span>
+                       </div>
+                       <div style={s.preguntaTexto}>{textoLimpio}</div>
+                       <div style={s.preguntaMeta}>
+                         Preparación: {pregunta.tiempo_preparacion}s · Respuesta: {pregunta.tiempo_respuesta}s
+                       </div>
+                     </div>
+                     <div style={{ display: 'flex', gap: '8px' }}>
+                       <button
+                         style={{ ...s.botonEliminar, color: '#64748b' }}
+                         onClick={() => iniciarEdicion(pregunta)}
+                         title="Editar pregunta"
+                       >
+                         ✎
+                       </button>
+                       <button
+                         style={s.botonEliminar}
+                         onClick={() => eliminarPregunta(pregunta.id)}
+                         title="Eliminar pregunta"
+                       >
+                         ✕
+                       </button>
+                     </div>
+                   </div>
+                 )
+               })}
             </div>
           )}
         </div>
@@ -252,6 +303,14 @@ export default function CrearPreguntasPage() {
                 onChange={e => setNuevaPregunta(e.target.value)}
                 placeholder="Ej: Contanos sobre tu experiencia en atención al cliente..."
               />
+            </div>
+            <div style={s.campo}>
+              <label style={s.label}>Perfil del Candidato (Ramificación) *</label>
+              <select style={s.input} value={perfilCandidato} onChange={e => setPerfilCandidato(e.target.value as any)}>
+                <option value="general">📋 General (Todos los candidatos)</option>
+                <option value="con_experiencia">💼 Con Experiencia Laboral</option>
+                <option value="sin_experiencia">🎓 Sin Experiencia Laboral</option>
+              </select>
             </div>
             <div style={s.dosCols}>
               <div style={s.campo}>
