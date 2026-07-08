@@ -422,7 +422,7 @@ export default function ResponderPage() {
                     iniciarCamaraConExperiencia(true)
                   }}
                 >
-                  💼 Tengo experiencia laboral
+                  💼 Tengo experiencia laboral (Formal / Informal)
                 </button>
                 <button 
                   style={{ ...s.botonGrande, background: '#0284c7' }} 
