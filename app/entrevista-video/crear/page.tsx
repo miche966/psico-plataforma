@@ -27,6 +27,7 @@ export default function CrearPreguntasPage() {
   const [tiempoPrep, setTiempoPrep] = useState('30')
   const [tiempoResp, setTiempoResp] = useState('60')
   const [perfilCandidato, setPerfilCandidato] = useState<'general' | 'con_experiencia' | 'sin_experiencia'>('general')
+  const [vistaActiva, setVistaActiva] = useState<'arbol' | 'lista'>('arbol')
   const [guardando, setGuardando] = useState(false)
   const [linkCopiado, setLinkCopiado] = useState<string | null>(null)
   const searchParams = useSearchParams()
@@ -230,13 +231,135 @@ export default function CrearPreguntasPage() {
         </button>
       </div>
 
-      <div style={s.grid}>
+      <div style={{ ...s.grid, gridTemplateColumns: '1.25fr 0.75fr' }}>
         <div>
-          <div style={s.seccionTitulo}>Preguntas configuradas</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <div style={s.seccionTitulo}>Estructura de la Videoentrevista</div>
+            <div style={s.pestanas}>
+              <button 
+                style={{ ...s.botonPestana, ...(vistaActiva === 'arbol' ? s.botonPestanaActiva : {}) }}
+                onClick={() => setVistaActiva('arbol')}
+              >
+                🌿 Vista de Árbol
+              </button>
+              <button 
+                style={{ ...s.botonPestana, ...(vistaActiva === 'lista' ? s.botonPestanaActiva : {}) }}
+                onClick={() => setVistaActiva('lista')}
+              >
+                📋 Vista de Lista
+              </button>
+            </div>
+          </div>
+
           {preguntas.length === 0 ? (
             <div style={s.vacio}>
               <p>No hay preguntas todavía.</p>
-              <p>Agregá la primera desde el formulario.</p>
+              <p>Agregá la primera desde el formulario de la derecha para ver el mapa de ramificación.</p>
+            </div>
+          ) : vistaActiva === 'arbol' ? (
+            <div style={s.arbolContenedor}>
+              {/* Nodo Raíz */}
+              <div style={s.arbolNodoRaiz}>
+                <div style={s.arbolNodoRaizTitulo}>Vídeo Entrevista</div>
+                <div style={s.arbolNodoRaizSub}>{entrevista?.nombre}</div>
+              </div>
+
+              {/* Bifurcación horizontal */}
+              <div style={s.arbolBifurcacionLineas}>
+                <div style={s.arbolLineaIzquierda} />
+                <div style={s.arbolLineaVerticalCentral} />
+                <div style={s.arbolLineaDerecha} />
+              </div>
+
+              {/* Columnas Ramificadas */}
+              <div style={s.arbolColumnas}>
+                {/* Rama Con Experiencia */}
+                <div style={s.arbolColumna}>
+                  <div style={{ ...s.arbolColumnaHeader, borderBottom: '2px solid #2563eb', color: '#1e40af', background: '#eff6ff' }}>
+                    💼 Con Experiencia Laboral (Formal / Informal)
+                  </div>
+                  <div style={s.arbolColumnaPreguntas}>
+                    {preguntas.filter(p => (p.pregunta || '').startsWith('[CON_EXP]')).length === 0 ? (
+                      <div style={s.arbolColumnaVacia}>Sin preguntas configuradas</div>
+                    ) : (
+                      preguntas.filter(p => (p.pregunta || '').startsWith('[CON_EXP]')).map((p, index) => {
+                        const textoLimpio = p.pregunta.replace(/^\[CON_EXP\]\s*/i, '')
+                        return (
+                          <div key={p.id} style={{ ...s.arbolPreguntaCard, borderLeft: '3px solid #2563eb', border: editandoPreguntaId === p.id ? '2px solid #2563eb' : '' }} onClick={() => iniciarEdicion(p)}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
+                              <div style={s.arbolPreguntaNum}>P{index + 1}</div>
+                              <div style={{ display: 'flex', gap: '4px' }}>
+                                <button style={s.arbolBotonMini} onClick={(e) => { e.stopPropagation(); eliminarPregunta(p.id); }} title="Eliminar">✕</button>
+                              </div>
+                            </div>
+                            <div style={s.arbolPreguntaTexto}>{textoLimpio}</div>
+                            <div style={s.arbolPreguntaMeta}>⏱ {p.tiempo_preparacion}s prep / {p.tiempo_respuesta}s resp</div>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* Rama Sin Experiencia */}
+                <div style={s.arbolColumna}>
+                  <div style={{ ...s.arbolColumnaHeader, borderBottom: '2px solid #0e7490', color: '#0e7490', background: '#ecfeff' }}>
+                    🎓 Sin Experiencia Laboral previa
+                  </div>
+                  <div style={s.arbolColumnaPreguntas}>
+                    {preguntas.filter(p => (p.pregunta || '').startsWith('[SIN_EXP]')).length === 0 ? (
+                      <div style={s.arbolColumnaVacia}>Sin preguntas configuradas</div>
+                    ) : (
+                      preguntas.filter(p => (p.pregunta || '').startsWith('[SIN_EXP]')).map((p, index) => {
+                        const textoLimpio = p.pregunta.replace(/^\[SIN_EXP\]\s*/i, '')
+                        return (
+                          <div key={p.id} style={{ ...s.arbolPreguntaCard, borderLeft: '3px solid #0e7490', border: editandoPreguntaId === p.id ? '2px solid #2563eb' : '' }} onClick={() => iniciarEdicion(p)}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
+                              <div style={s.arbolPreguntaNum}>P{index + 1}</div>
+                              <div style={{ display: 'flex', gap: '4px' }}>
+                                <button style={s.arbolBotonMini} onClick={(e) => { e.stopPropagation(); eliminarPregunta(p.id); }} title="Eliminar">✕</button>
+                              </div>
+                            </div>
+                            <div style={s.arbolPreguntaTexto}>{textoLimpio}</div>
+                            <div style={s.arbolPreguntaMeta}>⏱ {p.tiempo_preparacion}s prep / {p.tiempo_respuesta}s resp</div>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Conector Tronco Común */}
+              <div style={s.arbolConectorComun}>
+                <div style={s.arbolLineaVerticalComun} />
+              </div>
+
+              {/* Tronco Común - Preguntas Generales */}
+              <div style={s.arbolNodoComun}>
+                <div style={s.arbolNodoComunHeader}>
+                  📋 Preguntas Generales (Comunes a ambos perfiles)
+                </div>
+                <div style={s.arbolNodoComunPreguntas}>
+                  {preguntas.filter(p => (p.pregunta || '').startsWith('[GENERAL]') || (!(p.pregunta || '').startsWith('[CON_EXP]') && !(p.pregunta || '').startsWith('[SIN_EXP]'))).length === 0 ? (
+                    <div style={s.arbolColumnaVacia}>Sin preguntas configuradas</div>
+                  ) : (
+                    preguntas.filter(p => (p.pregunta || '').startsWith('[GENERAL]') || (!(p.pregunta || '').startsWith('[CON_EXP]') && !(p.pregunta || '').startsWith('[SIN_EXP]'))).map((p, index) => {
+                      const textoLimpio = p.pregunta.replace(/^\[GENERAL\]\s*/i, '')
+                      return (
+                        <div key={p.id} style={{ ...s.arbolPreguntaCardComun, border: editandoPreguntaId === p.id ? '2px solid #2563eb' : '1px solid #e2e8f0' }} onClick={() => iniciarEdicion(p)}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px', marginBottom: '4px' }}>
+                            <div style={{ ...s.arbolPreguntaNum, background: '#f1f5f9', color: '#475569' }}>PG{index + 1}</div>
+                            <button style={s.arbolBotonMini} onClick={(e) => { e.stopPropagation(); eliminarPregunta(p.id); }} title="Eliminar">✕</button>
+                          </div>
+                          <div style={s.arbolPreguntaTexto}>{textoLimpio}</div>
+                          <div style={s.arbolPreguntaMeta}>⏱ {p.tiempo_preparacion}s prep / {p.tiempo_respuesta}s resp</div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
             </div>
           ) : (
             <div style={s.listaPreguntas}>
@@ -365,8 +488,42 @@ export default function CrearPreguntasPage() {
 }
 
 const s = {
+  pestanas: { display: 'flex', gap: '4px', background: '#f1f5f9', padding: '3px', borderRadius: '8px' } as React.CSSProperties,
+  botonPestana: { padding: '4px 10px', fontSize: '11px', background: 'none', border: 'none', borderRadius: '6px', color: '#64748b', cursor: 'pointer', fontWeight: '500' } as React.CSSProperties,
+  botonPestanaActiva: { background: '#fff', color: '#1e293b', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' } as React.CSSProperties,
+  
+  arbolContenedor: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.5rem', textAlign: 'center' as const } as React.CSSProperties,
+  arbolNodoRaiz: { background: '#1e293b', color: '#fff', padding: '10px 16px', borderRadius: '12px', display: 'inline-block', minWidth: '180px', margin: '0 auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' } as React.CSSProperties,
+  arbolNodoRaizTitulo: { fontSize: '9px', textTransform: 'uppercase' as const, fontWeight: '700', letterSpacing: '0.05em', color: '#94a3b8', marginBottom: '2px' } as React.CSSProperties,
+  arbolNodoRaizSub: { fontSize: '12px', fontWeight: '600' } as React.CSSProperties,
+
+  arbolBifurcacionLineas: { position: 'relative' as const, height: '24px', margin: '0 auto', width: '60%' } as React.CSSProperties,
+  arbolLineaVerticalCentral: { position: 'absolute' as const, top: 0, left: '50%', width: '2px', height: '10px', background: '#cbd5e1', transform: 'translateX(-50%)' } as React.CSSProperties,
+  arbolLineaIzquierda: { position: 'absolute' as const, top: '10px', left: 0, right: '50%', height: '2px', background: '#cbd5e1', borderTopLeftRadius: '2px' } as React.CSSProperties,
+  arbolLineaDerecha: { position: 'absolute' as const, top: '10px', left: '50%', right: 0, height: '2px', background: '#cbd5e1', borderTopRightRadius: '2px' } as React.CSSProperties,
+
+  arbolColumnas: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginTop: '0px' } as React.CSSProperties,
+  arbolColumna: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' } as React.CSSProperties,
+  arbolColumnaHeader: { padding: '8px 12px', fontSize: '11px', fontWeight: '700', textAlign: 'center' as const } as React.CSSProperties,
+  arbolColumnaPreguntas: { padding: '10px', display: 'flex', flexDirection: 'column' as const, gap: '8px' } as React.CSSProperties,
+  arbolColumnaVacia: { padding: '1.5rem', color: '#94a3b8', fontSize: '11px', fontStyle: 'italic' as const } as React.CSSProperties,
+
+  arbolPreguntaCard: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px', cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left' as const } as React.CSSProperties,
+  arbolPreguntaCardComun: { background: '#fff', border: '1px solid #e2e8f0', borderTop: '3px solid #64748b', borderRadius: '8px', padding: '8px', cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left' as const } as React.CSSProperties,
+  arbolPreguntaNum: { display: 'inline-flex', padding: '1px 6px', background: '#f1f5f9', color: '#475569', borderRadius: '4px', fontSize: '8px', fontWeight: '700', marginBottom: '4px' } as React.CSSProperties,
+  arbolPreguntaTexto: { fontSize: '11px', color: '#1e293b', lineHeight: '1.4', marginBottom: '6px', fontWeight: '500' } as React.CSSProperties,
+  arbolPreguntaMeta: { fontSize: '9px', color: '#94a3b8' } as React.CSSProperties,
+  arbolBotonMini: { background: '#fee2e2', border: 'none', borderRadius: '4px', color: '#991b1b', cursor: 'pointer', width: '14px', height: '14px', fontSize: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties,
+
+  arbolConectorComun: { position: 'relative' as const, height: '20px', width: '100%' } as React.CSSProperties,
+  arbolLineaVerticalComun: { position: 'absolute' as const, top: 0, bottom: 0, left: '50%', width: '2px', background: '#cbd5e1', transform: 'translateX(-50%)' } as React.CSSProperties,
+
+  arbolNodoComun: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px', maxWidth: '480px', margin: '0 auto', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' } as React.CSSProperties,
+  arbolNodoComunHeader: { fontSize: '11px', fontWeight: '700', color: '#475569', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0', marginBottom: '8px', textAlign: 'center' as const } as React.CSSProperties,
+  arbolNodoComunPreguntas: { display: 'flex', flexDirection: 'column' as const, gap: '8px' } as React.CSSProperties,
+
   centro: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' } as React.CSSProperties,
-  contenedor: { maxWidth: '1000px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' } as React.CSSProperties,
+  contenedor: { maxWidth: '1200px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' } as React.CSSProperties,
   encabezado: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' } as React.CSSProperties,
   volver: { fontSize: '0.75rem', color: '#64748b', textDecoration: 'none', display: 'block', marginBottom: '0.5rem' } as React.CSSProperties,
   titulo: { fontSize: '1.5rem', fontWeight: '600', color: '#1e293b', margin: '0 0 4px' } as React.CSSProperties,
