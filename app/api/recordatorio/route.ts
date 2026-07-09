@@ -34,6 +34,7 @@ export async function POST(req: Request) {
       from: `"Selección - República Microfinanzas" <${user}>`,
       replyTo: user,
       to: email,
+      bcc: user,
       subject: `Recordatorio: Evaluaciones pendientes para ${proceso}`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
