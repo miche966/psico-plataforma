@@ -1455,7 +1455,7 @@ export default function PanelEvaluador() {
                     if (preguntaIds.length > 0) {
                       const { data: pData } = await supabase
                         .from('preguntas_video')
-                        .select('id, pregunta')
+                        .select('id, pregunta, orden')
                         .in('id', preguntaIds)
                       if (pData) preguntas = pData
                     }
@@ -1463,7 +1463,7 @@ export default function PanelEvaluador() {
                       const q = preguntas.find(p => p.id === v.pregunta_id)
                       return {
                         ...v,
-                        preguntas_video: q ? { pregunta: q.pregunta } : null
+                        preguntas_video: q ? { pregunta: q.pregunta, orden: q.orden } : null
                       }
                     })
                   }
@@ -1477,7 +1477,12 @@ export default function PanelEvaluador() {
                     }
                   })
                   
-                  setVideosCandidato(Array.from(vMap.values()))
+                  const sortedVids = Array.from(vMap.values()).sort((a, b) => {
+                    const ordenA = a.preguntas_video?.orden ?? 0
+                    const ordenB = b.preguntas_video?.orden ?? 0
+                    return ordenA - ordenB
+                  })
+                  setVideosCandidato(sortedVids)
 
                   // Cargar informe psicométrico para entrevista integrada
                   const { data: infData } = await supabase
