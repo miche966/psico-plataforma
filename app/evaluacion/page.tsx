@@ -372,6 +372,58 @@ export default function PortalCandidatoPage() {
     }
   }
 
+  async function autoresetearTest(testKey: string) {
+    const confirmacion = confirm(
+      "¿Deseas reiniciar esta prueba?\n\n" +
+      "Si tuviste problemas técnicos (como corte de audio, micrófono o cámara), esta opción borrará tu avance en este test para que puedas volver a iniciarlo de nuevo desde cero.\n\n" +
+      "Nota: Solo debes usar esta opción si experimentaste un problema técnico real."
+    )
+    if (!confirmacion) return
+
+    try {
+      setCargando(true)
+      const testId = TEST_KEY_TO_ID[testKey] || testKey
+      
+      if (testKey.startsWith('entrevista:')) {
+        const entId = testKey.split(':')[1]
+        const { error: errVid } = await supabase
+          .from('respuestas_video')
+          .delete()
+          .eq('candidato_id', candidatoId)
+          .eq('entrevista_id', entId)
+          
+        if (errVid) throw errVid
+      } else {
+        const { error: errSes } = await supabase
+          .from('sesiones')
+          .delete()
+          .eq('candidato_id', candidatoId)
+          .eq('proceso_id', procesoId)
+          .eq('test_id', testId)
+          
+        if (errSes) throw errSes
+      }
+
+      // Limpiar cache local del navegador
+      const completadosLocal = JSON.parse(localStorage.getItem(`completados_${candidatoId}_${procesoId}`) || '[]')
+      const filtrados = completadosLocal.filter((k: string) => k !== testKey)
+      localStorage.setItem(`completados_${candidatoId}_${procesoId}`, JSON.stringify(filtrados))
+      
+      const lastStarted = localStorage.getItem(`last_started_${candidatoId}_${procesoId}`)
+      if (lastStarted === testKey) {
+        localStorage.removeItem(`last_started_${candidatoId}_${procesoId}`)
+      }
+
+      alert("El test ha sido reiniciado con éxito. Ahora puedes volver a iniciarlo de forma limpia.")
+      window.location.reload()
+    } catch (err: any) {
+      console.error(err)
+      alert("Hubo un inconveniente al reiniciar la prueba. Por favor, recarga la página e intenta nuevamente.")
+    } finally {
+      setCargando(false)
+    }
+  }
+
   async function iniciarTest(testKey: string) {
     if (iniciandoTest) return
     
@@ -752,33 +804,44 @@ export default function PortalCandidatoPage() {
                     </div>
                   </div>
 
-                  <div className="ml-10 md:ml-0 shrink-0">
+                  <div className="ml-10 md:ml-0 shrink-0 flex flex-col items-center gap-2">
                     {completado ? (
                       <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-50 text-green-700 text-sm font-semibold rounded-xl border border-green-200">
                         Completado
                       </span>
                     ) : (
-                      <button
-                        onClick={() => iniciarTest(testKey)}
-                        disabled={!esSiguiente || (iniciandoTest !== null)}
-                        className={`w-full md:w-auto inline-flex justify-center items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl transition-all shadow-sm focus:ring-2 focus:ring-offset-2 ${
-                          esSiguiente 
-                            ? 'bg-indigo-600 hover:bg-indigo-700 text-white focus:ring-indigo-500' 
-                            : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                        } ${iniciandoTest === testKey ? 'opacity-80 animate-pulse' : ''}`}
-                      >
-                        {iniciandoTest === testKey ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Cargando...
-                          </>
-                        ) : (
-                          <>
-                            <PlayCircle className="w-4 h-4" />
-                            Comenzar
-                          </>
+                      <>
+                        <button
+                          onClick={() => iniciarTest(testKey)}
+                          disabled={!esSiguiente || (iniciandoTest !== null)}
+                          className={`w-full md:w-auto inline-flex justify-center items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl transition-all shadow-sm focus:ring-2 focus:ring-offset-2 ${
+                            esSiguiente 
+                              ? 'bg-indigo-600 hover:bg-indigo-700 text-white focus:ring-indigo-500' 
+                              : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                          } ${iniciandoTest === testKey ? 'opacity-80 animate-pulse' : ''}`}
+                        >
+                          {iniciandoTest === testKey ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              Cargando...
+                            </>
+                          ) : (
+                            <>
+                              <PlayCircle className="w-4 h-4" />
+                              Comenzar
+                            </>
+                          )}
+                        </button>
+                        {esSiguiente && (
+                          <button
+                            onClick={() => autoresetearTest(testKey)}
+                            className="text-[10px] text-slate-400 hover:text-indigo-600 transition-colors font-medium underline mt-1"
+                            title="Haz clic aquí si tuviste un inconveniente de red, audio o cámara para reiniciar la prueba"
+                          >
+                            ¿Problemas técnicos? Reiniciar test
+                          </button>
                         )}
-                      </button>
+                      </>
                     )}
                   </div>
                 </div>
