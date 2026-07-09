@@ -527,6 +527,240 @@ export default function EstadisticasPage() {
     return pb[colKey] !== undefined ? String(pb[colKey]) : '—'
   }
 
+  function obtenerMetricasTarjetaSuperior() {
+    const candidIds = candidatosFiltrados.map(c => c.id)
+    const sesionesTest = todasSesionesRaw.filter(s => s.candidato_id && candidIds.includes(s.candidato_id) && s.test_id === testSeleccionadoId)
+
+    const totalEvals = sesionesTest.length
+    const promBigFive = promedios()
+
+    const defaultBigFive = {
+      tarjeta3Title: 'Responsabilidad',
+      tarjeta3Value: promBigFive['responsabilidad'] || '—',
+      tarjeta3Sub: 'Promedio grupal (Big Five)',
+      insightText: totalEvals > 0 && promBigFive['responsabilidad']
+        ? `El grupo actual muestra una alta orientación a ${promBigFive['responsabilidad'] > 3.5 ? 'resultados' : 'estabilidad'}.`
+        : 'Selecciona un proceso para ver insights.'
+    }
+
+    if (totalEvals === 0) {
+      return {
+        ...defaultBigFive,
+        tarjeta3Value: '—',
+        insightText: 'Sin evaluaciones completadas para este test en el proceso actual.'
+      }
+    }
+
+    const slug = TEST_IDS[testSeleccionadoId] || 'bigfive'
+
+    if (slug === 'bigfive' || slug === 'hexaco') {
+      const sumas: Record<string, number> = {}
+      factores.forEach(f => { sumas[f] = 0 })
+      sesionesTest.forEach(s => {
+        const pbNorm = normalizarPuntaje(s.puntaje_bruto)
+        factores.forEach(f => { sumas[f] += pbNorm[f] || 0 })
+      })
+      
+      const proms: Record<string, number> = {}
+      let maxFactor = 'responsabilidad'
+      let maxVal = 0
+      factores.forEach(f => {
+        proms[f] = totalEvals > 0 ? Math.round((sumas[f] / totalEvals) * 10) / 10 : 0
+        if (proms[f] > maxVal) {
+          maxVal = proms[f]
+          maxFactor = f
+        }
+      })
+
+      const factorNombres: Record<string, string> = {
+        apertura: 'Apertura',
+        amabilidad: 'Amabilidad',
+        extraversion: 'Extraversión',
+        neuroticismo: 'Neuroticismo',
+        responsabilidad: 'Responsabilidad'
+      }
+
+      const factorInsights: Record<string, string> = {
+        apertura: 'El grupo destaca por su adaptabilidad y apertura al aprendizaje de nuevos procesos.',
+        amabilidad: 'La camada posee un perfil empático e idóneo para la atención personalizada.',
+        extraversion: 'El grupo demuestra un marcado dinamismo y alta capacidad de comunicación.',
+        neuroticismo: 'El grupo muestra rasgos de alta emocionalidad; requiere soporte de liderazgo.',
+        responsabilidad: 'El grupo destaca por su alto nivel de organización y orientación a resultados.'
+      }
+
+      return {
+        tarjeta3Title: factorNombres[maxFactor] || 'Responsabilidad',
+        tarjeta3Value: maxVal.toFixed(1),
+        tarjeta3Sub: 'Rasgo predominante en el grupo',
+        insightText: factorInsights[maxFactor] || defaultBigFive.insightText
+      }
+    }
+
+    if (slug === 'icar' || slug === 'numerico' || slug === 'verbal' || slug === 'atencion-detalle') {
+      let sumaEfectividad = 0
+      let totalEfectivos = 0
+      let totalCorrectas = 0
+      let totalPreguntas = 0
+      let totalMinutos = 0
+      let sesionesConTiempo = 0
+
+      sesionesTest.forEach(s => {
+        const pb = s.puntaje_bruto || {}
+        const correctas = pb.correctas !== undefined ? Number(pb.correctas) : null
+        const total = pb.total !== undefined ? Number(pb.total) : 10
+        if (correctas !== null && total > 0) {
+          sumaEfectividad += (correctas / total) * 100
+          totalEfectivos++
+          totalCorrectas += correctas
+          totalPreguntas += total
+        }
+
+        const start = s.created_at || s.iniciada_en
+        if (s.finalizada_en && start) {
+          const dur = (new Date(s.finalizada_en).getTime() - new Date(start).getTime()) / 1000 / 60
+          if (dur > 0 && dur < 120) {
+            totalMinutos += dur
+            sesionesConTiempo++
+          }
+        }
+      })
+
+      const efectividadProm = totalEfectivos > 0 ? Math.round(sumaEfectividad / totalEfectivos) : 0
+      const tiempoProm = sesionesConTiempo > 0 ? Math.round(totalMinutos / sesionesConTiempo) : 0
+
+      let insight = `El grupo muestra una efectividad del ${efectividadProm}%.`
+      if (efectividadProm >= 75) {
+        insight = `Camada de alto rendimiento cognitivo. Destacan por alta precisión en resolución de problemas.`
+      } else if (efectividadProm >= 50) {
+        insight = `Rendimiento cognitivo promedio. Nivel de resolución de problemas adecuado.`
+      } else {
+        insight = `Rendimiento cognitivo moderado. Pueden requerir mayor inducción en tareas complejas.`
+      }
+
+      if (tiempoProm > 0) {
+        insight += ` Tiempo promedio de resolución: ${tiempoProm} minutos.`
+      }
+
+      return {
+        tarjeta3Title: 'Aciertos Promedio',
+        tarjeta3Value: `${efectividadProm}%`,
+        tarjeta3Sub: 'Efectividad grupal',
+        insightText: insight
+      }
+    }
+
+    if (slug.startsWith('sjt')) {
+      let sumaMatch = 0
+      let count = 0
+      sesionesTest.forEach(s => {
+        const pb = s.puntaje_bruto || {}
+        const valores = Object.values(pb).map(v => Number(v)).filter(v => !isNaN(v) && v > 0 && v <= 5)
+        if (valores.length > 0) {
+          const avg = valores.reduce((a, b) => a + b, 0) / valores.length
+          sumaMatch += avg * 20
+          count++
+        }
+      })
+
+      const matchProm = count > 0 ? Math.round(sumaMatch / count) : 0
+      let insight = `El grupo tiene una alineación promedio de respuestas del ${matchProm}%.`
+      if (matchProm >= 75) {
+        insight = `Alta alineación situacional. El grupo comparte el criterio óptimo de toma de decisiones de la empresa.`
+      } else if (matchProm >= 50) {
+        insight = `Alineación situacional moderada. Buen criterio general con oportunidades de pulir políticas internas.`
+      } else {
+        insight = `Baja alineación situacional. Se recomienda capacitación intensiva en protocolos de atención/cobranza.`
+      }
+
+      return {
+        tarjeta3Title: 'Match Situacional',
+        tarjeta3Value: `${matchProm}%`,
+        tarjeta3Sub: 'Alineación grupal',
+        insightText: insight
+      }
+    }
+
+    if (slug === 'integridad' || slug === 'tolerancia-frustracion' || slug === 'estres-laboral' || slug === 'creatividad') {
+      let sumaScore = 0
+      let count = 0
+      sesionesTest.forEach(s => {
+        const pb = s.puntaje_bruto || {}
+        let val = Number(pb.integridad || pb.Honestidad || pb.honestidad || pb.tolerancia || pb.tolerancia_frustracion || pb.estres || pb.nivel || pb.score || 0)
+        if (val > 0) {
+          if (val <= 5) val = val * 20
+          sumaScore += val
+          count++
+        }
+      })
+
+      const scoreProm = count > 0 ? Math.round(sumaScore / count) : 0
+      
+      let titulo = 'Puntaje Promedio'
+      let insight = `El grupo promedia un ${scoreProm}% en este indicador.`
+      if (slug === 'integridad') {
+        titulo = 'Nivel Integridad'
+        insight = scoreProm >= 75 
+          ? `Excelente nivel de apego a normas y ética laboral en toda la camada.` 
+          : `Nivel de apego a normas promedio. Monitorear consistencia.`;
+      } else if (slug === 'tolerancia-frustracion') {
+        titulo = 'Tolerancia Promedio'
+        insight = scoreProm >= 75 
+          ? `Grupo altamente resiliente a la frustración y la presión externa.` 
+          : `Resiliencia promedio. Idóneo para tareas con metas estándar.`;
+      } else if (slug === 'estres-laboral') {
+        titulo = 'Manejo del Estrés'
+        insight = scoreProm >= 75 
+          ? `La camada muestra alta tolerancia al desgaste laboral y sobrecarga.` 
+          : `Nivel de estrés promedio. Mantener buen balance y clima laboral.`;
+      }
+
+      return {
+        tarjeta3Title: titulo,
+        tarjeta3Value: `${scoreProm}%`,
+        tarjeta3Sub: 'Promedio grupal',
+        insightText: insight
+      }
+    }
+
+    if (slug === 'dass21') {
+      let depSuma = 0, ansSuma = 0, estSuma = 0
+      let count = 0
+      sesionesTest.forEach(s => {
+        const pb = s.puntaje_bruto || {}
+        if (pb.depresion !== undefined && pb.ansiedad !== undefined && pb.estres !== undefined) {
+          depSuma += typeof pb.depresion === 'number' ? pb.depresion : (pb.depresion.toLowerCase().includes('bajo') || pb.depresion.toLowerCase().includes('normal') ? 1 : 3)
+          ansSuma += typeof pb.ansiedad === 'number' ? pb.ansiedad : (pb.ansiedad.toLowerCase().includes('bajo') || pb.ansiedad.toLowerCase().includes('normal') ? 1 : 3)
+          estSuma += typeof pb.estres === 'number' ? pb.estres : (pb.estres.toLowerCase().includes('bajo') || pb.estres.toLowerCase().includes('normal') ? 1 : 3)
+          count++
+        }
+      })
+
+      const depAvg = count > 0 ? (depSuma / count) : 0
+      const ansAvg = count > 0 ? (ansSuma / count) : 0
+      const estAvg = count > 0 ? (estSuma / count) : 0
+
+      const maxAvg = Math.max(depAvg, ansAvg, estAvg)
+      let titulo = 'Nivel Salud Mental'
+      let valor = 'Normal'
+      let sub = 'Estado general del grupo'
+      let insight = 'El grupo reporta un perfil de salud mental saludable y estable.'
+
+      if (maxAvg > 2) {
+        valor = 'Atención'
+        insight = 'Se detectan indicadores leves de sobrecarga grupal. Recomendable monitorear clima ocupacional.'
+      }
+
+      return {
+        tarjeta3Title: titulo,
+        tarjeta3Value: valor,
+        tarjeta3Sub: sub,
+        insightText: insight
+      }
+    }
+
+    return defaultBigFive
+  }
+
   function promedios() {
     if (sesionesFiltradas.length === 0) return {}
     const sumas: Record<string, number> = {}
@@ -711,10 +945,10 @@ export default function EstadisticasPage() {
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2 bg-purple-50 rounded-lg"><PieChart className="w-5 h-5 text-purple-600" /></div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Responsabilidad</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{obtenerMetricasTarjetaSuperior().tarjeta3Title}</span>
           </div>
-          <div className="text-2xl font-bold text-slate-900">{prom['responsabilidad'] || 0}</div>
-          <div className="text-[10px] text-slate-500 mt-1">Promedio grupal (Big Five)</div>
+          <div className="text-2xl font-bold text-slate-900">{obtenerMetricasTarjetaSuperior().tarjeta3Value}</div>
+          <div className="text-[10px] text-slate-500 mt-1">{obtenerMetricasTarjetaSuperior().tarjeta3Sub}</div>
         </div>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all bg-gradient-to-br from-slate-900 to-slate-800 border-none">
@@ -723,9 +957,7 @@ export default function EstadisticasPage() {
             <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest">Insight IA</span>
           </div>
           <div className="text-xs font-medium text-white/90 leading-tight">
-            {sesionesFiltradas.length > 0 
-              ? `El grupo actual muestra una alta orientación a ${prom['responsabilidad']! > 3.5 ? 'resultados' : 'estabilidad'}.` 
-              : 'Selecciona un proceso para ver insights.'}
+            {obtenerMetricasTarjetaSuperior().insightText}
           </div>
         </div>
       </div>
