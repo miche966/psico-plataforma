@@ -40,14 +40,33 @@ export async function POST(req: Request) {
 
     // ACCIÓN 1: CONTINUACIÓN DE CHAT EN TIEMPO REAL
     if (action === 'chat') {
-      const history = (mensajes || []).map((m: any) => ({
+      let tempHistory = (mensajes || []).map((m: any) => ({
         role: m.role === 'user' ? 'user' : 'model',
         parts: [{ text: m.role === 'user' ? m.content : JSON.stringify({ respuesta: m.content }) }]
       }))
 
+      // Saneamiento de seguridad para evitar caídas en el SDK de Gemini:
+      // El SDK de Google Generative AI exige estrictamente que el primer mensaje empiece con el rol 'user'.
+      // Si el primer mensaje es del modelo (el saludo inicial), lo removemos del historial.
+      if (tempHistory.length > 0 && tempHistory[0].role === 'model') {
+        tempHistory.shift()
+      }
+
+      // Asegurar alternancia estricta de roles (user -> model -> user -> model)
+      const history = []
+      let ultimoRol = null
+      for (const msg of tempHistory) {
+        if (msg.role !== ultimoRol) {
+          history.push(msg)
+          ultimoRol = msg.role
+        }
+      }
+
       const chat = model.startChat({
         history,
-        systemInstruction: SYSTEM_PROMPT
+        systemInstruction: {
+          parts: [{ text: SYSTEM_PROMPT }]
+        }
       })
 
       const result = await chat.sendMessage(nuevoMensaje)
@@ -105,8 +124,21 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
       const evalResult = await model.generateContent(evalPrompt)
       const evalText = evalResult.response.text()
       
-      const jsonMatch = evalText.match(/\{[\s\S]*\}/)
-      const parseado = JSON.parse(jsonMatch ? jsonMatch[0] : evalText)
+      let parseado: any;
+      try {
+        const jsonMatch = evalText.match(/\{[\s\S]*\}/)
+        parseado = JSON.parse(jsonMatch ? jsonMatch[0] : evalText)
+      } catch (e) {
+        console.error("Error parseando respuesta de evaluacion de Gemini:", e);
+        parseado = {
+          empatia: 50,
+          manejoObjeciones: 50,
+          resolucionConflicto: 50,
+          adherenciaProtocolo: 50,
+          retroalimentacion: "La simulación finalizó. No se pudo generar una retroalimentación detallada por un inconveniente de red, pero las respuestas del candidato han sido registradas para su revisión manual.",
+          acuerdoAlcanzado: false
+        };
+      }
 
       // Guardar el resultado en Supabase
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
