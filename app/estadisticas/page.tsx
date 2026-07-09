@@ -85,8 +85,104 @@ const TEST_IDS: Record<string, string> = {
   '7a8b9c0d-e1f2-4356-abcd-999999999999': 'dass21',
 }
 
+const CONFIG_COLUMNAS_TEST: Record<string, { key: string; label: string; colorClass?: string }[]> = {
+  bigfive: [
+    { key: 'apertura', label: 'Apertura', colorClass: 'text-orange-700' },
+    { key: 'amabilidad', label: 'Amabilidad', colorClass: 'text-green-700' },
+    { key: 'extraversion', label: 'Extraversión', colorClass: 'text-blue-700' },
+    { key: 'neuroticismo', label: 'Neuroticismo', colorClass: 'text-red-700' },
+    { key: 'responsabilidad', label: 'Responsabilidad', colorClass: 'text-purple-700' }
+  ],
+  hexaco: [
+    { key: 'apertura', label: 'Apertura', colorClass: 'text-orange-700' },
+    { key: 'amabilidad', label: 'Amabilidad', colorClass: 'text-green-700' },
+    { key: 'extraversion', label: 'Extraversión', colorClass: 'text-blue-700' },
+    { key: 'neuroticismo', label: 'Neuroticismo', colorClass: 'text-red-700' },
+    { key: 'responsabilidad', label: 'Responsabilidad', colorClass: 'text-purple-700' }
+  ],
+  icar: [
+    { key: 'correctas', label: 'Aciertos' },
+    { key: 'errores', label: 'Errores' },
+    { key: 'efectividad', label: 'Efectividad %' },
+    { key: 'tiempo', label: 'Tiempo (min)' }
+  ],
+  numerico: [
+    { key: 'correctas', label: 'Aciertos' },
+    { key: 'errores', label: 'Errores' },
+    { key: 'efectividad', label: 'Efectividad %' },
+    { key: 'tiempo', label: 'Tiempo (min)' }
+  ],
+  verbal: [
+    { key: 'correctas', label: 'Aciertos' },
+    { key: 'errores', label: 'Errores' },
+    { key: 'efectividad', label: 'Efectividad %' },
+    { key: 'tiempo', label: 'Tiempo (min)' }
+  ],
+  'atencion-detalle': [
+    { key: 'correctas', label: 'Aciertos' },
+    { key: 'errores', label: 'Errores' },
+    { key: 'efectividad', label: 'Efectividad %' },
+    { key: 'tiempo', label: 'Tiempo (min)' }
+  ],
+  'sjt-cobranzas': [
+    { key: 'puntaje', label: 'Puntaje Promedio (1-5)' },
+    { key: 'efectividad', label: 'Alineación %' },
+    { key: 'tiempo', label: 'Tiempo (min)' }
+  ],
+  'sjt-atencion': [
+    { key: 'puntaje', label: 'Puntaje Promedio (1-5)' },
+    { key: 'efectividad', label: 'Alineación %' },
+    { key: 'tiempo', label: 'Tiempo (min)' }
+  ],
+  'sjt-comercial': [
+    { key: 'puntaje', label: 'Puntaje Promedio (1-5)' },
+    { key: 'efectividad', label: 'Alineación %' },
+    { key: 'tiempo', label: 'Tiempo (min)' }
+  ],
+  'sjt-ventas': [
+    { key: 'puntaje', label: 'Puntaje Promedio (1-5)' },
+    { key: 'efectividad', label: 'Alineación %' },
+    { key: 'tiempo', label: 'Tiempo (min)' }
+  ],
+  'sjt-problemas': [
+    { key: 'puntaje', label: 'Puntaje Promedio (1-5)' },
+    { key: 'efectividad', label: 'Alineación %' },
+    { key: 'tiempo', label: 'Tiempo (min)' }
+  ],
+  'sjt-legal': [
+    { key: 'puntaje', label: 'Puntaje Promedio (1-5)' },
+    { key: 'efectividad', label: 'Alineación %' },
+    { key: 'tiempo', label: 'Tiempo (min)' }
+  ],
+  integridad: [
+    { key: 'integridad_score', label: 'Nivel Integridad %' },
+    { key: 'tiempo', label: 'Tiempo (min)' }
+  ],
+  'tolerancia-frustracion': [
+    { key: 'tolerancia_score', label: 'Tolerancia %' },
+    { key: 'tiempo', label: 'Tiempo (min)' }
+  ],
+  dass21: [
+    { key: 'depresion', label: 'Depresión' },
+    { key: 'ansiedad', label: 'Ansiedad' },
+    { key: 'estres', label: 'Estrés' }
+  ],
+  'estres-laboral': [
+    { key: 'estres_score', label: 'Nivel Estrés %' },
+    { key: 'tiempo', label: 'Tiempo (min)' }
+  ],
+  creatividad: [
+    { key: 'creatividad_score', label: 'Creatividad %' },
+    { key: 'tiempo', label: 'Tiempo (min)' }
+  ]
+}
+
 export default function EstadisticasPage() {
   const [sesiones, setSesiones] = useState<Sesion[]>([])
+  const [todasSesionesRaw, setTodasSesionesRaw] = useState<any[]>([])
+  const [candidatosList, setCandidatosList] = useState<any[]>([])
+  const [testSeleccionadoId, setTestSeleccionadoId] = useState<string>('a1b2c3d4-e5f6-7890-abcd-ef1234567890')
+  const [vinculosCandidatos, setVinculosCandidatos] = useState<any[]>([])
   const [cargando, setCargando] = useState(true)
   const [vista, setVista] = useState<'comparacion' | 'promedios' | 'radar' | 'habilidades' | 'auditoria'>('comparacion')
   const [habilidades, setHabilidades] = useState({ 
@@ -121,6 +217,7 @@ export default function EstadisticasPage() {
 
     // 2. Obtener vínculos de candidatos para filtrar
     const { data: vinculos } = await supabase.from('candidatos_procesos').select('candidato_id, proceso_id')
+    if (vinculos) setVinculosCandidatos(vinculos)
     
     // 3. Obtener sesiones con puntaje para los candidatos encontrados (historial completo)
     const candidatoIds = Array.from(new Set(vinculos?.map(v => v.candidato_id).filter(Boolean) || []))
@@ -188,6 +285,9 @@ export default function EstadisticasPage() {
     // 4. Calcular métricas complementarias (Normalizadas)
     const statsHabilidades = calcularStatsHabilidades(resultadoCompleto)
     setHabilidades(statsHabilidades)
+
+    setTodasSesionesRaw(resultadoCompleto)
+    if (candidatosData) setCandidatosList(candidatosData)
 
     setSesiones(resultadoFinal)
     if (resultadoFinal.length > 0) setSesionRadar(resultadoFinal[0])
@@ -347,6 +447,86 @@ export default function EstadisticasPage() {
     ? sesiones 
     : sesiones.filter(s => s.proceso_id === procesoSeleccionado)
 
+  const procActivo = procesos.find(p => p.id === procesoSeleccionado)
+  const testsDisponibles = procActivo && procActivo.bateria_tests
+    ? Object.entries(TEST_IDS)
+        .filter(([id, slug]) => procActivo.bateria_tests.includes(slug))
+        .map(([id, slug]) => ({ id, slug, nombre: slug.replace(/-/g, ' ').toUpperCase() }))
+    : Object.entries(TEST_IDS).map(([id, slug]) => ({ id, slug, nombre: slug.replace(/-/g, ' ').toUpperCase() }))
+
+  const candidatosFiltrados = candidatosList.filter(c => {
+    if (procesoSeleccionado === 'todos') return true
+    return vinculosCandidatos.some(v => v.candidato_id === c.id && v.proceso_id === procesoSeleccionado)
+  })
+
+  const testSlug = TEST_IDS[testSeleccionadoId] || 'bigfive'
+  const columnasTest = CONFIG_COLUMNAS_TEST[testSlug] || [
+    { key: 'puntaje', label: 'Puntaje' },
+    { key: 'tiempo', label: 'Tiempo (min)' }
+  ]
+
+  function obtenerValorCelda(cId: string, colKey: string) {
+    const s = todasSesionesRaw.find(ses => ses.candidato_id === cId && ses.test_id === testSeleccionadoId)
+    if (!s || !s.puntaje_bruto) return 'Pendiente'
+    
+    const pb = s.puntaje_bruto
+    const slug = TEST_IDS[testSeleccionadoId] || 'bigfive'
+    
+    if (slug === 'bigfive' || slug === 'hexaco') {
+      const pbNorm = normalizarPuntaje(pb)
+      return pbNorm[colKey] !== undefined ? pbNorm[colKey] : '—'
+    }
+
+    if (colKey === 'correctas') return pb.correctas !== undefined ? pb.correctas : '—'
+    if (colKey === 'errores') {
+      const total = pb.total !== undefined ? pb.total : 10
+      const correctas = pb.correctas !== undefined ? pb.correctas : 0
+      return total - correctas
+    }
+    if (colKey === 'efectividad') {
+      const total = pb.total !== undefined ? pb.total : 10
+      const correctas = pb.correctas !== undefined ? pb.correctas : 0
+      return total > 0 ? `${Math.round((correctas / total) * 100)}%` : '—'
+    }
+    if (colKey === 'tiempo') {
+      const start = s.created_at || s.iniciada_en
+      if (s.finalizada_en && start) {
+        const dur = Math.round((new Date(s.finalizada_en).getTime() - new Date(start).getTime()) / 1000 / 60)
+        return dur > 0 ? `${dur} min` : '< 1 min'
+      }
+      return '—'
+    }
+    if (colKey === 'puntaje') {
+      const valores = Object.values(pb).map(v => Number(v)).filter(v => !isNaN(v) && v > 0 && v <= 5)
+      return valores.length ? (valores.reduce((a, b) => a + b, 0) / valores.length).toFixed(1) : '—'
+    }
+    if (colKey === 'integridad_score') {
+      let val = Number(pb.integridad || pb.Honestidad || pb.honestidad || 0)
+      if (val > 0 && val <= 5) val = val * 20
+      return val > 0 ? `${val}%` : '—'
+    }
+    if (colKey === 'tolerancia_score') {
+      let val = Number(pb.tolerancia || pb.tolerancia_frustracion || pb.score || 0)
+      if (val > 0 && val <= 5) val = val * 20
+      return val > 0 ? `${val}%` : '—'
+    }
+    if (colKey === 'estres_score') {
+      let val = Number(pb.estres || pb.nivel || pb.score || 0)
+      if (val > 0 && val <= 5) val = val * 20
+      return val > 0 ? `${val}%` : '—'
+    }
+    if (colKey === 'creatividad_score') {
+      let val = Number(pb.creatividad || pb.score || 0)
+      if (val > 0 && val <= 5) val = val * 20
+      return val > 0 ? `${val}%` : '—'
+    }
+    if (colKey === 'depresion' || colKey === 'ansiedad' || colKey === 'estres') {
+      return pb[colKey] !== undefined ? String(pb[colKey]) : '—'
+    }
+    
+    return pb[colKey] !== undefined ? String(pb[colKey]) : '—'
+  }
+
   function promedios() {
     if (sesionesFiltradas.length === 0) return {}
     const sumas: Record<string, number> = {}
@@ -463,16 +643,25 @@ export default function EstadisticasPage() {
             Basado en {sesionesFiltradas.length} evaluación{sesionesFiltradas.length !== 1 ? 'es' : ''} en total
           </p>
         </div>
-        <div>
+        <div className="flex gap-3">
           <select
             value={procesoSeleccionado}
             onChange={(e) => {
-              setProcesoSeleccionado(e.target.value)
-              const sf = e.target.value === 'todos' ? sesiones : sesiones.filter(s => s.proceso_id === e.target.value)
+              const pId = e.target.value
+              setProcesoSeleccionado(pId)
+              const sf = pId === 'todos' ? sesiones : sesiones.filter(s => s.proceso_id === pId)
               if (sf.length > 0 && !sf.find(s => s.id === sesionRadar?.id)) {
                 setSesionRadar(sf[0])
               } else if (sf.length === 0) {
                 setSesionRadar(null)
+              }
+              // Resetear test seleccionado si no existe en la batería del nuevo proceso
+              const proc = procesos.find(p => p.id === pId)
+              if (proc && proc.bateria_tests) {
+                const validos = Object.entries(TEST_IDS).filter(([id, slug]) => proc.bateria_tests.includes(slug))
+                if (validos.length > 0 && !validos.some(([id]) => id === testSeleccionadoId)) {
+                  setTestSeleccionadoId(validos[0][0])
+                }
               }
             }}
             className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
@@ -482,6 +671,18 @@ export default function EstadisticasPage() {
               <option key={p.id} value={p.id}>{p.nombre}</option>
             ))}
           </select>
+
+          {vista === 'comparacion' && (
+            <select
+              value={testSeleccionadoId}
+              onChange={(e) => setTestSeleccionadoId(e.target.value)}
+              className="px-4 py-2 border border-indigo-200 rounded-lg text-sm font-semibold text-indigo-700 bg-indigo-50 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+            >
+              {testsDisponibles.map(t => (
+                <option key={t.id} value={t.id}>{t.nombre}</option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
@@ -580,60 +781,78 @@ export default function EstadisticasPage() {
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="px-5 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Candidato</th>
                   <th className="px-5 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Match %</th>
-                  {factores.map(f => (
-                    <th key={f} className={`px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-center ${coloresText[f]}`}>
-                      {etiquetas[f]}
+                  {columnasTest.map(col => (
+                    <th key={col.key} className={`px-5 py-4 text-[10px] font-bold uppercase tracking-widest text-center ${col.colorClass || 'text-slate-400'}`}>
+                      {col.label}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {sesionesFiltradas.map((sesion: any) => (
-                  <tr key={sesion.id} className="hover:bg-slate-50 transition-colors group">
-                    <td className="px-5 py-4">
-                      <div className="font-bold text-slate-900">{nombreCandidato(sesion)}</div>
-                      {sesion.candidato && <div className="text-[10px] text-slate-400 mt-0.5">{sesion.candidato.email}</div>}
-                    </td>
-                    <td className="px-5 py-4 text-center">
-                      <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full border-4 ${
-                        (sesion.matchScore || 0) >= 70 ? 'border-green-500 bg-green-50' : (sesion.matchScore || 0) >= 50 ? 'border-yellow-500 bg-yellow-50' : 'border-slate-200 bg-slate-50'
-                      }`}>
-                        <span className="text-xs font-bold text-slate-800">{sesion.matchScore || '—'}%</span>
-                      </div>
-                    </td>
-                    {factores.map(f => {
-                      const pbNorm = normalizarPuntaje(sesion.puntaje_bruto)
-                      const val = pbNorm[f] || 0
-                      
-                      if (val === 0) {
-                        return <td key={f} className="px-5 py-4 text-center text-[10px] text-slate-300 font-bold italic">Pendiente</td>
-                      }
+                {candidatosFiltrados.map((candidato: any) => {
+                  const sesionBigFive = todasSesionesRaw.find(s => s.candidato_id === candidato.id && TEST_IDS[s.test_id] === 'bigfive')
+                  const matchScore = sesionBigFive ? sesionBigFive.matchScore : null
 
-                      // Intensidad de color para el Heatmap
-                      const opacity = Math.min(1, val / 5)
-                      const bgColor = f === 'extraversion' ? `rgba(37, 99, 235, ${opacity})` :
-                                    f === 'amabilidad' ? `rgba(22, 163, 74, ${opacity})` :
-                                    f === 'responsabilidad' ? `rgba(147, 51, 234, ${opacity})` :
-                                    f === 'neuroticismo' ? `rgba(220, 38, 38, ${opacity})` :
-                                    `rgba(234, 88, 12, ${opacity})`
-                      
-                      return (
-                        <td key={f} className="px-5 py-4 text-center">
-                          <div className="flex flex-col items-center gap-1">
-                            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-1">
-                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(val/5)*100}%`, backgroundColor: bgColor }} />
-                            </div>
+                  return (
+                    <tr key={candidato.id} className="hover:bg-slate-50 transition-colors group">
+                      <td className="px-5 py-4">
+                        <div className="font-bold text-slate-900">{candidato.nombre} {candidato.apellido}</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">{candidato.email}</div>
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full border-4 ${
+                          matchScore && matchScore >= 70 ? 'border-green-500 bg-green-50' : matchScore && matchScore >= 50 ? 'border-yellow-500 bg-yellow-50' : 'border-slate-200 bg-slate-50'
+                        }`}>
+                          <span className="text-xs font-bold text-slate-800">{matchScore ? `${matchScore}%` : '—'}</span>
+                        </div>
+                      </td>
+                      {columnasTest.map(col => {
+                        const val = obtenerValorCelda(candidato.id, col.key)
+                        
+                        if (val === 'Pendiente') {
+                          return <td key={col.key} className="px-5 py-4 text-center text-[10px] text-slate-300 font-bold italic">Pendiente</td>
+                        }
+                        if (val === '—') {
+                          return <td key={col.key} className="px-5 py-4 text-center text-xs text-slate-400 font-semibold">—</td>
+                        }
+
+                        // Si es un valor de la escala 1-5 (Big Five / HEXACO)
+                        const esEscala = typeof val === 'number' && val <= 5
+                        if (esEscala) {
+                          const valNum = val as number
+                          const opacity = Math.min(1, valNum / 5)
+                          const bgColor = col.key === 'extraversion' ? `rgba(37, 99, 235, ${opacity})` :
+                                        col.key === 'amabilidad' ? `rgba(22, 163, 74, ${opacity})` :
+                                        col.key === 'responsabilidad' ? `rgba(147, 51, 234, ${opacity})` :
+                                        col.key === 'neuroticismo' ? `rgba(220, 38, 38, ${opacity})` :
+                                        `rgba(234, 88, 12, ${opacity})`
+                          
+                          return (
+                            <td key={col.key} className="px-5 py-4 text-center">
+                              <div className="flex flex-col items-center gap-1">
+                                <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden mb-1">
+                                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(valNum/5)*100}%`, backgroundColor: bgColor }} />
+                                </div>
+                                <span className="text-xs font-bold text-slate-700">{valNum}</span>
+                              </div>
+                            </td>
+                          )
+                        }
+
+                        // Para otros formatos de strings/porcentajes/números
+                        return (
+                          <td key={col.key} className="px-5 py-4 text-center">
                             <span className="text-xs font-bold text-slate-700">{val}</span>
-                          </div>
-                        </td>
-                      )
-                    })}
-                  </tr>
-                ))}
-                {sesiones.length === 0 && (
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  )
+                })}
+                {candidatosFiltrados.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-5 py-12 text-center text-sm text-slate-500">
-                      No hay datos suficientes para mostrar estadísticas.
+                    <td colSpan={columnasTest.length + 2} className="px-5 py-12 text-center text-sm text-slate-500">
+                      No hay candidatos vinculados en este proceso con evaluaciones.
                     </td>
                   </tr>
                 )}
