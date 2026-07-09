@@ -1093,6 +1093,21 @@ export default function PanelEvaluador() {
     document.body.removeChild(link)
   }
 
+  function abrirRecordatorioOutlook(c: CandidatoAgrupado, link: string, nombreProceso: string) {
+    const subject = encodeURIComponent(`Recordatorio: Evaluaciones pendientes para ${nombreProceso}`)
+    const body = encodeURIComponent(
+      `Hola ${c.nombre},\n\n` +
+      `Te contactamos desde el portal de selección para el cargo de ${nombreProceso}.\n\n` +
+      `Vemos que todavía tienes ${c.progreso.tests_pendientes.length} evaluaciones pendientes por completar. ` +
+      `Para que podamos continuar con tu postulación, es importante que finalices todos los ejercicios.\n\n` +
+      `Puedes continuar con tus evaluaciones ingresando al siguiente enlace:\n${link}\n\n` +
+      `Quedamos a las órdenes.\n\n` +
+      `Saludos,\n` +
+      `Equipo de Selección - República Microfinanzas`
+    )
+    window.location.href = `mailto:${c.email}?subject=${subject}&body=${body}`
+  }
+
   async function enviarRecordatorio(c: CandidatoAgrupado) {
     if (!c.progreso || c.progreso.completados === c.progreso.total) return
     
@@ -1122,12 +1137,24 @@ export default function PanelEvaluador() {
       if (res.ok) {
         alert(`Recordatorio enviado con éxito a ${c.nombre}.`)
       } else {
-        alert('Hubo un error al enviar el correo. Verifica tu configuración del servidor de correo en las variables de entorno.')
-        console.error('Error enviando recordatorio:', data.error)
+        console.error('Error enviando recordatorio por servidor:', data.error)
+        const confirmarOutlook = confirm(
+          `El servidor de correos no pudo enviar el email directo (${data.error || 'Timeout'}).\n\n` +
+          `¿Deseas enviar el recordatorio abriendo tu Outlook local ahora mismo?`
+        )
+        if (confirmarOutlook) {
+          abrirRecordatorioOutlook(c, link, nombreProceso)
+        }
       }
     } catch (error) {
       console.error(error)
-      alert('Error de conexión al intentar enviar el recordatorio.')
+      const confirmarOutlook = confirm(
+        `Hubo un error de conexión con el servidor de correo corporativo.\n\n` +
+        `¿Deseas abrir tu Outlook local para enviar el recordatorio?`
+      )
+      if (confirmarOutlook) {
+        abrirRecordatorioOutlook(c, link, nombreProceso)
+      }
     } finally {
       setEnviandoRecordatorio(null)
     }
