@@ -794,11 +794,10 @@ export default function PanelEvaluador() {
       .from('respuestas_video')
       .select('candidato_id, entrevista_id, pregunta_id, grabada_en')
       .eq('estado', 'completado')
-
     // 3.5 Obtener todas las preguntas de video para saber la cantidad de preguntas por entrevista
     const { data: todasPreguntas } = await supabase
       .from('preguntas_video')
-      .select('id, entrevista_id')
+      .select('id, entrevista_id, pregunta')
 
     const preguntasPorEntrevista: Record<string, number> = {}
     todasPreguntas?.forEach(p => {
@@ -900,10 +899,33 @@ export default function PanelEvaluador() {
         respuestasPorEntrevista[v.entrevista_id] = (respuestasPorEntrevista[v.entrevista_id] || 0) + 1
       })
 
-      // Solo marcar la entrevista como completada si el número de respuestas válidas coincide con el total de preguntas de esa entrevista
+      // Solo marcar la entrevista como completada si el número de respuestas válidas coincide con el total de preguntas de esa entrevista (contemplando bifurcaciones)
       Object.entries(respuestasPorEntrevista).forEach(([entrevistaId, cantRespuestas]) => {
-        const cantPreguntas = preguntasPorEntrevista[entrevistaId] || 0
-        if (cantRespuestas >= cantPreguntas && cantPreguntas > 0) {
+        const preguntasDeEsta = todasPreguntas?.filter(p => p.entrevista_id === entrevistaId) || []
+        const comunes = preguntasDeEsta.filter(p => !p.pregunta?.includes('[CON_EXP]') && !p.pregunta?.includes('[SIN_EXP]'))
+        const conExp = preguntasDeEsta.filter(p => p.pregunta?.includes('[CON_EXP]'))
+        const sinExp = preguntasDeEsta.filter(p => p.pregunta?.includes('[SIN_EXP]'))
+
+        let cantPreguntasRequeridas = preguntasDeEsta.length
+
+        if (conExp.length > 0 || sinExp.length > 0) {
+          const respondioConExp = Array.from(videosUnicosMap.values()).some(
+            v => v.entrevista_id === entrevistaId && conExp.some(p => p.id === v.pregunta_id)
+          )
+          const respondioSinExp = Array.from(videosUnicosMap.values()).some(
+            v => v.entrevista_id === entrevistaId && sinExp.some(p => p.id === v.pregunta_id)
+          )
+
+          if (respondioConExp) {
+            cantPreguntasRequeridas = comunes.length + conExp.length
+          } else if (respondioSinExp) {
+            cantPreguntasRequeridas = comunes.length + sinExp.length
+          } else {
+            cantPreguntasRequeridas = comunes.length + Math.min(conExp.length, sinExp.length)
+          }
+        }
+
+        if (cantRespuestas >= cantPreguntasRequeridas && cantPreguntasRequeridas > 0) {
           idsCompletados.add(`entrevista:${entrevistaId}`)
         }
       })

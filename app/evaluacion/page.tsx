@@ -208,10 +208,9 @@ export default function PortalCandidatoPage() {
       
       if (errVid) console.error('Error DB Videos:', errVid)
 
-      // 4. Cargar todas las preguntas de video para validar completitud de cada entrevista
       const { data: todasPreguntas } = await supabase
         .from('preguntas_video')
-        .select('id, entrevista_id')
+        .select('id, entrevista_id, pregunta')
 
       const completadosDB: string[] = []
       const debugData: any = { raw_sessions: sesiones, raw_videos: respuestasVideo }
@@ -243,10 +242,33 @@ export default function PortalCandidatoPage() {
           preguntasPorEntrevista[p.entrevista_id] = (preguntasPorEntrevista[p.entrevista_id] || 0) + 1
         })
 
-        // Solo marcar como completada si tiene respuestas para todas las preguntas
-        Object.entries(preguntasPorEntrevista).forEach(([entrevistaId, cantPreguntas]) => {
-          const cantRespuestas = respuestasPorEntrevista[entrevistaId] || 0
-          if (cantRespuestas >= cantPreguntas && cantPreguntas > 0) {
+        // Solo marcar como completada si tiene respuestas para todas las preguntas (contemplando bifurcaciones)
+        Object.entries(respuestasPorEntrevista).forEach(([entrevistaId, cantRespuestas]) => {
+          const preguntasDeEsta = todasPreguntas?.filter(p => p.entrevista_id === entrevistaId) || []
+          const comunes = preguntasDeEsta.filter(p => !p.pregunta?.includes('[CON_EXP]') && !p.pregunta?.includes('[SIN_EXP]'))
+          const conExp = preguntasDeEsta.filter(p => p.pregunta?.includes('[CON_EXP]'))
+          const sinExp = preguntasDeEsta.filter(p => p.pregunta?.includes('[SIN_EXP]'))
+
+          let cantPreguntasRequeridas = preguntasDeEsta.length
+
+          if (conExp.length > 0 || sinExp.length > 0) {
+            const respondioConExp = Array.from(videosUnicosMap.values()).some(
+              v => v.entrevista_id === entrevistaId && conExp.some(p => p.id === v.pregunta_id)
+            )
+            const respondioSinExp = Array.from(videosUnicosMap.values()).some(
+              v => v.entrevista_id === entrevistaId && sinExp.some(p => p.id === v.pregunta_id)
+            )
+
+            if (respondioConExp) {
+              cantPreguntasRequeridas = comunes.length + conExp.length
+            } else if (respondioSinExp) {
+              cantPreguntasRequeridas = comunes.length + sinExp.length
+            } else {
+              cantPreguntasRequeridas = comunes.length + Math.min(conExp.length, sinExp.length)
+            }
+          }
+
+          if (cantRespuestas >= cantPreguntasRequeridas && cantPreguntasRequeridas > 0) {
             completadosDB.push(`entrevista:${entrevistaId}`)
           }
         })
