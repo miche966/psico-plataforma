@@ -320,6 +320,12 @@ function obtenerTextoAnalisis(analisis: any): string {
   return String(analisis)
 }
 
+function obtenerTimestamp(fecha: string | null | undefined): number {
+  if (!fecha) return 0
+  const t = new Date(fecha).getTime()
+  return isNaN(t) ? 0 : t
+}
+
 export default function PanelEvaluador() {
   const [tab, setTab] = useState<'evaluaciones' | 'gestion' | 'dashboard' | 'historial' | 'diagnostico'>('evaluaciones')
   const [candidatos, setCandidatos] = useState<CandidatoAgrupado[]>([])
@@ -1109,12 +1115,15 @@ export default function PanelEvaluador() {
     }
 
     // 2. Filtro por búsqueda de texto
-    const searchStr = `${c.nombre} ${c.apellido} ${c.email} ${c.proceso_nombre}`.toLowerCase()
-    return searchStr.includes(filtro.toLowerCase())
+    const nom = c.nombre || ''
+    const ape = c.apellido || ''
+    const mail = c.email || ''
+    const proc = c.proceso_nombre || ''
+    const searchStr = `${nom} ${ape} ${mail} ${proc}`.toLowerCase()
+    const query = (filtro || '').toLowerCase()
+    return searchStr.includes(query)
   }).sort((a, b) => {
-    const tA = a.ultima_fecha ? new Date(a.ultima_fecha).getTime() : 0
-    const tB = b.ultima_fecha ? new Date(b.ultima_fecha).getTime() : 0
-    return tB - tA
+    return obtenerTimestamp(b.ultima_fecha) - obtenerTimestamp(a.ultima_fecha)
   })
 
   if (cargando) {
@@ -1225,7 +1234,7 @@ export default function PanelEvaluador() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {candidatosFiltrados
-                  .sort((a, b) => new Date(b.ultima_fecha).getTime() - new Date(a.ultima_fecha).getTime())
+                  .sort((a, b) => obtenerTimestamp(b.ultima_fecha) - obtenerTimestamp(a.ultima_fecha))
                   .map((c) => {
                   const uniqueTestIds = Array.from(new Set(c.sesiones.map(s => s.test_id)))
                   const testsCompletados = uniqueTestIds.map(tid => TEST_NAMES[tid] || tid)
