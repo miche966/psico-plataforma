@@ -1073,11 +1073,14 @@ export default function PanelEvaluador() {
 
   async function enviarRecordatorio(c: CandidatoAgrupado) {
     if (!c.progreso || c.progreso.completados === c.progreso.total) return
-    if (!c.proceso_id) return
     
     setEnviandoRecordatorio(c.id)
     
-    const link = `${getBaseUrl()}/evaluacion?candidato=${c.id}&proceso=${c.proceso_id}`
+    const link = c.proceso_id 
+      ? `${getBaseUrl()}/evaluacion?candidato=${c.id}&proceso=${c.proceso_id}`
+      : `${getBaseUrl()}/evaluacion?candidato=${c.id}`
+
+    const nombreProceso = c.proceso_cargo || c.proceso_nombre || 'Evaluación Psicotécnica Independiente'
 
     try {
       const res = await fetch('/api/recordatorio', {
@@ -1086,7 +1089,7 @@ export default function PanelEvaluador() {
         body: JSON.stringify({
           email: c.email,
           nombre: c.nombre,
-          proceso: c.proceso_cargo || c.proceso_nombre,
+          proceso: nombreProceso,
           link: link,
           pendientes: c.progreso.tests_pendientes.length
         })
@@ -1097,7 +1100,7 @@ export default function PanelEvaluador() {
       if (res.ok) {
         alert(`Recordatorio enviado con éxito a ${c.nombre}.`)
       } else {
-        alert('Hubo un error al enviar el correo. Verifica tu configuración de Resend.')
+        alert('Hubo un error al enviar el correo. Verifica tu configuración del servidor de correo en las variables de entorno.')
         console.error('Error enviando recordatorio:', data.error)
       }
     } catch (error) {
