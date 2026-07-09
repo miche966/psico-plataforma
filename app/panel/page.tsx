@@ -145,7 +145,25 @@ const etiquetas: Record<string, string> = {
   manejo_clientes: 'Relacionamiento con Clientes',
   cobranza: 'Gestión de Cobranza',
   proactividad_comercial: 'Proactividad en Ventas',
-  orientacion_cliente: 'Enfoque en el Cliente'
+  orientacion_cliente: 'Enfoque en el Cliente',
+  // Atención al Detalle
+  documentos: 'Verificación de Documentos',
+  comparacion: 'Comparación de Información',
+  concentracion: 'Concentración y Foco',
+  errores_texto: 'Detección de Errores de Texto',
+  errores_numeros: 'Detección de Errores Numéricos',
+  // Tolerancia a la Frustración y Emocional
+  manejo_emocional: 'Manejo Emocional',
+  tolerancia_frustracion: 'Tolerancia a la Frustración'
+}
+
+function formatearNombreFactor(factor: string): string {
+  if (etiquetas[factor]) return etiquetas[factor]
+  const conEspacios = factor.replace(/_/g, ' ')
+  return conEspacios
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
 }
 
 function esSJT(pb: any): boolean {
@@ -1704,7 +1722,7 @@ export default function PanelEvaluador() {
                             {esBigFive(pb) ? valoresNumericos(pb).map(([factor, valor]) => (
                               <div key={factor} className="space-y-1.5 p-3 bg-white border border-slate-100 rounded-2xl shadow-sm">
                                 <div className="flex justify-between items-center">
-                                  <span className="text-xs font-bold text-slate-700">{etiquetas[factor] || factor}</span>
+                                  <span className="text-xs font-bold text-slate-700">{formatearNombreFactor(factor)}</span>
                                   <span className="text-xs font-black text-indigo-600">{valor} / 5</span>
                                 </div>
                                 <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -1719,7 +1737,7 @@ export default function PanelEvaluador() {
                               return (
                                 <div key={factor} className="mb-4 last:mb-0">
                                   <div className="flex justify-between text-xs mb-1">
-                                    <span className="font-semibold text-slate-700">{etiquetas[factor] || factor}</span>
+                                    <span className="font-semibold text-slate-700">{formatearNombreFactor(factor)}</span>
                                     <span className="text-slate-500">{valor} / 5</span>
                                   </div>
                                   <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mb-1">
@@ -1985,6 +2003,43 @@ function interpretacion(factor: string, valor: number): string {
       alto: 'Colaboración proactiva con otras áreas para potenciar la oferta comercial y asegurar que la promesa de venta sea cumplida.',
       moderado: 'Participa en reuniones de equipo y colabora cuando se le solicita explícitamente.',
       bajo: 'Estilo de trabajo individualista. Puede generar fricciones con áreas operativas por falta de comunicación.'
+    },
+    // Atención al Detalle
+    documentos: {
+      alto: 'Excelente velocidad y precisión en el cotejo de datos complejos y verificación documental, asegurando cero fallos de información.',
+      moderado: 'Capacidad de verificación estándar. Realiza comprobaciones eficientes en condiciones habituales.',
+      bajo: 'Velocidad de verificación reducida o propensión a pasar por alto discrepancias sutiles en la documentación.'
+    },
+    comparacion: {
+      alto: 'Alta agudeza visual para contrastar múltiples fuentes de datos de forma paralela sin cometer errores de transcripción.',
+      moderado: 'Compara información de manera satisfactoria, con un ritmo de trabajo estable.',
+      bajo: 'Dificultad para detectar inconsistencias menores al cruzar bases de datos o listados extensos.'
+    },
+    concentracion: {
+      alto: 'Gran resistencia a la fatiga cognitiva, manteniendo un nivel de foco constante durante tareas repetitivas y prolongadas.',
+      moderado: 'Mantiene un nivel de concentración adecuado durante la jornada laboral estándar.',
+      bajo: 'Nivel de dispersión elevado ante tareas rutinarias o estímulos distractores en el ambiente.'
+    },
+    errores_texto: {
+      alto: 'Excepcional capacidad para identificar fallas tipográficas, ortográficas o de redacción en documentos críticos.',
+      moderado: 'Identifica los errores ortográficos o gramaticales más evidentes en textos estándares.',
+      bajo: 'Tiende a pasar por alto errores de escritura o inconsistencias textuales.'
+    },
+    errores_numeros: {
+      alto: 'Alta precisión y velocidad mental para identificar discrepancias en cifras, códigos o montos financieros.',
+      moderado: 'Detecta errores numéricos evidentes. Puede requerir más tiempo para revisar planillas complejas.',
+      bajo: 'Propensión a pasar por alto errores de codificación o valores numéricos incorrectos.'
+    },
+    // Tolerancia a la Frustración y Emocional
+    manejo_emocional: {
+      alto: 'Excelente autocontrol de sus propias emociones en momentos críticos, permitiendo respuestas racionales y empáticas.',
+      moderado: 'Mantiene una estabilidad emocional adecuada frente a las demandas habituales de los clientes.',
+      bajo: 'Dificultad para canalizar la frustración, pudiendo verse afectado su desempeño ante interacciones difíciles.'
+    },
+    tolerancia_frustracion: {
+      alto: 'Gran capacidad para sobreponerse rápidamente a rechazos o metas no alcanzadas, manteniendo la motivación intacta.',
+      moderado: 'Maneja la frustración de forma estándar. Requiere períodos de recuperación tras experiencias muy negativas.',
+      bajo: 'Se desmotiva con facilidad ante obstáculos o negativas reiteradas por parte de los clientes.'
     }
   }
   return textos[factor]?.[nivel] || ''
