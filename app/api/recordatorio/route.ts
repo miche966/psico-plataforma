@@ -3,7 +3,12 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { email, nombre, proceso, link, pendientes } = await req.json();
+    let { email, nombre, proceso, link, pendientes } = await req.json();
+
+    // Sanitización de seguridad: Reemplazar localhost por el dominio público de producción para postulantes
+    if (link && link.includes('localhost:3000')) {
+      link = link.replace('http://localhost:3000', 'https://psico-plataforma.vercel.app');
+    }
 
     const user = process.env.EMAIL_USER;
     const pass = process.env.EMAIL_PASS;
