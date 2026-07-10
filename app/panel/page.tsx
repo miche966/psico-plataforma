@@ -1010,7 +1010,6 @@ export default function PanelEvaluador() {
     }
 
     const headers = [
-      "ID Candidato",
       "Nombre",
       "Apellido",
       "Email",
@@ -1021,17 +1020,21 @@ export default function PanelEvaluador() {
       "Profesion",
       "Proceso",
       "Cargo",
-      "Tests Completados",
-      "Tests Totales",
+      "Avance (Completados/Totales)",
       "Progreso %",
-      "Match Score %",
-      "Alertas Fraude",
-      "Estabilidad Emocional (BF)",
-      "Amabilidad (BF)",
-      "Extraversion (BF)",
-      "Responsabilidad (BF)",
-      "Apertura (BF)",
-      "Efectividad Cognitiva %"
+      "Match Score (Ajuste) %",
+      "Alertas Proctoring (Fraude)",
+      "Índice de Probidad (Integridad) (1-5)",
+      "Sinceridad Laboral (1-5)",
+      "Perfil de Personalidad (Big Five)",
+      "Tipo de Personalidad (MBTI)",
+      "Aptitud Cognitiva % (Efectividad)",
+      "Competencia: Comunicación %",
+      "Competencia: Negociación %",
+      "Competencia: Tolerancia Presión %",
+      "Riesgo de Agotamiento (Burnout) (1-5)",
+      "Equilibrio Vida-Trabajo (1-5)",
+      "Fecha de Evaluación (Última Actividad)"
     ]
 
     const rows = candidatosFiltrados.map(c => {
@@ -1048,24 +1051,29 @@ export default function PanelEvaluador() {
       const sesionBigFive = c.sesiones.find(s => TEST_IDS[s.test_id] === 'bigfive')
       const bf = (sesionBigFive?.puntaje_bruto || {}) as any
       
-      let estabilidadEmocional = "—"
-      if (bf.estabilidad_emocional != null) {
-        estabilidadEmocional = String(bf.estabilidad_emocional)
-      } else if (bf.estabilidad != null) {
-        estabilidadEmocional = String(bf.estabilidad)
-      } else if (bf.neuroticismo != null) {
-        estabilidadEmocional = String(6 - Number(bf.neuroticismo))
+      let estabilidad = bf.estabilidad != null ? bf.estabilidad : (bf.neuroticismo != null ? 6 - bf.neuroticismo : null)
+      const estabilidadVal = estabilidad != null ? estabilidad.toFixed(1) : "—"
+      const amabilidadVal = bf.amabilidad != null ? bf.amabilidad.toFixed(1) : "—"
+      const extraversionVal = bf.extraversion != null ? bf.extraversion.toFixed(1) : "—"
+      const responsabilidadVal = bf.responsabilidad != null ? bf.responsabilidad.toFixed(1) : "—"
+      const aperturaVal = bf.apertura != null ? bf.apertura.toFixed(1) : "—"
+      
+      let bigFiveConsolidado = "—"
+      if (estabilidad != null || bf.amabilidad != null || bf.extraversion != null || bf.responsabilidad != null || bf.apertura != null) {
+        bigFiveConsolidado = `Est: ${estabilidadVal} | Ama: ${amabilidadVal} | Ext: ${extraversionVal} | Res: ${responsabilidadVal} | Ape: ${aperturaVal}`
       }
       
-      const amabilidad = bf.amabilidad != null ? bf.amabilidad : "—"
-      const extraversion = bf.extraversion != null ? bf.extraversion : "—"
-      const responsabilidad = bf.responsabilidad != null ? bf.responsabilidad : "—"
-      const apertura = bf.apertura != null ? bf.apertura : "—"
+      const mbtiVal = c.mbtiType || "—"
 
-      // 3. Calcular efectividad cognitiva consolidada
+      // 3. Integridad y Sinceridad Laboral
+      const sesionIntegridad = c.sesiones.find(s => TEST_IDS[s.test_id] === 'integridad')
+      const pi = (sesionIntegridad?.puntaje_bruto || {}) as any
+      const probidadVal = pi.probidad_general != null ? pi.probidad_general.toFixed(1) : "—"
+      const sinceridadVal = pi.sinceridad_franqueza != null ? pi.sinceridad_franqueza.toFixed(1) : "—"
+
+      // 4. Calcular efectividad cognitiva consolidada
       let correctasCognitivo = 0
       let totalCognitivo = 0
-
       c.sesiones.forEach(s => {
         const slug = TEST_IDS[s.test_id]
         if (s.estado === 'finalizado' && (slug === 'icar' || slug === 'numerico' || slug === 'verbal' || slug === 'comercial' || slug === 'atencion-detalle')) {
@@ -1075,17 +1083,42 @@ export default function PanelEvaluador() {
           totalCognitivo += Number(total)
         }
       })
-
       const efectividadCognitiva = totalCognitivo > 0 
-        ? Math.round((correctasCognitivo / totalCognitivo) * 100) 
+        ? `${Math.round((correctasCognitivo / totalCognitivo) * 100)}%` 
         : "—"
+
+      // 5. Competencias Específicas
+      const sesionComp = c.sesiones.find(s => TEST_IDS[s.test_id] === 'competencias')
+      const comp = (sesionComp?.puntaje_bruto || {}) as any
+      const comunicacionVal = comp.comunicacion != null ? `${Math.round(comp.comunicacion * 20)}%` : "—"
+      const negociacionVal = comp.negociacion != null ? `${Math.round(comp.negociacion * 20)}%` : "—"
+      const presionVal = comp.tolerancia_presion != null ? `${Math.round(comp.tolerancia_presion * 20)}%` : "—"
+
+      // 6. Burnout y Bienestar
+      const sesionBien = c.sesiones.find(s => TEST_IDS[s.test_id] === 'estres-laboral')
+      const bien = (sesionBien?.puntaje_bruto || {}) as any
+      const burnoutVal = bien.burnout != null ? bien.burnout.toFixed(1) : "—"
+      const equilibrioVal = bien.equilibrio != null ? bien.equilibrio.toFixed(1) : "—"
+
+      // 7. Última Actividad (Fecha)
+      let ultimaFechaVal = "—"
+      let maxTime = 0
+      c.sesiones.forEach(s => {
+        const dateStr = s.finalizada_en || s.created_at
+        if (dateStr) {
+          const t = new Date(dateStr).getTime()
+          if (t > maxTime) {
+            maxTime = t
+            ultimaFechaVal = new Date(dateStr).toLocaleDateString()
+          }
+        }
+      })
 
       const progresoPorcentaje = c.progreso 
         ? Math.round((c.progreso.completados / c.progreso.total) * 100)
         : 0
 
       return [
-        c.id,
         c.nombre || "—",
         c.apellido || "—",
         c.email || "—",
@@ -1096,17 +1129,21 @@ export default function PanelEvaluador() {
         c.profesion || "—",
         c.proceso_nombre || "—",
         c.proceso_cargo || "—",
-        c.progreso?.completados || 0,
-        c.progreso?.total || 0,
+        `${c.progreso?.completados || 0}/${c.progreso?.total || 0}`,
         `${progresoPorcentaje}%`,
         c.matchScore != null ? `${c.matchScore}%` : "—",
         alertasFraude,
-        estabilidadEmocional,
-        amabilidad,
-        extraversion,
-        responsabilidad,
-        apertura,
-        efectividadCognitiva !== "—" ? `${efectividadCognitiva}%` : "—"
+        probidadVal,
+        sinceridadVal,
+        bigFiveConsolidado,
+        mbtiVal,
+        efectividadCognitiva,
+        comunicacionVal,
+        negociacionVal,
+        presionVal,
+        burnoutVal,
+        equilibrioVal,
+        ultimaFechaVal
       ]
     })
 
