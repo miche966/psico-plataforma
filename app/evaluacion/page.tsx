@@ -218,7 +218,12 @@ export default function PortalCandidatoPage() {
       if (sesiones) {
         sesiones.forEach(s => {
           const key = TEST_IDS[s.test_id]
-          if (key && s.estado === 'finalizado') completadosDB.push(key)
+          if (key && s.estado === 'finalizado') {
+            completadosDB.push(key)
+            if (key === 'competencias') {
+              completadosDB.push('tolerancia-frustracion')
+            }
+          }
         })
       }
 
@@ -278,14 +283,7 @@ export default function PortalCandidatoPage() {
       // ignoramos lo que diga el localStorage para ese test. Esto evita que tests
       // marcados como "completado" en el cache del navegador (pero que en BD están
       // en 'iniciado' o 'pendiente') aparezcan incorrectamente como finalizados.
-      const testsConSesionDB = new Set(
-        (sesiones || []).map(s => TEST_IDS[s.test_id]).filter(Boolean)
-      )
-      const completadosLocalFiltrados = completadosLocal.filter(
-        (key: string) => !testsConSesionDB.has(key)
-      )
-
-      const merge = Array.from(new Set([...completadosLocalFiltrados, ...completadosDB]))
+      const merge = Array.from(new Set(completadosDB))
       
       // Si viene con completed=1, asumimos que el test actual (lastStartedKey) se completó
       // y evitamos bloquearlo por demoras de base de datos o redirección rápida.
