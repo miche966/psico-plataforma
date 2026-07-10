@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video, CheckCircle2, Settings2, BarChart2, LayoutDashboard, Sparkles, Activity } from 'lucide-react'
+import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video, CheckCircle2, Settings2, BarChart2, LayoutDashboard, Sparkles, Activity, Loader2 } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
 import GestionProcesos from '@/components/GestionProcesos'
 import Dashboard from '@/components/Dashboard'
@@ -347,6 +347,43 @@ export default function PanelEvaluador() {
   const [analizandoFrases, setAnalizandoFrases] = useState(false)
   const router = useRouter()
   const [velocidadesVideo, setVelocidadesVideo] = useState<Record<number, number>>({})
+  const [procesandoVideos, setProcesandoVideos] = useState<Record<string, boolean>>({})
+
+  async function procesarVideoConIA(respuestaId: string, urlVideo: string, idx: number) {
+    if (procesandoVideos[respuestaId]) return
+    setProcesandoVideos(prev => ({ ...prev, [respuestaId]: true }))
+    try {
+      const res = await fetch('/api/analizar-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url_video: urlVideo, respuesta_id: respuestaId })
+      })
+      if (!res.ok) {
+        throw new Error(`Error en el servidor: código ${res.status}`)
+      }
+      const data = await res.json()
+      if (data.success && data.analisis) {
+        setVideosCandidato(prev => prev.map((v, i) => {
+          if (i === idx) {
+            return {
+              ...v,
+              transcripcion: data.analisis.transcripcion,
+              analisis_ia: data.analisis
+            }
+          }
+          return v
+        }))
+        alert("Video procesado y analizado con éxito por la IA.")
+      } else {
+        alert("Hubo un problema al procesar el video: " + (data.error || "Error desconocido"))
+      }
+    } catch (err: any) {
+      console.error("Error al procesar video:", err)
+      alert(`No se pudo procesar el video: ${err.message || err}`)
+    } finally {
+      setProcesandoVideos(prev => ({ ...prev, [respuestaId]: false }))
+    }
+  }
 
   // Helper para cálculo de Ajuste en lote
   function calcularAjusteLote(reqs: any[], sesionesList: any[]) {
@@ -1767,7 +1804,35 @@ export default function PanelEvaluador() {
                               </div>
                             </div>
                             <video id={`video-entrevista-${i}`} src={v.url_video} controls className="w-full aspect-video rounded-xl shadow-sm bg-black mb-3" />
-                            {v.transcripcion && <div className="bg-white p-3 rounded-xl border border-slate-200 text-[11px] text-slate-600 italic">"{v.transcripcion}"</div>}
+                            {v.transcripcion ? (
+                              <div className="bg-white p-3 rounded-xl border border-slate-200 text-[11px] text-slate-600 italic">"{v.transcripcion}"</div>
+                            ) : (
+                              <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm">
+                                <div className="flex items-center gap-2">
+                                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                                  <span className="text-[11px] font-medium text-slate-700 leading-snug">Este video aún no cuenta con transcripción ni análisis de actitud en la plataforma.</span>
+                                </div>
+                                <button
+                                  onClick={() => procesarVideoConIA(v.id, v.url_video, i)}
+                                  disabled={procesandoVideos[v.id]}
+                                  className={`text-[10px] font-bold px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 transition-all shrink-0 flex items-center justify-center gap-1.5 ${
+                                    procesandoVideos[v.id] ? 'opacity-70 cursor-not-allowed' : ''
+                                  }`}
+                                >
+                                  {procesandoVideos[v.id] ? (
+                                    <>
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      Procesando...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Sparkles className="w-3 h-3" />
+                                      Analizar con IA
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            )}
                             {v.analisis_ia && (
                                <div className="mt-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
                                  <div className="flex items-center gap-2 mb-2">
