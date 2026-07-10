@@ -273,7 +273,7 @@ export default function EstadisticasPage() {
     return (
       <AppLayout>
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-650"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
         </div>
       </AppLayout>
     )
@@ -305,7 +305,7 @@ export default function EstadisticasPage() {
       {/* Tarjetas de Indicadores */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center gap-5">
-          <div className="p-4 bg-indigo-50 rounded-2xl text-indigo-650"><Users className="w-6 h-6" /></div>
+          <div className="p-4 bg-indigo-50 rounded-2xl text-indigo-600"><Users className="w-6 h-6" /></div>
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Postulantes en Proceso</span>
             <span className="text-2xl font-bold text-slate-900 block mt-1">{totalCandidatosProc}</span>
@@ -400,7 +400,7 @@ export default function EstadisticasPage() {
 
                     {/* Candidato Info */}
                     <td className="px-6 py-4.5">
-                      <div className="font-bold text-slate-900 group-hover:text-indigo-650 transition-colors">
+                      <div className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
                         {item.nombre} {item.apellido}
                       </div>
                       <div className="text-[10px] text-slate-400 mt-0.5">{item.email}</div>
@@ -412,7 +412,7 @@ export default function EstadisticasPage() {
                         <span className="text-xs font-bold text-slate-800">{item.progresoTexto} tests</span>
                         <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-indigo-650 rounded-full transition-all duration-500" 
+                            className="h-full bg-indigo-600 rounded-full transition-all duration-500" 
                             style={{ width: `${item.progresoPct}%` }}
                           />
                         </div>
@@ -438,7 +438,7 @@ export default function EstadisticasPage() {
                     <td className="px-6 py-4.5 text-center">
                       {item.scoreRP !== 'Pendiente' ? (
                         <span className="inline-flex items-center gap-1 text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-xl">
-                          <Award className="w-3.5 h-3.5 text-indigo-650" /> {item.scoreRP}
+                          <Award className="w-3.5 h-3.5 text-indigo-600" /> {item.scoreRP}
                         </span>
                       ) : (
                         <span className="text-xs text-slate-350 italic font-bold">Pendiente</span>
@@ -465,7 +465,10 @@ export default function EstadisticasPage() {
                           <AlertTriangle className="w-3.5 h-3.5" /> {item.totalAlertas}
                         </span>
                       ) : (
-                        <span className="text-xs text-emerald-600 font-bold">🛡️ Seguro</span>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-100">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></div>
+                          Seguro
+                        </span>
                       )}
                     </td>
 
