@@ -634,6 +634,7 @@ function InformePageContent() {
     })
 
     sesionesOrd.forEach(s => {
+      if (dominio === DOMINIOS.PERSONALIDAD && s.test_id === 'd0e1f2a3-b4c5-6789-defa-000000000001') return
       const pb = s.puntaje_bruto || {}
       const escanear = (obj: any) => {
         if (!obj || typeof obj !== 'object') return

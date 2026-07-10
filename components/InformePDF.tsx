@@ -223,24 +223,37 @@ export const InformePDF = ({ data }: any) => {
     });
 
     return Array.from(mapa.entries()).map(([factor, { valor, sid }]) => {
-      let vNum = typeof valor === 'object' && valor !== null ? (valor.correctas || valor.score || valor.valor || 0) : valor;
-      if (typeof vNum === 'string') {
-        const s = vNum.toLowerCase().trim();
-        vNum = s === 'alto' ? 5 : s === 'medio' ? 3 : s === 'bajo' ? 1.5 : (Number(vNum) || 0);
+      let vNum = 0;
+      const k = factor.toLowerCase().trim();
+      
+      if (typeof valor === 'object' && valor !== null) {
+        if (k === 'metricas_fraude') {
+          const alertas = (valor.events?.length || 0) + (valor.tabSwitches || 0) + (valor.copyPasteAttempts || 0);
+          vNum = Math.max(0, 5 - (alertas * 0.5));
+        } else if ('correctas' in valor && 'total' in valor) {
+          vNum = (Number(valor.correctas) / (Number(valor.total) || 1)) * 5;
+        } else {
+          vNum = Number(valor.correctas || valor.score || valor.valor || 0);
+        }
+      } else if (typeof valor === 'string') {
+        const s = valor.toLowerCase().trim();
+        vNum = s === 'alto' ? 5 : s === 'medio' ? 3 : s === 'bajo' ? 1.5 : (Number(valor) || 0);
+      } else {
+        vNum = Number(valor) || 0;
       }
       
-      const k = factor.toLowerCase().trim();
-      let finalV = Number(vNum);
-      const max = (valor && typeof valor === 'object' && 'total' in valor) ? Number(valor.total) || 5 : 5;
-      
-      // Normalización a escala 5
-      finalV = (finalV / max) * 5;
+      let finalV = vNum;
 
-      // Inversión lógica
-      if (['neuroticismo', 'nivel_estres', 'burnout', 'equilibrio', 'relaciones', 'carga_laboral'].includes(k)) {
+      // Normalización a escala 5
+      if (finalV > 5) {
+        if (finalV <= 25) finalV = (finalV / 25) * 5;
+        else if (finalV <= 100) finalV = (finalV / 100) * 5;
+        else finalV = 5;
+      }
+
+      // Inversión lógica selectiva
+      if (['neuroticismo', 'nivel_estres', 'burnout'].includes(k)) {
         finalV = Math.max(0, 6 - finalV);
-      } else if (k === 'errores_texto') {
-        finalV = Math.max(0, 5 - finalV);
       }
 
       const vNorm = Math.round(Math.min(5, Math.max(0, finalV)) * 10) / 10;
@@ -447,7 +460,7 @@ export const InformePDF = ({ data }: any) => {
                 </Text>
                 {v.analisis_ia && (
                   <View style={{ marginTop: 5, padding: 5, backgroundColor: '#f0f4f8', borderRadius: 4 }}>
-                    <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#1e40af', marginBottom: 2 }}>Análisis de Actitud e IA:</Text>
+                    <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#1e40af', marginBottom: 2 }}>Análisis de Actitud:</Text>
                     <Text style={{ fontSize: 8, color: '#334155', lineHeight: 1.3 }}>
                       {obtenerTextoAnalisis(v.analisis_ia)}
                     </Text>
@@ -489,58 +502,7 @@ export const InformePDF = ({ data }: any) => {
           </View>
         )}
 
-        {analisisFrases && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>X. Análisis de Frases Incompletas (Sacks/Rotter)</Text>
-            
-            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
-              <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 8, borderRadius: 6, border: '1px solid #e2e8f0' }}>
-                <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#0f172a', marginBottom: 2 }}>DINÁMICA INTELECTUAL Y LABORAL</Text>
-                <Text style={styles.cardText}>{analisisFrases.analisisClinico?.dinamicaLaboral}</Text>
-              </View>
-              <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 8, borderRadius: 6, border: '1px solid #e2e8f0' }}>
-                <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#0f172a', marginBottom: 2 }}>ACTITUD INTERPERSONAL Y AUTORIDAD</Text>
-                <Text style={styles.cardText}>{analisisFrases.analisisClinico?.interpersonal}</Text>
-              </View>
-            </View>
 
-            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
-              <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 8, borderRadius: 6, border: '1px solid #e2e8f0' }}>
-                <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#0f172a', marginBottom: 2 }}>MANEJO EMOCIONAL Y RESILIENCIA</Text>
-                <Text style={styles.cardText}>{analisisFrases.analisisClinico?.emocional}</Text>
-              </View>
-              <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 8, borderRadius: 6, border: '1px solid #e2e8f0' }}>
-                <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#0f172a', marginBottom: 2 }}>AUTOCONCEPTO Y VALORES</Text>
-                <Text style={styles.cardText}>{analisisFrases.analisisClinico?.autoconcepto}</Text>
-              </View>
-            </View>
-
-            {/* AUDITORÍA ORTOGRÁFICA */}
-            <View style={[styles.card, { backgroundColor: analisisFrases.auditoriaOrtografica?.tieneErrores ? '#fff5f5' : '#f0fdf4', borderColor: analisisFrases.auditoriaOrtografica?.tieneErrores ? '#feb2b2' : '#bbf7d0' }]}>
-              <Text style={{ fontSize: 7, fontWeight: 'bold', color: analisisFrases.auditoriaOrtografica?.tieneErrores ? '#c53030' : '#15803d', marginBottom: 4 }}>
-                AUDITORÍA ORTOGRÁFICA Y DE REDACCIÓN: {analisisFrases.auditoriaOrtografica?.tieneErrores ? `${analisisFrases.auditoriaOrtografica.conteoErrores} Errores detectados` : 'Redacción Óptima'}
-              </Text>
-              {analisisFrases.auditoriaOrtografica?.tieneErrores ? (
-                <View style={{ marginTop: 2 }}>
-                  {analisisFrases.auditoriaOrtografica.detalles?.map((det: any, i: number) => (
-                    <Text key={i} style={{ fontSize: 7, color: '#4a5568', marginBottom: 1 }}>
-                      • Frase {det.frase}: palabra "{det.original}" corregida a "{det.corregida}" ({det.tipo})
-                    </Text>
-                  ))}
-                </View>
-              ) : (
-                <Text style={{ fontSize: 7, color: '#166534' }}>El candidato demuestra excelente ortografía y dominio de las reglas ortográficas en todas sus respuestas redactadas.</Text>
-              )}
-            </View>
-
-            {/* RECOMENDACIÓN DE GESTIÓN */}
-            <View style={{ backgroundColor: '#1e293b', padding: 8, borderRadius: 6, marginTop: 5 }}>
-              <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#818cf8', marginBottom: 2, textTransform: 'uppercase' }}>Guía Práctica de Gestión y Liderazgo</Text>
-              <Text style={{ fontSize: 8, color: '#e2e8f0', lineHeight: 1.3 }}>{analisisFrases.conclusion?.recomendacionGestion}</Text>
-            </View>
-
-          </View>
-        )}
 
         <View style={{ marginTop: 20, padding: 15, borderTop: 1, borderTopColor: '#e2e8f0' }}>
           <Text style={{ fontSize: 10, fontWeight: 'bold', color: clrOf(inf.recomendacion === 'recomendado' ? 5 : inf.recomendacion === 'con_reservas' ? 3 : 1) }}>

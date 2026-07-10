@@ -1772,7 +1772,7 @@ export default function PanelEvaluador() {
                                <div className="mt-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
                                  <div className="flex items-center gap-2 mb-2">
                                    <Sparkles className="w-3 h-3 text-indigo-600" />
-                                   <span className="text-[10px] font-bold text-indigo-800 uppercase tracking-widest">Análisis de Actitud e IA</span>
+                                   <span className="text-[10px] font-bold text-indigo-800 uppercase tracking-widest">Análisis de Actitud</span>
                                  </div>
                                  <p className="text-[11px] text-slate-600 leading-relaxed">
                                    {obtenerTextoAnalisis(v.analisis_ia)}
