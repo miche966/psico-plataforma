@@ -129,7 +129,10 @@ export default function EstadisticasPage() {
 
     // 2. Match Score (Big Five Match)
     const sBF = sesiones.find(s => s.candidato_id === c.id && TEST_IDS[s.test_id] === 'bigfive')
-    const matchScore = sBF && sBF.puntaje_bruto ? calcularMatch(sBF.puntaje_bruto, proc) : null
+    const matchBase = sBF && sBF.puntaje_bruto ? calcularMatch(sBF.puntaje_bruto, proc) : null
+    const matchScore = matchBase !== null && totalBateria > 0
+      ? Math.round(matchBase * (completadosCount / totalBateria))
+      : matchBase
 
     // 3. Role Play Score (sjt-cobranzas o sjt-atencion)
     const sRP = sesiones.find(s => 
