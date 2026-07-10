@@ -1009,6 +1009,29 @@ export default function PanelEvaluador() {
       return
     }
 
+    const calcularMBTI = (pb: any) => {
+      if (!pb) return "—"
+      const findVal = (key: string) => {
+        let found = 2.5
+        const searchVal = (obj: any) => {
+          Object.entries(obj).forEach(([f, v]) => {
+            if (f.toLowerCase().includes(key)) {
+              found = ((v as any)?.correctas ? ((v as any).correctas / ((v as any).total || 1)) * 5 : (typeof v === 'number' ? v : 0)) || 2.5
+            } else if (typeof v === 'object' && v !== null) {
+              searchVal(v)
+            }
+          })
+        }
+        searchVal(pb)
+        return found
+      }
+      const E = findVal('extraver') >= 2.7 ? 'E' : 'I'
+      const S = findVal('apertura') < 2.7 ? 'S' : 'N'
+      const T = findVal('amabilid') < 2.7 ? 'T' : 'F'
+      const J = findVal('responsab') >= 2.7 ? 'J' : 'P'
+      return `${E}${S}${T}${J}`
+    }
+
     const headers = [
       "Nombre",
       "Apellido",
@@ -1047,7 +1070,7 @@ export default function PanelEvaluador() {
         }
       })
 
-      // 2. Extraer rasgos de Big Five
+      // 2. Extraer rasgos de Big Five y calcular MBTI
       const sesionBigFive = c.sesiones.find(s => TEST_IDS[s.test_id] === 'bigfive')
       const bf = (sesionBigFive?.puntaje_bruto || {}) as any
       
@@ -1063,13 +1086,13 @@ export default function PanelEvaluador() {
         bigFiveConsolidado = `Est: ${estabilidadVal} | Ama: ${amabilidadVal} | Ext: ${extraversionVal} | Res: ${responsabilidadVal} | Ape: ${aperturaVal}`
       }
       
-      const mbtiVal = c.mbtiType || "—"
+      const mbtiVal = c.mbtiType || calcularMBTI(sesionBigFive?.puntaje_bruto)
 
       // 3. Integridad y Sinceridad Laboral
       const sesionIntegridad = c.sesiones.find(s => TEST_IDS[s.test_id] === 'integridad')
       const pi = (sesionIntegridad?.puntaje_bruto || {}) as any
-      const probidadVal = pi.probidad_general != null ? pi.probidad_general.toFixed(1) : "—"
-      const sinceridadVal = pi.sinceridad_franqueza != null ? pi.sinceridad_franqueza.toFixed(1) : "—"
+      const probidadVal = pi.promedio_general != null ? pi.promedio_general.toFixed(1) : "—"
+      const sinceridadVal = pi.honestidad != null ? pi.honestidad.toFixed(1) : "—"
 
       // 4. Calcular efectividad cognitiva consolidada
       let correctasCognitivo = 0
@@ -1087,12 +1110,26 @@ export default function PanelEvaluador() {
         ? `${Math.round((correctasCognitivo / totalCognitivo) * 100)}%` 
         : "—"
 
-      // 5. Competencias Específicas
-      const sesionComp = c.sesiones.find(s => TEST_IDS[s.test_id] === 'competencias')
-      const comp = (sesionComp?.puntaje_bruto || {}) as any
-      const comunicacionVal = comp.comunicacion != null ? `${Math.round(comp.comunicacion * 20)}%` : "—"
-      const negociacionVal = comp.negociacion != null ? `${Math.round(comp.negociacion * 20)}%` : "—"
-      const presionVal = comp.tolerancia_presion != null ? `${Math.round(comp.tolerancia_presion * 20)}%` : "—"
+      // 5. Competencias Específicas (Extracción robusta desde cualquier test conductual)
+      let comunicacion = null
+      let negociacion = null
+      let presion = null
+      
+      c.sesiones.forEach(s => {
+        const pb = s.puntaje_bruto || {}
+        if (pb.comunicacion != null) comunicacion = pb.comunicacion
+        if (pb.negociacion != null) negociacion = pb.negociacion
+        if (pb.tolerancia_presion != null) presion = pb.tolerancia_presion
+        if (pb.por_factor) {
+          if (pb.por_factor.comunicacion != null) comunicacion = pb.por_factor.comunicacion
+          if (pb.por_factor.negociacion != null) negociacion = pb.por_factor.negociacion
+          if (pb.por_factor.tolerancia_presion != null) presion = pb.por_factor.tolerancia_presion
+        }
+      })
+      
+      const comunicacionVal = comunicacion != null ? `${Math.round(Number(comunicacion) * 20)}%` : "—"
+      const negociacionVal = negociacion != null ? `${Math.round(Number(negociacion) * 20)}%` : "—"
+      const presionVal = presion != null ? `${Math.round(Number(presion) * 20)}%` : "—"
 
       // 6. Burnout y Bienestar
       const sesionBien = c.sesiones.find(s => TEST_IDS[s.test_id] === 'estres-laboral')
