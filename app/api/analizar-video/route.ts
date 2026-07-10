@@ -17,7 +17,12 @@ export async function POST(req: Request) {
     const videoBuffer = await response.arrayBuffer()
 
     // 2. Preparar Gemini
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        responseMimeType: 'application/json'
+      }
+    })
 
     const prompt = `
       Actúa como un experto en Reclutamiento y Selección de élite. 
@@ -29,11 +34,11 @@ export async function POST(req: Request) {
       - Describe la actitud de forma objetiva y conductual.
       
       Tareas:
-      1. Transcribe con la mayor fidelidad posible lo que dice el candidato.
-      2. Evalúa su actitud conductual (seguridad gestual, claridad narrativa, nivel de energía).
-      3. Resume su respuesta en 3 puntos clave de valor organizacional.
+      - Transcribe con la mayor fidelidad posible lo que dice el candidato.
+      - Evalúa su actitud conductual (seguridad gestual, claridad narrativa, nivel de energía).
+      - Resume su respuesta en 3 puntos clave de valor organizacional.
       
-      Devuelve el resultado EXCLUSIVAMENTE en formato JSON:
+      Devuelve el resultado EXCLUSIVAMENTE en formato JSON con la siguiente estructura:
       {
         "transcripcion": "texto completo...",
         "actitud": "Análisis conductual sobrio y profesional...",
@@ -52,8 +57,15 @@ export async function POST(req: Request) {
     ])
 
     const text = result.response.text()
-    // Limpiar el posible formato markdown del JSON
-    const jsonStr = text.replace(/```json|```/g, '').trim()
+    let jsonStr = text.replace(/```json|```/g, '').trim()
+    
+    // Extracción robusta del bloque JSON delimitado por llaves
+    const firstBrace = jsonStr.indexOf('{')
+    const lastBrace = jsonStr.lastIndexOf('}')
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      jsonStr = jsonStr.substring(firstBrace, lastBrace + 1)
+    }
+    
     const analisis = JSON.parse(jsonStr)
 
     // 3. Actualizar la base de datos
