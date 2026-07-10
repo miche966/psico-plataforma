@@ -408,24 +408,25 @@ export default function RolePlayPage() {
                 Vas a simular una llamada como <strong>Analista de Cobranzas telefónicas</strong> de <strong>República Microfinanzas</strong>.
               </p>
               
-              <div className="bg-slate-950/50 border border-slate-850 rounded-2xl p-5 mb-8 text-left max-w-sm w-full space-y-3">
+              <div className="bg-slate-950/50 border border-slate-850 rounded-2xl p-5 mb-8 text-left max-w-sm w-full space-y-4">
                 <div>
-                  <h3 className="text-xs font-bold text-slate-300 mb-1">Ficha del Cliente a Contactar:</h3>
-                  <ul className="text-[10px] text-slate-400 space-y-0.5 list-disc pl-4">
-                    <li><strong>Nombre:</strong> Carlos Gómez</li>
-                    <li><strong>Producto:</strong> Préstamo para capital de trabajo de su almacén</li>
-                    <li><strong>Mora:</strong> 45 días de atraso ($12,500 en cuotas)</li>
-                    <li><strong>Historial:</strong> Era cumplidor, pero presenta dificultades recientes</li>
+                  <h3 className="text-xs font-bold text-slate-300 mb-1.5">Ficha del Cliente a Contactar:</h3>
+                  <ul className="text-[10px] text-slate-400 space-y-1 list-disc pl-4">
+                    <li><strong>Nombre:</strong> Carlos Gómez.</li>
+                    <li><strong>Producto:</strong> Préstamo personal para Capital de Trabajo de su almacén.</li>
+                    <li><strong>Situación de Mora:</strong> 45 días de atraso en la cuota mensual.</li>
+                    <li><strong>Monto adeudado:</strong> $12,500 (pesos Uruguayos).</li>
+                    <li><strong>Historial:</strong> Era un cliente con excelente conducta de pago, pero ha tenido dificultades recientes para regularizar sus cuotas.</li>
                   </ul>
                 </div>
                 
                 <div>
-                  <h3 className="text-xs font-bold text-slate-300 mb-1">Objetivos de la Llamada:</h3>
-                  <ul className="text-[10px] text-slate-400 space-y-0.5 list-decimal pl-4">
-                    <li>Saludar, presentarte e indicar que llamas de <strong>República Microfinanzas</strong>.</li>
-                    <li>Indagar el motivo del atraso en sus cuotas.</li>
-                    <li>Negociar una promesa de pago viable adaptada a su situación.</li>
-                    <li>Mantener el tono respetuoso y el protocolo de cobranza en todo momento.</li>
+                  <h3 className="text-xs font-bold text-slate-300 mb-1.5">Objetivo de la llamada:</h3>
+                  <ul className="text-[10px] text-slate-400 space-y-1 list-disc pl-4">
+                    <li><strong>Identificarte profesionalmente:</strong> Saludar al cliente, identificarte con tu nombre e indicar que llamas en representación de República Microfinanzas.</li>
+                    <li><strong>Indagar el motivo:</strong> Indagar el motivo del atraso en sus pagos.</li>
+                    <li><strong>Negociar un compromiso:</strong> Encontrar una solución de pago viable (promesa de pago para una fecha específica o posibilidad de refinanciación) adaptada a su situación.</li>
+                    <li><strong>Mantener la calidad:</strong> Cumplir con el tono de voz respetuoso y el protocolo de cobranzas en todo momento.</li>
                   </ul>
                 </div>
               </div>
