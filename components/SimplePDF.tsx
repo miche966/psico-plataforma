@@ -44,9 +44,13 @@ export const SimplePDF = ({ data }: any) => {
 
         <View style={styles.infoSection}>
           <Text style={styles.nombre}>{nombre}</Text>
-          {sesion.candidato?.email && <Text style={styles.infoText}>Email: {sesion.candidato.email}</Text>}
+          {(sesion.candidatos?.email || sesion.candidato?.email) && (
+            <Text style={styles.infoText}>Email: {sesion.candidatos?.email || sesion.candidato?.email}</Text>
+          )}
           <Text style={styles.infoText}>Fecha: {fecha}</Text>
-          <Text style={styles.infoText}>Instrumento: {helpers.esBigFive(pb) ? 'Big Five IPIP-NEO' : helpers.esCognitivo(pb) ? 'Test Cognitivo' : 'Evaluación General'}</Text>
+          <Text style={styles.infoText}>
+            Instrumento: {helpers.esBigFive(pb) ? 'Big Five IPIP-NEO' : helpers.esCognitivo(pb) ? 'Test Cognitivo' : helpers.esFrasesIncompletas?.(pb) ? 'Test de Frases Incompletas' : 'Evaluación General'}
+          </Text>
         </View>
 
         {helpers.esBigFive(pb) && (
@@ -119,7 +123,41 @@ export const SimplePDF = ({ data }: any) => {
           </View>
         )}
 
-        {!helpers.esBigFive(pb) && !helpers.esCognitivo(pb) && !helpers.esSJT(pb) && (
+        {helpers.esFrasesIncompletas?.(pb) && (
+          <View>
+            <Text style={styles.sectionTitle}>Análisis de Frases Incompletas</Text>
+            
+            {/* 1. Rasgos de personalidad */}
+            {pb.analisis_ia?.rasgosPersonalidad && (
+              <View style={styles.factorBlock} wrap={false}>
+                <Text style={styles.factorName}>Análisis de Personalidad y Rasgos</Text>
+                <Text style={styles.desc}>{pb.analisis_ia.rasgosPersonalidad}</Text>
+              </View>
+            )}
+            
+            {/* 2. Guía de Liderazgo */}
+            {pb.analisis_ia?.guiaGestionLiderazgo && (
+              <View style={{ ...styles.factorBlock, marginTop: 15, padding: 12, backgroundColor: '#f8fafc', borderRadius: 6 }} wrap={false}>
+                <Text style={styles.factorName}>Guía de Gestión de Liderazgo (Supervisor)</Text>
+                <Text style={styles.desc}>{pb.analisis_ia.guiaGestionLiderazgo}</Text>
+              </View>
+            )}
+            
+            {/* 3. Auditoría Ortográfica */}
+            {pb.analisis_ia?.auditoriaOrtografica && (
+              <View style={{ ...styles.factorBlock, marginTop: 15 }} wrap={false}>
+                <Text style={styles.factorName}>Auditoría Ortográfica e Integridad</Text>
+                <Text style={styles.desc}>
+                  {pb.analisis_ia.auditoriaOrtografica.tieneErrores 
+                    ? `Se identificaron los siguientes errores de redacción/ortografía: ${pb.analisis_ia.auditoriaOrtografica.erroresEncontrados}`
+                    : 'No se detectaron errores ortográficos significativos en las respuestas del postulante.'}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {!helpers.esBigFive(pb) && !helpers.esCognitivo(pb) && !helpers.esSJT(pb) && !helpers.esFrasesIncompletas?.(pb) && (
           <View>
             <Text style={styles.sectionTitle}>Resultado General</Text>
             {(() => {

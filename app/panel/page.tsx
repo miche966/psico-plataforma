@@ -1950,8 +1950,9 @@ export default function PanelEvaluador() {
 }
 
 async function generarPDF(sesion: Sesion) {
-  const nombre = sesion.candidato
-    ? `${sesion.candidato.nombre} ${sesion.candidato.apellido}`
+  const cand = sesion.candidatos || sesion.candidato
+  const nombre = cand
+    ? `${cand.nombre} ${cand.apellido}`
     : 'Evaluación anónima'
   const fecha = new Date(sesion.finalizada_en).toLocaleDateString('es-AR', {
     day: '2-digit', month: '2-digit', year: 'numeric'
@@ -1973,10 +1974,12 @@ async function generarPDF(sesion: Sesion) {
     apertura: 'Apertura'
   }
 
+  const esFrasesIncompletas = (pb: any) => pb && ('analisis_ia' in pb || typeof pb.respuestas === 'object');
+
   const pdfData = {
     sesion, nombre, fecha,
     helpers: {
-      esBigFive, esCognitivo, esSJT, valoresNumericos, promedioPuntaje, datosCognitivos,
+      esBigFive, esCognitivo, esSJT, esFrasesIncompletas, valoresNumericos, promedioPuntaje, datosCognitivos,
       coloresRGB, etiquetasPDF: etiquetas, interpretacion
     }
   }
