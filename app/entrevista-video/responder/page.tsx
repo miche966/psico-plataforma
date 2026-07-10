@@ -448,6 +448,11 @@ export default function ResponderPage() {
           <div style={s.preguntaBox}>
             <div style={s.preguntaLabel}>Pregunta {preguntaActual + 1}</div>
             <p style={s.preguntaTexto}>{(pregunta.pregunta || '').replace(/^\[CON_EXP\]\s*|^\[SIN_EXP\]\s*|^\[GENERAL\]\s*/i, '')}</p>
+            {estado === 'preparacion' && (
+              <div style={{ fontSize: '11px', color: '#1d4ed8', fontWeight: 'bold', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                ⏱️ Tiempo máximo de respuesta: {pregunta.tiempo_respuesta} segundos
+              </div>
+            )}
           </div>
 
           <div style={s.videoWrapper}>
