@@ -1574,76 +1574,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
           </div>
         )}
 
-        {/* ── SECCIÓN EXTRA: ANÁLISIS INTEGRATIVO DE VIDEO-ENTREVISTA ───────── */}
-        {inf.analisisEntrevista && (
-          <div style={s.card}>
-            <div style={s.cardHead}>
-              <span style={s.cardHeadTxt}>Análisis de Entrevista Conductual Integrada</span>
-              <span style={s.badge}>Evaluación de Discurso</span>
-            </div>
-            <div style={{ padding: '0 1.25rem 1.25rem' }}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={s.commentLabel}>Trayectoria, Estabilidad y Motivación Laboral</label>
-                <textarea 
-                  style={{ ...s.ta, minHeight: '80px' }} 
-                  value={inf.analisisEntrevista.trayectoriaMotivacion || ''} 
-                  onChange={e => {
-                    const ae = { ...inf.analisisEntrevista, trayectoriaMotivacion: e.target.value } as any;
-                    upd('analisisEntrevista', ae);
-                  }} 
-                />
-              </div>
 
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={s.commentLabel}>Estilo de Trabajo y Relación con la Autoridad</label>
-                <textarea 
-                  style={{ ...s.ta, minHeight: '80px' }} 
-                  value={inf.analisisEntrevista.estiloTrabajoAutoridad || ''} 
-                  onChange={e => {
-                    const ae = { ...inf.analisisEntrevista, estiloTrabajoAutoridad: e.target.value } as any;
-                    upd('analisisEntrevista', ae);
-                  }} 
-                />
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={s.commentLabel}>Atención al Cliente y Gestión de Conflictos</label>
-                <textarea 
-                  style={{ ...s.ta, minHeight: '80px' }} 
-                  value={inf.analisisEntrevista.gestionConflictos || ''} 
-                  onChange={e => {
-                    const ae = { ...inf.analisisEntrevista, gestionConflictos: e.target.value } as any;
-                    upd('analisisEntrevista', ae);
-                  }} 
-                />
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={s.commentLabel}>Tolerancia a la Frustración y Resiliencia</label>
-                <textarea 
-                  style={{ ...s.ta, minHeight: '80px' }} 
-                  value={inf.analisisEntrevista.resilienciaFrustracion || ''} 
-                  onChange={e => {
-                    const ae = { ...inf.analisisEntrevista, resilienciaFrustracion: e.target.value } as any;
-                    upd('analisisEntrevista', ae);
-                  }} 
-                />
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={s.commentLabel}>Autoconcepto, Madurez y Proyección</label>
-                <textarea 
-                  style={{ ...s.ta, minHeight: '80px' }} 
-                  value={inf.analisisEntrevista.autoconceptoMetas || ''} 
-                  onChange={e => {
-                    const ae = { ...inf.analisisEntrevista, autoconceptoMetas: e.target.value } as any;
-                    upd('analisisEntrevista', ae);
-                  }} 
-                />
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ── 6. RECOMENDACIÓN ──────────────────────────────────────────────── */}
         <div style={s.card}>

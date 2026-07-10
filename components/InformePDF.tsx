@@ -449,58 +449,9 @@ export const InformePDF = ({ data }: any) => {
           </View>
         )}
 
-        {videos && videos.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>VIII. Análisis de Video-Entrevista y Discurso</Text>
-            {videos.map((v: any, i: number) => (
-              <View key={i} style={[styles.card, { marginBottom: 10 }]}>
-                <Text style={styles.cardTitle}>Pregunta {i + 1}: {v.preguntas_video?.pregunta || 'Respuesta en Video'}</Text>
-                <Text style={[styles.cardText, { color: '#64748b', marginBottom: 5 }]}>
-                  Transcripción: "{v.transcripcion || 'Transcripción no disponible o en proceso de análisis...'}"
-                </Text>
-                {v.analisis_ia && (
-                  <View style={{ marginTop: 5, padding: 5, backgroundColor: '#f0f4f8', borderRadius: 4 }}>
-                    <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#1e40af', marginBottom: 2 }}>Análisis de Actitud:</Text>
-                    <Text style={{ fontSize: 8, color: '#334155', lineHeight: 1.3 }}>
-                      {obtenerTextoAnalisis(v.analisis_ia)}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
-        )}
 
-        {inf.analisisEntrevista && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>IX. Perfil de Entrevista Laboral Integrada</Text>
-            
-            <View style={[styles.card, { marginBottom: 6 }]}>
-              <Text style={styles.cardTitle}>1. Trayectoria, Estabilidad y Motivación Laboral</Text>
-              <Text style={styles.cardText}>{inf.analisisEntrevista.trayectoriaMotivacion}</Text>
-            </View>
 
-            <View style={[styles.card, { marginBottom: 6 }]}>
-              <Text style={styles.cardTitle}>2. Estilo de Trabajo y Relación con la Autoridad</Text>
-              <Text style={styles.cardText}>{inf.analisisEntrevista.estiloTrabajoAutoridad}</Text>
-            </View>
 
-            <View style={[styles.card, { marginBottom: 6 }]}>
-              <Text style={styles.cardTitle}>3. Atención al Cliente y Gestión de Conflictos</Text>
-              <Text style={styles.cardText}>{inf.analisisEntrevista.gestionConflictos}</Text>
-            </View>
-
-            <View style={[styles.card, { marginBottom: 6 }]}>
-              <Text style={styles.cardTitle}>4. Tolerancia a la Frustración y Resiliencia</Text>
-              <Text style={styles.cardText}>{inf.analisisEntrevista.resilienciaFrustracion}</Text>
-            </View>
-
-            <View style={[styles.card, { marginBottom: 6 }]}>
-              <Text style={styles.cardTitle}>5. Autoconcepto, Madurez y Proyección de Futuro</Text>
-              <Text style={styles.cardText}>{inf.analisisEntrevista.autoconceptoMetas}</Text>
-            </View>
-          </View>
-        )}
 
 
 
