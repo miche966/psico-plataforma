@@ -405,17 +405,29 @@ export default function RolePlayPage() {
               </div>
               <h1 className="text-lg font-bold text-white mb-2">Simulación de Llamada de Cobranza</h1>
               <p className="text-xs text-slate-400 max-w-xs mb-8">
-                Llamarás a Carlos Gómez para negociar el pago de su cuota atrasada. Gemini simulará su voz y sus objeciones de forma realista.
+                Vas a simular una llamada como <strong>Analista de Cobranzas telefónicas</strong> de <strong>República Microfinanzas</strong>.
               </p>
               
-              <div className="bg-slate-950/50 border border-slate-850 rounded-2xl p-4 mb-8 text-left max-w-sm w-full space-y-2">
-                <h3 className="text-xs font-bold text-slate-300">Reglas del Ejercicio:</h3>
-                <ul className="text-[10.5px] text-slate-400 space-y-1 list-disc pl-4">
-                  <li>Presenta al banco e indícale el motivo de la llamada.</li>
-                  <li>Escucha atentamente su situación antes de presionar.</li>
-                  <li>Intenta llegar a un compromiso o plan de pago viable.</li>
-                  <li>La llamada terminará automáticamente tras {maxTurnos} interacciones.</li>
-                </ul>
+              <div className="bg-slate-950/50 border border-slate-850 rounded-2xl p-5 mb-8 text-left max-w-sm w-full space-y-3">
+                <div>
+                  <h3 className="text-xs font-bold text-slate-300 mb-1">Ficha del Cliente a Contactar:</h3>
+                  <ul className="text-[10px] text-slate-400 space-y-0.5 list-disc pl-4">
+                    <li><strong>Nombre:</strong> Carlos Gómez</li>
+                    <li><strong>Producto:</strong> Préstamo para capital de trabajo de su almacén</li>
+                    <li><strong>Mora:</strong> 45 días de atraso ($12,500 en cuotas)</li>
+                    <li><strong>Historial:</strong> Era cumplidor, pero presenta dificultades recientes</li>
+                  </ul>
+                </div>
+                
+                <div>
+                  <h3 className="text-xs font-bold text-slate-300 mb-1">Objetivos de la Llamada:</h3>
+                  <ul className="text-[10px] text-slate-400 space-y-0.5 list-decimal pl-4">
+                    <li>Saludar, presentarte e indicar que llamas de <strong>República Microfinanzas</strong>.</li>
+                    <li>Indagar el motivo del atraso en sus cuotas.</li>
+                    <li>Negociar una promesa de pago viable adaptada a su situación.</li>
+                    <li>Mantener el tono respetuoso y el protocolo de cobranza en todo momento.</li>
+                  </ul>
+                </div>
               </div>
 
               <button
