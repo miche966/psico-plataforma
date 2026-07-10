@@ -142,6 +142,52 @@ export default function CrearPreguntasPage() {
     cargarDatos()
   }
 
+  async function moverPregunta(p: Pregunta, direccion: 'subir' | 'bajar') {
+    const esConExp = p.pregunta.startsWith('[CON_EXP]')
+    const prefijo = esConExp ? '[CON_EXP]' : '[SIN_EXP]'
+    
+    const delMismoPerfil = preguntas
+      .filter(x => x.pregunta.startsWith(prefijo))
+      .sort((a, b) => a.orden - b.orden)
+      
+    const idx = delMismoPerfil.findIndex(x => x.id === p.id)
+    if (idx === -1) return
+    
+    let vecino: Pregunta | null = null
+    if (direccion === 'subir' && idx > 0) {
+      vecino = delMismoPerfil[idx - 1]
+    } else if (direccion === 'bajar' && idx < delMismoPerfil.length - 1) {
+      vecino = delMismoPerfil[idx + 1]
+    }
+    
+    if (!vecino) return
+    
+    setGuardando(true)
+    try {
+      const ordenActual = p.orden
+      const ordenVecino = vecino.orden
+      
+      const { error: err1 } = await supabase
+        .from('preguntas_video')
+        .update({ orden: ordenVecino })
+        .eq('id', p.id)
+        
+      const { error: err2 } = await supabase
+        .from('preguntas_video')
+        .update({ orden: ordenActual })
+        .eq('id', vecino.id)
+        
+      if (err1 || err2) throw new Error("Error al actualizar orden")
+      
+      await cargarDatos()
+    } catch (err: any) {
+      console.error(err)
+      alert("Hubo un inconveniente al mover la pregunta.")
+    } finally {
+      setGuardando(false)
+    }
+  }
+
   function iniciarEdicion(p: Pregunta) {
     const txt = p.pregunta || ''
     let perfil: 'con_experiencia' | 'sin_experiencia' = 'con_experiencia'
@@ -283,6 +329,9 @@ export default function CrearPreguntasPage() {
                       preguntas.filter(p => (p.pregunta || '').startsWith('[CON_EXP]')).map((p, index) => {
                         const esEditando = editandoPreguntaId === p.id
                         const textoLimpio = p.pregunta.replace(/^\[CON_EXP\]\s*/i, '')
+                        const delMismoPerfil = preguntas.filter(x => x.pregunta.startsWith('[CON_EXP]'))
+                        const esPrimera = index === 0
+                        const esUltima = index === delMismoPerfil.length - 1
                         return (
                           <div 
                             key={p.id} 
@@ -298,6 +347,24 @@ export default function CrearPreguntasPage() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
                               <div style={s.arbolPreguntaNum}>P{index + 1}</div>
                               <div style={{ display: 'flex', gap: '4px' }}>
+                                {!esPrimera && (
+                                  <button 
+                                    style={{ ...s.arbolBotonMini, background: '#f1f5f9', color: '#475569' }} 
+                                    onClick={(e) => { e.stopPropagation(); moverPregunta(p, 'subir'); }} 
+                                    title="Subir"
+                                  >
+                                    ▲
+                                  </button>
+                                )}
+                                {!esUltima && (
+                                  <button 
+                                    style={{ ...s.arbolBotonMini, background: '#f1f5f9', color: '#475569' }} 
+                                    onClick={(e) => { e.stopPropagation(); moverPregunta(p, 'bajar'); }} 
+                                    title="Bajar"
+                                  >
+                                    ▼
+                                  </button>
+                                )}
                                 <button style={s.arbolBotonMini} onClick={(e) => { e.stopPropagation(); eliminarPregunta(p.id); }} title="Eliminar">✕</button>
                               </div>
                             </div>
@@ -322,6 +389,9 @@ export default function CrearPreguntasPage() {
                       preguntas.filter(p => (p.pregunta || '').startsWith('[SIN_EXP]')).map((p, index) => {
                         const esEditando = editandoPreguntaId === p.id
                         const textoLimpio = p.pregunta.replace(/^\[SIN_EXP\]\s*/i, '')
+                        const delMismoPerfil = preguntas.filter(x => x.pregunta.startsWith('[SIN_EXP]'))
+                        const esPrimera = index === 0
+                        const esUltima = index === delMismoPerfil.length - 1
                         return (
                           <div 
                             key={p.id} 
@@ -337,6 +407,24 @@ export default function CrearPreguntasPage() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
                               <div style={s.arbolPreguntaNum}>P{index + 1}</div>
                               <div style={{ display: 'flex', gap: '4px' }}>
+                                {!esPrimera && (
+                                  <button 
+                                    style={{ ...s.arbolBotonMini, background: '#f1f5f9', color: '#475569' }} 
+                                    onClick={(e) => { e.stopPropagation(); moverPregunta(p, 'subir'); }} 
+                                    title="Subir"
+                                  >
+                                    ▲
+                                  </button>
+                                )}
+                                {!esUltima && (
+                                  <button 
+                                    style={{ ...s.arbolBotonMini, background: '#f1f5f9', color: '#475569' }} 
+                                    onClick={(e) => { e.stopPropagation(); moverPregunta(p, 'bajar'); }} 
+                                    title="Bajar"
+                                  >
+                                    ▼
+                                  </button>
+                                )}
                                 <button style={s.arbolBotonMini} onClick={(e) => { e.stopPropagation(); eliminarPregunta(p.id); }} title="Eliminar">✕</button>
                               </div>
                             </div>
