@@ -300,7 +300,27 @@ export default function RolePlayPage() {
       ? Number((latencias.reduce((a, b) => a + b, 0) / latencias.length).toFixed(2)) 
       : 2.5
 
-    const totalTurnos = Math.max(1, Math.round(mensajesFinales.filter(m => m.role === 'user').length))
+    const totalTurnos = Math.max(0, mensajesFinales.filter(m => m.role === 'user').length)
+    const MIN_TURNOS_REQUERIDOS = 4
+
+    // Si la llamada fue muy breve, no evaluar y permitir reintento
+    if (totalTurnos < MIN_TURNOS_REQUERIDOS) {
+      try {
+        await supabase
+          .from('sesiones')
+          .delete()
+          .eq('candidato_id', candidatoId)
+          .eq('proceso_id', procesoId)
+          .eq('test_id', TEST_ID)
+        
+        alert(`La llamada fue demasiado breve (llevabas ${totalTurnos} de ${MIN_TURNOS_REQUERIDOS} turnos mínimos requeridos). Para completar esta prueba de cobranzas debes dialogar e interactuar con el cliente.\n\nSerás redirigido al portal para volver a iniciar el test desde el principio.`);
+        router.push(`/evaluacion?candidato=${candidatoId}&proceso=${procesoId}`)
+      } catch (err) {
+        console.error(err)
+        router.push(`/evaluacion?candidato=${candidatoId}&proceso=${procesoId}`)
+      }
+      return
+    }
 
     try {
       const res = await fetch('/api/roleplay', {
