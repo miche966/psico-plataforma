@@ -346,6 +346,7 @@ export default function PanelEvaluador() {
   const [busquedaDropdown, setBusquedaDropdown] = useState('')
   const [analizandoFrases, setAnalizandoFrases] = useState(false)
   const router = useRouter()
+  const [velocidadesVideo, setVelocidadesVideo] = useState<Record<number, number>>({})
 
   // Helper para cálculo de Ajuste en lote
   function calcularAjusteLote(reqs: any[], sesionesList: any[]) {
@@ -1734,8 +1735,38 @@ export default function PanelEvaluador() {
                       <div className="space-y-4">
                         {videosCandidato.map((v, i) => (
                           <div key={i} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                            <h5 className="text-sm font-bold text-slate-800 mb-3">Pregunta {i + 1}: {v.preguntas_video?.pregunta}</h5>
-                            <video src={v.url_video} controls className="w-full aspect-video rounded-xl shadow-sm bg-black mb-3" />
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                              <h5 className="text-sm font-bold text-slate-800">Pregunta {i + 1}: {v.preguntas_video?.pregunta}</h5>
+                              
+                              {/* SELECTOR DE VELOCIDAD DE REPRODUCCIÓN */}
+                              <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shrink-0 self-start sm:self-auto shadow-sm">
+                                <span className="text-[9px] font-bold text-slate-400 px-1.5 uppercase">Velocidad</span>
+                                {[1, 1.25, 1.5, 2].map((vel) => {
+                                  const selectVel = velocidadesVideo[i] || 1
+                                  const esActivo = selectVel === vel
+                                  return (
+                                    <button
+                                      key={vel}
+                                      onClick={() => {
+                                        const videoEl = document.getElementById(`video-entrevista-${i}`) as HTMLVideoElement
+                                        if (videoEl) {
+                                          videoEl.playbackRate = vel
+                                          setVelocidadesVideo(prev => ({ ...prev, [i]: vel }))
+                                        }
+                                      }}
+                                      className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all ${
+                                        esActivo 
+                                          ? 'bg-indigo-600 text-white shadow-sm scale-105' 
+                                          : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+                                      }`}
+                                    >
+                                      {vel}x
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                            <video id={`video-entrevista-${i}`} src={v.url_video} controls className="w-full aspect-video rounded-xl shadow-sm bg-black mb-3" />
                             {v.transcripcion && <div className="bg-white p-3 rounded-xl border border-slate-200 text-[11px] text-slate-600 italic">"{v.transcripcion}"</div>}
                             {v.analisis_ia && (
                                <div className="mt-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
