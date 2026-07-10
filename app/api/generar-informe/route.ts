@@ -65,6 +65,24 @@ export async function POST(req: Request) {
       });
     }
 
+    // 3.5 COMPILACIÓN DE DATOS DEL TEST DE FRASES INCOMPLETAS (SACKS)
+    let analisisFrasesIncompletas = '';
+    const frasesTestId = 'f7a8b9c0-d1e2-4356-abcd-888888888888';
+    const sesionFrases = sesiones.find((s: any) => s.test_id === frasesTestId);
+    if (sesionFrases && sesionFrases.puntaje_bruto) {
+      const pb = sesionFrases.puntaje_bruto;
+      analisisFrasesIncompletas = `
+ANÁLISIS CUALITATIVO DE LA TÉCNICA DE FRASES INCOMPLETAS (SACKS/ROTTER):
+- Dinámica Laboral & Toma de Decisiones: ${pb.analisisClinico?.dinamicaLaboral || 'N/A'}
+- Relaciones Interpersonales & Autoridad: ${pb.analisisClinico?.interpersonal || 'N/A'}
+- Estabilidad Emocional & Tolerancia a Frustración: ${pb.analisisClinico?.emocional || 'N/A'}
+- Autoconcepto & Escala de Valores: ${pb.analisisClinico?.autoconcepto || 'N/A'}
+- Fortalezas detectadas: ${Array.isArray(pb.conclusion?.fortalezas) ? pb.conclusion.fortalezas.join(', ') : 'N/A'}
+- Áreas de atención: ${Array.isArray(pb.conclusion?.areasAtencion) ? pb.conclusion.areasAtencion.join(', ') : 'N/A'}
+- Recomendación de gestión sugerida por esta técnica: ${pb.conclusion?.recomendacionGestion || 'N/A'}
+`;
+    }
+
     const prompt = `
 Eres un Consultor Senior en Desarrollo Humano y Psicólogo Organizacional. Tu misión es redactar un informe ejecutivo de alta gama que sea profundamente humano pero estrictamente profesional.
 
@@ -76,6 +94,7 @@ REGLAS DE ORO DE REDACCIÓN:
 5. COHERENCIA CON EL DICTAMEN: La "fundamentacion" debe ser honesta respecto al ajuste (${scoreFinal}%). Si el puntaje es bajo, explica de forma humana por qué el estilo del candidato difiere de las demandas del puesto (ej: ritmos, necesidades de guía, autonomía), sin usar etiquetas negativas ni juicios de valor.
 6. ESTRUCTURA DE ANÁLISIS: Cada punto debe explicar qué se observa, cómo actúa la persona y qué impacto tiene esto en el trabajo diario.
 7. SIN META-LENGUAJE: No escribas "Basado en los datos...", "El informe indica...". Escribe el análisis directo.
+8. INTEGRACIÓN DE FRASES INCOMPLETAS (SI APLICA): Si se provee la sección de datos de Frases Incompletas Sacks abajo, debes integrar y fusionar dichos hallazgos cualitativos (por ejemplo, su temor al error en autoconcepto, el respeto o inhibición ante la autoridad, y su tendencia a la cordialidad para evitar la confrontación interpersonal) de forma sumamente orgánica y atenuada dentro del Resumen Ejecutivo, las Fortalezas, las Oportunidades de Mejora y las Recomendaciones de gestión. No utilices jergas psicológicas ni menciones el test por su nombre.
 
 CONTEXTO DEL PUESTO: ${proceso?.cargo || 'N/A'}
 AJUSTE ESTIMADO: ${scoreFinal}%
@@ -83,6 +102,8 @@ PERFIL CONDUCTUAL (MBTI): ${mbtiType}
 
 DATOS PARA ANÁLISIS (FACTORES PSICOMÉTRICOS):
 ${JSON.stringify(factoresCrudos)}
+
+${analisisFrasesIncompletas ? `DATOS CUALITATIVOS ADICIONALES (TEST DE FRASES INCOMPLETAS SACKS):\n${analisisFrasesIncompletas}\n` : ''}
 
 GUÍA DE INTERPRETACIÓN DE FACTORES (MUY IMPORTANTE PARA EVITAR CONTRADICCIONES):
 - Factores de Protección (Mayor puntaje es SALUDABLE/ÓPTIMO, menor puntaje [ej: < 2.5] es CRÍTICO/DESFAVORABLE):
