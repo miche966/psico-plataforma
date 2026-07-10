@@ -1009,6 +1009,34 @@ export default function PanelEvaluador() {
       return
     }
 
+    const parseValLocal = (v: any, key?: string) => {
+      let val = 0
+      const k = key?.toLowerCase().trim() || ''
+      
+      if (typeof v === 'object' && v !== null) {
+        if ('correctas' in v && 'total' in v) {
+          val = (Number(v.correctas) / (Number(v.total) || 1)) * 5
+        } else {
+          val = Number(v.correctas || v.score || v.promedio || 0)
+        }
+      } else if (typeof v === 'string') {
+        const s = v.toLowerCase().trim()
+        if (s === 'alto') val = 5
+        else if (s === 'medio') val = 3
+        else if (s === 'bajo') val = 1.5
+        else val = Number(v) || 0
+      } else {
+        val = Number(v) || 0
+      }
+
+      if (val > 5) {
+        if (val <= 25) val = (val / 25) * 5
+        else if (val <= 100) val = (val / 100) * 5
+        else val = 5
+      }
+      return Math.min(5, Math.max(0, val))
+    }
+
     const calcularMBTI = (pb: any) => {
       if (!pb) return "—"
       const findVal = (key: string) => {
@@ -1119,17 +1147,21 @@ export default function PanelEvaluador() {
         const pb = s.puntaje_bruto || {}
         if (pb.comunicacion != null) comunicacion = pb.comunicacion
         if (pb.negociacion != null) negociacion = pb.negociacion
-        if (pb.tolerancia_presion != null) presion = pb.tolerancia_presion
+        if (pb.tolerancia_frustracion != null) presion = pb.tolerancia_frustracion
         if (pb.por_factor) {
           if (pb.por_factor.comunicacion != null) comunicacion = pb.por_factor.comunicacion
           if (pb.por_factor.negociacion != null) negociacion = pb.por_factor.negociacion
-          if (pb.por_factor.tolerancia_presion != null) presion = pb.por_factor.tolerancia_presion
+          if (pb.por_factor.tolerancia_frustracion != null) presion = pb.por_factor.tolerancia_frustracion
         }
       })
       
-      const comunicacionVal = comunicacion != null ? `${Math.round(Number(comunicacion) * 20)}%` : "—"
-      const negociacionVal = negociacion != null ? `${Math.round(Number(negociacion) * 20)}%` : "—"
-      const presionVal = presion != null ? `${Math.round(Number(presion) * 20)}%` : "—"
+      const comunicacionScore = comunicacion != null ? parseValLocal(comunicacion, 'comunicacion') : null
+      const negociacionScore = negociacion != null ? parseValLocal(negociacion, 'negociacion') : null
+      const presionScore = presion != null ? parseValLocal(presion, 'tolerancia_frustracion') : null
+
+      const comunicacionVal = comunicacionScore != null ? `${Math.round(comunicacionScore * 20)}%` : "—"
+      const negociacionVal = negociacionScore != null ? `${Math.round(negociacionScore * 20)}%` : "—"
+      const presionVal = presionScore != null ? `${Math.round(presionScore * 20)}%` : "—"
 
       // 6. Burnout y Bienestar
       const sesionBien = c.sesiones.find(s => TEST_IDS[s.test_id] === 'estres-laboral')
