@@ -248,6 +248,15 @@ export default function EstadisticasPage() {
   // Ordenamiento de candidatos
   const listaOrdenada = [...listaFiltrada].sort((a, b) => {
     if (ordenCriterio === 'match') {
+      // 1. Priorizar candidatos que completaron el 100% de su batería
+      const aCompleto = a.progresoPct >= 100 ? 1 : 0
+      const bCompleto = b.progresoPct >= 100 ? 1 : 0
+      
+      if (aCompleto !== bCompleto) {
+        return bCompleto - aCompleto // Los completados van primero
+      }
+
+      // 2. Si ambos están en el mismo grupo de completado/incompleto, ordenar por matchScore
       return (b.matchScore || 0) - (a.matchScore || 0)
     }
     if (ordenCriterio === 'progreso') {
@@ -376,7 +385,7 @@ export default function EstadisticasPage() {
           <table className="w-full text-left border-collapse min-w-[900px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Puesto</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Posición</th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Candidato</th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Progreso Batería</th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Match Encaje</th>
@@ -407,6 +416,9 @@ export default function EstadisticasPage() {
                         {item.nombre} {item.apellido}
                       </div>
                       <div className="text-[10px] text-slate-400 mt-0.5">{item.email}</div>
+                      <div className="text-[9px] text-indigo-600 font-bold mt-1 uppercase tracking-wider bg-indigo-50/50 px-2 py-0.5 rounded w-fit border border-indigo-100/30 flex items-center gap-1">
+                        <span>💼</span> {item.procesoNombre}
+                      </div>
                     </td>
 
                     {/* Progreso de la Batería */}
