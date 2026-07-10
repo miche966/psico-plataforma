@@ -134,8 +134,9 @@ export default function Dashboard() {
         if (m) {
           totalAlertas += (m.tabSwitches || 0) + (m.copyPasteAttempts || 0)
         }
-        if (s.finalizada_en && s.creado_en) {
-          const diff = new Date(s.finalizada_en).getTime() - new Date(s.creado_en).getTime()
+        const inicio = s.iniciada_en || s.created_at
+        if (s.finalizada_en && inicio) {
+          const diff = new Date(s.finalizada_en).getTime() - new Date(inicio).getTime()
           tiempos.push(diff / (1000 * 60)) // Minutos
         }
       })
