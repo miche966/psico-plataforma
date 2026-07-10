@@ -98,7 +98,7 @@ export const SimplePDF = ({ data }: any) => {
           </View>
         )}
 
-        {helpers.esSJT(pb) && (
+        {helpers.esSJT(pb) && !helpers.esRoleplay?.(pb) && (
           <View>
             <Text style={styles.sectionTitle}>Análisis Situacional (SJT)</Text>
             {Object.entries(pb.por_factor || {}).map(([factor, info]: any) => {
@@ -157,7 +157,60 @@ export const SimplePDF = ({ data }: any) => {
           </View>
         )}
 
-        {!helpers.esBigFive(pb) && !helpers.esCognitivo(pb) && !helpers.esSJT(pb) && !helpers.esFrasesIncompletas?.(pb) && (
+        {helpers.esRoleplay?.(pb) && (
+          <View>
+            <Text style={styles.sectionTitle}>Evaluación de Simulación Interactiva (Role Play)</Text>
+            
+            {/* 1. Dimensiones de Desempeño */}
+            <View style={{ marginBottom: 15 }}>
+              {Object.entries(pb.por_factor || {}).map(([factor, puntajeDirecto]: any) => {
+                const valorNum = typeof puntajeDirecto === 'number' ? puntajeDirecto : parseFloat(String(puntajeDirecto)) || 0
+                const valorEscala = Math.round((valorNum / 20) * 10) / 10
+                const pct = valorNum
+                const colorStr = '#4f46e5' // Indigo
+                
+                return (
+                  <View key={factor} style={styles.factorBlock} wrap={false}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={styles.factorName}>{factor}</Text>
+                      <Text style={{ ...styles.factorValue, color: colorStr }}>{valorEscala} / 5 ({valorNum}%)</Text>
+                    </View>
+                    <View style={styles.barBg}>
+                      <View style={{ ...styles.barFill, width: `${pct}%`, backgroundColor: colorStr }} />
+                    </View>
+                  </View>
+                )
+              })}
+            </View>
+
+            {/* 2. Retroalimentación de la IA */}
+            {pb.retroalimentacion && (
+              <View style={{ padding: 10, backgroundColor: '#f5f3ff', borderLeftWidth: 3, borderLeftColor: '#7c3aed', marginBottom: 15 }} wrap={false}>
+                <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#6d28d9', marginBottom: 3 }}>Retroalimentación del Evaluador IA</Text>
+                <Text style={styles.desc}>"{pb.retroalimentacion}"</Text>
+              </View>
+            )}
+
+            {/* 3. Transcripción de la Conversación */}
+            {pb.transcripcion && pb.transcripcion.length > 0 && (
+              <View>
+                <Text style={{ ...styles.sectionTitle, fontSize: 11, marginBottom: 8, marginTop: 10 }}>Transcripción del Diálogo</Text>
+                {pb.transcripcion.map((msg: any, idx: number) => {
+                  const esModel = msg.role === 'model' || msg.role === 'assistant'
+                  const remitente = esModel ? 'Cliente (Carlos Gómez)' : 'Candidato (Analista)'
+                  return (
+                    <View key={idx} style={{ marginBottom: 6, paddingBottom: 4, borderBottomWidth: 0.5, borderBottomColor: '#f1f5f9' }} wrap={false}>
+                      <Text style={{ fontSize: 7, fontWeight: 'bold', color: esModel ? '#64748b' : '#4f46e5' }}>{remitente}</Text>
+                      <Text style={{ fontSize: 8, color: '#334155', marginTop: 1, lineHeight: 1.3 }}>{msg.content}</Text>
+                    </View>
+                  )
+                })}
+              </View>
+            )}
+          </View>
+        )}
+
+        {!helpers.esBigFive(pb) && !helpers.esCognitivo(pb) && !helpers.esSJT(pb) && !helpers.esFrasesIncompletas?.(pb) && !helpers.esRoleplay?.(pb) && (
           <View>
             <Text style={styles.sectionTitle}>Resultado General</Text>
             {(() => {

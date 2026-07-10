@@ -1799,6 +1799,9 @@ export default function PanelEvaluador() {
                         if (sesionSeleccionada.test_id === 'f7a8b9c0-d1e2-4356-abcd-888888888888') {
                           return renderFrasesIncompletas(sesionSeleccionada, analizarFrasesConIA)
                         }
+                        if (sesionSeleccionada.test_id === 'd8e9f0a1-b2c3-4567-defa-888888888888') {
+                          return renderRoleplay(sesionSeleccionada)
+                        }
                         return (
                           <div className="space-y-6">
                             {/* MÉTRICAS DE FRAUDE */}
@@ -1975,11 +1978,12 @@ async function generarPDF(sesion: Sesion) {
   }
 
   const esFrasesIncompletas = (pb: any) => pb && ('analisis_ia' in pb || typeof pb.respuestas === 'object');
+  const esRoleplay = (pb: any) => sesion.test_id === 'd8e9f0a1-b2c3-4567-defa-888888888888';
 
   const pdfData = {
     sesion, nombre, fecha,
     helpers: {
-      esBigFive, esCognitivo, esSJT, esFrasesIncompletas, valoresNumericos, promedioPuntaje, datosCognitivos,
+      esBigFive, esCognitivo, esSJT, esFrasesIncompletas, esRoleplay, valoresNumericos, promedioPuntaje, datosCognitivos,
       coloresRGB, etiquetasPDF: etiquetas, interpretacion
     }
   }
@@ -2312,6 +2316,81 @@ function renderFrasesIncompletas(sesion: any, analizarFrasesConIA: any) {
         </div>
       )}
 
+    </div>
+  )
+}
+
+function renderRoleplay(sesion: any) {
+  const pb = sesion.puntaje_bruto || {}
+  const porFactor = pb.por_factor || {}
+  const transcripcion = pb.transcripcion || []
+  const retroalimentacion = pb.retroalimentacion || ''
+
+  return (
+    <div className="space-y-6">
+      {/* 1. Dimensiones Evaluadas */}
+      <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-4">
+        <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Dimensiones de Desempeño</h5>
+        {Object.entries(porFactor).map(([factor, puntajeDirecto]: any) => {
+          const valorNum = typeof puntajeDirecto === 'number' ? puntajeDirecto : parseFloat(String(puntajeDirecto)) || 0
+          const valorEscala = Math.round((valorNum / 20) * 10) / 10
+          
+          return (
+            <div key={factor} className="space-y-1.5">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-semibold text-slate-700">{factor}</span>
+                <span className="font-black text-indigo-600">{valorEscala} / 5 ({valorNum}%)</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-indigo-600 rounded-full transition-all duration-1000" 
+                  style={{ width: `${valorNum}%` }}
+                />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* 2. Retroalimentación General de IA */}
+      {retroalimentacion && (
+        <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/50">
+          <h5 className="text-xs font-bold text-indigo-800 uppercase tracking-wider mb-2">Retroalimentación del Evaluador IA</h5>
+          <p className="text-xs text-slate-600 leading-relaxed italic">"{retroalimentacion}"</p>
+        </div>
+      )}
+
+      {/* 3. Transcripción de la Conversación (Preguntas y Respuestas) */}
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="p-4 bg-slate-50 border-b border-slate-200">
+          <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-sans">Transcripción de la Simulación (Preguntas y Respuestas)</h5>
+          <p className="text-[10px] text-slate-400 mt-1">Historial del diálogo sostenido entre el candidato y el cliente simulado.</p>
+        </div>
+        
+        <div className="p-4 space-y-4 max-h-[400px] overflow-y-auto bg-slate-50/30">
+          {transcripcion.length === 0 ? (
+            <p className="text-xs text-slate-400 italic text-center py-4">No hay transcripción disponible para esta sesión.</p>
+          ) : (
+            transcripcion.map((msg: any, idx: number) => {
+              const esModel = msg.role === 'model' || msg.role === 'assistant'
+              const remitente = esModel ? 'Cliente (Carlos Gómez)' : 'Candidato (Analista)'
+              
+              return (
+                <div key={idx} className={`flex flex-col ${esModel ? 'items-start' : 'items-end'}`}>
+                  <span className="text-[9px] font-bold text-slate-400 mb-1">{remitente}</span>
+                  <div className={`p-3 rounded-2xl max-w-[85%] text-xs leading-relaxed ${
+                    esModel 
+                      ? 'bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200/60' 
+                      : 'bg-indigo-600 text-white rounded-tr-none'
+                  }`}>
+                    {msg.content}
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </div>
     </div>
   )
 }
