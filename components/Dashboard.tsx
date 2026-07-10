@@ -17,6 +17,8 @@ const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
 export default function Dashboard() {
   const [cargando, setCargando] = useState(true)
+  const [modalAlertasAbierto, setModalAlertasAbierto] = useState(false)
+  const [alertasDetalle, setAlertasDetalle] = useState<any[]>([])
   const [datos, setDatos] = useState<any>({
     resumen: { total: 0, completados: 0, alertas: 0, tiempoMedio: 0 },
     porProceso: [],
@@ -35,7 +37,7 @@ export default function Dashboard() {
         { data: candidatos, error: ce },
         { data: procesos, error: pe }
       ] = await Promise.all([
-        supabase.from('candidatos').select('id, creado_en'),
+        supabase.from('candidatos').select('id, nombre, apellido, creado_en'),
         supabase.from('procesos').select('id, nombre, cargo, bateria_tests')
       ])
 
@@ -128,18 +130,47 @@ export default function Dashboard() {
       
       let totalAlertas = 0
       let tiempos: number[] = []
+      const listaAlertasDetalle: any[] = []
+
+      // Mapa rápido de candidatos por ID
+      const candidatosMap: Record<string, string> = {}
+      candidatos.forEach((c: any) => {
+        candidatosMap[c.id] = `${c.nombre || ''} ${c.apellido || ''}`.trim() || 'Candidato sin nombre'
+      })
 
       sesiones.forEach(s => {
         const m = s.puntaje_bruto?.metricas_fraude as any
-        if (m) {
-          totalAlertas += (m.tabSwitches || 0) + (m.copyPasteAttempts || 0)
+        const tabSwitches = m?.tabSwitches || 0
+        const copyPaste = m?.copyPasteAttempts || 0
+        const totalFails = tabSwitches + copyPaste
+
+        if (totalFails > 0) {
+          totalAlertas += totalFails
+          const candNombre = candidatosMap[s.candidato_id] || 'Candidato Anónimo'
+          const procNombre = s.procesos?.nombre || 'Proceso de Selección'
+          const testNombre = TEST_IDS_MAP[s.test_id] || s.test_id
+
+          listaAlertasDetalle.push({
+            id: s.id,
+            candidato: candNombre,
+            proceso: procNombre,
+            test: testNombre,
+            tabSwitches,
+            copyPaste,
+            total: totalFails
+          })
         }
+
         const inicio = s.iniciada_en || s.created_at
         if (s.finalizada_en && inicio) {
           const diff = new Date(s.finalizada_en).getTime() - new Date(inicio).getTime()
           tiempos.push(diff / (1000 * 60)) // Minutos
         }
       })
+
+      // Ordenar alertas por criticidad
+      listaAlertasDetalle.sort((a, b) => b.total - a.total)
+      setAlertasDetalle(listaAlertasDetalle)
 
       const tiempoMedio = tiempos.length > 0 ? Math.round(tiempos.reduce((a, b) => a + b, 0) / tiempos.length) : 0
 
@@ -246,6 +277,7 @@ export default function Dashboard() {
             sub="Incidencias detectadas" 
             icon={<AlertTriangle className="w-5 h-5 text-amber-600" />}
             color="bg-amber-50"
+            onClick={() => setModalAlertasAbierto(true)}
           />
           <CardResumen 
             titulo="Tiempo Medio" 
@@ -371,13 +403,121 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* MODAL DETALLE DE ALERTAS */}
+      {modalAlertasAbierto && (
+        <div 
+          className="fixed inset-0 bg-slate-955/70 backdrop-blur-sm flex justify-center items-center z-50 p-4 animate-in fade-in duration-200"
+          onClick={() => setModalAlertasAbierto(false)}
+        >
+          <div 
+            className="bg-white border border-slate-200 rounded-3xl max-w-3xl w-full max-h-[80vh] overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabecera */}
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  Detalle de Alertas de Integridad
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Listado de postulantes que presentaron cambios de pestaña o intentos de copiar/pegar
+                </p>
+              </div>
+              <button 
+                onClick={() => setModalAlertasAbierto(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm transition-all"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Cuerpo */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {alertasDetalle.length === 0 ? (
+                <div className="text-center py-12 text-slate-500 text-sm">
+                  No se han registrado incidencias de integridad en las evaluaciones.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <th className="pb-3 pr-4">Postulante</th>
+                        <th className="pb-3 pr-4">Proceso / Cargo</th>
+                        <th className="pb-3 pr-4">Evaluación</th>
+                        <th className="pb-3 pr-4 text-center">Pestañas</th>
+                        <th className="pb-3 pr-4 text-center">Copiar/Pegar</th>
+                        <th className="pb-3 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs">
+                      {alertasDetalle.map((a: any, idx: number) => {
+                        const esCritico = a.total >= 10
+                        return (
+                          <tr key={idx} className="hover:bg-slate-50/30 transition-colors">
+                            <td className="py-3 pr-4 font-bold text-slate-900">{a.candidato}</td>
+                            <td className="py-3 pr-4 text-slate-500 max-w-[180px] truncate" title={a.proceso}>{a.proceso}</td>
+                            <td className="py-3 pr-4">
+                              <span className="px-2 py-0.5 bg-slate-100 text-slate-650 rounded text-[9px] font-bold uppercase tracking-wider">
+                                {a.test}
+                              </span>
+                            </td>
+                            <td className="py-3 pr-4 text-center font-semibold">
+                              {a.tabSwitches > 0 ? (
+                                <span className="text-amber-600 flex items-center justify-center gap-1 text-[11px]">
+                                  ⚠️ {a.tabSwitches}
+                                </span>
+                              ) : '-'}
+                            </td>
+                            <td className="py-3 pr-4 text-center font-semibold">
+                              {a.copyPaste > 0 ? (
+                                <span className="text-rose-600 flex items-center justify-center gap-1 text-[11px]">
+                                  ✂️ {a.copyPaste}
+                                </span>
+                              ) : '-'}
+                            </td>
+                            <td className="py-3 text-right font-bold">
+                              <span className={`px-2 py-0.5 rounded text-[11px] ${
+                                esCritico ? 'bg-red-50 text-red-700 border border-red-100 font-bold' : 'bg-slate-100 text-slate-800'
+                              }`}>
+                                {a.total}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Pie */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <button 
+                onClick={() => setModalAlertasAbierto(false)}
+                className="px-4 py-2 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function CardResumen({ titulo, valor, sub, icon, color }: any) {
+function CardResumen({ titulo, valor, sub, icon, color, onClick }: any) {
   return (
-    <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all group">
+    <div 
+      onClick={onClick}
+      className={`bg-white border border-slate-200 rounded-3xl p-5 shadow-sm transition-all group ${
+        onClick ? 'cursor-pointer hover:shadow-md hover:border-slate-300 active:scale-[0.98]' : ''
+      }`}
+    >
       <div className="flex justify-between items-start mb-4">
         <div className={`${color} p-3 rounded-2xl group-hover:scale-110 transition-transform`}>
           {icon}
