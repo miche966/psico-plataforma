@@ -638,6 +638,26 @@ export default function PortalCandidatoPage() {
 
   const todosCompletados = bateria.length > 0 && testsPendientes.length === 0
 
+  // Disparador de autogeneración de informe en segundo plano al alcanzar el 100% de avance
+  useEffect(() => {
+    if (candidatoId && procesoId) {
+      const key = `auto_informe_generado_${candidatoId}_${procesoId}`
+      if (todosCompletados) {
+        const yaGenerado = localStorage.getItem(key)
+        if (!yaGenerado) {
+          localStorage.setItem(key, '1')
+          fetch('/api/generar-informe-auto', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ candidatoId, procesoId })
+          }).catch(e => console.error("Error en autogeneración de informe:", e))
+        }
+      } else {
+        localStorage.removeItem(key)
+      }
+    }
+  }, [todosCompletados, candidatoId, procesoId])
+
   if (todosCompletados) {
     return (
       <div className="min-h-screen bg-slate-50 py-12 px-4 flex items-center justify-center">
