@@ -109,51 +109,57 @@ export default function RolePlayPage() {
   }
 
   function inicializarReconocimiento() {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      setSoportaMic(false)
-      setFallbackTexto(true)
-      return
-    }
+    try {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      if (!SpeechRecognition) {
+        setSoportaMic(false)
+        setFallbackTexto(true)
+        return
+      }
 
-    const rec = new SpeechRecognition()
-    rec.continuous = false
-    rec.interimResults = true
-    rec.lang = 'es-UY'
+      const rec = new SpeechRecognition()
+      rec.continuous = false
+      rec.interimResults = true
+      rec.lang = 'es-UY'
 
-    rec.onstart = () => {
-      setEscuchando(true)
-      setTranscripcionParcial('')
-    }
+      rec.onstart = () => {
+        setEscuchando(true)
+        setTranscripcionParcial('')
+      }
 
-    rec.onresult = (event: any) => {
-      let interimTranscript = ''
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          const finalResult = event.results[i][0].transcript
-          setTranscripcionParcial(finalResult)
-          enviarMensajeVoz(finalResult)
-        } else {
-          interimTranscript += event.results[i][0].transcript
-          setTranscripcionParcial(interimTranscript)
+      rec.onresult = (event: any) => {
+        let interimTranscript = ''
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            const finalResult = event.results[i][0].transcript
+            setTranscripcionParcial(finalResult)
+            enviarMensajeVoz(finalResult)
+          } else {
+            interimTranscript += event.results[i][0].transcript
+            setTranscripcionParcial(interimTranscript)
+          }
         }
       }
-    }
 
-    rec.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error)
-      setEscuchando(false)
-      if (event.error === 'not-allowed') {
-        alert("Permiso de micrófono denegado. Cambiaremos al modo chat de texto de respaldo.")
-        setFallbackTexto(true)
+      rec.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error)
+        setEscuchando(false)
+        if (event.error === 'not-allowed') {
+          alert("Permiso de micrófono denegado. Cambiaremos al modo chat de texto de respaldo.")
+          setFallbackTexto(true)
+        }
       }
-    }
 
-    rec.onend = () => {
-      setEscuchando(false)
-    }
+      rec.onend = () => {
+        setEscuchando(false)
+      }
 
-    recognitionRef.current = rec
+      recognitionRef.current = rec
+    } catch (e) {
+      console.error("Error al inicializar SpeechRecognition:", e)
+      setSoportaMic(false)
+      setFallbackTexto(true)
+    }
   }
 
   // Activa el reconocimiento por voz
