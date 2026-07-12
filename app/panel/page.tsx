@@ -1268,6 +1268,245 @@ export default function PanelEvaluador() {
     document.body.removeChild(link)
   }
 
+  function exportarReporteMacroCSV() {
+    if (candidatosFiltrados.length === 0) {
+      alert("No hay procesos ni candidatos disponibles para exportar con los filtros actuales.")
+      return
+    }
+
+    const cleanText = (val: any) => {
+      if (val == null) return "-"
+      const s = String(val).trim()
+      if (s === "" || s === "—" || s === "-" || s === "x") return "-"
+      return s
+    }
+
+    const cleanQuotes = (val: any) => {
+      const s = cleanText(val)
+      if (s === "-") return s
+      return s.replace(/"/g, "'")
+    }
+
+    const parseValLocal = (v: any, key?: string) => {
+      let val = 0
+      const k = key?.toLowerCase().trim() || ''
+      
+      if (typeof v === 'object' && v !== null) {
+        if ('correctas' in v && 'total' in v) {
+          val = (Number(v.correctas) / (Number(v.total) || 1)) * 5
+        } else {
+          val = Number(v.correctas || v.score || v.promedio || 0)
+        }
+      } else if (typeof v === 'string') {
+        const s = v.toLowerCase().trim()
+        if (s === 'alto') val = 5
+        else if (s === 'medio') val = 3
+        else if (s === 'bajo') val = 1.5
+        else val = Number(v) || 0
+      } else {
+        val = Number(v) || 0
+      }
+
+      if (val > 5) {
+        if (val <= 25) val = (val / 25) * 5
+        else if (val <= 100) val = (val / 100) * 5
+        else val = 5
+      }
+      return Math.min(5, Math.max(0, val))
+    }
+
+    const headers = [
+      "Proceso",
+      "Cargo",
+      "Total Inscritos",
+      "Tasa de Finalización %",
+      "Match Score (Ajuste) Promedio",
+      "Recomendados %",
+      "Recomendados con Reservas %",
+      "No Recomendados %",
+      "Alertas Proctoring Totales",
+      "Promedio Alertas por Candidato",
+      "Candidatos con Cero Alertas %",
+      "Candidatos con Alertas Críticas % (>15 Alertas)",
+      "Tiempo Medio de Resolución",
+      "Deserción por Examen",
+      "Burnout Promedio (1-5)",
+      "Equilibrio Vida-Trabajo Promedio (1-5)"
+    ]
+
+    // Agrupar candidatos por proceso_id
+    const procesosMap = new Map<string, any[]>()
+    candidatosFiltrados.forEach(c => {
+      const pId = c.proceso_id || 'sin-proceso'
+      if (!procesosMap.has(pId)) {
+        procesosMap.set(pId, [])
+      }
+      procesosMap.get(pId)!.push(c)
+    })
+
+    const rows: any[] = []
+    procesosMap.forEach((cands, pId) => {
+      const primerCand = cands[0]
+      const procesoNombre = primerCand.proceso_nombre || "Proceso de Selección"
+      const procesoCargo = primerCand.proceso_cargo || "S/C"
+      const totalInscritos = cands.length
+
+      // 1. Tasa de Finalización
+      let completadosCount = 0
+      cands.forEach(c => {
+        const completados = c.progreso?.completados || 0
+        const total = c.progreso?.total || 1
+        if (completados >= total && total > 0) {
+          completadosCount++
+        }
+      })
+      const tasaFinalizacion = Math.round((completadosCount / totalInscritos) * 100)
+
+      // 2. Match Score Promedio
+      let sumMatch = 0
+      let countMatch = 0
+      cands.forEach(c => {
+        if (c.matchScore != null) {
+          sumMatch += c.matchScore
+          countMatch++
+        }
+      })
+      const matchPromedio = countMatch > 0 ? `${Math.round(sumMatch / countMatch)}%` : "-"
+
+      // 3. Distribución de Dictamen
+      let recomendadoCount = 0
+      let reservasCount = 0
+      let noRecomendadoCount = 0
+      cands.forEach(c => {
+        const rec = c.recomendacion?.toLowerCase()
+        if (rec === 'recomendado') recomendadoCount++
+        else if (rec === 'con_reservas') reservasCount++
+        else if (rec === 'no_reconocido' || rec === 'no_recomendado') noRecomendadoCount++
+      })
+      const pctRecomendado = Math.round((recomendadoCount / totalInscritos) * 100)
+      const pctReservas = Math.round((reservasCount / totalInscritos) * 100)
+      const pctNoRecomendado = Math.round((noRecomendadoCount / totalInscritos) * 100)
+
+      // 4. Proctoring / Alertas
+      let totalAlertas = 0
+      let ceroAlertasCount = 0
+      let criticasCount = 0
+      cands.forEach(c => {
+        let candAlertas = 0
+        c.sesiones.forEach(s => {
+          const m = s.puntaje_bruto?.metricas_fraude as any
+          if (m) {
+            candAlertas += (m.tabSwitches || 0) + (m.copyPasteAttempts || 0)
+          }
+        })
+        totalAlertas += candAlertas
+        if (candAlertas === 0) ceroAlertasCount++
+        if (candAlertas > 15) criticasCount++
+      })
+      const promedioAlertas = (totalAlertas / totalInscritos).toFixed(1)
+      const pctCeroAlertas = Math.round((ceroAlertasCount / totalInscritos) * 100)
+      const pctCriticasAlertas = Math.round((criticasCount / totalInscritos) * 100)
+
+      // 5. Tiempos y Deserción por Test
+      let sumMinutos = 0
+      let countMinutos = 0
+      let abandonosMap = new Map<string, number>()
+      let totalTestSessionCount = new Map<string, number>()
+
+      cands.forEach(c => {
+        c.sesiones.forEach(s => {
+          const slug = TEST_IDS[s.test_id] || s.test_id
+          if (slug) {
+            if (!totalTestSessionCount.has(slug)) totalTestSessionCount.set(slug, 0)
+            totalTestSessionCount.set(slug, totalTestSessionCount.get(slug)! + 1)
+
+            if (s.estado === 'iniciado') {
+              if (!abandonosMap.has(slug)) abandonosMap.set(slug, 0)
+              abandonosMap.set(slug, abandonosMap.get(slug)! + 1)
+            }
+          }
+
+          if (s.estado === 'finalizado' && s.iniciada_en && s.finalizada_en) {
+            const diff = new Date(s.finalizada_en).getTime() - new Date(s.iniciada_en).getTime()
+            const mins = diff / (1000 * 60)
+            if (mins > 0 && mins < 180) {
+              sumMinutos += mins
+              countMinutos++
+            }
+          }
+        })
+      })
+      const tiempoMedio = countMinutos > 0 ? `${Math.round(sumMinutos / countMinutos)}m` : "-"
+
+      let desercionesArr: string[] = []
+      abandonosMap.forEach((count, slug) => {
+        const total = totalTestSessionCount.get(slug) || 1
+        const pct = Math.round((count / total) * 100)
+        if (pct > 0) desercionesArr.push(`${slug}: ${pct}%`)
+      })
+      const deserciónPorTest = desercionesArr.length > 0 ? desercionesArr.join(" | ") : "Ninguna"
+
+      // 6. Bienestar
+      let sumBurnout = 0
+      let countBurnout = 0
+      let sumEquilibrio = 0
+      let countEquilibrio = 0
+      cands.forEach(c => {
+        const sesionBien = c.sesiones.find(s => TEST_IDS[s.test_id] === 'estres-laboral')
+        const bien = (sesionBien?.puntaje_bruto || {}) as any
+        if (bien.burnout != null) {
+          sumBurnout += bien.burnout
+          countBurnout++
+        }
+        if (bien.equilibrio != null) {
+          sumEquilibrio += bien.equilibrio
+          countEquilibrio++
+        }
+      })
+      const promedioBurnout = countBurnout > 0 ? (sumBurnout / countBurnout).toFixed(1) : "-"
+      const promedioEquilibrio = countEquilibrio > 0 ? (sumEquilibrio / countEquilibrio).toFixed(1) : "-"
+
+      rows.push([
+        cleanQuotes(procesoNombre),
+        cleanQuotes(procesoCargo),
+        totalInscritos,
+        `${tasaFinalizacion}%`,
+        matchPromedio,
+        `${pctRecomendado}%`,
+        `${pctReservas}%`,
+        `${pctNoRecomendado}%`,
+        totalAlertas,
+        promedioAlertas,
+        `${pctCeroAlertas}%`,
+        `${pctCriticasAlertas}%`,
+        tiempoMedio,
+        deserciónPorTest,
+        promedioBurnout,
+        promedioEquilibrio
+      ])
+    })
+
+    // Construir el CSV
+    const csvContent = [
+      headers.join(";"),
+      ...rows.map(row => row.map(val => {
+        const cleanVal = String(val).replace(/;/g, ",").replace(/\r?\n|\r/g, " ")
+        return `"${cleanVal}"`
+      }).join(";"))
+    ].join("\n")
+
+    // Descarga
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute("download", `Reporte_Macro_Procesos_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   function abrirRecordatorioOutlook(c: CandidatoAgrupado, link: string, nombreProceso: string) {
     const subject = encodeURIComponent(`Recordatorio: Evaluaciones pendientes para ${nombreProceso}`)
     const body = encodeURIComponent(
@@ -1590,6 +1829,14 @@ export default function PanelEvaluador() {
         >
           <Download className="w-3.5 h-3.5 text-indigo-500" />
           Exportar People Analytics
+        </button>
+
+        <button
+          onClick={exportarReporteMacroCSV}
+          className="px-4 py-2 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-600 bg-slate-50/50 hover:bg-slate-50 transition-all shrink-0 w-full md:w-auto flex items-center justify-center gap-1.5"
+        >
+          <Download className="w-3.5 h-3.5 text-emerald-500" />
+          Exportar Reporte Macro (BI)
         </button>
 
         {/* DROPDOWN SELECTOR DE CANDIDATOS */}
