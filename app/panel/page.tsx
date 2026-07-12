@@ -1009,6 +1009,28 @@ export default function PanelEvaluador() {
       return
     }
 
+    const cleanText = (val: any) => {
+      if (val == null) return "-"
+      const s = String(val).trim()
+      if (s === "" || s === "—" || s === "-" || s === "x") return "-"
+      return s
+    }
+
+    const cleanQuotes = (val: any) => {
+      const s = cleanText(val)
+      if (s === "-") return s
+      return s.replace(/"/g, "'")
+    }
+
+    const toTitleCase = (val: any) => {
+      const s = cleanText(val)
+      if (s === "-") return s
+      return s.split(/\s+/).map(word => {
+        if (!word) return ""
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      }).join(" ")
+    }
+
     const parseValLocal = (v: any, key?: string) => {
       let val = 0
       const k = key?.toLowerCase().trim() || ''
@@ -1038,7 +1060,7 @@ export default function PanelEvaluador() {
     }
 
     const calcularMBTI = (pb: any) => {
-      if (!pb) return "—"
+      if (!pb) return "-"
       const findVal = (key: string) => {
         let found = 2.5
         const searchVal = (obj: any) => {
@@ -1085,7 +1107,8 @@ export default function PanelEvaluador() {
       "Competencia: Tolerancia Presión %",
       "Riesgo de Agotamiento (Burnout) (1-5)",
       "Equilibrio Vida-Trabajo (1-5)",
-      "Fecha de Evaluación (Última Actividad)"
+      "Fecha de Evaluación (Última Actividad)",
+      "Dictamen Final"
     ]
 
     const rows = candidatosFiltrados.map(c => {
@@ -1103,13 +1126,13 @@ export default function PanelEvaluador() {
       const bf = (sesionBigFive?.puntaje_bruto || {}) as any
       
       let estabilidad = bf.estabilidad != null ? bf.estabilidad : (bf.neuroticismo != null ? 6 - bf.neuroticismo : null)
-      const estabilidadVal = estabilidad != null ? estabilidad.toFixed(1) : "—"
-      const amabilidadVal = bf.amabilidad != null ? bf.amabilidad.toFixed(1) : "—"
-      const extraversionVal = bf.extraversion != null ? bf.extraversion.toFixed(1) : "—"
-      const responsabilidadVal = bf.responsabilidad != null ? bf.responsabilidad.toFixed(1) : "—"
-      const aperturaVal = bf.apertura != null ? bf.apertura.toFixed(1) : "—"
+      const estabilidadVal = estabilidad != null ? estabilidad.toFixed(1) : "-"
+      const amabilidadVal = bf.amabilidad != null ? bf.amabilidad.toFixed(1) : "-"
+      const extraversionVal = bf.extraversion != null ? bf.extraversion.toFixed(1) : "-"
+      const responsabilidadVal = bf.responsabilidad != null ? bf.responsabilidad.toFixed(1) : "-"
+      const aperturaVal = bf.apertura != null ? bf.apertura.toFixed(1) : "-"
       
-      let bigFiveConsolidado = "—"
+      let bigFiveConsolidado = "-"
       if (estabilidad != null || bf.amabilidad != null || bf.extraversion != null || bf.responsabilidad != null || bf.apertura != null) {
         bigFiveConsolidado = `Est: ${estabilidadVal} | Ama: ${amabilidadVal} | Ext: ${extraversionVal} | Res: ${responsabilidadVal} | Ape: ${aperturaVal}`
       }
@@ -1119,8 +1142,8 @@ export default function PanelEvaluador() {
       // 3. Integridad y Sinceridad Laboral
       const sesionIntegridad = c.sesiones.find(s => TEST_IDS[s.test_id] === 'integridad')
       const pi = (sesionIntegridad?.puntaje_bruto || {}) as any
-      const probidadVal = pi.promedio_general != null ? pi.promedio_general.toFixed(1) : "—"
-      const sinceridadVal = pi.honestidad != null ? pi.honestidad.toFixed(1) : "—"
+      const probidadVal = pi.promedio_general != null ? pi.promedio_general.toFixed(1) : "-"
+      const sinceridadVal = pi.honestidad != null ? pi.honestidad.toFixed(1) : "-"
 
       // 4. Calcular efectividad cognitiva consolidada
       let correctasCognitivo = 0
@@ -1136,7 +1159,7 @@ export default function PanelEvaluador() {
       })
       const efectividadCognitiva = totalCognitivo > 0 
         ? `${Math.round((correctasCognitivo / totalCognitivo) * 100)}%` 
-        : "—"
+        : "-"
 
       // 5. Competencias Específicas (Extracción robusta desde cualquier test conductual)
       let comunicacion = null
@@ -1159,18 +1182,18 @@ export default function PanelEvaluador() {
       const negociacionScore = negociacion != null ? parseValLocal(negociacion, 'negociacion') : null
       const presionScore = presion != null ? parseValLocal(presion, 'tolerancia_frustracion') : null
 
-      const comunicacionVal = comunicacionScore != null ? `${Math.round(comunicacionScore * 20)}%` : "—"
-      const negociacionVal = negociacionScore != null ? `${Math.round(negociacionScore * 20)}%` : "—"
-      const presionVal = presionScore != null ? `${Math.round(presionScore * 20)}%` : "—"
+      const comunicacionVal = comunicacionScore != null ? `${Math.round(comunicacionScore * 20)}%` : "-"
+      const negociacionVal = negociacionScore != null ? `${Math.round(negociacionScore * 20)}%` : "-"
+      const presionVal = presionScore != null ? `${Math.round(presionScore * 20)}%` : "-"
 
       // 6. Burnout y Bienestar
       const sesionBien = c.sesiones.find(s => TEST_IDS[s.test_id] === 'estres-laboral')
       const bien = (sesionBien?.puntaje_bruto || {}) as any
-      const burnoutVal = bien.burnout != null ? bien.burnout.toFixed(1) : "—"
-      const equilibrioVal = bien.equilibrio != null ? bien.equilibrio.toFixed(1) : "—"
+      const burnoutVal = bien.burnout != null ? bien.burnout.toFixed(1) : "-"
+      const equilibrioVal = bien.equilibrio != null ? bien.equilibrio.toFixed(1) : "-"
 
       // 7. Última Actividad (Fecha)
-      let ultimaFechaVal = "—"
+      let ultimaFechaVal = "-"
       let maxTime = 0
       c.sesiones.forEach(s => {
         const dateStr = s.finalizada_en || s.created_at
@@ -1187,20 +1210,27 @@ export default function PanelEvaluador() {
         ? Math.round((c.progreso.completados / c.progreso.total) * 100)
         : 0
 
+      const dictamenLabels: Record<string, string> = {
+        'recomendado': 'Recomendado',
+        'con_reservas': 'Recomendado con Reservas',
+        'no_recomendado': 'No Recomendado'
+      }
+      const dictamenVal = c.recomendacion ? (dictamenLabels[c.recomendacion.toLowerCase()] || c.recomendacion) : "-"
+
       return [
-        c.nombre || "—",
-        c.apellido || "—",
-        c.email || "—",
-        c.documento || "—",
-        c.edad || "—",
-        c.sexo || "—",
-        c.formacion || "—",
-        c.profesion || "—",
-        c.proceso_nombre || "—",
-        c.proceso_cargo || "—",
+        toTitleCase(c.nombre),
+        toTitleCase(c.apellido),
+        cleanText(c.email).toLowerCase(),
+        cleanText(c.documento),
+        cleanText(c.edad),
+        cleanText(c.sexo),
+        cleanQuotes(c.formacion),
+        cleanQuotes(c.profesion),
+        cleanQuotes(c.proceso_nombre),
+        cleanQuotes(c.proceso_cargo),
         `${c.progreso?.completados || 0}/${c.progreso?.total || 0}`,
         `${progresoPorcentaje}%`,
-        c.matchScore != null ? `${c.matchScore}%` : "—",
+        c.matchScore != null ? `${c.matchScore}%` : "-",
         alertasFraude,
         probidadVal,
         sinceridadVal,
@@ -1212,7 +1242,8 @@ export default function PanelEvaluador() {
         presionVal,
         burnoutVal,
         equilibrioVal,
-        ultimaFechaVal
+        ultimaFechaVal,
+        dictamenVal
       ]
     })
 
