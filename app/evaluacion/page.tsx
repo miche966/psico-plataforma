@@ -96,12 +96,19 @@ export default function PortalCandidatoPage() {
   const [testsCompletados, setTestsCompletados] = useState<string[]>([])
   const [sesionesPortal, setSesionesPortal] = useState<any[]>([])
   const [iniciandoTest, setIniciandoTest] = useState<string | null>(null)
+  const [urlQuery, setUrlQuery] = useState('')
 
   const [mostrarSetup, setMostrarSetup] = useState(false)
   const [stream, setStream] = useState<MediaStream | null>(null)
 
   const [bloqueado, setBloqueado] = useState(false)
   const [testBloqueado, setTestBloqueado] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setUrlQuery(window.location.search)
+    }
+  }, [])
 
   useEffect(() => {
     if (!candidatoId) {
@@ -657,7 +664,7 @@ export default function PortalCandidatoPage() {
           <div className="text-[10px] text-slate-500 bg-slate-950/50 border border-slate-850 rounded-2xl p-4 text-left space-y-1.5 font-mono break-all">
             <p className="flex justify-between gap-4"><span className="text-slate-600">CANDIDATO_ID:</span> <span>&quot;{candidatoId || 'no_definido'}&quot;</span></p>
             <p className="flex justify-between gap-4"><span className="text-slate-600">PROCESO_ID:</span> <span>&quot;{procesoId || 'no_definido'}&quot;</span></p>
-            <p className="flex justify-between gap-4"><span className="text-slate-600">URL_QUERY:</span> <span>&quot;{typeof window !== 'undefined' ? window.location.search : ''}&quot;</span></p>
+            <p className="flex justify-between gap-4"><span className="text-slate-600">URL_QUERY:</span> <span>&quot;{urlQuery}&quot;</span></p>
           </div>
         </div>
       </div>
