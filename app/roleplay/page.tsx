@@ -421,7 +421,7 @@ export default function RolePlayPage() {
         </div>
 
         {/* CONTENEDOR DE LA LLAMADA */}
-        <div className="flex-1 p-6 flex flex-col justify-between overflow-hidden">
+        <div className="flex-1 p-6 flex flex-col justify-between overflow-hidden relative z-20">
           
           {!llamadaIniciada ? (
             /* PANTALLA ANTES DE EMPEZAR */
