@@ -133,7 +133,7 @@ function PortalCandidatoPage() {
       if (err || !data) {
         setErrorEmail('El correo ingresado no está registrado en el sistema.')
       } else {
-        router.replace(`/evaluacion?candidato=${data.id}`)
+        router.replace(`${window.location.pathname}?candidato=${data.id}`)
       }
     } catch (error) {
       setErrorEmail('Ocurrió un error al verificar tu correo.')
