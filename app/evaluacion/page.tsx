@@ -181,6 +181,48 @@ function PortalCandidatoPage() {
     }
   }, [candidatoId, procesoId])
 
+  const testsPendientes = bateria.filter(test => !testsCompletados.includes(test))
+  const proximoTest = testsPendientes[0]
+  const recienCompletado = searchParams.get('completed') === '1'
+  const todosCompletados = bateria.length > 0 && testsPendientes.length === 0
+
+  // Hook para detectar si acaba de volver de un test y marcarlo completado
+  useEffect(() => {
+    if (cargando) return
+    const completedParam = searchParams.get('completed') === '1'
+    
+    if (completedParam) {
+      const ultimoIniciado = localStorage.getItem(`last_started_${candidatoId}_${procesoId}`)
+      if (ultimoIniciado && !testsCompletados.includes(ultimoIniciado)) {
+        const nuevosCompletados = [...testsCompletados, ultimoIniciado]
+        setTestsCompletados(nuevosCompletados)
+        localStorage.setItem(`completados_${candidatoId}_${procesoId}`, JSON.stringify(nuevosCompletados))
+        // Limpiamos el ultimo iniciado para evitar duplicados en refrescos
+        localStorage.removeItem(`last_started_${candidatoId}_${procesoId}`)
+      }
+    }
+  }, [cargando, searchParams, candidatoId, procesoId, testsCompletados])
+
+  // Disparador de autogeneración de informe en segundo plano al alcanzar el 100% de avance
+  useEffect(() => {
+    if (candidatoId && procesoId) {
+      const key = `auto_informe_generado_${candidatoId}_${procesoId}`
+      if (todosCompletados) {
+        const yaGenerado = localStorage.getItem(key)
+        if (!yaGenerado) {
+          localStorage.setItem(key, '1')
+          fetch('/api/generar-informe-auto', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ candidatoId, procesoId })
+          }).catch(e => console.error("Error en autogeneración de informe:", e))
+        }
+      } else {
+        localStorage.removeItem(key)
+      }
+    }
+  }, [todosCompletados, candidatoId, procesoId])
+
   async function activarCamara() {
     try {
       const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
@@ -527,22 +569,7 @@ function PortalCandidatoPage() {
     router.push(`${ruta}?candidato=${candidatoId}&proceso=${procesoId}&evaluacion=1${sesionId}`)
   }
 
-  // Hook para detectar si acaba de volver de un test y marcarlo completado
-  useEffect(() => {
-    if (cargando) return
-    const completedParam = searchParams.get('completed') === '1'
-    
-    if (completedParam) {
-      const ultimoIniciado = localStorage.getItem(`last_started_${candidatoId}_${procesoId}`)
-      if (ultimoIniciado && !testsCompletados.includes(ultimoIniciado)) {
-        const nuevosCompletados = [...testsCompletados, ultimoIniciado]
-        setTestsCompletados(nuevosCompletados)
-        localStorage.setItem(`completados_${candidatoId}_${procesoId}`, JSON.stringify(nuevosCompletados))
-        // Limpiamos el ultimo iniciado para evitar duplicados en refrescos
-        localStorage.removeItem(`last_started_${candidatoId}_${procesoId}`)
-      }
-    }
-  }, [cargando, searchParams, candidatoId, procesoId, testsCompletados])
+
 
   if (cargando) {
     return (
@@ -772,31 +799,7 @@ function PortalCandidatoPage() {
     )
   }
 
-  const testsPendientes = bateria.filter(test => !testsCompletados.includes(test))
-  const proximoTest = testsPendientes[0]
-  const recienCompletado = searchParams.get('completed') === '1'
 
-  const todosCompletados = bateria.length > 0 && testsPendientes.length === 0
-
-  // Disparador de autogeneración de informe en segundo plano al alcanzar el 100% de avance
-  useEffect(() => {
-    if (candidatoId && procesoId) {
-      const key = `auto_informe_generado_${candidatoId}_${procesoId}`
-      if (todosCompletados) {
-        const yaGenerado = localStorage.getItem(key)
-        if (!yaGenerado) {
-          localStorage.setItem(key, '1')
-          fetch('/api/generar-informe-auto', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ candidatoId, procesoId })
-          }).catch(e => console.error("Error en autogeneración de informe:", e))
-        }
-      } else {
-        localStorage.removeItem(key)
-      }
-    }
-  }, [todosCompletados, candidatoId, procesoId])
 
   if (todosCompletados) {
     return (
