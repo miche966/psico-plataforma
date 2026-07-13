@@ -1,2 +1,7 @@
-import PortalCandidatoPage from '../page'
-export default PortalCandidatoPage
+'use client'
+
+import PortalCandidatoWrapper from '../page'
+
+export default function CandidatoDinamicoPage() {
+  return <PortalCandidatoWrapper />
+}
