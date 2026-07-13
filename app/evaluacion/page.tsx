@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { CheckCircle2, PlayCircle, Clock, CheckCircle, Video, Camera, Mic, ShieldAlert } from 'lucide-react'
+import { CheckCircle2, PlayCircle, Clock, CheckCircle, Video, Camera, Mic } from 'lucide-react'
 
 const RUTAS: Record<string, string> = {
   bigfive: '/test',
@@ -664,7 +664,9 @@ function PortalCandidatoPage() {
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-center">
         <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-xl max-w-md w-full">
           <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/20">
-            <ShieldAlert className="w-8 h-8" />
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Hubo un problema</h2>
           <p className="text-slate-400 text-sm leading-relaxed mb-6">{error}</p>
