@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { CheckCircle2, PlayCircle, Clock, CheckCircle, Video, Camera, Mic, ShieldAlert } from 'lucide-react'
@@ -80,7 +80,7 @@ for (const [id, key] of Object.entries(TEST_IDS)) {
   TEST_KEY_TO_ID[key] = id
 }
 
-export default function PortalCandidatoPage() {
+function PortalCandidatoPage() {
   const searchParams = useSearchParams()
   const params = useParams()
   const router = useRouter()
@@ -910,4 +910,12 @@ export default function PortalCandidatoPage() {
     </div>
   )
 
+}
+
+export default function PortalCandidatoWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 font-medium">Cargando evaluación...</div>}>
+      <PortalCandidatoPage />
+    </Suspense>
+  )
 }
