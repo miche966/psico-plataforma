@@ -384,7 +384,7 @@ export default function RolePlayPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-xl overflow-hidden flex flex-col h-[650px] relative">
+      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-xl overflow-hidden flex flex-col h-[650px] max-h-[calc(100vh-2rem)] relative">
         
         {/* CABECERA SIMULADOR DE LLAMADA */}
         <div className="p-6 bg-slate-900/80 border-b border-slate-800/50 backdrop-blur-md flex items-center justify-between z-10">
@@ -421,11 +421,11 @@ export default function RolePlayPage() {
         </div>
 
         {/* CONTENEDOR DE LA LLAMADA */}
-        <div className="flex-1 p-6 flex flex-col justify-between overflow-hidden relative z-20">
+        <div className={`flex-1 p-6 flex flex-col justify-between relative z-20 ${!llamadaIniciada ? 'overflow-y-auto' : 'overflow-hidden'}`}>
           
           {!llamadaIniciada ? (
             /* PANTALLA ANTES DE EMPEZAR */
-            <div className="flex-1 flex flex-col justify-center items-center text-center p-4">
+            <div className="flex-1 flex flex-col justify-start items-center text-center p-2 w-full">
               <div className="w-20 h-20 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-6 animate-pulse">
                 <Phone className="w-8 h-8" />
               </div>
