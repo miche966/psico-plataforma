@@ -84,7 +84,8 @@ function PortalCandidatoPage() {
   const searchParams = useSearchParams()
   const params = useParams()
   const router = useRouter()
-  const candidatoId = (params?.candidatoId as string)?.trim() || searchParams.get('candidato')?.trim()
+  const rawCandId = params?.candidatoId || searchParams.get('candidato')
+  const candidatoId = (Array.isArray(rawCandId) ? rawCandId[0] : rawCandId)?.trim()
   const procesoIdFromUrl = searchParams.get('proceso')?.trim()
 
   const [cargando, setCargando] = useState(true)
