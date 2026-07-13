@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams, useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { CheckCircle2, PlayCircle, Clock, CheckCircle, Video, Camera, Mic, ShieldAlert } from 'lucide-react'
 
@@ -82,8 +82,9 @@ for (const [id, key] of Object.entries(TEST_IDS)) {
 
 export default function PortalCandidatoPage() {
   const searchParams = useSearchParams()
+  const params = useParams()
   const router = useRouter()
-  const candidatoId = searchParams.get('candidato')?.trim()
+  const candidatoId = (params?.candidatoId as string)?.trim() || searchParams.get('candidato')?.trim()
   const procesoIdFromUrl = searchParams.get('proceso')?.trim()
 
   const [cargando, setCargando] = useState(true)
