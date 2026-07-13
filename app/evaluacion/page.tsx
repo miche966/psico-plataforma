@@ -645,10 +645,19 @@ export default function PortalCandidatoPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col justify-center items-center h-screen bg-slate-50 p-6">
-        <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 text-center max-w-md">
-          <p className="font-semibold mb-1">Hubo un problema</p>
-          <p className="text-sm">{error}</p>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-center">
+        <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-xl max-w-md w-full">
+          <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/20">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Hubo un problema</h2>
+          <p className="text-slate-400 text-sm leading-relaxed mb-6">{error}</p>
+          
+          <div className="text-[10px] text-slate-500 bg-slate-950/50 border border-slate-850 rounded-2xl p-4 text-left space-y-1.5 font-mono break-all">
+            <p className="flex justify-between gap-4"><span className="text-slate-600">CANDIDATO_ID:</span> <span>&quot;{candidatoId || 'no_definido'}&quot;</span></p>
+            <p className="flex justify-between gap-4"><span className="text-slate-600">PROCESO_ID:</span> <span>&quot;{procesoId || 'no_definido'}&quot;</span></p>
+            <p className="flex justify-between gap-4"><span className="text-slate-600">URL_QUERY:</span> <span>&quot;{typeof window !== 'undefined' ? window.location.search : ''}&quot;</span></p>
+          </div>
         </div>
       </div>
     )
