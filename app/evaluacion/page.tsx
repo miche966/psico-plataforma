@@ -104,12 +104,43 @@ function PortalCandidatoPage() {
   const [iniciandoTest, setIniciandoTest] = useState<string | null>(null)
   const [urlQuery, setUrlQuery] = useState('')
   const [isMounted, setIsMounted] = useState(false)
+  
+  const [solicitarEmail, setSolicitarEmail] = useState(false)
+  const [emailIngresado, setEmailIngresado] = useState('')
+  const [buscandoEmail, setBuscandoEmail] = useState(false)
+  const [errorEmail, setErrorEmail] = useState('')
 
   const [mostrarSetup, setMostrarSetup] = useState(false)
   const [stream, setStream] = useState<MediaStream | null>(null)
 
   const [bloqueado, setBloqueado] = useState(false)
   const [testBloqueado, setTestBloqueado] = useState<string | null>(null)
+
+  const handleIngresoPorEmail = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!emailIngresado.trim()) return
+
+    setBuscandoEmail(true)
+    setErrorEmail('')
+
+    try {
+      const { data, error: err } = await supabase
+        .from('candidatos')
+        .select('id')
+        .eq('email', emailIngresado.trim().toLowerCase())
+        .maybeSingle()
+
+      if (err || !data) {
+        setErrorEmail('El correo ingresado no está registrado en el sistema.')
+      } else {
+        router.replace(`/evaluacion?candidato=${data.id}`)
+      }
+    } catch (error) {
+      setErrorEmail('Ocurrió un error al verificar tu correo.')
+    } finally {
+      setBuscandoEmail(false)
+    }
+  }
 
   useEffect(() => {
     setIsMounted(true)
@@ -120,10 +151,11 @@ function PortalCandidatoPage() {
 
   useEffect(() => {
     if (!candidatoId) {
-      setError('Link inválido. Por favor, contacta al equipo de selección.')
+      setSolicitarEmail(true)
       setCargando(false)
       return
     }
+    setSolicitarEmail(false)
 
     if (procesoIdFromUrl) {
       setProcesoId(procesoIdFromUrl)
@@ -517,6 +549,61 @@ function PortalCandidatoPage() {
       <div className="flex flex-col justify-center items-center h-screen bg-slate-50">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-4"></div>
         <p className="text-slate-500 font-medium">Preparando tu portal...</p>
+      </div>
+    )
+  }
+
+  if (solicitarEmail) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 font-sans">
+        <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-xl max-w-md w-full relative overflow-hidden">
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-cyan-500 rounded-3xl blur opacity-10"></div>
+          <div className="relative">
+            <div className="w-16 h-16 bg-indigo-500/10 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-6 border border-indigo-500/20">
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            
+            <h2 className="text-2xl font-black text-white text-center mb-2">Ingresar al Portal</h2>
+            <p className="text-slate-400 text-sm text-center mb-6 leading-relaxed">
+              Introduce tu correo electrónico de postulación para ingresar a tu batería de evaluaciones asignadas.
+            </p>
+            
+            <form onSubmit={handleIngresoPorEmail} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Correo Electrónico</label>
+                <input 
+                  type="email"
+                  required
+                  placeholder="ejemplo@correo.com"
+                  value={emailIngresado}
+                  onChange={e => setEmailIngresado(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-all font-medium placeholder-slate-600"
+                />
+              </div>
+              
+              {errorEmail && (
+                <p className="text-xs font-bold text-red-550 bg-red-950/20 border border-red-900/30 px-3 py-2 rounded-lg">{errorEmail}</p>
+              )}
+              
+              <button
+                type="submit"
+                disabled={buscandoEmail}
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/10 flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {buscandoEmail ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Buscando...
+                  </>
+                ) : (
+                  'Ingresar'
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
       </div>
     )
   }
