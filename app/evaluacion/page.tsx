@@ -83,13 +83,14 @@ for (const [id, key] of Object.entries(TEST_IDS)) {
 export default function PortalCandidatoPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const candidatoId = searchParams.get('candidato')
-  const procesoId = searchParams.get('proceso')
+  const candidatoId = searchParams.get('candidato')?.trim()
+  const procesoIdFromUrl = searchParams.get('proceso')?.trim()
 
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [candidato, setCandidato] = useState<any>(null)
   const [proceso, setProceso] = useState<any>(null)
+  const [procesoId, setProcesoId] = useState<string | null>(null)
   const [bateria, setBateria] = useState<string[]>([])
   const [testsCompletados, setTestsCompletados] = useState<string[]>([])
   const [sesionesPortal, setSesionesPortal] = useState<any[]>([])
@@ -102,13 +103,34 @@ export default function PortalCandidatoPage() {
   const [testBloqueado, setTestBloqueado] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!candidatoId || !procesoId) {
+    if (!candidatoId) {
       setError('Link inválido. Por favor, contacta al equipo de selección.')
       setCargando(false)
       return
     }
 
-    cargarDatosPortal()
+    if (procesoIdFromUrl) {
+      setProcesoId(procesoIdFromUrl)
+    } else {
+      supabase
+        .from('candidatos_procesos')
+        .select('proceso_id')
+        .eq('candidato_id', candidatoId)
+        .then(({ data, error: err }) => {
+          if (err || !data || data.length === 0) {
+            setError('Link inválido. Por favor, contacta al equipo de selección.')
+            setCargando(false)
+          } else {
+            setProcesoId(data[0].proceso_id)
+          }
+        })
+    }
+  }, [candidatoId, procesoIdFromUrl])
+
+  useEffect(() => {
+    if (candidatoId && procesoId) {
+      cargarDatosPortal()
+    }
   }, [candidatoId, procesoId])
 
   async function activarCamara() {
