@@ -50,6 +50,19 @@ export default function RolePlayPage() {
   const recognitionRef = useRef<any>(null)
 
   useEffect(() => {
+    // Resetear estados por si Next.js reutiliza la instancia del componente
+    setLlamadaIniciada(false)
+    setGuardandoEvaluacion(false)
+    setMensajes([])
+    setTurnoActual(0)
+    setLatencias([])
+    setCurvaCooperacion([20])
+    setTranscripcionParcial('')
+    setFallbackTexto(false)
+    setMensajeEscrito('')
+    setError(null)
+    setCargando(true)
+
     if (!candidatoId || !procesoId) {
       setError('Enlace de evaluación no válido. Por favor verifica tus credenciales.')
       setCargando(false)
@@ -68,7 +81,7 @@ export default function RolePlayPage() {
         window.speechSynthesis.cancel()
       }
     }
-  }, [candidatoId, procesoId])
+  }, [candidatoId, procesoId, TEST_ID])
 
   async function inicializarTest() {
     try {
