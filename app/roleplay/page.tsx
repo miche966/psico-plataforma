@@ -530,7 +530,7 @@ export default function RolePlayPage() {
                   </div>
                 ) : (
                   /* CONTROLES DE MODO VOZ HABLADA */
-                  <div className="flex flex-col items-center gap-4">
+                  <div className="flex flex-col items-center gap-2">
                     <button
                       onClick={hablar}
                       disabled={escuchando || guardandoEvaluacion}
@@ -542,9 +542,15 @@ export default function RolePlayPage() {
                     >
                       {escuchando ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
                     </button>
-                    <p className="text-[10px] text-slate-400 font-medium animate-pulse">
+                    <p className="text-[10px] text-slate-400 font-medium animate-pulse text-center">
                       {escuchando ? "Hable ahora. La simulación transcribirá su voz..." : "Presiona el micrófono para hablar"}
                     </p>
+                    <button
+                      onClick={() => setFallbackTexto(true)}
+                      className="text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors font-semibold mt-2 underline decoration-indigo-400/40 underline-offset-4"
+                    >
+                      ¿Problemas con el micrófono? Escribir por chat de texto
+                    </button>
                   </div>
                 )}
 
