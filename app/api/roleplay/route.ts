@@ -175,7 +175,13 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
 
       const evalPrompt = isAtencion ? evalPromptAtencion : evalPromptCobranzas
 
-      const evalResult = await model.generateContent(evalPrompt)
+      const evalModel = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        generationConfig: {
+          responseMimeType: 'application/json'
+        }
+      })
+      const evalResult = await evalModel.generateContent(evalPrompt)
       const evalText = evalResult.response.text()
       
       let parseado: any;
