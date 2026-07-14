@@ -164,11 +164,33 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
 *Nota: En metaCompetencias, sustituye los 0 por números enteros del 1 al 100 estimados según el perfil.*
 `;
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        responseMimeType: 'application/json'
+      }
+    });
     const result = await model.generateContent(prompt);
     const text = (await result.response).text();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const resultado = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+    
+    let resultado: any;
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const rawJson = jsonMatch ? jsonMatch[0] : text;
+      resultado = JSON.parse(rawJson);
+    } catch (parseError: any) {
+      console.warn("Fallo el parseo inicial del informe, saneando caracteres...", parseError.message);
+      try {
+        // Sanitizar barras invertidas que no formen escapes válidos y caracteres de control
+        const saneado = text
+          .replace(/\\(?!["\\/bfnrtu])/g, '\\\\')
+          .replace(/[\n\r]/g, ' ');
+        const jsonMatch = saneado.match(/\{[\s\S]*\}/);
+        resultado = JSON.parse(jsonMatch ? jsonMatch[0] : saneado);
+      } catch (secondError: any) {
+        throw new Error(`Estructura JSON inválida devuelta por el modelo: ${secondError.message}`);
+      }
+    }
 
     resultado.ajusteCargo.score = scoreFinal;
     return NextResponse.json(resultado);
