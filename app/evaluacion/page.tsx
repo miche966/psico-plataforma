@@ -569,7 +569,8 @@ function PortalCandidatoPage() {
     const sesionExistente = sesionesPortal.find((s: any) => TEST_IDS[s.test_id] === testKey)
     const sesionId = sesionExistente?.id ? `&sesion=${sesionExistente.id}` : ''
 
-    router.push(`${ruta}?candidato=${candidatoId}&proceso=${procesoId}&evaluacion=1${sesionId}`)
+    const conector = ruta.includes('?') ? '&' : '?'
+    router.push(`${ruta}${conector}candidato=${candidatoId}&proceso=${procesoId}&evaluacion=1${sesionId}`)
   }
 
 
