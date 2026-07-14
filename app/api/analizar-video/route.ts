@@ -29,19 +29,21 @@ export async function POST(req: Request) {
       Analiza este video de un candidato respondiendo a una pregunta de entrevista.
       
       Instrucciones de Redacción:
-      - Usa un tono PROFESIONAL y TÉCNICO.
-      - Evita clichés y maximalismos (no uses "increíble", "excelente", etc. a menos que sea estrictamente necesario por la evidencia).
-      - Describe la actitud de forma objetiva y conductual.
+      - Usa un tono PROFESIONAL y TÉCNICO para el análisis no verbal.
+      - Evita clichés y maximalismos en todos los análisis.
+      - Describe la actitud y el discurso de forma objetiva, humana y conductual.
       
       Tareas:
-      - Transcribe con la mayor fidelidad posible lo que dice el candidato.
-      - Evalúa su actitud conductual (seguridad gestual, claridad narrativa, nivel de energía).
-      - Resume su respuesta en 3 puntos clave de valor organizacional.
+      - Transcribe con la mayor fidelidad posible lo que dice el candidato en la propiedad "transcripcion".
+      - Evalúa su actitud conductual y expresión no verbal (contacto visual, gestos manuales, claridad vocal, nivel de energía, expresión facial) en la propiedad "actitud".
+      - Analiza el contenido y fondo de su discurso basándote en la transcripción (su estrategia de resolución ante el problema planteado, el manejo de los límites de su rol, su vocabulario conceptual de servicio, etc.) en la propiedad "analisis_discurso". No utilices jergas de psicología clínica.
+      - Resume su respuesta en 3 puntos clave de valor organizacional en la propiedad "puntos_clave".
       
       Devuelve el resultado EXCLUSIVAMENTE en formato JSON con la siguiente estructura:
       {
         "transcripcion": "texto completo...",
-        "actitud": "Análisis conductual sobrio y profesional...",
+        "actitud": "Análisis conductual y corporal no verbal sobrio...",
+        "analisis_discurso": "Análisis conceptual y de contenido de su discurso (qué ideas propone, cómo aborda el problema)...",
         "puntos_clave": ["punto 1", "punto 2", "punto 3"]
       }
     `

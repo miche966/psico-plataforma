@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video, CheckCircle2, Settings2, BarChart2, LayoutDashboard, Sparkles, Activity, Loader2 } from 'lucide-react'
+import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video, CheckCircle2, Settings2, BarChart2, LayoutDashboard, Sparkles, Activity, Loader2, Eye, MessageSquare } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
 import GestionProcesos from '@/components/GestionProcesos'
 import Dashboard from '@/components/Dashboard'
@@ -2220,14 +2220,40 @@ export default function PanelEvaluador() {
                               </div>
                             )}
                             {v.analisis_ia && (
-                               <div className="mt-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
-                                 <div className="flex items-center gap-2 mb-2">
-                                   <Sparkles className="w-3 h-3 text-indigo-600" />
-                                   <span className="text-[10px] font-bold text-indigo-800 uppercase tracking-widest">Análisis de Actitud</span>
-                                 </div>
-                                 <p className="text-[11px] text-slate-600 leading-relaxed">
-                                   {obtenerTextoAnalisis(v.analisis_ia)}
-                                 </p>
+                               <div className="mt-3 p-4 bg-slate-950/40 rounded-2xl border border-slate-850 space-y-4">
+                                 {v.analisis_ia.actitud && (
+                                   <div className="space-y-1">
+                                     <div className="flex items-center gap-2">
+                                       <Eye className="w-3.5 h-3.5 text-indigo-400" />
+                                       <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider">ANÁLISIS NO VERBAL Y COMUNICACIÓN</span>
+                                     </div>
+                                     <p className="text-[11px] text-slate-300 leading-relaxed">
+                                       {typeof v.analisis_ia.actitud === 'string' ? v.analisis_ia.actitud : JSON.stringify(v.analisis_ia.actitud)}
+                                     </p>
+                                   </div>
+                                 )}
+                                 {v.analisis_ia.analisis_discurso && (
+                                   <div className="space-y-1 pt-3 border-t border-slate-800/50">
+                                     <div className="flex items-center gap-2">
+                                       <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+                                       <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">ANÁLISIS DEL DISCURSO Y CONTENIDO</span>
+                                     </div>
+                                     <p className="text-[11px] text-slate-300 leading-relaxed">
+                                       {v.analisis_ia.analisis_discurso}
+                                     </p>
+                                   </div>
+                                 )}
+                                 {!v.analisis_ia.actitud && !v.analisis_ia.analisis_discurso && (
+                                   <div className="space-y-1">
+                                     <div className="flex items-center gap-2">
+                                       <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                                       <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider">Análisis de Actitud</span>
+                                     </div>
+                                     <p className="text-[11px] text-slate-300 leading-relaxed">
+                                       {obtenerTextoAnalisis(v.analisis_ia)}
+                                     </p>
+                                   </div>
+                                 )}
                                </div>
                              )}
                           </div>
