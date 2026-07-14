@@ -1781,8 +1781,8 @@ export default function PanelEvaluador() {
         <>
 
       {/* BARRA DE HERRAMIENTAS: BUSCADOR + FILTRO POR PROCESO */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-3 mb-6 shadow-sm flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative flex-1 w-full">
+      <div className="bg-white border border-slate-200 rounded-2xl p-3 mb-6 shadow-sm flex flex-col md:flex-row md:flex-wrap gap-4 items-center">
+        <div className="relative flex-1 w-full md:min-w-[280px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
