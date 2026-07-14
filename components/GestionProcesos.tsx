@@ -27,7 +27,8 @@ const TESTS_DISPONIBLES = [
   { key: 'sjt-problemas', label: 'SJT Problemas' },
   { key: 'dass21', label: 'DASS-21' },
   { key: 'frases-incompletas', label: 'Frases Incompletas' },
-  { key: 'roleplay', label: 'Role Play (IA)' },
+  { key: 'roleplay', label: 'Role Play: Cobranzas (IA)' },
+  { key: 'roleplay_atencion', label: 'Role Play: Atención al Cliente (IA)' },
 ]
 
 const COMPETENCIAS_ALLES = [
@@ -78,6 +79,7 @@ const SLUG_TO_ID: Record<string, string> = {
   'dass21': '7a8b9c0d-e1f2-4356-abcd-999999999999',
   'frases-incompletas': 'f7a8b9c0-d1e2-4356-abcd-888888888888',
   'roleplay': 'd8e9f0a1-b2c3-4567-defa-888888888888',
+  'roleplay_atencion': 'd8e9f0a1-b2c3-4567-defa-777777777777',
 }
 
 export default function GestionProcesos() {
