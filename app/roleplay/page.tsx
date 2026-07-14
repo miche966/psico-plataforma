@@ -8,14 +8,17 @@ import {
   MessageSquare, Loader2, ShieldAlert, ArrowLeft, PlayCircle
 } from 'lucide-react'
 
-// Identificador único del test de Role Play en la base de datos
-const TEST_ID = 'd8e9f0a1-b2c3-4567-defa-888888888888'
-
 export default function RolePlayPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const candidatoId = searchParams.get('candidato')
   const procesoId = searchParams.get('proceso')
+  const tipoQuery = searchParams.get('tipo')
+  const esAtencion = tipoQuery === 'atencion'
+
+  const TEST_ID = esAtencion 
+    ? 'd8e9f0a1-b2c3-4567-defa-777777777777' 
+    : 'd8e9f0a1-b2c3-4567-defa-888888888888'
 
   // Estados de carga e inicialización
   const [cargando, setCargando] = useState(true)
@@ -286,7 +289,9 @@ export default function RolePlayPage() {
     setLlamadaIniciada(true)
     setTurnoActual(0)
     
-    const saludoInicial = "Hola, buenas. ¿Con quién hablo? Estoy un poco ocupado ahora en el almacén."
+    const saludoInicial = esAtencion
+      ? "Hola, buenas tardes. ¿Me atienden de una vez? Llevo media hora esperando respuesta por WhatsApp y es una tomadura de pelo."
+      : "Hola, buenas. ¿Con quién hablo? Estoy un poco ocupado ahora en el almacén."
     setMensajes([{ role: 'model', content: saludoInicial }])
     
     // Pequeño retraso para dar tiempo a cargar voces del navegador
@@ -390,13 +395,13 @@ export default function RolePlayPage() {
         <div className="p-6 bg-slate-900/80 border-b border-slate-800/50 backdrop-blur-md flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-white shadow-inner">
-              CG
+              {esAtencion ? 'LB' : 'CG'}
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white">Carlos Gómez</h2>
+              <h2 className="text-sm font-bold text-white">{esAtencion ? 'Laura Benítez' : 'Carlos Gómez'}</h2>
               <p className="text-[10px] text-emerald-500 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Deudor de Microcrédito (Atraso 45 días)
+                {esAtencion ? 'Clienta de Pañalera (Reclamo por Cobro Duplicado)' : 'Deudor de Microcrédito (Atraso 45 días)'}
               </p>
             </div>
           </div>
@@ -429,32 +434,63 @@ export default function RolePlayPage() {
               <div className="w-20 h-20 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-6 animate-pulse">
                 <Phone className="w-8 h-8" />
               </div>
-              <h1 className="text-lg font-bold text-white mb-2">Simulación de Llamada de Cobranza</h1>
+              <h1 className="text-lg font-bold text-white mb-2">
+                {esAtencion ? 'Simulación de Recepción de Reclamo' : 'Simulación de Llamada de Cobranza'}
+              </h1>
               <p className="text-xs text-slate-400 max-w-xs mb-8">
-                Vas a simular una llamada como <strong>Analista de Cobranzas telefónicas</strong> de <strong>República Microfinanzas</strong>.
+                {esAtencion 
+                  ? <span>Vas a simular la atención de un reclamo telefónico como <strong>Analista de Soporte y Atención al Cliente</strong> de <strong>República Microfinanzas</strong>.</span>
+                  : <span>Vas a simular una llamada como <strong>Analista de Cobranzas telefónicas</strong> de <strong>República Microfinanzas</strong>.</span>
+                }
               </p>
               
               <div className="bg-slate-950/50 border border-slate-850 rounded-2xl p-5 mb-8 text-left max-w-sm w-full space-y-4">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-300 mb-1.5">Ficha del Cliente a Contactar:</h3>
-                  <ul className="text-[10px] text-slate-400 space-y-1 list-disc pl-4">
-                    <li><strong>Nombre:</strong> Carlos Gómez.</li>
-                    <li><strong>Producto:</strong> Préstamo personal para Capital de Trabajo de su almacén.</li>
-                    <li><strong>Situación de Mora:</strong> 45 días de atraso en la cuota mensual.</li>
-                    <li><strong>Monto adeudado:</strong> $12,500 (pesos Uruguayos).</li>
-                    <li><strong>Historial:</strong> Era un cliente con excelente conducta de pago, pero ha tenido dificultades recientes para regularizar sus cuotas.</li>
-                  </ul>
-                </div>
-                
-                <div>
-                  <h3 className="text-xs font-bold text-slate-300 mb-1.5">Objetivo de la llamada:</h3>
-                  <ul className="text-[10px] text-slate-400 space-y-1 list-disc pl-4">
-                    <li><strong>Identificarte profesionalmente:</strong> Saludar al cliente, identificarte con tu nombre e indicar que llamas en representación de República Microfinanzas.</li>
-                    <li><strong>Indagar el motivo:</strong> Indagar el motivo del atraso en sus pagos.</li>
-                    <li><strong>Negociar un compromiso:</strong> Encontrar una solución de pago viable (promesa de pago para una fecha específica o posibilidad de refinanciación) adaptada a su situación.</li>
-                    <li><strong>Mantener la calidad:</strong> Cumplir con el tono de voz respetuoso y el protocolo de cobranzas en todo momento.</li>
-                  </ul>
-                </div>
+                {esAtencion ? (
+                  <>
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-300 mb-1.5">Ficha de la Clienta:</h3>
+                      <ul className="text-[10px] text-slate-400 space-y-1 list-disc pl-4">
+                        <li><strong>Nombre:</strong> Laura Benítez.</li>
+                        <li><strong>Negocio:</strong> Dueña de una pañalera y artículos de limpieza de barrio.</li>
+                        <li><strong>Problema:</strong> Reclama un cobro duplicado en su cuenta de Microfinanzas por un valor de $8,500.</li>
+                        <li><strong>Estado de ánimo:</strong> Muy molesta por la falta de respuesta en los canales digitales y la urgencia de su dinero.</li>
+                      </ul>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-300 mb-1.5">Objetivos de la llamada:</h3>
+                      <ul className="text-[10px] text-slate-400 space-y-1 list-disc pl-4">
+                        <li><strong>Contener y Empatizar:</strong> Saludar profesionalmente, validar la molestia de la clienta por el error y disculparte sinceramente.</li>
+                        <li><strong>Indagar detalles:</strong> Solicitar su número de DNI o Cuenta para validar la transacción en el sistema de manera calmada.</li>
+                        <li><strong>Ofrecer solución clara:</strong> Explicar el proceso administrativo de reintegro (se acreditará en un plazo de 24 a 48 horas hábiles).</li>
+                        <li><strong>Mantener la calidad:</strong> Cuidar el tono de voz, la asertividad y el profesionalismo durante todo el diálogo.</li>
+                      </ul>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-300 mb-1.5">Ficha del Cliente a Contactar:</h3>
+                      <ul className="text-[10px] text-slate-400 space-y-1 list-disc pl-4">
+                        <li><strong>Nombre:</strong> Carlos Gómez.</li>
+                        <li><strong>Producto:</strong> Préstamo personal para Capital de Trabajo de su almacén.</li>
+                        <li><strong>Situación de Mora:</strong> 45 días de atraso en la cuota mensual.</li>
+                        <li><strong>Monto adeudado:</strong> $12,500 (pesos Uruguayos).</li>
+                        <li><strong>Historial:</strong> Era un cliente con excelente conducta de pago, pero ha tenido dificultades recientes para regularizar sus cuotas.</li>
+                      </ul>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-300 mb-1.5">Objetivo de la llamada:</h3>
+                      <ul className="text-[10px] text-slate-400 space-y-1 list-disc pl-4">
+                        <li><strong>Identificarte profesionalmente:</strong> Saludar al cliente, identificarte con tu nombre e indicar que llamas en representación de República Microfinanzas.</li>
+                        <li><strong>Indagar el motivo:</strong> Indagar el motivo del atraso en sus pagos.</li>
+                        <li><strong>Negociar un compromiso:</strong> Encontrar una solución de pago viable (promesa de pago para una fecha específica o posibilidad de refinanciación) adaptada a su situación.</li>
+                        <li><strong>Mantener la calidad:</strong> Cumplir con el tono de voz respetuoso y el protocolo de cobranzas en todo momento.</li>
+                      </ul>
+                    </div>
+                  </>
+                )}
               </div>
 
               <button

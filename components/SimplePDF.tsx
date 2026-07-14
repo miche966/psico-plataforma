@@ -197,7 +197,8 @@ export const SimplePDF = ({ data }: any) => {
                 <Text style={{ ...styles.sectionTitle, fontSize: 11, marginBottom: 8, marginTop: 10 }}>Transcripción del Diálogo</Text>
                 {pb.transcripcion.map((msg: any, idx: number) => {
                   const esModel = msg.role === 'model' || msg.role === 'assistant'
-                  const remitente = esModel ? 'Cliente (Carlos Gómez)' : 'Candidato (Analista)'
+                  const esAtencion = sesion.test_id === 'd8e9f0a1-b2c3-4567-defa-777777777777'
+                  const remitente = esModel ? `Cliente (${esAtencion ? 'Laura Benítez' : 'Carlos Gómez'})` : 'Candidato (Analista)'
                   return (
                     <View key={idx} style={{ marginBottom: 6, paddingBottom: 4, borderBottomWidth: 0.5, borderBottomColor: '#f1f5f9' }} wrap={false}>
                       <Text style={{ fontSize: 7, fontWeight: 'bold', color: esModel ? '#64748b' : '#4f46e5' }}>{remitente}</Text>

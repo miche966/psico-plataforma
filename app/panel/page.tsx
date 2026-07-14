@@ -191,6 +191,7 @@ const TEST_IDS: Record<string, string> = {
   'e9b2c3d4-f5a6-7890-bcde-999999999999': 'sjt-cobranzas',
   'f7a8b9c0-d1e2-4356-abcd-888888888888': 'frases-incompletas',
   'd8e9f0a1-b2c3-4567-defa-888888888888': 'roleplay',
+  'd8e9f0a1-b2c3-4567-defa-777777777777': 'roleplay_atencion',
 }
 
 const TEST_NAMES: Record<string, string> = {
@@ -213,6 +214,7 @@ const TEST_NAMES: Record<string, string> = {
   'e9b2c3d4-f5a6-7890-bcde-999999999999': 'SJT Cobranzas',
   'f7a8b9c0-d1e2-4356-abcd-888888888888': 'Frases Incompletas',
   'd8e9f0a1-b2c3-4567-defa-888888888888': 'Simulación Interactiva (Role Play)',
+  'd8e9f0a1-b2c3-4567-defa-777777777777': 'Simulación Atención al Cliente (Role Play)',
 }
 
 const colores: Record<string, string> = {
@@ -2248,7 +2250,7 @@ export default function PanelEvaluador() {
                         if (sesionSeleccionada.test_id === 'f7a8b9c0-d1e2-4356-abcd-888888888888') {
                           return renderFrasesIncompletas(sesionSeleccionada, analizarFrasesConIA)
                         }
-                        if (sesionSeleccionada.test_id === 'd8e9f0a1-b2c3-4567-defa-888888888888') {
+                        if (sesionSeleccionada.test_id === 'd8e9f0a1-b2c3-4567-defa-888888888888' || sesionSeleccionada.test_id === 'd8e9f0a1-b2c3-4567-defa-777777777777') {
                           return renderRoleplay(sesionSeleccionada)
                         }
                         return (
@@ -2427,7 +2429,7 @@ async function generarPDF(sesion: Sesion) {
   }
 
   const esFrasesIncompletas = (pb: any) => pb && ('analisis_ia' in pb || typeof pb.respuestas === 'object');
-  const esRoleplay = (pb: any) => sesion.test_id === 'd8e9f0a1-b2c3-4567-defa-888888888888';
+  const esRoleplay = (pb: any) => sesion.test_id === 'd8e9f0a1-b2c3-4567-defa-888888888888' || sesion.test_id === 'd8e9f0a1-b2c3-4567-defa-777777777777';
 
   const pdfData = {
     sesion, nombre, fecha,
@@ -2822,7 +2824,8 @@ function renderRoleplay(sesion: any) {
           ) : (
             transcripcion.map((msg: any, idx: number) => {
               const esModel = msg.role === 'model' || msg.role === 'assistant'
-              const remitente = esModel ? 'Cliente (Carlos Gómez)' : 'Candidato (Analista)'
+              const esAtencion = sesion.test_id === 'd8e9f0a1-b2c3-4567-defa-777777777777'
+              const remitente = esModel ? `Cliente (${esAtencion ? 'Laura Benítez' : 'Carlos Gómez'})` : 'Candidato (Analista)'
               
               return (
                 <div key={idx} className={`flex flex-col ${esModel ? 'items-start' : 'items-end'}`}>

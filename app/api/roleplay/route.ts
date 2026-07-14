@@ -26,6 +26,29 @@ INSTRUCCIONES DE COMPORTAMIENTO:
    }
 `
 
+const SYSTEM_PROMPT_ATENCION = `
+Actúas como Laura Benítez, una clienta de microfinanzas que está sumamente molesta y preocupada por un cobro duplicado en su última cuota mensual de $8,500 pesos uruguayos.
+Tu negocio es una pequeña pañalera y artículos de limpieza de barrio. Llama enojada porque ya intentó comunicarse por WhatsApp y nadie le respondió. Teme no tener dinero para pagar los gastos de luz de su pañalera o que le apliquen multas por saldo insuficiente.
+
+INSTRUCCIONES DE COMPORTAMIENTO:
+1. Tono y Personalidad:
+   - Al principio estás muy alterada, quejosa, exigente y a la defensiva.
+   - Habla en español rioplatense/uruguayo de manera informal y cotidiana (ej. usa palabras como "mirá", "che", "una tomadura de pelo", "plata", "cuenta", "boleta", "débito").
+   - Tus respuestas deben ser cortas (1 a 3 oraciones como máximo) y naturales para simular una llamada telefónica.
+2. Criterio de Negociación:
+   - Exige que te devuelvan los $8,500 de inmediato. Di que es tu plata y que la necesitas hoy mismo.
+   - Si el analista (candidato) es empático, se disculpa formalmente, valida tu enojo y te explica de manera clara el procedimiento de reintegro (ej. que se gestionará en 24-48 horas hábiles), muéstrate más comprensiva, baja el tono y agradece.
+   - Si el analista es frío, impaciente, te interrumpe o te da respuestas mecánicas, ponte más hostil, dile que vas a denunciar el cobro al Banco Central y colgarás la llamada.
+
+3. INSTRUCCIÓN DE SALIDA OBLIGATORIA:
+   Debes responder ÚNICAMENTE con un objeto JSON con el siguiente formato, sin agregar explicaciones fuera del JSON:
+   {
+     "respuesta": "La frase o respuesta hablada que le dirás al candidato.",
+     "cooperacion": 40, // Un número entero de 0 a 100 indicando tu nivel de cooperación actual (comienza en 20, sube si te calma, baja si se impacienta).
+     "desviado": false
+   }
+`
+
 export async function POST(req: Request) {
   try {
     const payload = await req.json()
@@ -62,10 +85,13 @@ export async function POST(req: Request) {
         }
       }
 
+      const isAtencion = testId === 'd8e9f0a1-b2c3-4567-defa-777777777777'
+      const systemInstructionPrompt = isAtencion ? SYSTEM_PROMPT_ATENCION : SYSTEM_PROMPT
+
       const chat = model.startChat({
         history,
         systemInstruction: {
-          parts: [{ text: SYSTEM_PROMPT }]
+          parts: [{ text: systemInstructionPrompt }]
         }
       })
 
@@ -92,12 +118,14 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Faltan parámetros requeridos para guardar la sesión.' }, { status: 400 })
       }
 
+      const isAtencion = testId === 'd8e9f0a1-b2c3-4567-defa-777777777777'
+
       const transcripcion = (mensajes || []).map((m: any) => {
-        const remitente = m.role === 'user' ? 'Analista (Candidato)' : 'Cliente (Carlos Gómez)'
+        const remitente = m.role === 'user' ? 'Analista (Candidato)' : `Cliente (${isAtencion ? 'Laura Benítez' : 'Carlos Gómez'})`
         return `${remitente}: ${m.content}`
       }).join('\n')
 
-      const evalPrompt = `
+      const evalPromptCobranzas = `
 Eres un Evaluador Psicométrico de Recursos Humanos experto en People Analytics, cobranzas y selección de personal.
 Tu tarea es analizar la transcripción de una llamada de Role Play simulada entre un candidato (Analista de Cobranzas) y el cliente Carlos Gómez.
 
@@ -121,6 +149,32 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
 }
 `
 
+      const evalPromptAtencion = `
+Eres un Evaluador Psicométrico de Recursos Humanos experto en People Analytics, atención al cliente y selección de personal.
+Tu tarea es analizar la transcripción de una llamada de Role Play simulada entre un candidato (Analista de Atención al Cliente) y la clienta Laura Benítez.
+
+TRANSCRIPCIÓN DE LA LLAMADA:
+${transcripcion}
+
+Evalúa al candidato en las siguientes 4 dimensiones críticas de desempeño de servicio, otorgando un puntaje de 0 a 100 para cada una:
+1. empatia: Capacidad de escuchar activamente, contener emocionalmente al cliente y disculparse sinceramente por el inconveniente.
+2. indagacion: Habilidad para recopilar detalles del cobro duplicado y solicitar datos necesarios de forma ordenada y calmada.
+3. resolucion: Capacidad de explicar las políticas de reintegro de la organización de forma clara y pactar un plazo de resolución realista.
+4. calidadServicio: Uso de un tono profesional, claro, asertivo y un vocabulario respetuoso y reconfortante.
+
+Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
+{
+  "empatia": 85,
+  "indagacion": 70,
+  "resolucion": 90,
+  "calidadServicio": 80,
+  "retroalimentacion": "Resumen de fortalezas y áreas de mejora en servicio al cliente observadas durante la llamada en 3 oraciones.",
+  "acuerdoAlcanzado": true
+}
+`
+
+      const evalPrompt = isAtencion ? evalPromptAtencion : evalPromptCobranzas
+
       const evalResult = await model.generateContent(evalPrompt)
       const evalText = evalResult.response.text()
       
@@ -130,7 +184,14 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
         parseado = JSON.parse(jsonMatch ? jsonMatch[0] : evalText)
       } catch (e) {
         console.error("Error parseando respuesta de evaluacion de Gemini:", e);
-        parseado = {
+        parseado = isAtencion ? {
+          empatia: 50,
+          indagacion: 50,
+          resolucion: 50,
+          calidadServicio: 50,
+          retroalimentacion: "La simulación finalizó. No se pudo generar una retroalimentación detallada por un inconveniente de red, pero las respuestas del candidato han sido registradas para su revisión manual.",
+          acuerdoAlcanzado: false
+        } : {
           empatia: 50,
           manejoObjeciones: 50,
           resolucionConflicto: 50,
@@ -159,13 +220,20 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
         .filter((m: any) => m.role === 'model' && typeof m.cooperacion === 'number')
         .map((m: any) => m.cooperacion)
 
+      const porFactor = isAtencion ? {
+        'Empatía y Escucha': parseado.empatia || 50,
+        'Indagación del Problema': parseado.indagacion || 50,
+        'Resolución de Conflictos': parseado.resolucion || 50,
+        'Calidad de Servicio': parseado.calidadServicio || 50,
+      } : {
+        'Empatía y Escucha': parseado.empatia || 50,
+        'Manejo de Objeciones': parseado.manejoObjeciones || 50,
+        'Resolución de Conflictos': parseado.resolucionConflicto || 50,
+        'Adherencia a Protocolo': parseado.adherenceProtocolo || parseado.adherenciaProtocolo || 50,
+      }
+
       const puntajeBruto = {
-        por_factor: {
-          'Empatía y Escucha': parseado.empatia,
-          'Manejo de Objeciones': parseado.manejoObjeciones,
-          'Resolución de Conflictos': parseado.resolucionConflicto,
-          'Adherencia a Protocolo': parseado.adherenceProtocolo || parseado.adherenciaProtocolo,
-        },
+        por_factor: porFactor,
         transcripcion: mensajes,
         retroalimentacion: parseado.retroalimentacion,
         acuerdo_alcanzado: parseado.acuerdoAlcanzado,

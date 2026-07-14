@@ -26,6 +26,7 @@ const RUTAS: Record<string, string> = {
   'sjt-problemas': '/sjt-problemas',
   'frases-incompletas': '/frases-incompletas',
   roleplay: '/roleplay',
+  'roleplay_atencion': '/roleplay?tipo=atencion',
 }
 
 const NOMBRES_TESTS: Record<string, { nombre: string, duracion: string }> = {
@@ -49,6 +50,7 @@ const NOMBRES_TESTS: Record<string, { nombre: string, duracion: string }> = {
   dass21: { nombre: 'Screening de Salud Mental (DASS-21)', duracion: '10 min' },
   'frases-incompletas': { nombre: 'Test de Frases Incompletas', duracion: '15 min' },
   roleplay: { nombre: 'Simulación de llamada interactiva (Role Play)', duracion: '10 min' },
+  'roleplay_atencion': { nombre: 'Simulación de atención al cliente (Role Play)', duracion: '10 min' },
 }
 
 // Mapeo de IDs de base de datos a llaves de test
@@ -73,6 +75,7 @@ const TEST_IDS: Record<string, string> = {
   'e9b2c3d4-f5a6-7890-bcde-999999999999': 'sjt-cobranzas',
   'f7a8b9c0-d1e2-4356-abcd-888888888888': 'frases-incompletas',
   'd8e9f0a1-b2c3-4567-defa-888888888888': 'roleplay',
+  'd8e9f0a1-b2c3-4567-defa-777777777777': 'roleplay_atencion',
 }
 
 const TEST_KEY_TO_ID: Record<string, string> = {}
