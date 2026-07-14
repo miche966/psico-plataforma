@@ -312,7 +312,7 @@ export default function RolePlayPage() {
       : 2.5
 
     const totalTurnos = Math.max(0, mensajesFinales.filter(m => m.role === 'user').length)
-    const MIN_TURNOS_REQUERIDOS = 4
+    const MIN_TURNOS_REQUERIDOS = 2
 
     // Si la llamada fue muy breve, no evaluar y permitir reintento
     if (totalTurnos < MIN_TURNOS_REQUERIDOS) {
