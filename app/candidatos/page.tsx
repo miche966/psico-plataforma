@@ -1718,8 +1718,8 @@ const ETIQUETAS: Record<string, string> = {
 }
 
 function interpretacionHumana(factor: string, valor: number): { descripcion: string, pregunta: string } {
-  // Umbrales más realistas para psicometría: 0-1.5 (Bajo), 1.5-3.8 (Moderado), 3.8-5 (Alto)
-  const nivel = valor >= 3.8 ? 'alto' : valor >= 1.5 ? 'moderado' : 'bajo'
+  // Umbrales para psicometría: 0-2.5 (Bajo), 2.5-4.0 (Moderado), 4.0-5 (Alto)
+  const nivel = valor >= 4.0 ? 'alto' : valor >= 2.5 ? 'moderado' : 'bajo'
   const textos: Record<string, Record<string, { desc: string, q: string }>> = {
     extraversion: {
       alto: {
