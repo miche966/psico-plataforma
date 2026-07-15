@@ -2911,86 +2911,86 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
     },
     'empatía y escucha': {
       alto: {
-        desc: 'Demuestra una excelente capacidad de contención emocional y escucha activa. Valida el enojo o frustración de la otra persona con naturalidad, utilizando un tono conciliador y disculpas sinceras que logran desescalar tensiones rápidamente.',
-        q: '¿Cómo logra mantener la empatía y la cordialidad en llamadas recurrentes con clientes de alta hostilidad o agresividad?'
+        desc: 'Escucha con atención al cliente y demuestra interés por su situación. Logra calmar el enojo o la frustración respondiendo con calma y ofreciendo disculpas claras cuando corresponde.',
+        q: '¿Cómo hace para mantener un trato amable cuando el cliente se comunica muy enojado o con tono hostil?'
       },
       moderado: {
-        desc: 'Presenta un trato cordial y respetuoso durante la conversación. Muestra empatía de forma instrumental, logrando que el cliente se sienta escuchado, aunque tiende a priorizar rápidamente el avance hacia el procedimiento técnico.',
-        q: 'En llamadas tensas, ¿qué técnicas utiliza para asegurarse de que el cliente se sienta realmente comprendido antes de ofrecer una solución?'
+        desc: 'Mantiene un trato de respeto y educación durante la conversación. Muestra amabilidad básica, aunque tiende a enfocarse rápido en resolver el trámite técnico antes de escuchar en detalle al cliente.',
+        q: '¿Qué hace para asegurarse de que el cliente se sienta escuchado antes de pasar directo a darle una solución?'
       },
       bajo: {
-        desc: 'Trato marcadamente impersonal, técnico o distante. Muestra dificultades para validar la frustración o el enojo del interlocutor, lo que puede prolongar el malestar del cliente o generar mayor hostilidad inicial.',
-        q: '¿Cómo trabaja en modular su tono de voz para sonar más empático y cercano cuando trata con clientes muy alterados?'
+        desc: 'Trato distante o demasiado enfocado en el sistema. Le cuesta reconocer el malestar del cliente, lo que puede hacer que la persona se sienta poco comprendida o continúe enojada.',
+        q: '¿Cómo intenta adaptar su forma de hablar para sonar más cercano y atento cuando atiende reclamos difíciles?'
       }
     },
     'calidad de servicio': {
       alto: {
-        desc: 'Sobresaliente orientación al cliente, demostrando un uso fluido del lenguaje rioplatense cotidiano pero manteniendo una compostura altamente profesional y asertiva. Cuida el ritmo, el vocabulario y transmite seguridad formal.',
-        q: '¿Qué aspectos de la comunicación verbal considera claves para proyectar una imagen institucional sólida ante reclamos delicados?'
+        desc: 'Se comunica con mucha claridad, educación y fluidez. Utiliza un lenguaje natural y cotidiano adaptado al cliente, transmitiendo seguridad y respeto en todo momento.',
+        q: '¿Qué aspectos considera clave al hablar para que el cliente sienta que lo atiende una persona segura y profesional?'
       },
       moderado: {
-        desc: 'Ofrece una comunicación clara y un vocabulario adecuado para la atención telefónica. Se desenvuelve con solidez básica, aunque podría pulir la fluidez verbal o el ritmo en situaciones donde el cliente exige definiciones inmediatas.',
-        q: '¿De qué manera cuida su compostura verbal cuando el cliente interrumpe constantemente su argumentación?'
+        desc: 'Habla de forma clara y utiliza un vocabulario adecuado para la atención telefónica. Se comunica de manera correcta, aunque podría mejorar la fluidez en explicaciones complejas.',
+        q: '¿De qué forma cuida el tono de voz y la paciencia cuando el cliente interrumpe o repite la misma pregunta?'
       },
       bajo: {
-        desc: 'Vocabulario limitado, excesivamente informal o con falta de claridad en las explicaciones. Muestra problemas para estructurar respuestas asertivas, lo que proyecta una imagen poco profesional o dubitativa de la organización.',
-        q: '¿Cómo se prepara para estructurar explicaciones claras y evitar modismos excesivamente informales en su comunicación profesional?'
+        desc: 'Utiliza un lenguaje demasiado informal, poco claro o con dudas al hablar. Le cuesta expresarse con seguridad, lo que puede transmitir una imagen poco profesional o confusa.',
+        q: '¿Qué herramientas o preparación le ayudan a dar explicaciones más claras y profesionales a los clientes?'
       }
     },
     'indagación del problema': {
       alto: {
-        desc: 'Destaca por una indagación sumamente proactiva y estructurada. Recopila información clave de forma ordenada (solicitud de datos de identidad, número de cuenta o detalles del caso) antes de apresurar conclusiones diagnósticas.',
-        q: '¿Cómo gestiona la recopilación de datos necesarios cuando el cliente está demasiado enojado o se niega a cooperar con las preguntas?'
+        desc: 'Pregunta de forma ordenada para entender bien la situación. Solicita los datos necesarios de identidad y cuenta antes de sacar conclusiones o proponer soluciones apresuradas.',
+        q: '¿Cómo se organiza para pedir la información necesaria cuando el cliente está apurado o desorganizado?'
       },
       moderado: {
         desc: 'Solicita la información básica requerida para encuadrar el problema del cliente. Su indagación es correcta y funcional, aunque en ocasiones podría indagar más en profundidad sobre detalles del reclamo para evitar errores administrativos.',
         q: '¿Qué preguntas considera esenciales realizar en los primeros minutos de la llamada para asegurar un diagnóstico preciso del problema?'
       },
       bajo: {
-        desc: 'Indagación insuficiente, desorganizada o ausente. Omite solicitar datos de verificación esenciales o saca conclusiones precipitadas del caso sin recopilar la evidencia necesaria para procesar el reclamo.',
+        desc: 'Pregunta muy poco o de forma desordenada. Omite solicitar datos de verificación importantes o intenta dar una solución sin haber comprendido bien cuál era el problema.',
         q: 'Cuando se enfrenta a un reclamo complejo, ¿qué checklist mental sigue para asegurarse de no olvidar solicitar ningún dato crítico?'
       }
     },
     'resolución de conflictos': {
       alto: {
-        desc: 'Excelente capacidad para ofrecer soluciones claras, concretas y alineadas con las políticas de la organización. Explica de forma precisa los tiempos de resolución administrativa (ej. 24 a 48 horas) y genera un acuerdo explícito con el cliente.',
-        q: '¿Cómo maneja la frustración de un cliente cuando la solución definitiva depende de otras áreas de la empresa y no puede resolverse de inmediato?'
+        desc: 'Propone soluciones claras, viables y conformes a las pautas de la empresa. Explica bien los plazos de respuesta (como las 24 o 48 horas) y confirma que el cliente haya comprendido los pasos a seguir.',
+        q: '¿Cómo le explica al cliente que la solución a su problema no es inmediata y requiere un tiempo de espera?'
       },
       moderado: {
-        desc: 'Propone soluciones viables y lógicas para el caso planteado. El acuerdo final se alcanza de forma funcional, aunque en ocasiones la explicación de los plazos o pasos a seguir podría ser más clara para evitar futuras llamadas de reclamo.',
-        q: 'Describa una situación en la que tuvo que mediar y proponer una alternativa para un cliente insatisfecho con las políticas estándar de la empresa.'
+        desc: 'Ofrece alternativas válidas y busca resolver la situación. El acuerdo final se logra de forma correcta, aunque la explicación de los tiempos o procedimientos podría ser más detallada para evitar dudas.',
+        q: '¿Cómo maneja la conversación cuando el cliente no está del todo conforme con los plazos de solución de la empresa?'
       },
       bajo: {
-        desc: 'Dificultad para estructurar propuestas de solución concretas o para llegar a acuerdos. Muestra tendencia a dar respuestas evasivas, dubitativas o contradictorias, lo que genera confusión en el cliente y alarga el conflicto.',
-        q: 'Ante la imposibilidad de darle al cliente la respuesta que desea escuchar, ¿de qué manera maneja la situación de forma profesional y firme?'
+        desc: 'Muestra dificultades para ofrecer soluciones claras o llegar a un acuerdo. Da respuestas dudosas o poco precisas, lo que genera confusión en el cliente sobre cómo continuará su trámite.',
+        q: 'Cuando no puede darle al cliente la solución que pide en el momento, ¿de qué forma le explica las alternativas de manera clara?'
       }
     },
     'manejo de objeciones': {
       alto: {
-        desc: 'Responde con gran asertividad y flexibilidad mental ante las excusas o dificultades del deudor. Rebate objeciones con argumentos lógicos de refinanciación, manteniendo el control del diálogo sin confrontar.',
-        q: '¿Cómo estructura su respuesta cuando un cliente insiste repetidamente en que no tiene ninguna posibilidad de pago?'
+        desc: 'Responde con calma y argumentos claros ante las dificultades o quejas del deudor. Propone opciones de refinanciación adecuadas a su situación sin entrar en discusiones.',
+        q: '¿Cómo responde cuando un deudor le dice que es imposible realizar cualquier tipo de pago en este momento?'
       },
       moderado: {
-        desc: 'Maneja las objeciones comunes del deudor de forma correcta, ofreciendo las alternativas estándar del protocolo. Mantiene una postura profesional, aunque podría profundizar en indagar la causa del atraso para dar una solución más adaptada.',
-        q: '¿Qué alternativas de pago suele priorizar cuando el cliente muestra disposición pero tiene problemas de liquidez temporales?'
+        desc: 'Maneja las quejas comunes del deudor de forma correcta y ofrece las alternativas de pago habituales. Mantiene la calma, aunque podría indagar un poco más para buscar una opción más ajustada.',
+        q: '¿Qué opciones de pago prefiere ofrecer primero cuando nota que el deudor tiene intención de pagar pero cuenta con poco dinero?'
       },
       bajo: {
-        desc: 'Muestra dificultades para rebatir objeciones, cayendo en la repetición del reclamo de pago o aceptando las evasivas del deudor con facilidad, lo que dilata el acuerdo de pago o rompe la negociación.',
-        q: 'Cuando un cliente se muestra cerrado o evasivo, ¿qué estrategias utiliza para reencauzar la conversación hacia un compromiso de pago?'
+        desc: 'Le cuesta responder a las quejas o excusas del cliente. Acepta con facilidad las respuestas evasivas o responde de forma de repetir argumentos sin proponer alternativas reales de pago.',
+        q: '¿Cómo se prepara para manejar las objeciones más difíciles de los deudores sin perder el foco en conseguir el pago?'
       }
     },
     'adherencia a protocolo': {
       alto: {
-        desc: 'Cumple de forma rigurosa y natural con los pasos clave del protocolo de cobranzas: identificación del deudor, verificación del monto de la deuda, explicación clara de los plazos y registro de un compromiso formal.',
-        q: '¿Cómo se asegura de seguir todos los pasos de cumplimiento normativo en llamadas donde el deudor intenta desviar el tema continuamente?'
+        desc: 'Sigue de forma ordenada los pasos de la llamada: confirma la identidad del deudor, detalla la deuda pendiente, explica las opciones de pago y cierra con un compromiso claro.',
+        q: '¿Cómo logra recordar y seguir todos los pasos obligatorios del protocolo cuando la llamada se vuelve difícil?'
       },
       moderado: {
-        desc: 'Sigue los lineamientos generales del protocolo de cobranza de forma aceptable. Cubre los pasos esenciales de la negociación, aunque en ocasiones podría ser más preciso al registrar los plazos o validar la identidad del titular.',
-        q: '¿Qué pasos del proceso de cobranzas considera más críticos y cómo se asegura de cumplirlos en cada interacción?'
+        desc: 'Sigue los pasos principales del protocolo de cobranzas. Realiza la negociación de forma adecuada, aunque a veces podría ser más preciso al definir las fechas de pago o verificar los datos del titular.',
+        q: '¿Qué parte del protocolo de llamadas considera que requiere más atención de su parte y por qué?'
       },
       bajo: {
-        desc: 'Omite pasos esenciales del protocolo de negociación de deuda, como la confirmación de la identidad del titular, el detalle preciso del monto adeudado o el establecimiento de un acuerdo con fecha de pago clara.',
-        q: '¿Cómo se organiza mentalmente para asegurar que cada llamada de cobranza finalice con un compromiso de pago explícito y fechado?'
+        desc: 'Omite pasos importantes del proceso, como verificar quién habla, informar con claridad el monto total de la deuda o establecer un compromiso concreto con fecha de pago.',
+        q: '¿Qué dificultades encuentra para seguir los pasos obligatorios del protocolo en sus llamadas de cobranza?'
       }
     },
     'turnos_empleados': {
