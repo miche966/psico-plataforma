@@ -1312,6 +1312,8 @@ const TEST_NAMES: Record<string, string> = {
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'SJT Atención al Cliente',
   'e9b2c3d4-f5a6-7890-bcde-999999999999': 'SJT Cobranzas',
   '7a8b9c0d-e1f2-4356-abcd-999999999999': 'DASS-21',
+  'd8e9f0a1-b2c3-4567-defa-888888888888': 'Role Play: Cobranzas',
+  'd8e9f0a1-b2c3-4567-defa-777777777777': 'Role Play: Atención al Cliente',
 }
 
 function tieneFactores(pb: any, testId?: string) {
