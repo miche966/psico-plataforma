@@ -1709,7 +1709,12 @@ const ETIQUETAS: Record<string, string> = {
   integridad: 'Integridad Global y Ética Profesional',
   honestidad_humildad: 'Honestidad y Humildad Organizacional',
   pensamiento_critico: 'Pensamiento Crítico y Análisis de Escenarios',
-  decision: 'Toma de Decisiones y Resolución'
+  decision: 'Toma de Decisiones y Resolución',
+  // Role Play Específicos
+  calidadservicio: 'Calidad de Servicio',
+  indagacion: 'Indagación del Problema',
+  turnos_empleados: 'Turnos Empleados',
+  latencia_promedio: 'Latencia Promedio'
 }
 
 function interpretacionHumana(factor: string, valor: number): { descripcion: string, pregunta: string } {
@@ -2902,6 +2907,90 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
       bajo: {
         desc: 'Se observa una brecha entre sus proyecciones personales y la realidad percibida en su rol. Esta desalineación podría afectar su motivación, recomendándose un diálogo para reencuadrar sus objetivos.',
         q: '¿Qué aspectos de su rol actual no están cumpliendo con sus expectativas iniciales y qué propuestas tiene para mejorarlos?'
+      }
+    },
+    empatia: {
+      alto: {
+        desc: 'Demuestra una excelente capacidad de contención emocional y escucha activa. Valida el enojo o frustración de la otra persona con naturalidad, utilizando un tono conciliador y disculpas sinceras que logran desescalar tensiones rápidamente.',
+        q: '¿Cómo logra mantener la empatía y la cordialidad en llamadas recurrentes con clientes de alta hostilidad o agresividad?'
+      },
+      moderado: {
+        desc: 'Presenta un trato cordial y respetuoso durante la conversación. Muestra empatía de forma instrumental, logrando que el cliente se sienta escuchado, aunque tiende a priorizar rápidamente el avance hacia el procedimiento técnico.',
+        q: 'En llamadas tensas, ¿qué técnicas utiliza para asegurarse de que el cliente se sienta realmente comprendido antes de ofrecer una solución?'
+      },
+      bajo: {
+        desc: 'Trato marcadamente impersonal, técnico o distante. Muestra dificultades para validar la frustración o el enojo del interlocutor, lo que puede prolongar el malestar del cliente o generar mayor hostilidad inicial.',
+        q: '¿Cómo trabaja en modular su tono de voz para sonar más empático y cercano cuando trata con clientes muy alterados?'
+      }
+    },
+    calidadservicio: {
+      alto: {
+        desc: 'Sobresaliente orientación al cliente, demostrando un uso fluido del lenguaje rioplatense cotidiano pero manteniendo una compostura altamente profesional y asertiva. Cuida el ritmo, el vocabulario y transmite seguridad formal.',
+        q: '¿Qué aspectos de la comunicación verbal considera claves para proyectar una imagen institucional sólida ante reclamos delicados?'
+      },
+      moderado: {
+        desc: 'Ofrece una comunicación clara y un vocabulario adecuado para la atención telefónica. Se desenvuelve con solidez básica, aunque podría pulir la fluidez verbal o el ritmo en situaciones donde el cliente exige definiciones inmediatas.',
+        q: '¿De qué manera cuida su compostura verbal cuando el cliente interrumpe constantemente su argumentación?'
+      },
+      bajo: {
+        desc: 'Vocabulario limitado, excesivamente informal o con falta de claridad en las explicaciones. Muestra problemas para estructurar respuestas asertivas, lo que proyecta una imagen poco profesional o dubitativa de la organización.',
+        q: '¿Cómo se prepara para estructurar explicaciones claras y evitar modismos excesivamente informales en su comunicación profesional?'
+      }
+    },
+    indagacion: {
+      alto: {
+        desc: 'Destaca por una indagación sumamente proactiva y estructurada. Recopila información clave de forma ordenada (solicitud de datos de identidad, número de cuenta o detalles del caso) antes de apresurar conclusiones diagnósticas.',
+        q: '¿Cómo gestiona la recopilación de datos necesarios cuando el cliente está demasiado enojado o se niega a cooperar con las preguntas?'
+      },
+      moderado: {
+        desc: 'Solicita la información básica requerida para encuadrar el problema del cliente. Su indagación es correcta y funcional, aunque en ocasiones podría indagar más en profundidad sobre detalles del reclamo para evitar errores administrativos.',
+        q: '¿Qué preguntas considera esenciales realizar en los primeros minutos de la llamada para asegurar un diagnóstico preciso del problema?'
+      },
+      bajo: {
+        desc: 'Indagación insuficiente, desorganizada o ausente. Omite solicitar datos de verificación esenciales o saca conclusiones precipitadas del caso sin recopilar la evidencia necesaria para procesar el reclamo.',
+        q: 'Cuando se enfrenta a un reclamo complejo, ¿qué checklist mental sigue para asegurarse de no olvidar solicitar ningún dato crítico?'
+      }
+    },
+    resolucion: {
+      alto: {
+        desc: 'Excelente capacidad para ofrecer soluciones claras, concretas y alineadas con las políticas de la organización. Explica de forma precisa los tiempos de resolución administrativa (ej. 24 a 48 horas) y genera un acuerdo explícito con el cliente.',
+        q: '¿Cómo maneja la frustración de un cliente cuando la solución definitiva depende de otras áreas de la empresa y no puede resolverse de inmediato?'
+      },
+      moderado: {
+        desc: 'Propone soluciones viables y lógicas para el caso planteado. El acuerdo final se alcanza de forma funcional, aunque en ocasiones la explicación de los plazos o pasos a seguir podría ser más clara para evitar futuras llamadas de reclamo.',
+        q: 'Describa una situación en la que tuvo que mediar y proponer una alternativa para un cliente insatisfecho con las políticas estándar de la empresa.'
+      },
+      bajo: {
+        desc: 'Dificultad para estructurar propuestas de solución concretas o para llegar a acuerdos. Muestra tendencia a dar respuestas evasivas, dubitativas o contradictorias, lo que genera confusión en el cliente y alarga el conflicto.',
+        q: 'Ante la imposibilidad de darle al cliente la respuesta que desea escuchar, ¿de qué manera maneja la situación de forma profesional y firme?'
+      }
+    },
+    turnos_empleados: {
+      alto: {
+        desc: 'Muestra una excelente capacidad de síntesis y fluidez en el diálogo. Logra resolver o encuadrar la conversación en la cantidad óptima de turnos de interacción, evitando alargamientos innecesarios del tiempo en llamada.',
+        q: '¿Qué estrategias implementa para evitar que una conversación con un cliente de tono extendido se desvíe del tema principal?'
+      },
+      moderado: {
+        desc: 'El ritmo de la interacción y la duración del diálogo son adecuados. Mantiene una alternancia de turnos funcional y típica para la resolución de reclamos telefónicos estándar de la organización.',
+        q: '¿Cómo detecta que una llamada se está extendiendo más de lo necesario y qué hace para encauzarla?'
+      },
+      bajo: {
+        desc: 'Diálogo demasiado breve o excesivamente prolongado. Esto sugiere una falta de profundidad en el abordaje del caso (en llamadas muy cortas) o una falta de dirección en el manejo de la llamada (en diálogos extensos).',
+        q: '¿De qué forma balancea la necesidad de ser rápido en la llamada con la importancia de atender al cliente de manera completa y minuciosa?'
+      }
+    },
+    latencia_promedio: {
+      alto: {
+        desc: 'Tiempo de respuesta ágil y natural, emulando la velocidad óptima de una conversación telefónica fluida en tiempo real, lo que transmite dinamismo y seguridad al cliente.',
+        q: '¿Cómo se organiza para procesar los datos en el sistema mientras mantiene el flujo de conversación constante con el cliente?'
+      },
+      moderado: {
+        desc: 'Muestra tiempos de latencia estándar y funcionales en sus respuestas. Las pausas entre interacciones son aceptables y se corresponden con el tiempo necesario para procesar la información mentalmente.',
+        q: 'Cuando requiere tiempo adicional para buscar datos en el sistema, ¿de qué manera se lo comunica al cliente en línea?'
+      },
+      bajo: {
+        desc: 'Tiempos de respuesta excesivamente lentos o precipitados. Las demoras prolongadas pueden generar incomodidad, silencios incómodos o la sensación de falta de dominio del sistema por parte del analista.',
+        q: '¿Qué factores suelen causarle demoras en la respuesta durante una conversación telefónica y cómo planea mejorarlo?'
       }
     }
   }
