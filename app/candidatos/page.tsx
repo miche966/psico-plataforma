@@ -2909,7 +2909,7 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
         q: '¿Qué aspectos de su rol actual no están cumpliendo con sus expectativas iniciales y qué propuestas tiene para mejorarlos?'
       }
     },
-    empatia: {
+    'empatía y escucha': {
       alto: {
         desc: 'Demuestra una excelente capacidad de contención emocional y escucha activa. Valida el enojo o frustración de la otra persona con naturalidad, utilizando un tono conciliador y disculpas sinceras que logran desescalar tensiones rápidamente.',
         q: '¿Cómo logra mantener la empatía y la cordialidad en llamadas recurrentes con clientes de alta hostilidad o agresividad?'
@@ -2923,7 +2923,7 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
         q: '¿Cómo trabaja en modular su tono de voz para sonar más empático y cercano cuando trata con clientes muy alterados?'
       }
     },
-    calidadservicio: {
+    'calidad de servicio': {
       alto: {
         desc: 'Sobresaliente orientación al cliente, demostrando un uso fluido del lenguaje rioplatense cotidiano pero manteniendo una compostura altamente profesional y asertiva. Cuida el ritmo, el vocabulario y transmite seguridad formal.',
         q: '¿Qué aspectos de la comunicación verbal considera claves para proyectar una imagen institucional sólida ante reclamos delicados?'
@@ -2937,7 +2937,7 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
         q: '¿Cómo se prepara para estructurar explicaciones claras y evitar modismos excesivamente informales en su comunicación profesional?'
       }
     },
-    indagacion: {
+    'indagación del problema': {
       alto: {
         desc: 'Destaca por una indagación sumamente proactiva y estructurada. Recopila información clave de forma ordenada (solicitud de datos de identidad, número de cuenta o detalles del caso) antes de apresurar conclusiones diagnósticas.',
         q: '¿Cómo gestiona la recopilación de datos necesarios cuando el cliente está demasiado enojado o se niega a cooperar con las preguntas?'
@@ -2951,7 +2951,7 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
         q: 'Cuando se enfrenta a un reclamo complejo, ¿qué checklist mental sigue para asegurarse de no olvidar solicitar ningún dato crítico?'
       }
     },
-    resolucion: {
+    'resolución de conflictos': {
       alto: {
         desc: 'Excelente capacidad para ofrecer soluciones claras, concretas y alineadas con las políticas de la organización. Explica de forma precisa los tiempos de resolución administrativa (ej. 24 a 48 horas) y genera un acuerdo explícito con el cliente.',
         q: '¿Cómo maneja la frustración de un cliente cuando la solución definitiva depende de otras áreas de la empresa y no puede resolverse de inmediato?'
@@ -2965,7 +2965,35 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
         q: 'Ante la imposibilidad de darle al cliente la respuesta que desea escuchar, ¿de qué manera maneja la situación de forma profesional y firme?'
       }
     },
-    turnos_empleados: {
+    'manejo de objeciones': {
+      alto: {
+        desc: 'Responde con gran asertividad y flexibilidad mental ante las excusas o dificultades del deudor. Rebate objeciones con argumentos lógicos de refinanciación, manteniendo el control del diálogo sin confrontar.',
+        q: '¿Cómo estructura su respuesta cuando un cliente insiste repetidamente en que no tiene ninguna posibilidad de pago?'
+      },
+      moderado: {
+        desc: 'Maneja las objeciones comunes del deudor de forma correcta, ofreciendo las alternativas estándar del protocolo. Mantiene una postura profesional, aunque podría profundizar en indagar la causa del atraso para dar una solución más adaptada.',
+        q: '¿Qué alternativas de pago suele priorizar cuando el cliente muestra disposición pero tiene problemas de liquidez temporales?'
+      },
+      bajo: {
+        desc: 'Muestra dificultades para rebatir objeciones, cayendo en la repetición del reclamo de pago o aceptando las evasivas del deudor con facilidad, lo que dilata el acuerdo de pago o rompe la negociación.',
+        q: 'Cuando un cliente se muestra cerrado o evasivo, ¿qué estrategias utiliza para reencauzar la conversación hacia un compromiso de pago?'
+      }
+    },
+    'adherencia a protocolo': {
+      alto: {
+        desc: 'Cumple de forma rigurosa y natural con los pasos clave del protocolo de cobranzas: identificación del deudor, verificación del monto de la deuda, explicación clara de los plazos y registro de un compromiso formal.',
+        q: '¿Cómo se asegura de seguir todos los pasos de cumplimiento normativo en llamadas donde el deudor intenta desviar el tema continuamente?'
+      },
+      moderado: {
+        desc: 'Sigue los lineamientos generales del protocolo de cobranza de forma aceptable. Cubre los pasos esenciales de la negociación, aunque en ocasiones podría ser más preciso al registrar los plazos o validar la identidad del titular.',
+        q: '¿Qué pasos del proceso de cobranzas considera más críticos y cómo se asegura de cumplirlos en cada interacción?'
+      },
+      bajo: {
+        desc: 'Omite pasos esenciales del protocolo de negociación de deuda, como la confirmación de la identidad del titular, el detalle preciso del monto adeudado o el establecimiento de un acuerdo con fecha de pago clara.',
+        q: '¿Cómo se organiza mentalmente para asegurar que cada llamada de cobranza finalice con un compromiso de pago explícito y fechado?'
+      }
+    },
+    'turnos_empleados': {
       alto: {
         desc: 'Muestra una excelente capacidad de síntesis y fluidez en el diálogo. Logra resolver o encuadrar la conversación en la cantidad óptima de turnos de interacción, evitando alargamientos innecesarios del tiempo en llamada.',
         q: '¿Qué estrategias implementa para evitar que una conversación con un cliente de tono extendido se desvíe del tema principal?'
@@ -2979,7 +3007,7 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
         q: '¿De qué forma balancea la necesidad de ser rápido en la llamada con la importancia de atender al cliente de manera completa y minuciosa?'
       }
     },
-    latencia_promedio: {
+    'latencia_promedio': {
       alto: {
         desc: 'Tiempo de respuesta ágil y natural, emulando la velocidad óptima de una conversación telefónica fluida en tiempo real, lo que transmite dinamismo y seguridad al cliente.',
         q: '¿Cómo se organiza para procesar los datos en el sistema mientras mantiene el flujo de conversación constante con el cliente?'
