@@ -323,9 +323,17 @@ function PortalCandidatoPage() {
       
       if (errVid) console.error('Error DB Videos:', errVid)
 
-      const { data: todasPreguntas } = await supabase
-        .from('preguntas_video')
-        .select('id, entrevista_id, pregunta')
+      const entrevistaIds = bat
+        .filter((t: string) => t.startsWith('entrevista:'))
+        .map((t: string) => t.split(':')[1])
+        .filter(Boolean)
+
+      const { data: todasPreguntas } = entrevistaIds.length > 0
+        ? await supabase
+            .from('preguntas_video')
+            .select('id, entrevista_id, pregunta')
+            .in('entrevista_id', entrevistaIds)
+        : { data: [] }
 
       const completadosDB: string[] = []
       const debugData: any = { raw_sessions: sesiones, raw_videos: respuestasVideo }
