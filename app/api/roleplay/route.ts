@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai'
 import { createClient } from '@supabase/supabase-js'
 
 const SYSTEM_PROMPT = `
@@ -58,8 +58,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Falta la llave de API de Gemini.' }, { status: 500 })
     }
 
+    const safetySettings = [
+      {
+        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+    ]
+
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.5-flash',
+      safetySettings
+    })
 
     // ACCIÓN 1: CONTINUACIÓN DE CHAT EN TIEMPO REAL
     if (action === 'chat') {
@@ -179,7 +201,8 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
         model: 'gemini-2.5-flash',
         generationConfig: {
           responseMimeType: 'application/json'
-        }
+        },
+        safetySettings
       })
       const evalResult = await evalModel.generateContent(evalPrompt)
       const evalText = evalResult.response.text()
