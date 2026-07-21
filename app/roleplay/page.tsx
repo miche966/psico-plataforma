@@ -29,6 +29,7 @@ export default function RolePlayPage() {
   const [llamadaIniciada, setLlamadaIniciada] = useState(false)
   const [guardandoEvaluacion, setGuardandoEvaluacion] = useState(false)
   const [mensajes, setMensajes] = useState<Array<{ role: 'user' | 'model', content: string; cooperacion?: number }>>([])
+  const mensajesRef = useRef<Array<{ role: 'user' | 'model', content: string; cooperacion?: number }>>([])
   const [turnoActual, setTurnoActual] = useState(0)
   const maxTurnos = 8
 
@@ -54,6 +55,7 @@ export default function RolePlayPage() {
     setLlamadaIniciada(false)
     setGuardandoEvaluacion(false)
     setMensajes([])
+    mensajesRef.current = []
     setTurnoActual(0)
     setLatencias([])
     setCurvaCooperacion([20])
@@ -230,7 +232,8 @@ export default function RolePlayPage() {
       setLatencias(prev => [...prev, Math.max(0.1, lat)])
     }
 
-    const nuevosMensajes = [...mensajes, { role: 'user' as const, content: texto.trim() }]
+    const nuevosMensajes = [...mensajesRef.current, { role: 'user' as const, content: texto.trim() }]
+    mensajesRef.current = nuevosMensajes
     setMensajes(nuevosMensajes)
     setTranscripcionParcial('')
     
@@ -247,7 +250,8 @@ export default function RolePlayPage() {
     }
 
     const texto = mensajeEscrito.trim()
-    const nuevosMensajes = [...mensajes, { role: 'user' as const, content: texto }]
+    const nuevosMensajes = [...mensajesRef.current, { role: 'user' as const, content: texto }]
+    mensajesRef.current = nuevosMensajes
     setMensajes(nuevosMensajes)
     setMensajeEscrito('')
 
@@ -282,6 +286,7 @@ export default function RolePlayPage() {
         ...listaMensajes, 
         { role: 'model' as const, content: respuestaIA, cooperacion: cooperacionIA }
       ]
+      mensajesRef.current = historialConRespuesta
       setMensajes(historialConRespuesta)
 
       // Leer la respuesta de la IA en voz alta
@@ -306,14 +311,16 @@ export default function RolePlayPage() {
     const saludoInicial = esAtencion
       ? "Hola, buenas tardes. ¿Me atienden de una vez? Llevo media hora esperando respuesta por WhatsApp y es una tomadura de pelo."
       : "Hola, buenas. ¿Con quién hablo? Estoy un poco ocupado ahora en el almacén."
-    setMensajes([{ role: 'model', content: saludoInicial }])
+    const inicial = [{ role: 'model' as const, content: saludoInicial }]
+    mensajesRef.current = inicial
+    setMensajes(inicial)
     
     // Pequeño retraso para dar tiempo a cargar voces del navegador
     setTimeout(() => reproducirVoz(saludoInicial), 500)
   }
 
   // Colgar y calificar llamada
-  async function finalizarLlamada(mensajesFinales = mensajes) {
+  async function finalizarLlamada(mensajesFinales = mensajesRef.current) {
     if (guardandoEvaluacion) return
     setGuardandoEvaluacion(true)
 
