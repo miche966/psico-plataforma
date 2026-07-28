@@ -1782,49 +1782,6 @@ export default function PanelEvaluador() {
       ) : (
         <>
 
-      {/* TARJETAS DE MÉTRICAS EJECUTIVAS KPI */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-            {candidatos.length}
-          </div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Candidatos Totales</span>
-            <span className="text-sm font-extrabold text-slate-800">{candidatos.length} postulantes</span>
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 font-bold">
-            {candidatosFiltrados.length}
-          </div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Vista Filtrada</span>
-            <span className="text-sm font-extrabold text-slate-800">{candidatosFiltrados.length} visibles</span>
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 font-bold">
-            {procesos.length}
-          </div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Procesos Activos</span>
-            <span className="text-sm font-extrabold text-slate-800">{procesos.length} cargos</span>
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 font-bold">
-            {candidatos.length > 0 ? Math.round((candidatos.filter(c => c.progreso.completados === c.progreso.total).length / candidatos.length) * 100) : 0}%
-          </div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Completitud</span>
-            <span className="text-sm font-extrabold text-slate-800">Tasa Global</span>
-          </div>
-        </div>
-      </div>
-
       {/* BARRA DE HERRAMIENTAS: BUSCADOR + FILTRO POR PROCESO */}
       <div className="bg-white border border-slate-200 rounded-2xl p-3 mb-6 shadow-sm flex flex-col md:flex-row md:flex-wrap gap-4 items-center">
         <div className="relative flex-1 w-full md:min-w-[280px]">
