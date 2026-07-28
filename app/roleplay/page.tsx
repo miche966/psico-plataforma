@@ -410,32 +410,39 @@ export default function RolePlayPage() {
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-xl overflow-hidden flex flex-col h-[650px] max-h-[calc(100vh-2rem)] relative">
         
-        {/* CABECERA SIMULADOR DE LLAMADA */}
-        <div className="p-6 bg-slate-900/80 border-b border-slate-800/50 backdrop-blur-md flex items-center justify-between z-10">
+        {/* CABECERA SIMULADOR DE LLAMADA EJECUTIVA */}
+        <div className="p-5 bg-slate-900/90 border-b border-slate-800/80 backdrop-blur-md flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-white shadow-inner">
-              {esAtencion ? 'LB' : 'CG'}
+            <div className="relative">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-slate-800 border border-indigo-500/30 flex items-center justify-center font-bold text-white shadow-lg">
+                {esAtencion ? 'LB' : 'CG'}
+              </div>
+              <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-slate-900 rounded-full animate-pulse"></span>
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white">{esAtencion ? 'Laura Benítez' : 'Carlos Gómez'}</h2>
-              <p className="text-[10px] text-emerald-500 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                {esAtencion ? 'Clienta de Pañalera (Reclamo por Cobro Duplicado)' : 'Deudor de Microcrédito (Atraso 45 días)'}
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-white">{esAtencion ? 'Laura Benítez' : 'Carlos Gómez'}</h2>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  Llamada en Línea
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400">
+                {esAtencion ? 'Reclamo de Servicio • Pañalera' : 'Negociación de Mora • Almacén de Barrio'}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setAudioMutado(!audioMutado)}
-              className="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition-all text-slate-400"
+              className="p-2 bg-slate-800/80 hover:bg-slate-700 rounded-xl transition-all text-slate-400 hover:text-white"
               title={audioMutado ? "Activar sonido" : "Mutar sonido"}
             >
-              {audioMutado ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              {audioMutado ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-indigo-400" />}
             </button>
             <button
               onClick={() => setFallbackTexto(!fallbackTexto)}
               className={`p-2 rounded-xl transition-all ${
-                fallbackTexto ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                fallbackTexto ? 'bg-indigo-600 text-white' : 'bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white'
               }`}
               title="Modo de texto alternativo"
             >

@@ -972,16 +972,37 @@ PsicoPlataforma - Gestión Inteligente de Talento
             <span style={s.badge}>Ajuste Persona-Cargo</span>
           </div>
           <div style={{ padding: '1.25rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
-              <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Ajuste al Cargo</div>
-                <input
-                  type="number"
-                  style={{ fontSize: '3rem', fontWeight: '900', color: clrOf((inf.ajusteCargo?.score || 0)/20), background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }}
-                  value={inf.ajusteCargo?.score || 0}
-                  onChange={e => setInf(p => ({ ...p, ajusteCargo: { ...p.ajusteCargo, score: Number(e.target.value) } }))}
-                />
-                <span style={{ fontSize: '1.5rem', fontWeight: '800', color: '#94a3b8' }}>%</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '2rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', padding: '1.25rem', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+                <div style={{ position: 'relative', width: '110px', height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="110" height="110" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
+                    <circle cx="50" cy="50" r="42" stroke="#e2e8f0" strokeWidth="8" fill="transparent" />
+                    <circle
+                      cx="50" cy="50" r="42"
+                      stroke={clrOf((inf.ajusteCargo?.score || 0) / 20)}
+                      strokeWidth="8"
+                      strokeDasharray={2 * Math.PI * 42}
+                      strokeDashoffset={2 * Math.PI * 42 * (1 - (inf.ajusteCargo?.score || 0) / 100)}
+                      strokeLinecap="round"
+                      fill="transparent"
+                      style={{ transition: 'stroke-dashoffset 0.8s ease-in-out' }}
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute', display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      style={{ fontSize: '2rem', fontWeight: '900', color: clrOf((inf.ajusteCargo?.score || 0) / 20), background: 'transparent', border: 'none', width: '60px', textAlign: 'center', outline: 'none' }}
+                      value={inf.ajusteCargo?.score || 0}
+                      onChange={e => setInf(p => ({ ...p, ajusteCargo: { ...p.ajusteCargo, score: Number(e.target.value) } }))}
+                    />
+                    <span style={{ fontSize: '1rem', fontWeight: '800', color: '#94a3b8' }}>%</span>
+                  </div>
+                </div>
+                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginTop: '0.5rem', letterSpacing: '0.05em' }}>
+                  Ajuste Global
+                </span>
               </div>
               <div>
                 <label style={s.commentLabel}>Justificación del Ajuste al Perfil</label>
@@ -994,7 +1015,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '2rem' }}>
               <div style={{ background: '#f0fdf4', padding: '1.25rem', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
                 <h4 style={{ color: '#16a34a', margin: '0 0 1rem 0', fontSize: '0.9rem', fontWeight: 'bold' }}>✦ Fortalezas Clave</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
