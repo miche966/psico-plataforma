@@ -104,18 +104,61 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
 }
 `
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
-    const result = await model.generateContent(prompt)
+    let result = null
+    let attempts = 0
+    const maxAttempts = 3
+    const apiCallStartTime = Date.now()
+
+    console.log(`[INFO] [ANALISIS FRASES] Iniciando análisis para candidato: ${candidato?.nombre || 'No especificado'} ${candidato?.apellido || ''}`)
+
+    while (attempts < maxAttempts) {
+      try {
+        attempts++
+        console.log(`[INFO] [ANALISIS FRASES] Llamando a Gemini (Intento ${attempts}/${maxAttempts})...`)
+        
+        const model = genAI.getGenerativeModel({ 
+          model: 'gemini-2.5-flash',
+          generationConfig: {
+            maxOutputTokens: 1200,
+            temperature: 0.2,
+            responseMimeType: 'application/json'
+          }
+        })
+        
+        const callStart = Date.now()
+        result = await model.generateContent(prompt)
+        const callDuration = ((Date.now() - callStart) / 1000).toFixed(2)
+        
+        console.log(`[INFO] [ANALISIS FRASES] Intento ${attempts} exitoso en ${callDuration}s.`)
+        break
+      } catch (err: any) {
+        console.error(`[WARNING] [ANALISIS FRASES] Error en intento ${attempts}:`, err.message || err)
+        if (attempts >= maxAttempts) {
+          throw err
+        }
+        const delay = Math.pow(2, attempts) * 1000
+        console.log(`[INFO] [ANALISIS FRASES] Reintentando en ${delay}ms...`)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+      }
+    }
+
+    if (!result) {
+      throw new Error('Fallo la llamada a la API de Gemini tras superar los reintentos máximos.')
+    }
+
     const text = (await result.response).text()
     
     // Extraer y parsear el JSON de la respuesta de Gemini
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     const resultado = JSON.parse(jsonMatch ? jsonMatch[0] : text)
 
+    const totalDuration = ((Date.now() - apiCallStartTime) / 1000).toFixed(2)
+    console.log(`[INFO] [ANALISIS FRASES] Proceso completado exitosamente en ${totalDuration}s.`)
+
     return NextResponse.json(resultado)
 
   } catch (error: any) {
-    console.error('[ANALISIS FRASES ERROR]:', error.message)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[ANALISIS FRASES ERROR FATAL]:', error.message || error)
+    return NextResponse.json({ error: error.message || 'Error desconocido' }, { status: 500 })
   }
 }

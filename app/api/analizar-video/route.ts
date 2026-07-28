@@ -16,14 +16,6 @@ export async function POST(req: Request) {
     const response = await fetch(url_video)
     const videoBuffer = await response.arrayBuffer()
 
-    // 2. Preparar Gemini
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        responseMimeType: 'application/json'
-      }
-    })
-
     const prompt = `
       Actúa como un experto en Reclutamiento y Selección de élite. 
       Analiza este video de un candidato respondiendo a una pregunta de entrevista.
@@ -48,15 +40,55 @@ export async function POST(req: Request) {
       }
     `
 
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: Buffer.from(videoBuffer).toString('base64'),
-          mimeType: 'video/webm'
+    // 2. Preparar y llamar a Gemini con reintentos
+    let result = null
+    let attempts = 0
+    const maxAttempts = 3
+    const apiCallStartTime = Date.now()
+
+    console.log(`[INFO] [ANALIZAR VIDEO] Iniciando análisis de video para respuesta_id: ${respuesta_id}`)
+
+    while (attempts < maxAttempts) {
+      try {
+        attempts++
+        console.log(`[INFO] [ANALIZAR VIDEO] Llamando a Gemini (Intento ${attempts}/${maxAttempts})...`)
+        
+        const model = genAI.getGenerativeModel({
+          model: 'gemini-2.5-flash',
+          generationConfig: {
+            maxOutputTokens: 1000,
+            responseMimeType: 'application/json'
+          }
+        })
+        
+        const callStart = Date.now()
+        result = await model.generateContent([
+          prompt,
+          {
+            inlineData: {
+              data: Buffer.from(videoBuffer).toString('base64'),
+              mimeType: 'video/webm'
+            }
+          }
+        ])
+        const callDuration = ((Date.now() - callStart) / 1000).toFixed(2)
+        
+        console.log(`[INFO] [ANALIZAR VIDEO] Intento ${attempts} exitoso en ${callDuration}s.`)
+        break
+      } catch (err: any) {
+        console.error(`[WARNING] [ANALIZAR VIDEO] Error en intento ${attempts}:`, err.message || err)
+        if (attempts >= maxAttempts) {
+          throw err
         }
+        const delay = Math.pow(2, attempts) * 1000
+        console.log(`[INFO] [ANALIZAR VIDEO] Reintentando en ${delay}ms...`)
+        await new Promise((resolve) => setTimeout(resolve, delay))
       }
-    ])
+    }
+
+    if (!result) {
+      throw new Error('Fallo la llamada a la API de Gemini tras superar los reintentos máximos.')
+    }
 
     const text = result.response.text()
     let jsonStr = text.replace(/```json|```/g, '').trim()
@@ -69,6 +101,9 @@ export async function POST(req: Request) {
     }
     
     const analisis = JSON.parse(jsonStr)
+
+    const totalDuration = ((Date.now() - apiCallStartTime) / 1000).toFixed(2)
+    console.log(`[INFO] [ANALIZAR VIDEO] Análisis completado exitosamente en ${totalDuration}s para respuesta_id: ${respuesta_id}`)
 
     // 3. Actualizar la base de datos
     const { error: updateError } = await supabase

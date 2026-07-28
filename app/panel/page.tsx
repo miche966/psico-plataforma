@@ -613,11 +613,11 @@ export default function PanelEvaluador() {
               estimarMBTI: (pb: any) => {
                 if (!pb) return 'N/A'
                 const findVal = (key: string) => {
-                  let found = 2.5
+                  let found = 3.5
                   const searchVal = (obj: any) => {
                     Object.entries(obj).forEach(([f, v]) => {
                       if (f.toLowerCase().includes(key)) {
-                        found = ((v as any)?.correctas ? ((v as any).correctas / ((v as any).total || 1)) * 5 : (typeof v === 'number' ? v : 0)) || 2.5
+                        found = ((v as any)?.correctas ? ((v as any).correctas / ((v as any).total || 1)) * 5 : (typeof v === 'number' ? v : 0)) || 3.5
                       } else if (typeof v === 'object' && v !== null) {
                         searchVal(v)
                       }
@@ -626,10 +626,10 @@ export default function PanelEvaluador() {
                   searchVal(pb)
                   return found
                 }
-                const E = findVal('extraver') >= 2.7 ? 'E' : 'I'
-                const S = findVal('apertura') < 2.7 ? 'S' : 'N'
-                const T = findVal('amabilid') < 2.7 ? 'T' : 'F'
-                const J = findVal('responsab') >= 2.7 ? 'J' : 'P'
+                const E = findVal('extraver') >= 3.6 ? 'E' : 'I'
+                const S = findVal('apertura') < 3.9 ? 'S' : 'N'
+                const T = findVal('amabilid') < 4.4 ? 'T' : 'F'
+                const J = findVal('responsab') >= 4.3 ? 'J' : 'P'
                 return `${E}${S}${T}${J}`
               },
               MBTI_DESC: {

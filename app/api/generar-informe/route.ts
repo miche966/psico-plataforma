@@ -83,12 +83,46 @@ ANÁLISIS CUALITATIVO DE LA TÉCNICA DE FRASES INCOMPLETAS (SACKS/ROTTER):
 `;
     }
 
+    // 3.7 COMPILACIÓN DE DATOS DE SIMULACIÓN Y ROLE PLAY (COBRANZAS / ATENCIÓN)
+    let analisisRolePlay = '';
+    const sesionesRolePlay = sesiones.filter((s: any) => 
+      s.puntaje_bruto && (
+        s.puntaje_bruto.transcripcion || 
+        s.puntaje_bruto.retroalimentacion || 
+        s.puntaje_bruto.acuerdo_alcanzado !== undefined ||
+        s.test_id === 'd8e9f0a1-b2c3-4567-defa-777777777777' ||
+        s.test_id === 'c9d8e7f0-a1b2-3456-7890-123456789012'
+      )
+    );
+
+    if (sesionesRolePlay.length > 0) {
+      analisisRolePlay = 'ANÁLISIS CUALITATIVO DE LA DINÁMICA DE SIMULACIÓN Y ROLE PLAY (INTERACCIÓN EN TIEMPO REAL):\n';
+      sesionesRolePlay.forEach((s: any, idx: number) => {
+        const pb = s.puntaje_bruto;
+        const retro = pb.retroalimentacion || 'N/A';
+        const acuerdo = pb.acuerdo_alcanzado !== undefined ? (pb.acuerdo_alcanzado ? 'Acuerdo Viable Alcanzado' : 'No se cerró acuerdo') : 'N/A';
+        
+        let transcripTexto = '';
+        if (Array.isArray(pb.transcripcion)) {
+          transcripTexto = pb.transcripcion.map((m: any) => `${m.role === 'user' ? 'Candidato' : 'Interlocutor/Cliente'}: ${m.content}`).join('\n');
+        } else if (typeof pb.transcripcion === 'string') {
+          transcripTexto = pb.transcripcion;
+        }
+
+        analisisRolePlay += `SIMULACIÓN ${idx + 1}:\n- Resultado / Cierre: ${acuerdo}\n- Retroalimentación cualitativa del caso: ${retro}\n`;
+        if (transcripTexto) {
+          analisisRolePlay += `- Transcripción relevante del diálogo:\n${transcripTexto.slice(0, 1500)}\n`;
+        }
+        analisisRolePlay += '\n';
+      });
+    }
+
     const prompt = `
-Eres un Consultor Senior en Desarrollo Humano y Psicólogo Organizacional. Tu misión es redactar un informe ejecutivo de alta gama que sea profundamente humano, sumamente asertivo y estrictamente profesional.
+Eres un Consultor Senior en Desarrollo Humano y Psicólogo Organizacional. Tu misión es redactar un informe ejecutivo de alta gama que sea profundamente humano, sumamente asertivo y strictly profesional.
 
 REGLAS DE ORO DE REDACCIÓN (OBLIGATORIAS E INFLEXIBLES):
 1. TONO: Cercano, empático, equilibrado y corporativo. Habla de comportamientos y situaciones, NO de puntajes ni números.
-2. SIN TECNICISMOS NI JERGAS: Está estrictamente prohibido usar nombres de rasgos técnicos de personalidad (tales como "Extraversión", "Consciencia", "Amabilidad", "Neuroticismo", "Apertura"), siglas de pruebas ("Big Five", "DASS-21", "Sacks", "SJT"), o términos acartonados (como "resiliencia", "asertividad", "coherencia y fluidez", "riqueza de vocabulario", "seguridad al expresarse", "estructurar ideas complejas", "brechas cognitivas", "alineamiento operativo"). Traduce todo a un lenguaje cotidiano, fluido e inteligente (ej: en lugar de "Consciencia" di "capacidad para organizar el trabajo y hacer seguimiento"; en lugar de "Extraversión" di "facilidad para entablar diálogos y relacionarse"; en lugar de "Neuroticismo" di "estabilidad ante situaciones de presión"; en lugar de "seguridad al expresarse" di "estilo comunicativo directo y pausado").
+2. SIN TECNICISMOS NI JERGAS: Está strictly prohibido usar nombres de rasgos técnicos de personalidad (tales como "Extraversión", "Consciencia", "Amabilidad", "Neuroticismo", "Apertura"), siglas de pruebas ("Big Five", "DASS-21", "Sacks", "SJT"), o términos acartonados (como "resiliencia", "asertividad", "coherencia y fluidez", "riqueza de vocabulario", "seguridad al expresarse", "estructurar ideas complejas", "brechas cognitivas", "alineamiento operativo"). Traduce todo a un lenguaje cotidiano, fluido e inteligente (ej: en lugar de "Consciencia" di "capacidad para organizar el trabajo y hacer seguimiento"; en lugar de "Extraversión" di "facilidad para entablar diálogos y relacionarse"; en lugar de "Neuroticismo" di "estabilidad ante situaciones de presión"; en lugar de "seguridad al expresarse" di "estilo comunicativo directo y pausado").
 3. SIN MAXIMALISMOS: Prohibido usar adjetivos absolutos o grandilocuentes como "idealmente", "meticulosamente", "crucial", "esencial", "vital", "clave", "excelente", "soberbia", "perfectamente", "clara", "genuina", "total", "óptima", "necesaria" o "crítica". Utiliza una redacción atenuada, equilibrada y profesional (ej: "tiende a", "muestra propensión a", "encuentra facilidad en", "es valorable su disposición para", "se siente más cómodo en").
 4. ANONIMATO ABSOLUTO: No utilices el nombre del candidato en ninguna parte del análisis (tampoco en títulos como "Análisis de Candidato: [Nombre]"). Refiérete a él/ella únicamente como "el perfil", "la persona evaluada", "el postulante" o mediante estructuras impersonales.
 5. COHERENCIA CON EL DICTAMEN: La "fundamentacion" debe ser honesta respecto al ajuste (${scoreFinal}%). Si el puntaje es bajo, explica de forma humana por qué el estilo del candidato difiere de las demandas del puesto (ej: ritmos, necesidades de guía, autonomía), sin usar etiquetas negativas ni juicios de valor.
@@ -96,6 +130,7 @@ REGLAS DE ORO DE REDACCIÓN (OBLIGATORIAS E INFLEXIBLES):
 7. SIN META-LENGUAJE NI EXCUSAS DE DATOS FALTANTES: No escribas "Basado en los datos...", "El informe indica...". Tampoco redactes advertencias sobre que la información está "incompleta", "ausente", "insuficiente", o que haces "inferencias de cómo se abordarían si estuvieran disponibles". Si ciertos tests o datos no están presentes (ej: si no hay Big Five o transcripciones), simplemente redacta el informe analizando los datos disponibles (como el porcentaje de coincidencia o las simulaciones completadas) con fluidez natural, sin hacer ninguna mención o disculpa por lo que falta.
 8. INTEGRACIÓN DE FRASES INCOMPLETAS (SI APLICA): Si se provee la sección de datos de Frases Incompletas Sacks abajo, debes integrar y fusionar dichos hallazgos cualitativos (por ejemplo, su temor al error en autoconcepto, el respeto o inhibición ante la autoridad, y su tendencia a la cordialidad para evitar la confrontación interpersonal) de forma sumamente orgánica y atenuada dentro del Resumen Ejecutivo, las Fortalezas, las Oportunidades de Mejora y las Recomendaciones de gestión. No utilices jergas psicológicas ni menciones el test por su nombre.
 9. SIN REFERENCIAS AL SOPORTE TECNOLÓGICO: Está estrictamente prohibido usar palabras como "video", "cámara", "grabación", "audio", "plataforma", "videoentrevista" o cualquier término que mencione la interfaz de software en los textos generados. Cuando analices las respuestas o el comportamiento observado en la entrevista, debes describirlo de forma implícita e integrada como "interacción directa", "comunicación discursiva", "estilo verbal", "comportamiento no verbal" o "presencia interactiva".
+10. INTEGRACIÓN INVISIBLE DE APORTES CUALITATIVOS Y SIMULACIONES (SI APLICA): Si se proveen datos de simulación, role play o transcripciones abajo, utiliza dicha información EXCLUSIVAMENTE para enriquecer y matizar las conclusiones del perfil (su estilo de persuasión, tolerancia ante la presión, búsqueda de consensos, escucha activa o manejo de objeciones). Queda ESTRICTAMENTE PROHIBIDO mencionar en el texto que se realizó o se observó una prueba, simulación, ejercicio o interacción, así como usar frases meta-referenciales (tales como "como se observó en...", "durante una interacción directa...", "en el diálogo con...", "tal como se evidenció...", "en el caso del comerciante..."). El informe debe describir las tendencias conductuales y competencias de la persona de forma 100% directa, integrada y declarativa (ej: en lugar de "como se observó en la negociación con el comerciante, logró un acuerdo" di simplemente "demuestra la habilidad de transformar objeciones iniciales en acuerdos viables a través de un diálogo sereno y estructurado"), redactando el resultado como una conclusión analítica consolidada.
 
 CONTEXTO DEL PUESTO: ${proceso?.cargo || 'N/A'}
 AJUSTE ESTIMADO: ${scoreFinal}%
@@ -105,6 +140,7 @@ DATOS PARA ANÁLISIS (FACTORES PSICOMÉTRICOS):
 ${JSON.stringify(factoresCrudos)}
 
 ${analisisFrasesIncompletas ? `DATOS CUALITATIVOS ADICIONALES (TEST DE FRASES INCOMPLETAS SACKS):\n${analisisFrasesIncompletas}\n` : ''}
+${analisisRolePlay ? `DATOS DE LA DINÁMICA DE ROLE PLAY Y SIMULACIÓN EN VIVO:\n${analisisRolePlay}\n` : ''}
 
 GUÍA DE INTERPRETACIÓN DE FACTORES (MUY IMPORTANTE PARA EVITAR CONTRADICCIONES):
 - Factores de Protección (Mayor puntaje es SALUDABLE/ÓPTIMO, menor puntaje [ej: < 2.5] es CRÍTICO/DESFAVORABLE):
@@ -164,13 +200,47 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
 *Nota: En metaCompetencias, sustituye los 0 por números enteros del 1 al 100 estimados según el perfil.*
 `;
 
-    const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        responseMimeType: 'application/json'
+    let result = null;
+    let attempts = 0;
+    const maxAttempts = 3;
+    const apiCallStartTime = Date.now();
+
+    console.log(`[INFO] [GENERAR INFORME] Iniciando generación de informe para candidato: ${candidato?.nombre || 'N/A'} ${candidato?.apellido || ''}`);
+
+    while (attempts < maxAttempts) {
+      try {
+        attempts++;
+        console.log(`[INFO] [GENERAR INFORME] Llamando a Gemini (Intento ${attempts}/${maxAttempts})...`);
+        
+        const model = genAI.getGenerativeModel({ 
+          model: 'gemini-2.5-flash',
+          generationConfig: {
+            maxOutputTokens: 2500,
+            responseMimeType: 'application/json'
+          }
+        });
+        
+        const callStart = Date.now();
+        result = await model.generateContent(prompt);
+        const callDuration = ((Date.now() - callStart) / 1000).toFixed(2);
+        
+        console.log(`[INFO] [GENERAR INFORME] Intento ${attempts} exitoso en ${callDuration}s.`);
+        break;
+      } catch (err: any) {
+        console.error(`[WARNING] [GENERAR INFORME] Error en intento ${attempts}:`, err.message || err);
+        if (attempts >= maxAttempts) {
+          throw err;
+        }
+        const delay = Math.pow(2, attempts) * 1000;
+        console.log(`[INFO] [GENERAR INFORME] Reintentando en ${delay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
-    });
-    const result = await model.generateContent(prompt);
+    }
+
+    if (!result) {
+      throw new Error('Fallo la llamada a la API de Gemini tras superar los reintentos máximos.');
+    }
+
     const text = (await result.response).text();
     
     let resultado: any;
@@ -193,6 +263,8 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
     }
 
     resultado.ajusteCargo.score = scoreFinal;
+    const totalDuration = ((Date.now() - apiCallStartTime) / 1000).toFixed(2);
+    console.log(`[INFO] [GENERAR INFORME] Informe generado exitosamente en ${totalDuration}s.`);
     return NextResponse.json(resultado);
 
   } catch (error: any) {

@@ -67,6 +67,7 @@ REGLAS DE ORO DE REDACCIÓN:
 7. SIN META-LENGUAJE: No escribas "Basado en los datos...", "El informe indica...". Escribe el análisis directo.
 8. INTEGRACIÓN DE FRASES INCOMPLETAS (SI APLICA): Si se provee la sección de datos de Frases Incompletas Sacks abajo, debes integrar y fusionar dichos hallazgos cualitativos de forma sumamente orgánica y atenuada dentro del Resumen Ejecutivo, las Fortalezas, las Oportunidades de Mejora y las Recomendaciones de gestión. No utilices jergas psicológicas ni menciones el test por su nombre.
 9. SIN REFERENCIAS AL SOPORTE TECNOLÓGICO: Está estrictamente prohibido usar palabras como "video", "cámara", "grabación", "audio", "plataforma", "videoentrevista" o cualquier término que mencione la interfaz de software en los textos generados. Cuando analices las respuestas o el comportamiento observado en la entrevista, debes describirlo de forma implícita e integrada como "interacción directa", "comunicación discursiva", "estilo verbal", "comportamiento no verbal" o "presencia interactiva".
+10. INTEGRACIÓN INVISIBLE DE APORTES CUALITATIVOS Y SIMULACIONES (SI APLICA): Si se proveen datos de simulación, role play o transcripciones abajo, utiliza dicha información EXCLUSIVAMENTE para enriquecer y matizar las conclusiones del perfil (su estilo de persuasión, tolerancia ante la presión, búsqueda de consensos, escucha activa o manejo de objeciones). Queda ESTRICTAMENTE PROHIBIDO mencionar en el texto que se realizó o se observó una prueba, simulación, ejercicio o interacción, así como usar frases meta-referenciales (tales como "como se observó en...", "durante una interacción directa...", "en el diálogo con...", "tal como se evidenció...", "en el caso del comerciante..."). El informe debe describir las tendencias conductuales y competencias de la persona de forma 100% directa, integrada y declarativa (ej: en lugar de "como se observó en la negociación con el comerciante, logró un acuerdo" di simplemente "demuestra la habilidad de transformar objeciones iniciales en acuerdos viables a través de un diálogo sereno y estructurado"), redactando el resultado como una conclusión analítica consolidada.
 `;
 
 export async function POST(req: Request) {
@@ -168,11 +169,11 @@ export async function POST(req: Request) {
     if (sesionBigFive?.puntaje_bruto) {
       const pb = sesionBigFive.puntaje_bruto
       const findVal = (key: string) => {
-        let found = 2.5
+        let found = 3.5
         const searchVal = (obj: any) => {
           Object.entries(obj).forEach(([f, v]) => {
             if (f.toLowerCase().includes(key)) {
-              found = ((v as any)?.correctas ? ((v as any).correctas / ((v as any).total || 1)) * 5 : (typeof v === 'number' ? v : 0)) || 2.5
+              found = ((v as any)?.correctas ? ((v as any).correctas / ((v as any).total || 1)) * 5 : (typeof v === 'number' ? v : 0)) || 3.5
             } else if (typeof v === 'object' && v !== null) {
               searchVal(v)
             }
@@ -181,10 +182,10 @@ export async function POST(req: Request) {
         searchVal(pb)
         return found
       }
-      const E = findVal('extraver') >= 2.7 ? 'E' : 'I'
-      const S = findVal('apertura') < 2.7 ? 'S' : 'N'
-      const T = findVal('amabilid') < 2.7 ? 'T' : 'F'
-      const J = findVal('responsab') >= 2.7 ? 'J' : 'P'
+      const E = findVal('extraver') >= 3.6 ? 'E' : 'I'
+      const S = findVal('apertura') < 3.9 ? 'S' : 'N'
+      const T = findVal('amabilid') < 4.4 ? 'T' : 'F'
+      const J = findVal('responsab') >= 4.3 ? 'J' : 'P'
       mbtiType = `${E}${S}${T}${J}`
     }
 
@@ -253,6 +254,40 @@ ANÁLISIS CUALITATIVO DE LA TÉCNICA DE FRASES INCOMPLETAS (SACKS/ROTTER):
 `;
     }
 
+    // Compilar Role Play
+    let analisisRolePlay = '';
+    const sesionesRolePlay = sesiones.filter((s: any) => 
+      s.puntaje_bruto && (
+        s.puntaje_bruto.transcripcion || 
+        s.puntaje_bruto.retroalimentacion || 
+        s.puntaje_bruto.acuerdo_alcanzado !== undefined ||
+        s.test_id === 'd8e9f0a1-b2c3-4567-defa-777777777777' ||
+        s.test_id === 'c9d8e7f0-a1b2-3456-7890-123456789012'
+      )
+    );
+
+    if (sesionesRolePlay.length > 0) {
+      analisisRolePlay = 'ANÁLISIS CUALITATIVO DE LA DINÁMICA DE SIMULACIÓN Y ROLE PLAY (INTERACCIÓN EN TIEMPO REAL):\n';
+      sesionesRolePlay.forEach((s: any, idx: number) => {
+        const pb = s.puntaje_bruto;
+        const retro = pb.retroalimentacion || 'N/A';
+        const acuerdo = pb.acuerdo_alcanzado !== undefined ? (pb.acuerdo_alcanzado ? 'Acuerdo Viable Alcanzado' : 'No se cerró acuerdo') : 'N/A';
+        
+        let transcripTexto = '';
+        if (Array.isArray(pb.transcripcion)) {
+          transcripTexto = pb.transcripcion.map((m: any) => `${m.role === 'user' ? 'Candidato' : 'Interlocutor/Cliente'}: ${m.content}`).join('\n');
+        } else if (typeof pb.transcripcion === 'string') {
+          transcripTexto = pb.transcripcion;
+        }
+
+        analisisRolePlay += `SIMULACIÓN ${idx + 1}:\n- Resultado / Cierre: ${acuerdo}\n- Retroalimentación cualitativa del caso: ${retro}\n`;
+        if (transcripTexto) {
+          analisisRolePlay += `- Transcripción relevante del diálogo:\n${transcripTexto.slice(0, 1500)}\n`;
+        }
+        analisisRolePlay += '\n';
+      });
+    }
+
     // Generar prompt
     const prompt = `
 ${SYSTEM_PROMPT}
@@ -265,6 +300,7 @@ DATOS PARA ANÁLISIS (FACTORES PSICOMÉTRICOS):
 ${JSON.stringify(factoresCrudos)}
 
 ${analisisFrasesIncompletas ? `DATOS CUALITATIVOS ADICIONALES (TEST DE FRASES INCOMPLETAS SACKS):\n${analisisFrasesIncompletas}\n` : ''}
+${analisisRolePlay ? `DATOS DE LA DINÁMICA DE ROLE PLAY Y SIMULACIÓN EN VIVO:\n${analisisRolePlay}\n` : ''}
 
 GUÍA DE INTERPRETACIÓN DE FACTORES (MUY IMPORTANTE PARA EVITAR CONTRADICCIONES):
 - Factores de Protección (Mayor puntaje es SALUDABLE/ÓPTIMO, menor puntaje [ej: < 2.5] es CRÍTICO/DESFAVORABLE):
@@ -325,8 +361,48 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
 `;
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
-    const result = await model.generateContent(prompt)
+    
+    let result = null
+    let attempts = 0
+    const maxAttempts = 3
+    const apiCallStartTime = Date.now()
+
+    console.log(`[INFO] [GENERAR INFORME AUTO] Iniciando generación de informe para candidatoId: ${candidatoId}`)
+
+    while (attempts < maxAttempts) {
+      try {
+        attempts++
+        console.log(`[INFO] [GENERAR INFORME AUTO] Llamando a Gemini (Intento ${attempts}/${maxAttempts})...`)
+        
+        const model = genAI.getGenerativeModel({ 
+          model: 'gemini-2.5-flash',
+          generationConfig: {
+            maxOutputTokens: 2500,
+            responseMimeType: 'application/json'
+          }
+        })
+        
+        const callStart = Date.now()
+        result = await model.generateContent(prompt)
+        const callDuration = ((Date.now() - callStart) / 1000).toFixed(2)
+        
+        console.log(`[INFO] [GENERAR INFORME AUTO] Intento ${attempts} exitoso en ${callDuration}s.`)
+        break
+      } catch (err: any) {
+        console.error(`[WARNING] [GENERAR INFORME AUTO] Error en intento ${attempts}:`, err.message || err)
+        if (attempts >= maxAttempts) {
+          throw err
+        }
+        const delay = Math.pow(2, attempts) * 1000
+        console.log(`[INFO] [GENERAR INFORME AUTO] Reintentando en ${delay}ms...`)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+      }
+    }
+
+    if (!result) {
+      throw new Error('Fallo la llamada a la API de Gemini tras superar los reintentos máximos.')
+    }
+
     const text = (await result.response).text()
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     const rawRes = JSON.parse(jsonMatch ? jsonMatch[0] : text)
@@ -462,6 +538,8 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
       .update({ recomendacion: nuevoInforme.recomendacion })
       .eq('id', candidatoId)
 
+    const totalDuration = ((Date.now() - apiCallStartTime) / 1000).toFixed(2)
+    console.log(`[INFO] [GENERAR INFORME AUTO] Informe generado automáticamente con éxito en ${totalDuration}s para candidatoId: ${candidatoId}`)
     return NextResponse.json({ success: true, message: 'Informe generado e integrado de forma automática en background.' })
 
   } catch (error: any) {

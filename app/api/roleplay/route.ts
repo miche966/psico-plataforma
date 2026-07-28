@@ -78,12 +78,7 @@ export async function POST(req: Request) {
     ]
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-    const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.5-flash',
-      safetySettings
-    })
-
-    // ACCIÓN 1: CONTINUACIÓN DE CHAT EN TIEMPO REAL
+    // ACCIÓN 1: CONTINUACIÓN DE CHAT EN TIEMEMPO REAL
     if (action === 'chat') {
       let tempHistory = (mensajes || []).map((m: any) => ({
         role: m.role === 'user' ? 'user' : 'model',
@@ -110,22 +105,66 @@ export async function POST(req: Request) {
       const isAtencion = testId === 'd8e9f0a1-b2c3-4567-defa-777777777777'
       const systemInstructionPrompt = isAtencion ? SYSTEM_PROMPT_ATENCION : SYSTEM_PROMPT
 
-      const chat = model.startChat({
-        history,
-        systemInstruction: {
-          parts: [{ text: systemInstructionPrompt }]
-        }
-      })
+      let result = null
+      let attempts = 0
+      const maxAttempts = 3
+      const chatStartTime = Date.now()
 
-      const result = await chat.sendMessage(nuevoMensaje)
+      console.log(`[INFO] [ROLEPLAY CHAT] Iniciando respuesta para candidato: ${candidatoId || 'N/A'}`)
+
+      while (attempts < maxAttempts) {
+        try {
+          attempts++
+          console.log(`[INFO] [ROLEPLAY CHAT] Llamando a Gemini (Intento ${attempts}/${maxAttempts})...`)
+          
+          const chatModel = genAI.getGenerativeModel({ 
+            model: 'gemini-2.5-flash',
+            generationConfig: {
+              maxOutputTokens: 150,
+              responseMimeType: 'application/json'
+            },
+            safetySettings
+          })
+
+          const chat = chatModel.startChat({
+            history,
+            systemInstruction: {
+              parts: [{ text: systemInstructionPrompt }]
+            }
+          })
+
+          const callStart = Date.now()
+          result = await chat.sendMessage(nuevoMensaje)
+          const callDuration = ((Date.now() - callStart) / 1000).toFixed(2)
+          
+          console.log(`[INFO] [ROLEPLAY CHAT] Intento ${attempts} exitoso en ${callDuration}s.`)
+          break
+        } catch (err: any) {
+          console.error(`[WARNING] [ROLEPLAY CHAT] Error en intento ${attempts}:`, err.message || err)
+          if (attempts >= maxAttempts) {
+            throw err
+          }
+          const delay = Math.pow(2, attempts) * 1000
+          console.log(`[INFO] [ROLEPLAY CHAT] Reintentando en ${delay}ms...`)
+          await new Promise((resolve) => setTimeout(resolve, delay))
+        }
+      }
+
+      if (!result) {
+        throw new Error('Fallo la llamada a la API de Gemini tras superar los reintentos máximos.')
+      }
+
       const responseText = result.response.text()
 
       try {
         const jsonMatch = responseText.match(/\{[\s\S]*\}/)
         const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : responseText)
+        const totalDuration = ((Date.now() - chatStartTime) / 1000).toFixed(2)
+        console.log(`[INFO] [ROLEPLAY CHAT] Respuesta generada exitosamente en ${totalDuration}s.`)
         return NextResponse.json(parsed)
       } catch (e) {
         // Fallback por si la IA no retorna JSON válido
+        console.warn(`[WARNING] [ROLEPLAY CHAT] Respuesta no es JSON valido. Usando fallback.`)
         return NextResponse.json({
           respuesta: responseText,
           cooperacion: 50,
@@ -197,20 +236,56 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
 
       const evalPrompt = isAtencion ? evalPromptAtencion : evalPromptCobranzas
 
-      const evalModel = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        generationConfig: {
-          responseMimeType: 'application/json'
-        },
-        safetySettings
-      })
-      const evalResult = await evalModel.generateContent(evalPrompt)
+      let evalResult = null
+      let evalAttempts = 0
+      const evalMaxAttempts = 3
+      const evalStartTime = Date.now()
+
+      console.log(`[INFO] [ROLEPLAY EVALUAR] Iniciando evaluación para candidato: ${candidatoId}`)
+
+      while (evalAttempts < evalMaxAttempts) {
+        try {
+          evalAttempts++
+          console.log(`[INFO] [ROLEPLAY EVALUAR] Llamando a Gemini (Intento ${evalAttempts}/${evalMaxAttempts})...`)
+          
+          const evalModel = genAI.getGenerativeModel({
+            model: 'gemini-2.5-flash',
+            generationConfig: {
+              maxOutputTokens: 800,
+              responseMimeType: 'application/json'
+            },
+            safetySettings
+          })
+          
+          const callStart = Date.now()
+          evalResult = await evalModel.generateContent(evalPrompt)
+          const callDuration = ((Date.now() - callStart) / 1000).toFixed(2)
+          
+          console.log(`[INFO] [ROLEPLAY EVALUAR] Intento ${evalAttempts} exitoso en ${callDuration}s.`)
+          break
+        } catch (err: any) {
+          console.error(`[WARNING] [ROLEPLAY EVALUAR] Error en intento ${evalAttempts}:`, err.message || err)
+          if (evalAttempts >= evalMaxAttempts) {
+            throw err
+          }
+          const delay = Math.pow(2, evalAttempts) * 1000
+          console.log(`[INFO] [ROLEPLAY EVALUAR] Reintentando en ${delay}ms...`)
+          await new Promise((resolve) => setTimeout(resolve, delay))
+        }
+      }
+
+      if (!evalResult) {
+        throw new Error('Fallo la llamada a la API de Gemini tras superar los reintentos máximos para evaluar.')
+      }
+
       const evalText = evalResult.response.text()
       
       let parseado: any;
       try {
         const jsonMatch = evalText.match(/\{[\s\S]*\}/)
         parseado = JSON.parse(jsonMatch ? jsonMatch[0] : evalText)
+        const totalDuration = ((Date.now() - evalStartTime) / 1000).toFixed(2)
+        console.log(`[INFO] [ROLEPLAY EVALUAR] Evaluación completada exitosamente en ${totalDuration}s.`)
       } catch (e) {
         console.error("Error parseando respuesta de evaluacion de Gemini:", e);
         parseado = isAtencion ? {

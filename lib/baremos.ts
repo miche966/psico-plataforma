@@ -37,3 +37,44 @@ export function interpretarPercentil(percentil: number): string {
   if (percentil >= 10) return 'Bajo'
   return 'Muy Bajo'
 }
+
+/**
+ * Estima el perfil MBTI (16 tipos de personalidad) a partir de los factores de personalidad Big Five
+ * utilizando umbrales normativos calibrados con la mediana de la población de postulantes de selección.
+ */
+export function estimarMBTI(puntajeBruto: any): string {
+  if (!puntajeBruto || typeof puntajeBruto !== 'object') return 'ENFJ'
+
+  const findVal = (key: string): number => {
+    let found = 3.5
+    const searchVal = (obj: any) => {
+      if (!obj || typeof obj !== 'object') return
+      Object.entries(obj).forEach(([f, v]) => {
+        if (f.toLowerCase().includes(key)) {
+          if (typeof v === 'number') {
+            found = v > 5 ? (v <= 25 ? (v / 25) * 5 : (v / 100) * 5) : v
+          } else if (typeof v === 'object' && v !== null && 'correctas' in v) {
+            found = ((v as any).correctas / ((v as any).total || 1)) * 5
+          }
+        } else if (typeof v === 'object' && v !== null) {
+          searchVal(v)
+        }
+      })
+    }
+    searchVal(puntajeBruto)
+    return found
+  }
+
+  // Umbrales calibrados según medianas normativas de selección de personal:
+  // Extraversión: E (>= 3.6) vs I (< 3.6)
+  // Apertura: N (>= 3.9) vs S (< 3.9)
+  // Amabilidad: F (>= 4.4) vs T (< 4.4)
+  // Responsabilidad: J (>= 4.3) vs P (< 4.3)
+  const E = findVal('extraver') >= 3.6 ? 'E' : 'I'
+  const S = findVal('apertura') < 3.9 ? 'S' : 'N'
+  const T = findVal('amabilid') < 4.4 ? 'T' : 'F'
+  const J = findVal('responsab') >= 4.3 ? 'J' : 'P'
+
+  return `${E}${S}${T}${J}`
+}
+
