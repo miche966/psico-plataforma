@@ -58,14 +58,16 @@ function validar() {
         }
     }
 
-    // 4. Verificar Sincronización Web-PDF (Etiquetas ETQ)
+    // 4. Verificar Sincronización Web-PDF (Etiquetas ETQ unificadas en lib/labels.ts)
+    const labelsPath = path.join(process.cwd(), 'lib/labels.ts');
     const pdfPath = path.join(process.cwd(), 'components/InformePDF.tsx');
-    if (fs.existsSync(reportPath) && fs.existsSync(pdfPath)) {
-        const webEtq = (fs.readFileSync(reportPath, 'utf8').match(/const ETQ: Record<string, string> = {[\s\S]*?}/g) || [])[0];
-        const pdfEtq = (fs.readFileSync(pdfPath, 'utf8').match(/const ETQ: Record<string, string> = {[\s\S]*?}/g) || [])[0];
-        
-        if (webEtq && pdfEtq && webEtq.length !== pdfEtq.length) {
-            console.log(`${AMARILLO}⚠️ Aviso: Los diccionarios ETQ de Web y PDF podrían estar desincronizados.${RESET}`);
+    if (fs.existsSync(labelsPath) && fs.existsSync(reportPath) && fs.existsSync(pdfPath)) {
+        const webHasImport = fs.readFileSync(reportPath, 'utf8').includes("@/lib/labels");
+        const pdfHasImport = fs.readFileSync(pdfPath, 'utf8').includes("@/lib/labels");
+        if (!webHasImport || !pdfHasImport) {
+            console.log(`${AMARILLO}⚠️ Aviso: Los diccionarios ETQ de Web y PDF deberían importar de lib/labels.ts.${RESET}`);
+        } else {
+            console.log(`${VERDE}✓ Espejo Web-PDF sincronizado vía lib/labels.ts${RESET}`);
         }
     }
 

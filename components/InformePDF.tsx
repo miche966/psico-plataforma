@@ -84,60 +84,8 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 7, color: '#94a3b8' }
 });
 
-const ETQ: Record<string, string> = {
-  // Personalidad y Probidad
-  extraversion: 'Extraversión', 
-  'extraversión y energía social': 'Extraversión',
-  'extraversión': 'Extraversión',
-  amabilidad: 'Amabilidad',
-  'amabilidad y cooperación': 'Amabilidad',
-  responsabilidad: 'Responsabilidad',
-  'responsabilidad y organización': 'Responsabilidad',
-  neuroticismo: 'Estabilidad Emocional',
-  'neuroticismo y ajuste': 'Estabilidad Emocional',
-  'estabilidad emocional': 'Estabilidad Emocional',
-  apertura: 'Apertura a la Experiencia',
-  'apertura a la experiencia': 'Apertura a la Experiencia',
-  'apertura y curiosidad': 'Apertura a la Experiencia',
-  honestidad_humildad: 'Honestidad y Humildad',
-  honestidad: 'Sinceridad y Franqueza',
-  normas: 'Apego a Normas y Ética',
-  promedio_general: 'Índice de Probidad General',
-  
-  // Cognitivo y Atención
-  correctas: 'Efectividad Cognitiva',
-  percentil: 'Rango Comparativo (Percentil)',
-  score: 'Puntuación Global',
-  documentos: 'Gestión Documental',
-  comparacion: 'Velocidad de Procesamiento',
-  concentracion: 'Nivel de Foco y Concentración',
-  errores_texto: 'Precisión en Datos de Texto',
-  errores_numeros: 'Precisión en Datos Numéricos',
-  metricas_fraude: 'Índice de Sinceridad Laboral',
+import { ETQ } from '@/lib/labels';
 
-  // Competencias Profesionales (SJT)
-  etica: 'Ética y Valores Profesionales',
-  negociacion: 'Capacidad de Negociación',
-  manejo_emocional: 'Inteligencia Emocional Aplicada',
-  tolerancia_frustracion: 'Tolerancia a la Presión',
-  comunicacion: 'Comunicación Efectiva',
-  liderazgo: 'Liderazgo Estratégico',
-  trabajo_equipo: 'Trabajo en Equipo y Sinergia',
-  adaptabilidad: 'Adaptabilidad al Cambio',
-  resolucion_problemas: 'Resolución de Problemas Complejos',
-  
-  // Salud y Bienestar Laboral
-  burnout: 'Nivel de Riesgo (Burnout)',
-  equilibrio: 'Balance Vida-Trabajo',
-  relaciones: 'Relaciones Interpersonales y Clima',
-  claridad_rol: 'Percepción de Claridad de Rol',
-  nivel_estres: 'Indicador de Tensión Psicológica',
-  carga_laboral: 'Gestión de la Demanda de Trabajo',
-  resiliencia: 'Capacidad de Resiliencia',
-  manejo_estres: 'Gestión Situacional de Estrés',
-  autoestima: 'Confianza y Autoestima Profesional',
-  inteligencia_emocional: 'Inteligencia Emocional (IE)',
-};
 
 const DOMINIOS = {
   PERSONALIDAD: ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura', 'honestidad_humildad', 'honestidad', 'normas', 'promedio_general'],

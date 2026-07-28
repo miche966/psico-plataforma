@@ -1,0 +1,64 @@
+// Diccionario centralizado de etiquetas humanizadas para PsicoPlataforma
+// Garantiza la sincronización 100% espejo entre la vista Web (app/informe/page.tsx) y el PDF (components/InformePDF.tsx)
+
+export const ETQ: Record<string, string> = {
+  // Personalidad y Probidad (Big Five & HEXACO)
+  extraversion: 'Extraversión',
+  'extraversión y energía social': 'Extraversión',
+  'extraversión': 'Extraversión',
+  amabilidad: 'Amabilidad',
+  'amabilidad y cooperación': 'Amabilidad',
+  responsabilidad: 'Responsabilidad',
+  'responsabilidad y organización': 'Responsabilidad',
+  neuroticismo: 'Estabilidad Emocional',
+  'neuroticismo y ajuste': 'Estabilidad Emocional',
+  'estabilidad emocional': 'Estabilidad Emocional',
+  apertura: 'Apertura a la Experiencia',
+  'apertura a la experiencia': 'Apertura a la Experiencia',
+  'apertura y curiosidad': 'Apertura a la Experiencia',
+  honestidad_humildad: 'Honestidad y Humildad',
+  honestidad: 'Sinceridad y Franqueza',
+  normas: 'Apego a Normas y Ética',
+  promedio_general: 'Índice de Integridad Personal',
+  
+  // Cognitivo y Atención
+  correctas: 'Efectividad Cognitiva',
+  percentil: 'Rango Comparativo (Percentil)',
+  score: 'Puntuación Global',
+  documentos: 'Gestión Documental',
+  comparacion: 'Velocidad de Procesamiento',
+  concentracion: 'Nivel de Foco y Concentración',
+  errores_texto: 'Precisión en Datos de Texto',
+  errores_numeros: 'Precisión en Datos Numéricos',
+  metricas_fraude: 'Índice de Sinceridad Laboral',
+
+  // Competencias Profesionales (SJT & Role Play)
+  etica: 'Ética y Valores Profesionales',
+  negociacion: 'Capacidad de Negociación',
+  manejo_emocional: 'Inteligencia Emocional',
+  tolerancia_frustracion: 'Tolerancia a la Presión',
+  comunicacion: 'Comunicación Efectiva',
+  liderazgo: 'Liderazgo Estratégico',
+  trabajo_equipo: 'Trabajo en Equipo y Sinergia',
+  adaptabilidad: 'Adaptabilidad al Cambio',
+  resolucion_problemas: 'Resolución de Problemas Complejos',
+  'empatía y escucha': 'Empatía y Escucha Activa',
+  'manejo de objeciones': 'Manejo de Objeciones',
+  'resolución de conflictos': 'Resolución de Conflictos',
+  'adherencia a protocolo': 'Adherencia a Protocolo',
+  'calidad de servicio': 'Calidad de Servicio',
+  
+  // Salud y Bienestar Laboral
+  burnout: 'Nivel de Bienestar y Energía',
+  equilibrio: 'Balance Vida-Trabajo',
+  relaciones: 'Relaciones Interpersonales y Clima',
+  claridad_rol: 'Claridad de Funciones y Rol',
+  nivel_estres: 'Indicador de Calma Operativa',
+  carga_laboral: 'Gestión de la Demanda de Trabajo',
+  autonomia: 'Autonomía y Control de Procesos',
+  expectativas: 'Alineamiento de Expectativas',
+  resiliencia: 'Capacidad de Resiliencia',
+  manejo_estres: 'Gestión Situacional de Estrés',
+  autoestima: 'Confianza y Autoestima Profesional',
+  inteligencia_emocional: 'Inteligencia Emocional (IE)',
+};
