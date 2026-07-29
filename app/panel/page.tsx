@@ -2276,7 +2276,14 @@ export default function PanelEvaluador() {
                         if (sesionSeleccionada.test_id === 'f7a8b9c0-d1e2-4356-abcd-888888888888') {
                           return renderFrasesIncompletas(sesionSeleccionada, analizarFrasesConIA)
                         }
-                        if (sesionSeleccionada.test_id === 'd8e9f0a1-b2c3-4567-defa-888888888888' || sesionSeleccionada.test_id === 'd8e9f0a1-b2c3-4567-defa-777777777777') {
+                        const tid = (sesionSeleccionada.test_id || '').toLowerCase()
+                        const isRoleplay = tid.includes('888888888888') || 
+                                           tid.includes('777777777777') || 
+                                           (TEST_IDS[tid] || '').includes('roleplay') ||
+                                           Boolean(pb.transcripcion) ||
+                                           Boolean(pb.retroalimentacion)
+
+                        if (isRoleplay) {
                           return renderRoleplay(sesionSeleccionada)
                         }
                         return (
