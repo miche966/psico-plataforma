@@ -209,6 +209,113 @@ function obtenerInterpretacionCognitiva(testId: string, pct: number): string {
   return 'Nivel Bajo: Requiere acompañamiento o guías estructuradas ante procesos complejos.'
 }
 
+function obtenerInterpretacionGeneral(testId: string, prom: number): { nivel: string; colorText: string; colorBg: string; descripcion: string } {
+  const tid = (testId || '').toLowerCase()
+  const slug = TEST_IDS[tid] || ''
+  
+  const isIntegridad = slug.includes('integridad') || tid.includes('345678901234')
+  const isEstres = slug.includes('estres') || tid.includes('000000000001')
+  const isCreatividad = slug.includes('creatividad') || tid.includes('111222333444')
+
+  if (isIntegridad) {
+    if (prom >= 4.0) {
+      return {
+        nivel: 'Nivel Superior (Alta Confiabilidad Ética)',
+        colorText: 'text-emerald-600',
+        colorBg: 'bg-emerald-500',
+        descripcion: 'Demuestra una sólida adhesión a principios éticos, transparencia en el manejo de recursos, cumplimiento estricto de normativas institucionales y alta honestidad operativa ante poca supervisión.'
+      }
+    } else if (prom >= 3.0) {
+      return {
+        nivel: 'Nivel Promedio (Confiabilidad Estándar)',
+        colorText: 'text-amber-600',
+        colorBg: 'bg-amber-500',
+        descripcion: 'Muestra un apego adecuado a las normas institucionales y valores corporativos en el día a día. Responde de forma honesta y leal ante situaciones de dilema ético habituales.'
+      }
+    } else {
+      return {
+        nivel: 'Nivel Bajo (Requiere Evaluación Profunda)',
+        colorText: 'text-rose-600',
+        colorBg: 'bg-rose-500',
+        descripcion: 'Se recomienda indagar en entrevistas de selección sobre el manejo de dilemas de confidencialidad, propiedad intelectual o recursos corporativos para validar alineación con la cultura ética de la empresa.'
+      }
+    }
+  }
+
+  if (isEstres) {
+    if (prom <= 2.5) {
+      return {
+        nivel: 'Bajo Nivel de Estrés (Resiliencia Alta)',
+        colorText: 'text-emerald-600',
+        colorBg: 'bg-emerald-500',
+        descripcion: 'Excelente autorregulación emocional y equilibrio. Muestra baja vulnerabilidad al desgaste profesional (burnout) y alta tolerancia ante picos de demanda operativa.'
+      }
+    } else if (prom <= 3.5) {
+      return {
+        nivel: 'Nivel de Tensión Moderado',
+        colorText: 'text-amber-600',
+        colorBg: 'bg-amber-500',
+        descripcion: 'Presenta niveles de tensión laboral manejables. Se beneficia de una clara priorización de tareas y descansos programados en etapas de entregas críticas.'
+      }
+    } else {
+      return {
+        nivel: 'Elevada Tensión / Riesgo de Agotamiento',
+        colorText: 'text-rose-600',
+        colorBg: 'bg-rose-500',
+        descripcion: 'Registra indicadores de sobrecarga laboral o emocional. Requiere seguimiento de clima, rediseño de prioridades y apoyo operativo en el rol.'
+      }
+    }
+  }
+
+  if (isCreatividad) {
+    if (prom >= 4.0) {
+      return {
+        nivel: 'Nivel Superior (Pensamiento Innovador)',
+        colorText: 'text-emerald-600',
+        colorBg: 'bg-emerald-500',
+        descripcion: 'Gran capacidad de pensamiento lateral, ideación disruptiva y propuesta de soluciones originales ante desafíos operativos complejos.'
+      }
+    } else if (prom >= 3.0) {
+      return {
+        nivel: 'Nivel Promedio (Mejora Continua)',
+        colorText: 'text-indigo-600',
+        colorBg: 'bg-indigo-500',
+        descripcion: 'Solvencia para aportar ideas de optimización sobre procesos existentes y colaborar activamente en lluvias de ideas de equipo.'
+      }
+    } else {
+      return {
+        nivel: 'Nivel Tradicional / Conservador',
+        colorText: 'text-slate-600',
+        colorBg: 'bg-slate-500',
+        descripcion: 'Preferencia por seguir metódicamente estructuras probadas y normas establecidas sin necesidad de alterar los procesos fijados.'
+      }
+    }
+  }
+
+  if (prom >= 4.0) {
+    return {
+      nivel: 'Competencia Destacada',
+      colorText: 'text-emerald-600',
+      colorBg: 'bg-emerald-500',
+      descripcion: 'Desempeño altamente efectivo en la toma de decisiones situacionales y resolución de escenarios del puesto.'
+    }
+  } else if (prom >= 3.0) {
+    return {
+      nivel: 'Competencia Promedio',
+      colorText: 'text-indigo-600',
+      colorBg: 'bg-indigo-500',
+      descripcion: 'Desempeño adecuado y competente en el manejo de situaciones habituales de la posición.'
+    }
+  } else {
+    return {
+      nivel: 'Requiere Desarrollo',
+      colorText: 'text-rose-600',
+      colorBg: 'bg-rose-500',
+      descripcion: 'Se observan oportunidades de mejora en la resolución autónoma de escenarios situacionales.'
+    }
+  }
+}
+
 function esSJT(pb: any): boolean {
   return pb && 'por_factor' in pb
 }
@@ -2328,18 +2435,26 @@ export default function PanelEvaluador() {
                               )
                             })() : (() => {
                               const prom = promedioPuntaje(pb)
-                              const colorBg = prom >= 4 ? 'bg-indigo-500' : prom >= 3 ? 'bg-indigo-400' : 'bg-indigo-300'
+                              const interp = obtenerInterpretacionGeneral(sesionSeleccionada.test_id, prom)
                               
                               return (
-                                <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-                                  <div className="flex justify-between items-center mb-3">
+                                <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                                  <div className="flex justify-between items-center">
                                     <span className="text-xs font-bold text-slate-700">Puntaje General</span>
-                                    <span className="text-xs font-black text-indigo-600">{prom} / 5</span>
+                                    <span className={`text-xs font-black ${interp.colorText}`}>{prom} / 5</span>
                                   </div>
-                                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden mb-2">
-                                    <div className={`h-full ${colorBg} transition-all duration-1000`} style={{ width: `${(prom / 5) * 100}%` }} />
+                                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                    <div className={`h-full ${interp.colorBg} transition-all duration-1000`} style={{ width: `${(prom / 5) * 100}%` }} />
                                   </div>
-                                  <p className="text-[10px] text-slate-400 italic">Desglose de competencia situacional</p>
+                                  <div className="flex items-center gap-2 pt-1">
+                                    <div className={`w-1.5 h-1.5 rounded-full ${interp.colorBg}`} />
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{interp.nivel}</span>
+                                  </div>
+                                  <div className="pt-2 border-t border-slate-200/60">
+                                    <p className="text-[11px] font-medium text-slate-600 italic leading-relaxed">
+                                      {interp.descripcion}
+                                    </p>
+                                  </div>
                                 </div>
                               )
                             })()}
