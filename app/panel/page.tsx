@@ -176,37 +176,37 @@ function obtenerInterpretacionCognitiva(testId: string, pct: number): string {
 
   if (isVerbal) {
     if (pct >= 80) {
-      return 'Nivel Superior: Excelente capacidad para interpretar textos complejos, asimilar normativas de alta densidad y comunicar conceptos con precisión sin ambigüedades.'
+      return 'Nivel Superior: Sobresaliente comprensión de lectura. Interpreta información escrita compleja con rapidez y se comunica con claridad sin ambigüedades.'
     } else if (pct >= 60) {
-      return 'Nivel Promedio: Adecuada comprensión de lectura y razonamiento sobre procedimientos estándar. Procesa con solvencia la documentación escrita habitual del puesto.'
+      return 'Nivel Promedio: Comprensión de lectura adecuada para las tareas habituales del puesto. Procesa con solvencia la documentación e instrucciones cotidianas.'
     } else {
-      return 'Nivel Bajo: Requiere mayor tiempo para procesar textos extensos. Se beneficia de instrucciones escritas breves, estructuradas y guías directas.'
+      return 'Nivel Bajo: Requiere un poco más de tiempo para procesar textos extensos. Funciona mejor con instrucciones breves, directas y guías paso a paso.'
     }
   }
 
   if (isNumerico) {
     if (pct >= 80) {
-      return 'Nivel Superior: Sobresaliente agilidad para el cálculo cuantitativo, interpretación de métricas, análisis estadístico y detección de discrepancias numéricas.'
+      return 'Nivel Superior: Gran agilidad para el cálculo cuantitativo, interpretación de métricas, análisis de datos y detección rápida de errores numéricos.'
     } else if (pct >= 60) {
-      return 'Nivel Promedio: Buen manejo de operaciones matemáticas esenciales, presupuestos básicos y tablas de datos requeridos en el trabajo operativo diario.'
+      return 'Nivel Promedio: Buen manejo de operaciones matemáticas esenciales, presupuestos básicos y reportes de datos requeridos en la rutina diaria.'
     } else {
-      return 'Nivel Bajo: Dificultad o menor rapidez en ejercicios matemáticos complejos. Se sugiere el uso de plantillas de cálculo automatizadas o soporte en tareas cuantitativas.'
+      return 'Nivel Bajo: Menor velocidad para resolver cálculos complejos de forma autónoma. Se beneficia del uso de plantillas guiadas o soporte en tareas numéricas.'
     }
   }
 
   if (isICAR) {
     if (pct >= 80) {
-      return 'Nivel Superior: Alta flexibilidad cognitiva para resolver problemas abstractos novedosos, identificar patrones en matrices lógicas y visualizar relaciones espaciales.'
+      return 'Nivel Superior: Excelente habilidad para resolver problemas nuevos, identificar patrones con rapidez y adaptarse fácil a situaciones cambiantes.'
     } else if (pct >= 60) {
-      return 'Nivel Promedio: Capacidad razonable para aprender nuevas tareas de complejidad media, adaptarse a cambios de procedimiento y deducir secuencias lógicas.'
+      return 'Nivel Promedio: Buena capacidad para aprender tareas de complejidad media, seguir secuencias lógicas y adaptarse al ritmo habitual de trabajo.'
     } else {
-      return 'Nivel Bajo: Menor velocidad de adaptación ante problemas inéditos o abstractos. Se desempeña mejor en tareas secuenciales y bien estructuradas.'
+      return 'Nivel Bajo: Se desempeña mucho mejor en tareas estructuradas y secuenciales que no cambien constantemente de formato.'
     }
   }
 
-  if (pct >= 80) return 'Nivel Superior: Agilidad cognitiva destacada en velocidad y precisión de resolución de problemas.'
-  if (pct >= 60) return 'Nivel Promedio: Capacidad cognitiva funcional y adecuada para requerimientos estándar del rol.'
-  return 'Nivel Bajo: Requiere acompañamiento o guías estructuradas ante procesos complejos.'
+  if (pct >= 80) return 'Nivel Superior: Excelente agilidad y precisión para resolver problemas y aprender nuevos procesos.'
+  if (pct >= 60) return 'Nivel Promedio: Capacidad adecuada y funcional para responder a los requerimientos normales del puesto.'
+  return 'Nivel Bajo: Se sugiere brindar apoyo inicial o guías claras para el aprendizaje de tareas complejas.'
 }
 
 function obtenerInterpretacionGeneral(testId: string, prom: number): { nivel: string; colorText: string; colorBg: string; descripcion: string } {
@@ -220,24 +220,24 @@ function obtenerInterpretacionGeneral(testId: string, prom: number): { nivel: st
   if (isIntegridad) {
     if (prom >= 4.0) {
       return {
-        nivel: 'Nivel Superior (Alta Confiabilidad Ética)',
+        nivel: 'Nivel Superior (Alta Confiabilidad)',
         colorText: 'text-emerald-600',
         colorBg: 'bg-emerald-500',
-        descripcion: 'Demuestra una sólida adhesión a principios éticos, transparencia en el manejo de recursos, cumplimiento estricto de normativas institucionales y alta honestidad operativa ante poca supervisión.'
+        descripcion: 'Demuestra un alto compromiso ético, transparencia en el uso de recursos y respeto firme por las normas de la empresa, incluso sin supervisión directa.'
       }
     } else if (prom >= 3.0) {
       return {
         nivel: 'Nivel Promedio (Confiabilidad Estándar)',
         colorText: 'text-amber-600',
         colorBg: 'bg-amber-500',
-        descripcion: 'Muestra un apego adecuado a las normas institucionales y valores corporativos en el día a día. Responde de forma honesta y leal ante situaciones de dilema ético habituales.'
+        descripcion: 'Alineación adecuada con los valores y políticas de la empresa. Actúa de manera honesta y leal ante las situaciones cotidianas del puesto.'
       }
     } else {
       return {
-        nivel: 'Nivel Bajo (Requiere Evaluación Profunda)',
+        nivel: 'Nivel Bajo (Conviene Profundizar)',
         colorText: 'text-rose-600',
         colorBg: 'bg-rose-500',
-        descripcion: 'Se recomienda indagar en entrevistas de selección sobre el manejo de dilemas de confidencialidad, propiedad intelectual o recursos corporativos para validar alineación con la cultura ética de la empresa.'
+        descripcion: 'Conviene indagar en entrevista sobre el manejo de normas, uso de recursos y confidencialidad para asegurar un buen acople con la cultura de la empresa.'
       }
     }
   }
@@ -245,24 +245,24 @@ function obtenerInterpretacionGeneral(testId: string, prom: number): { nivel: st
   if (isEstres) {
     if (prom <= 2.5) {
       return {
-        nivel: 'Bajo Nivel de Estrés (Resiliencia Alta)',
+        nivel: 'Bajo Estrés (Resiliencia Alta)',
         colorText: 'text-emerald-600',
         colorBg: 'bg-emerald-500',
-        descripcion: 'Excelente autorregulación emocional y equilibrio. Muestra baja vulnerabilidad al desgaste profesional (burnout) y alta tolerancia ante picos de demanda operativa.'
+        descripcion: 'Excelente manejo de la presión laboral. Mantiene la calma y el equilibrio en momentos de alta demanda o ritmo acelerado.'
       }
     } else if (prom <= 3.5) {
       return {
         nivel: 'Nivel de Tensión Moderado',
         colorText: 'text-amber-600',
         colorBg: 'bg-amber-500',
-        descripcion: 'Presenta niveles de tensión laboral manejables. Se beneficia de una clara priorización de tareas y descansos programados en etapas de entregas críticas.'
+        descripcion: 'Nivel de estrés manejable en la rutina. Responde bien si cuenta con prioridades claras y buena organización de tareas.'
       }
     } else {
       return {
         nivel: 'Elevada Tensión / Riesgo de Agotamiento',
         colorText: 'text-rose-600',
         colorBg: 'bg-rose-500',
-        descripcion: 'Registra indicadores de sobrecarga laboral o emocional. Requiere seguimiento de clima, rediseño de prioridades y apoyo operativo en el rol.'
+        descripcion: 'Muestra signos de sobrecarga o tensión. Es recomendable revisar la distribución de tareas y brindarle acompañamiento.'
       }
     }
   }
@@ -273,21 +273,21 @@ function obtenerInterpretacionGeneral(testId: string, prom: number): { nivel: st
         nivel: 'Nivel Superior (Pensamiento Innovador)',
         colorText: 'text-emerald-600',
         colorBg: 'bg-emerald-500',
-        descripcion: 'Gran capacidad de pensamiento lateral, ideación disruptiva y propuesta de soluciones originales ante desafíos operativos complejos.'
+        descripcion: 'Muestra gran iniciativa para proponer ideas innovadoras, resolver problemas de formas distintas y pensar fuera de lo común.'
       }
     } else if (prom >= 3.0) {
       return {
         nivel: 'Nivel Promedio (Mejora Continua)',
         colorText: 'text-indigo-600',
         colorBg: 'bg-indigo-500',
-        descripcion: 'Solvencia para aportar ideas de optimización sobre procesos existentes y colaborar activamente en lluvias de ideas de equipo.'
+        descripcion: 'Buena disposición para sugerir mejoras prácticas sobre tareas existentes y participar activamente en equipos de trabajo.'
       }
     } else {
       return {
         nivel: 'Nivel Tradicional / Conservador',
         colorText: 'text-slate-600',
         colorBg: 'bg-slate-500',
-        descripcion: 'Preferencia por seguir metódicamente estructuras probadas y normas establecidas sin necesidad de alterar los procesos fijados.'
+        descripcion: 'Prefiere trabajar con métodos tradicionales y procedimientos ya probados antes que improvisar nuevas formas de trabajo.'
       }
     }
   }
@@ -297,21 +297,21 @@ function obtenerInterpretacionGeneral(testId: string, prom: number): { nivel: st
       nivel: 'Competencia Destacada',
       colorText: 'text-emerald-600',
       colorBg: 'bg-emerald-500',
-      descripcion: 'Desempeño altamente efectivo en la toma de decisiones situacionales y resolución de escenarios del puesto.'
+      descripcion: 'Resuelve con soltura y muy buen criterio las situaciones complejas del puesto.'
     }
   } else if (prom >= 3.0) {
     return {
       nivel: 'Competencia Promedio',
       colorText: 'text-indigo-600',
       colorBg: 'bg-indigo-500',
-      descripcion: 'Desempeño adecuado y competente en el manejo de situaciones habituales de la posición.'
+      descripcion: 'Desempeño adecuado y correcto en el manejo de situaciones cotidianas del rol.'
     }
   } else {
     return {
       nivel: 'Requiere Desarrollo',
       colorText: 'text-rose-600',
       colorBg: 'bg-rose-500',
-      descripcion: 'Se observan oportunidades de mejora en la resolución autónoma de escenarios situacionales.'
+      descripcion: 'Muestra oportunidad de mejora en la resolución autónoma de escenarios del puesto.'
     }
   }
 }
