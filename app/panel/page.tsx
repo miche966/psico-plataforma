@@ -2853,6 +2853,23 @@ function renderRoleplay(sesion: any) {
               const esAtencion = sesion.test_id === 'd8e9f0a1-b2c3-4567-defa-777777777777'
               const remitente = esModel ? `Cliente (${esAtencion ? 'Laura Benítez' : 'Carlos Gómez'})` : 'Candidato (Analista)'
               
+              let textoLimpio = String(msg.content || '')
+              try {
+                while (textoLimpio.startsWith('{') || textoLimpio.includes('"respuesta":')) {
+                  const p = JSON.parse(textoLimpio)
+                  if (typeof p === 'object' && p !== null) {
+                    textoLimpio = p.respuesta || p.content || p.text || textoLimpio
+                  } else {
+                    break
+                  }
+                }
+              } catch (e) {
+                const match = textoLimpio.match(/"respuesta"\s*:\s*"(.*)"/s)
+                if (match && match[1]) {
+                  textoLimpio = match[1].replace(/\\"/g, '"').replace(/\\n/g, ' ')
+                }
+              }
+
               return (
                 <div key={idx} className={`flex flex-col ${esModel ? 'items-start' : 'items-end'}`}>
                   <span className="text-[9px] font-bold text-slate-400 mb-1">{remitente}</span>
@@ -2861,7 +2878,7 @@ function renderRoleplay(sesion: any) {
                       ? 'bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200/60' 
                       : 'bg-indigo-600 text-white rounded-tr-none'
                   }`}>
-                    {msg.content}
+                    {textoLimpio}
                   </div>
                 </div>
               )
