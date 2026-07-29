@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
-import { useSearchParams, useRouter, useParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { CheckCircle2, PlayCircle, Clock, CheckCircle, Video, Camera, Mic } from 'lucide-react'
 
@@ -24,9 +24,6 @@ const RUTAS: Record<string, string> = {
   'estres-laboral': '/estres-laboral',
   creatividad: '/creatividad',
   'sjt-problemas': '/sjt-problemas',
-  'frases-incompletas': '/frases-incompletas',
-  roleplay: '/roleplay',
-  'roleplay_atencion': '/roleplay?tipo=atencion',
 }
 
 const NOMBRES_TESTS: Record<string, { nombre: string, duracion: string }> = {
@@ -47,10 +44,6 @@ const NOMBRES_TESTS: Record<string, { nombre: string, duracion: string }> = {
   'estres-laboral': { nombre: 'Afrontamiento del Estrés', duracion: '15 min' },
   creatividad: { nombre: 'Creatividad e Innovación', duracion: '15 min' },
   'sjt-problemas': { nombre: 'Resolución de Problemas', duracion: '20 min' },
-  dass21: { nombre: 'Screening de Salud Mental (DASS-21)', duracion: '10 min' },
-  'frases-incompletas': { nombre: 'Test de Frases Incompletas', duracion: '15 min' },
-  roleplay: { nombre: 'Simulación de llamada interactiva (Role Play)', duracion: '10 min' },
-  'roleplay_atencion': { nombre: 'Simulación de atención al cliente (Role Play)', duracion: '10 min' },
 }
 
 // Mapeo de IDs de base de datos a llaves de test
@@ -71,160 +64,33 @@ const TEST_IDS: Record<string, string> = {
   'a1b2c3d4-e5f6-7890-abcd-111111111111': 'comercial',
   'b8c9d0e1-f2a3-4567-bcde-888888888888': 'atencion-detalle',
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'sjt-atencion',
-  '7a8b9c0d-e1f2-4356-abcd-999999999999': 'dass21',
-  'e9b2c3d4-f5a6-7890-bcde-999999999999': 'sjt-cobranzas',
-  'f7a8b9c0-d1e2-4356-abcd-888888888888': 'frases-incompletas',
-  'd8e9f0a1-b2c3-4567-defa-888888888888': 'roleplay',
-  'd8e9f0a1-b2c3-4567-defa-777777777777': 'roleplay_atencion',
 }
 
-const TEST_KEY_TO_ID: Record<string, string> = {}
-for (const [id, key] of Object.entries(TEST_IDS)) {
-  TEST_KEY_TO_ID[key] = id
-}
-
-function PortalCandidatoPage() {
+export default function PortalCandidatoPage() {
   const searchParams = useSearchParams()
-  const params = useParams()
   const router = useRouter()
-  
-  const rawCandId = params ? params.candidatoId : null
-  const queryCandId = searchParams ? searchParams.get('candidato') : null
-  const finalCandId = rawCandId || queryCandId
-  const candidatoId = (Array.isArray(finalCandId) ? finalCandId[0] : finalCandId)?.trim()
-  
-  const rawProcId = searchParams ? searchParams.get('proceso') : null
-  const procesoIdFromUrl = rawProcId?.trim()
+  const candidatoId = searchParams.get('candidato')
+  const procesoId = searchParams.get('proceso')
 
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [candidato, setCandidato] = useState<any>(null)
   const [proceso, setProceso] = useState<any>(null)
-  const [procesoId, setProcesoId] = useState<string | null>(null)
   const [bateria, setBateria] = useState<string[]>([])
   const [testsCompletados, setTestsCompletados] = useState<string[]>([])
-  const [sesionesPortal, setSesionesPortal] = useState<any[]>([])
-  const [iniciandoTest, setIniciandoTest] = useState<string | null>(null)
-  const [urlQuery, setUrlQuery] = useState('')
-  const [isMounted, setIsMounted] = useState(false)
-  
-  const [solicitarEmail, setSolicitarEmail] = useState(false)
-  const [emailIngresado, setEmailIngresado] = useState('')
-  const [buscandoEmail, setBuscandoEmail] = useState(false)
-  const [errorEmail, setErrorEmail] = useState('')
 
   const [mostrarSetup, setMostrarSetup] = useState(false)
   const [stream, setStream] = useState<MediaStream | null>(null)
 
-  const [bloqueado, setBloqueado] = useState(false)
-  const [testBloqueado, setTestBloqueado] = useState<string | null>(null)
-
-  const handleIngresoPorEmail = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!emailIngresado.trim()) return
-
-    setBuscandoEmail(true)
-    setErrorEmail('')
-
-    try {
-      const { data, error: err } = await supabase
-        .from('candidatos')
-        .select('id')
-        .eq('email', emailIngresado.trim().toLowerCase())
-        .maybeSingle()
-
-      if (err || !data) {
-        setErrorEmail('El correo ingresado no está registrado en el sistema.')
-      } else {
-        router.replace(`${window.location.pathname}?candidato=${data.id}`)
-      }
-    } catch (error) {
-      setErrorEmail('Ocurrió un error al verificar tu correo.')
-    } finally {
-      setBuscandoEmail(false)
-    }
-  }
-
   useEffect(() => {
-    setIsMounted(true)
-    if (typeof window !== 'undefined') {
-      setUrlQuery(window.location.search)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!candidatoId) {
-      setSolicitarEmail(true)
+    if (!candidatoId || !procesoId) {
+      setError('Link inválido. Por favor, contacta al equipo de selección.')
       setCargando(false)
       return
     }
-    setSolicitarEmail(false)
 
-    if (procesoIdFromUrl) {
-      setProcesoId(procesoIdFromUrl)
-    } else {
-      supabase
-        .from('candidatos_procesos')
-        .select('proceso_id')
-        .eq('candidato_id', candidatoId)
-        .then(({ data, error: err }) => {
-          if (err || !data || data.length === 0) {
-            setError('Link inválido. Por favor, contacta al equipo de selección.')
-            setCargando(false)
-          } else {
-            setProcesoId(data[0].proceso_id)
-          }
-        })
-    }
-  }, [candidatoId, procesoIdFromUrl])
-
-  useEffect(() => {
-    if (candidatoId && procesoId) {
-      cargarDatosPortal()
-    }
+    cargarDatosPortal()
   }, [candidatoId, procesoId])
-
-  const testsPendientes = bateria.filter(test => !testsCompletados.includes(test))
-  const proximoTest = testsPendientes[0]
-  const recienCompletado = searchParams.get('completed') === '1'
-  const todosCompletados = bateria.length > 0 && testsPendientes.length === 0
-
-  // Hook para detectar si acaba de volver de un test y marcarlo completado
-  useEffect(() => {
-    if (cargando) return
-    const completedParam = searchParams.get('completed') === '1'
-    
-    if (completedParam) {
-      const ultimoIniciado = localStorage.getItem(`last_started_${candidatoId}_${procesoId}`)
-      if (ultimoIniciado && !testsCompletados.includes(ultimoIniciado)) {
-        const nuevosCompletados = [...testsCompletados, ultimoIniciado]
-        setTestsCompletados(nuevosCompletados)
-        localStorage.setItem(`completados_${candidatoId}_${procesoId}`, JSON.stringify(nuevosCompletados))
-        // Limpiamos el ultimo iniciado para evitar duplicados en refrescos
-        localStorage.removeItem(`last_started_${candidatoId}_${procesoId}`)
-      }
-    }
-  }, [cargando, searchParams, candidatoId, procesoId, testsCompletados])
-
-  // Disparador de autogeneración de informe en segundo plano al alcanzar el 100% de avance
-  useEffect(() => {
-    if (candidatoId && procesoId) {
-      const key = `auto_informe_generado_${candidatoId}_${procesoId}`
-      if (todosCompletados) {
-        const yaGenerado = localStorage.getItem(key)
-        if (!yaGenerado) {
-          localStorage.setItem(key, '1')
-          fetch('/api/generar-informe-auto', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ candidatoId, procesoId })
-          }).catch(e => console.error("Error en autogeneración de informe:", e))
-        }
-      } else {
-        localStorage.removeItem(key)
-      }
-    }
-  }, [todosCompletados, candidatoId, procesoId])
 
   async function activarCamara() {
     try {
@@ -246,24 +112,22 @@ function PortalCandidatoPage() {
 
   async function cargarDatosPortal() {
     try {
-      const [{ data: cand }, { data: proc }] = await Promise.all([
-        supabase.from('candidatos').select('nombre, apellido').eq('id', candidatoId).single(),
-        supabase.from('procesos').select('nombre, cargo, bateria_tests').eq('id', procesoId).single(),
+      const [{ data: cand, error: errCand }, { data: proc, error: errProc }] = await Promise.all([
+        supabase.from('candidatos').select('nombre, apellido').eq('id', candidatoId).maybeSingle(),
+        supabase.from('procesos').select('nombre, cargo, bateria_tests').eq('id', procesoId).maybeSingle(),
       ])
 
-      if (!cand) throw new Error('Candidato no encontrado')
-      if (!proc) throw new Error('Proceso no encontrado')
+      if (errCand) console.error("Error al cargar candidato:", errCand)
+      if (errProc) console.error("Error al cargar proceso:", errProc)
+
+      if (!cand) throw new Error('Candidato no encontrado en el sistema')
+      if (!proc) throw new Error('Proceso no encontrado en el sistema')
 
       setCandidato(cand)
       setProceso(proc)
       
-      // Reordenamiento estratégico: Colocar cualquier video entrevista al principio de la batería
-      // para obligar al candidato a realizarla como primer paso ineludible.
       const bat = proc.bateria_tests || []
-      const entrevistas = bat.filter((t: string) => t.startsWith('entrevista:'))
-      const otrosTests = bat.filter((t: string) => !t.startsWith('entrevista:'))
-      const batReordenada = [...entrevistas, ...otrosTests]
-      setBateria(batReordenada)
+      setBateria(bat)
 
       // Determinar si mostrar setup (si es la primera vez o hay entrevistas)
       const yaMostro = localStorage.getItem(`setup_done_${candidatoId}`)
@@ -274,41 +138,10 @@ function PortalCandidatoPage() {
       // 1. Cargar desde LocalStorage
       const completadosLocal = JSON.parse(localStorage.getItem(`completados_${candidatoId}_${procesoId}`) || '[]')
       
-      // Lógica de rescate: Si viene el parámetro reset=1 o es alguno de los IDs de candidatos que están bloqueados o necesitan reset, limpiamos el localStorage local
-      const RESET_CANDIDATE_IDS = [
-        'ac05a547-c3c4-48e7-85b3-a9c2b4835076', // Shanaia
-        'd8804cc9-9c85-4916-a33f-1b892604b679',
-        '1d61c2b7-ac7a-4c8c-89a1-548ef04f64eb', // Avril Rosito
-        '161a2f19-4d21-4f97-8171-3b134bbe4211', // Julieta Moizo
-        '1a96285b-2518-4fb0-872b-5d2f7c27fcd9', // Maittena Esain
-        '4a32b89f-9a11-41f6-8606-4e0469364919', // Indahara Burgos
-        '9cad1f0d-d6df-4a04-9ac0-cb25256b0a99', // Guadalupe Perdomo
-        '91578c0c-076a-45ca-92fe-89d92a73807e', // Camila Tapia
-        'd633194e-63e6-424d-99d9-31593dbda2f5', // Thaira Gonzalez
-        '74371411-603e-49a3-8fd4-732fe2882ba1', // Ihara Cid
-        '8cda2c12-ea0d-4e9b-8fac-72018b00adb5', // Nicolás Menciones
-        'ff323c32-e68b-4232-82a9-5df002773114', // Belén García
-        '54bbd3ba-55ca-4ccb-ab1f-840eea8c4412', // Angelica Garrel
-        'dce41dac-d561-4903-b833-09460ff22423', // Federica Duran
-        '21933917-3a3a-482e-80b4-d895a4cc7c83', // Belén Carachuela
-        'c8d4a912-893d-4886-aedd-328fca65fd38'  // Natalia Franco
-      ]
-
-      if (searchParams.get('reset') === '1' || (candidatoId && RESET_CANDIDATE_IDS.includes(candidatoId))) {
-        localStorage.removeItem(`completados_${candidatoId}_${procesoId}`)
-        localStorage.removeItem(`last_started_${candidatoId}_${procesoId}`)
-        if (searchParams.get('reset') === '1') {
-          const newUrl = window.location.pathname + '?' + 
-            searchParams.toString().replace(/&?reset=1/, '').replace(/^&/, '')
-          window.location.href = newUrl
-          return
-        }
-      }
-      
       // 2. Cargar desde DB (Sesiones de Tests) - Filtered by process to avoid cross-contamination
       const { data: sesiones, error: errSes } = await supabase
         .from('sesiones')
-        .select('id, test_id, estado')
+        .select('test_id, estado')
         .eq('candidato_id', candidatoId)
         .eq('proceso_id', procesoId)
       
@@ -317,23 +150,10 @@ function PortalCandidatoPage() {
       // 3. Cargar desde DB (Respuestas de Videoentrevistas)
       const { data: respuestasVideo, error: errVid } = await supabase
         .from('respuestas_video')
-        .select('entrevista_id, pregunta_id')
+        .select('entrevista_id')
         .eq('candidato_id', candidatoId)
-        .eq('estado', 'completado')
       
       if (errVid) console.error('Error DB Videos:', errVid)
-
-      const entrevistaIds = bat
-        .filter((t: string) => t.startsWith('entrevista:'))
-        .map((t: string) => t.split(':')[1])
-        .filter(Boolean)
-
-      const { data: todasPreguntas } = entrevistaIds.length > 0
-        ? await supabase
-            .from('preguntas_video')
-            .select('id, entrevista_id, pregunta')
-            .in('entrevista_id', entrevistaIds)
-        : { data: [] }
 
       const completadosDB: string[] = []
       const debugData: any = { raw_sessions: sesiones, raw_videos: respuestasVideo }
@@ -341,146 +161,20 @@ function PortalCandidatoPage() {
       if (sesiones) {
         sesiones.forEach(s => {
           const key = TEST_IDS[s.test_id]
-          if (key && s.estado === 'finalizado') {
-            completadosDB.push(key)
-            if (key === 'competencias') {
-              completadosDB.push('tolerancia-frustracion')
-            }
-          }
+          if (key) completadosDB.push(key)
         })
       }
 
-      if (respuestasVideo && todasPreguntas) {
-        // Agrupar videos únicos por pregunta_id para evitar duplicaciones
-        const videosUnicosMap = new Map<string, any>()
-        respuestasVideo.forEach(rv => {
-          const k = `${rv.entrevista_id}:${rv.pregunta_id}`
-          videosUnicosMap.set(k, rv)
-        })
-
-        // Contar respuestas válidas por entrevista
-        const respuestasPorEntrevista: Record<string, number> = {}
-        Array.from(videosUnicosMap.values()).forEach(v => {
-          respuestasPorEntrevista[v.entrevista_id] = (respuestasPorEntrevista[v.entrevista_id] || 0) + 1
-        })
-
-        // Contar preguntas por entrevista
-        const preguntasPorEntrevista: Record<string, number> = {}
-        todasPreguntas.forEach(p => {
-          preguntasPorEntrevista[p.entrevista_id] = (preguntasPorEntrevista[p.entrevista_id] || 0) + 1
-        })
-
-        // Solo marcar como completada si tiene respuestas para todas las preguntas (contemplando bifurcaciones)
-        Object.entries(respuestasPorEntrevista).forEach(([entrevistaId, cantRespuestas]) => {
-          const preguntasDeEsta = todasPreguntas?.filter(p => p.entrevista_id === entrevistaId) || []
-          const comunes = preguntasDeEsta.filter(p => !p.pregunta?.includes('[CON_EXP]') && !p.pregunta?.includes('[SIN_EXP]'))
-          const conExp = preguntasDeEsta.filter(p => p.pregunta?.includes('[CON_EXP]'))
-          const sinExp = preguntasDeEsta.filter(p => p.pregunta?.includes('[SIN_EXP]'))
-
-          let cantPreguntasRequeridas = preguntasDeEsta.length
-
-          if (conExp.length > 0 || sinExp.length > 0) {
-            const respondioConExp = Array.from(videosUnicosMap.values()).some(
-              v => v.entrevista_id === entrevistaId && conExp.some(p => p.id === v.pregunta_id)
-            )
-            const respondioSinExp = Array.from(videosUnicosMap.values()).some(
-              v => v.entrevista_id === entrevistaId && sinExp.some(p => p.id === v.pregunta_id)
-            )
-
-            if (respondioConExp) {
-              cantPreguntasRequeridas = comunes.length + conExp.length
-            } else if (respondioSinExp) {
-              cantPreguntasRequeridas = comunes.length + sinExp.length
-            } else {
-              cantPreguntasRequeridas = comunes.length + Math.min(conExp.length, sinExp.length)
-            }
-          }
-
-          if (cantRespuestas >= cantPreguntasRequeridas && cantPreguntasRequeridas > 0) {
-            completadosDB.push(`entrevista:${entrevistaId}`)
-          }
+      if (respuestasVideo) {
+        const idsUnicos = Array.from(new Set(respuestasVideo.map(rv => rv.entrevista_id)))
+        idsUnicos.forEach(id => {
+          completadosDB.push(`entrevista:${id}`)
         })
       }
 
-      // La BD es fuente de verdad: si la BD conoce un test (en CUALQUIER estado),
-      // ignoramos lo que diga el localStorage para ese test. Esto evita que tests
-      // marcados como "completado" en el cache del navegador (pero que en BD están
-      // en 'iniciado' o 'pendiente') aparezcan incorrectamente como finalizados.
-      const merge = Array.from(new Set(completadosDB))
-      
-      // Si viene con completed=1, asumimos que el test actual (lastStartedKey) se completó
-      // y evitamos bloquearlo por demoras de base de datos o redirección rápida.
-      const completedParam = searchParams.get('completed') === '1'
-      const lastStartedKey = localStorage.getItem(`last_started_${candidatoId}_${procesoId}`)
-      if (completedParam && lastStartedKey && !merge.includes(lastStartedKey)) {
-        merge.push(lastStartedKey)
-      }
-
+      const merge = Array.from(new Set([...completadosLocal, ...completadosDB]))
       setTestsCompletados(merge)
       localStorage.setItem(`completados_${candidatoId}_${procesoId}`, JSON.stringify(merge))
-
-      // --- LÓGICA DE AUDITORÍA Y LOCKOUT (OPCIÓN A) ---
-      
-      // 1. Eliminar duplicados no finalizados para tests que ya se completaron
-      const completedTestIds = (sesiones || [])
-        .filter(s => s.estado === 'finalizado')
-        .map(s => s.test_id)
-      
-      const duplicateSessionsToDelete = (sesiones || []).filter(s => 
-        s.estado !== 'finalizado' && completedTestIds.includes(s.test_id)
-      )
-
-      if (duplicateSessionsToDelete.length > 0) {
-        for (const s of duplicateSessionsToDelete) {
-          await supabase.from('sesiones').delete().eq('id', s.id)
-        }
-        // Filtrar localmente
-        const filtradas = (sesiones || []).filter(s => 
-          !(s.estado !== 'finalizado' && completedTestIds.includes(s.test_id))
-        )
-        setSesionesPortal(filtradas)
-      } else {
-        setSesionesPortal(sesiones || [])
-      }
-
-      // 2. Verificar sesiones reseteadas por el reclutador (estado 'en_progreso' en DB)
-      const sesionesEnProgreso = (sesiones || []).filter(s => {
-        const key = TEST_IDS[s.test_id]
-        return s.estado === 'en_progreso' && key && !merge.includes(key)
-      })
-
-      if (sesionesEnProgreso.length > 0) {
-        for (const s of sesionesEnProgreso) {
-          const key = TEST_IDS[s.test_id]
-          if (key) {
-            const lastStarted = localStorage.getItem(`last_started_${candidatoId}_${procesoId}`)
-            if (lastStarted === key) {
-              localStorage.removeItem(`last_started_${candidatoId}_${procesoId}`)
-            }
-            // Cambiar a pendiente en la base de datos para que inicie limpio
-            await supabase
-              .from('sesiones')
-              .update({ estado: 'pendiente' })
-              .eq('id', s.id)
-          }
-        }
-        // Actualizar localmente el estado de las sesiones a pendiente
-        if (sesiones) {
-          sesiones.forEach(s => {
-            if (s.estado === 'en_progreso') {
-              const key = TEST_IDS[s.test_id]
-              if (key && !merge.includes(key)) {
-                s.estado = 'pendiente'
-              }
-            }
-          })
-          setSesionesPortal([...sesiones])
-        }
-      }
-
-
-      // El sistema de bloqueos de proctoring por abandono/interrupción se encuentra desactivado a nivel general por solicitud del reclutador.
-      // Se permite que los candidatos retomen sus evaluaciones libremente si cierran o recargan la pestaña.
       
       if (searchParams.get('debug') === '1') {
         (window as any).debugInfo = { ...debugData, merge, bateria: bat }
@@ -493,72 +187,7 @@ function PortalCandidatoPage() {
     }
   }
 
-  async function autoresetearTest(testKey: string) {
-    const confirmacion = confirm(
-      "¿Deseas reiniciar esta prueba?\n\n" +
-      "Si tuviste problemas técnicos (como corte de audio, micrófono o cámara), esta opción borrará tu avance en este test para que puedas volver a iniciarlo de nuevo desde cero.\n\n" +
-      "Nota: Solo debes usar esta opción si experimentaste un problema técnico real."
-    )
-    if (!confirmacion) return
-
-    try {
-      setCargando(true)
-      const testId = TEST_KEY_TO_ID[testKey] || testKey
-      
-      if (testKey.startsWith('entrevista:')) {
-        const entId = testKey.split(':')[1]
-        const { error: errVid } = await supabase
-          .from('respuestas_video')
-          .delete()
-          .eq('candidato_id', candidatoId)
-          .eq('entrevista_id', entId)
-          
-        if (errVid) throw errVid
-      } else {
-        const { error: errSes } = await supabase
-          .from('sesiones')
-          .delete()
-          .eq('candidato_id', candidatoId)
-          .eq('proceso_id', procesoId)
-          .eq('test_id', testId)
-          
-        if (errSes) throw errSes
-      }
-
-      // Limpiar cache local del navegador
-      const completadosLocal = JSON.parse(localStorage.getItem(`completados_${candidatoId}_${procesoId}`) || '[]')
-      const filtrados = completadosLocal.filter((k: string) => k !== testKey)
-      localStorage.setItem(`completados_${candidatoId}_${procesoId}`, JSON.stringify(filtrados))
-      
-      const lastStarted = localStorage.getItem(`last_started_${candidatoId}_${procesoId}`)
-      if (lastStarted === testKey) {
-        localStorage.removeItem(`last_started_${candidatoId}_${procesoId}`)
-      }
-
-      alert("El test ha sido reiniciado con éxito. Ahora puedes volver a iniciarlo de forma limpia.")
-      window.location.reload()
-    } catch (err: any) {
-      console.error(err)
-      alert("Hubo un inconveniente al reiniciar la prueba. Por favor, recarga la página e intenta nuevamente.")
-    } finally {
-      setCargando(false)
-    }
-  }
-
-  async function iniciarTest(testKey: string) {
-    if (iniciandoTest) return
-    
-    // Validación de seguridad: No permitir iniciar si hay tests previos pendientes
-    const index = bateria.indexOf(testKey);
-    if (index > 0) {
-      const previosPendientes = bateria.slice(0, index).filter(t => !testsCompletados.includes(t));
-      if (previosPendientes.length > 0) {
-        alert("Por favor, completa los ejercicios anteriores antes de continuar con este.");
-        return;
-      }
-    }
-
-    setIniciandoTest(testKey)
+  function iniciarTest(testKey: string) {
     localStorage.setItem(`last_started_${candidatoId}_${procesoId}`, testKey)
 
     if (testKey.startsWith('entrevista:')) {
@@ -568,141 +197,32 @@ function PortalCandidatoPage() {
     }
 
     const ruta = RUTAS[testKey]
-    if (!ruta) {
-      setIniciandoTest(null)
-      return
-    }
-
-    // Buscar si ya existe una sesión (aunque sea pendiente) para este test
-    const sesionExistente = sesionesPortal.find((s: any) => TEST_IDS[s.test_id] === testKey)
-    const sesionId = sesionExistente?.id ? `&sesion=${sesionExistente.id}` : ''
-
-    const conector = ruta.includes('?') ? '&' : '?'
-    router.push(`${ruta}${conector}candidato=${candidatoId}&proceso=${procesoId}&evaluacion=1${sesionId}`)
+    if (!ruta) return
+    router.push(`${ruta}?candidato=${candidatoId}&proceso=${procesoId}&evaluacion=1`)
   }
 
-
+  // Hook para detectar si acaba de volver de un test y marcarlo completado
+  useEffect(() => {
+    if (cargando) return
+    const completedParam = searchParams.get('completed') === '1'
+    
+    if (completedParam) {
+      const ultimoIniciado = localStorage.getItem(`last_started_${candidatoId}_${procesoId}`)
+      if (ultimoIniciado && !testsCompletados.includes(ultimoIniciado)) {
+        const nuevosCompletados = [...testsCompletados, ultimoIniciado]
+        setTestsCompletados(nuevosCompletados)
+        localStorage.setItem(`completados_${candidatoId}_${procesoId}`, JSON.stringify(nuevosCompletados))
+        // Limpiamos el ultimo iniciado para evitar duplicados en refrescos
+        localStorage.removeItem(`last_started_${candidatoId}_${procesoId}`)
+      }
+    }
+  }, [cargando, searchParams, candidatoId, procesoId, testsCompletados])
 
   if (cargando) {
     return (
       <div className="flex flex-col justify-center items-center h-screen bg-slate-50">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-4"></div>
         <p className="text-slate-500 font-medium">Preparando tu portal...</p>
-      </div>
-    )
-  }
-
-  if (solicitarEmail) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 font-sans">
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-xl max-w-md w-full relative overflow-hidden">
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-cyan-500 rounded-3xl blur opacity-10"></div>
-          <div className="relative">
-            <div className="w-16 h-16 bg-indigo-500/10 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-6 border border-indigo-500/20">
-              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            
-            <h2 className="text-2xl font-black text-white text-center mb-2">Ingresar al Portal</h2>
-            <p className="text-slate-400 text-sm text-center mb-6 leading-relaxed">
-              Introduce tu correo electrónico de postulación para ingresar a tu batería de evaluaciones asignadas.
-            </p>
-            
-            <form onSubmit={handleIngresoPorEmail} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Correo Electrónico</label>
-                <input 
-                  type="email"
-                  required
-                  placeholder="ejemplo@correo.com"
-                  value={emailIngresado}
-                  onChange={e => setEmailIngresado(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-all font-medium placeholder-slate-600"
-                />
-              </div>
-              
-              {errorEmail && (
-                <p className="text-xs font-bold text-red-550 bg-red-950/20 border border-red-900/30 px-3 py-2 rounded-lg">{errorEmail}</p>
-              )}
-              
-              <button
-                type="submit"
-                disabled={buscandoEmail}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/10 flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {buscandoEmail ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Buscando...
-                  </>
-                ) : (
-                  'Ingresar'
-                )}
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (bloqueado) {
-    const testInfo = NOMBRES_TESTS[testBloqueado || ''] || { nombre: testBloqueado || 'Evaluación', duracion: '' }
-    return (
-      <div className="min-h-screen bg-slate-900 py-12 px-4 flex items-center justify-center font-sans">
-        <div className="max-w-md w-full bg-slate-800/80 backdrop-blur-md rounded-3xl shadow-2xl overflow-hidden border border-slate-700/50 p-8 text-center relative animate-fade-in">
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-red-500 to-amber-500 rounded-3xl blur opacity-20 animate-pulse"></div>
-          
-          <div className="relative">
-            <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-8 border border-red-500/20 animate-pulse">
-              <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            
-            <span className="text-[10px] font-bold text-red-400 bg-red-950/40 border border-red-900/30 px-3 py-1 rounded-full uppercase tracking-wider">
-              Acceso Bloqueado
-            </span>
-            
-            <h1 className="text-2xl font-black text-white mt-4 mb-3">
-              Evaluación Suspendida
-            </h1>
-            
-            <p className="text-slate-300 text-sm leading-relaxed mb-6">
-              Detectamos que saliste de la pestaña o cerraste la ventana del test <strong className="text-white">"{testInfo.nombre}"</strong> antes de finalizarlo.
-            </p>
-
-            <div className="bg-slate-900/60 rounded-2xl p-5 mb-8 text-left border border-slate-800">
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Por motivos de seguridad y validez científica de la prueba, no está permitido salir del entorno de evaluación. La sesión ha sido bloqueada automáticamente.
-              </p>
-              <p className="text-xs text-slate-400 leading-relaxed mt-3 font-semibold">
-                Para poder continuar, por favor comunícate con el equipo de selección para solicitar la habilitación de tu sesión.
-              </p>
-            </div>
-
-            <div className="space-y-4 pt-4 border-t border-slate-700/50">
-              <div className="text-left space-y-3">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Contacto de Soporte</p>
-                
-                <div className="flex items-center gap-3 text-sm text-slate-300">
-                  <span className="text-base">📧</span>
-                  <a href="mailto:seleccion@republicamicrofinanzas.com.uy" className="hover:text-red-400 transition-colors">
-                    seleccion@republicamicrofinanzas.com.uy
-                  </a>
-                </div>
-                
-                <div className="flex items-center gap-3 text-sm text-slate-300">
-                  <span className="text-base">💬</span>
-                  <a href="https://wa.me/598092651770" className="hover:text-red-400 transition-colors font-semibold">
-                    WhatsApp: 092 651 770
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     )
   }
@@ -789,29 +309,20 @@ function PortalCandidatoPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-center">
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-xl max-w-md w-full">
-          <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/20">
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <h2 className="text-xl font-bold text-white mb-2">Hubo un problema</h2>
-          <p className="text-slate-400 text-sm leading-relaxed mb-6">{error}</p>
-          
-          {isMounted && (
-            <div className="text-[10px] text-slate-500 bg-slate-950/50 border border-slate-850 rounded-2xl p-4 text-left space-y-1.5 font-mono break-all">
-              <p className="flex justify-between gap-4"><span className="text-slate-600">CANDIDATO_ID:</span> <span>&quot;{candidatoId || 'no_definido'}&quot;</span></p>
-              <p className="flex justify-between gap-4"><span className="text-slate-600">PROCESO_ID:</span> <span>&quot;{procesoId || 'no_definido'}&quot;</span></p>
-              <p className="flex justify-between gap-4"><span className="text-slate-600">URL_QUERY:</span> <span>&quot;{urlQuery}&quot;</span></p>
-            </div>
-          )}
+      <div className="flex flex-col justify-center items-center h-screen bg-slate-50 p-6">
+        <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 text-center max-w-md">
+          <p className="font-semibold mb-1">Hubo un problema</p>
+          <p className="text-sm">{error}</p>
         </div>
       </div>
     )
   }
 
+  const testsPendientes = bateria.filter(test => !testsCompletados.includes(test))
+  const proximoTest = testsPendientes[0]
+  const recienCompletado = searchParams.get('completed') === '1'
 
+  const todosCompletados = bateria.length > 0 && testsPendientes.length === 0
 
   if (todosCompletados) {
     return (
@@ -953,10 +464,7 @@ function PortalCandidatoPage() {
               const esEntrevista = testKey.startsWith('entrevista:')
               const testInfo = NOMBRES_TESTS[testKey] || { nombre: esEntrevista ? 'Entrevista en Video' : testKey, duracion: esEntrevista ? 'Varía' : '15 min' }
               const completado = testsCompletados.includes(testKey)
-              
-              // Lógica de Siguiente: Solo si es el primero o si TODOS los anteriores están completos
-              const anterioresCompletos = bateria.slice(0, index).every(t => testsCompletados.includes(t))
-              const esSiguiente = !completado && anterioresCompletos
+              const esSiguiente = !completado && (index === 0 || testsCompletados.includes(bateria[index-1]))
 
               return (
                 <div key={testKey} className={`p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors rounded-2xl ${esSiguiente ? 'bg-indigo-50/30' : 'hover:bg-slate-50'}`}>
@@ -977,44 +485,24 @@ function PortalCandidatoPage() {
                     </div>
                   </div>
 
-                  <div className="ml-10 md:ml-0 shrink-0 flex flex-col items-center gap-2">
+                  <div className="ml-10 md:ml-0 shrink-0">
                     {completado ? (
                       <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-50 text-green-700 text-sm font-semibold rounded-xl border border-green-200">
                         Completado
                       </span>
                     ) : (
-                      <>
-                        <button
-                          onClick={() => iniciarTest(testKey)}
-                          disabled={!esSiguiente || (iniciandoTest !== null)}
-                          className={`w-full md:w-auto inline-flex justify-center items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl transition-all shadow-sm focus:ring-2 focus:ring-offset-2 ${
-                            esSiguiente 
-                              ? 'bg-indigo-600 hover:bg-indigo-700 text-white focus:ring-indigo-500' 
-                              : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                          } ${iniciandoTest === testKey ? 'opacity-80 animate-pulse' : ''}`}
-                        >
-                          {iniciandoTest === testKey ? (
-                            <>
-                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                              Cargando...
-                            </>
-                          ) : (
-                            <>
-                              <PlayCircle className="w-4 h-4" />
-                              Comenzar
-                            </>
-                          )}
-                        </button>
-                        {esSiguiente && (
-                          <button
-                            onClick={() => autoresetearTest(testKey)}
-                            className="text-[10px] text-slate-400 hover:text-indigo-600 transition-colors font-medium underline mt-1"
-                            title="Haz clic aquí si tuviste un inconveniente de red, audio o cámara para reiniciar la prueba"
-                          >
-                            ¿Problemas técnicos? Reiniciar test
-                          </button>
-                        )}
-                      </>
+                      <button
+                        onClick={() => iniciarTest(testKey)}
+                        disabled={!esSiguiente}
+                        className={`w-full md:w-auto inline-flex justify-center items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl transition-all shadow-sm focus:ring-2 focus:ring-offset-2 ${
+                          esSiguiente 
+                            ? 'bg-indigo-600 hover:bg-indigo-700 text-white focus:ring-indigo-500' 
+                            : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                        }`}
+                      >
+                        <PlayCircle className="w-4 h-4" />
+                        Comenzar
+                      </button>
                     )}
                   </div>
                 </div>
@@ -1026,12 +514,4 @@ function PortalCandidatoPage() {
     </div>
   )
 
-}
-
-export default function PortalCandidatoWrapper() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 font-medium">Cargando evaluación...</div>}>
-      <PortalCandidatoPage />
-    </Suspense>
-  )
 }
