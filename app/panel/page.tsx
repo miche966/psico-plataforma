@@ -950,7 +950,7 @@ export default function PanelEvaluador() {
                   
                   const { data: vids } = await supabase
                     .from('respuestas_video')
-                    .select('*')
+                    .select('*, preguntas_video(pregunta)')
                     .eq('candidato_id', c.id)
                     .order('grabada_en', { ascending: true })
                   
@@ -1128,7 +1128,7 @@ export default function PanelEvaluador() {
                       <div className="space-y-4">
                         {videosCandidato.map((v, i) => (
                           <div key={i} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                            <h5 className="text-sm font-bold text-slate-800 mb-3">Pregunta {i + 1}: {v.preguntas_video?.pregunta}</h5>
+                            <h5 className="text-sm font-bold text-slate-800 mb-3">Pregunta {i + 1}: {v.preguntas_video?.pregunta || 'Presentación y Evaluación Competencial de Entrada'}</h5>
                             <video src={v.url_video} controls className="w-full aspect-video rounded-xl shadow-sm bg-black mb-3" />
                             {v.transcripcion && <div className="bg-white p-3 rounded-xl border border-slate-200 text-[11px] text-slate-600 italic">"{v.transcripcion}"</div>}
                             {v.analisis_ia && (
