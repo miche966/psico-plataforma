@@ -857,8 +857,12 @@ export default function PanelEvaluador() {
                           .map(s => {
                             const pb = s.puntaje_bruto
                             let label = (s as any).test_id ? TEST_NAMES[(s as any).test_id] : null
-                            if (!label) {
-                              if (esBigFive(pb)) label = 'Psicográfico'
+                            if (!label || label === 'Evaluación') {
+                              const pbStr = JSON.stringify(pb || {}).toLowerCase()
+                              if (pbStr.includes('escucha_activa') || pbStr.includes('manejo_conflicto')) label = 'SJT Atención al Cliente'
+                              else if (pbStr.includes('negociacion') || pbStr.includes('etica')) label = 'SJT Cobranzas'
+                              else if (pbStr.includes('roleplay') || pbStr.includes('simulacion') || pbStr.includes('mensajes')) label = 'Simulación de Roleplay IA'
+                              else if (esBigFive(pb)) label = 'Psicográfico'
                               else if (esCognitivo(pb)) label = 'Cognitivo'
                               else label = 'Evaluación'
                             }
