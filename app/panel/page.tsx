@@ -2173,11 +2173,11 @@ export default function PanelEvaluador() {
                           return renderFrasesIncompletas(sesionSeleccionada, analizarFrasesConIA)
                         }
                         const tid = (sesionSeleccionada.test_id || '').toLowerCase()
-                        const isRoleplay = tid.includes('888888888888') || 
-                                           tid.includes('777777777777') || 
-                                           (TEST_IDS[tid] || '').includes('roleplay') ||
+                        const isRoleplay = (TEST_IDS[tid] || '').includes('roleplay') ||
                                            Boolean(pb.transcripcion) ||
-                                           Boolean(pb.retroalimentacion)
+                                           Boolean(pb.retroalimentacion) ||
+                                           tid === 'd8e9f0a1-b2c3-4567-defa-888888888888' ||
+                                           tid === 'd8e9f0a1-b2c3-4567-defa-777777777777'
 
                         if (isRoleplay) {
                           return renderRoleplay(sesionSeleccionada)
@@ -2826,7 +2826,11 @@ function renderRoleplay(sesion: any) {
       <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-4">
         <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Dimensiones de Desempeño</h5>
         {Object.entries(porFactor).map(([factor, puntajeDirecto]: any) => {
-          const valorNum = typeof puntajeDirecto === 'number' ? puntajeDirecto : parseFloat(String(puntajeDirecto)) || 0
+          const valorNum = typeof puntajeDirecto === 'number' 
+            ? puntajeDirecto 
+            : (typeof puntajeDirecto === 'object' && puntajeDirecto !== null && 'correctas' in puntajeDirecto 
+                ? Math.round(((Number(puntajeDirecto.correctas) / (Number(puntajeDirecto.total) || 1)) * 100)) 
+                : parseFloat(String(puntajeDirecto)) || 0)
           const valorEscala = Math.round((valorNum / 20) * 10) / 10
           
           return (
