@@ -720,7 +720,7 @@ export default function PanelEvaluador() {
                   
                   const { data: vids } = await supabase
                     .from('respuestas_video')
-                    .select('*, preguntas_video(pregunta)')
+                    .select('*')
                     .eq('candidato_id', c.id)
                     .order('grabada_en', { ascending: true })
                   
