@@ -850,21 +850,22 @@ export default function PanelEvaluador() {
                         const vtos = new Set()
                         return agrupadoSeleccionado.sesiones
                           .filter(s => {
-                            if (vtos.has(s.test_id)) return false
-                            vtos.add(s.test_id)
+                            const keyUnica = s.test_id || s.id
+                            if (vtos.has(keyUnica)) return false
+                            vtos.add(keyUnica)
                             return true
                           })
-                          .map(s => {
+                          .map((s, sIdx) => {
                             const pb = s.puntaje_bruto
                             let label = (s as any).test_id ? TEST_NAMES[(s as any).test_id] : null
                             if (!label || label === 'Evaluación') {
                               const pbStr = JSON.stringify(pb || {}).toLowerCase()
                               if (pbStr.includes('escucha_activa') || pbStr.includes('manejo_conflicto')) label = 'SJT Atención al Cliente'
                               else if (pbStr.includes('negociacion') || pbStr.includes('etica')) label = 'SJT Cobranzas'
-                              else if (pbStr.includes('roleplay') || pbStr.includes('simulacion') || pbStr.includes('mensajes')) label = 'Simulación de Roleplay IA'
-                              else if (esBigFive(pb)) label = 'Psicográfico'
-                              else if (esCognitivo(pb)) label = 'Cognitivo'
-                              else label = 'Evaluación'
+                              else if (pbStr.includes('roleplay') || pbStr.includes('simulacion') || pbStr.includes('mensajes') || pbStr.includes('transcripcion')) label = 'Simulación de Roleplay IA'
+                              else if (esBigFive(pb)) label = 'Psicográfico (Big Five)'
+                              else if (esCognitivo(pb)) label = 'Capacidad Cognitiva'
+                              else label = `Evaluación #${sIdx + 1}`
                             }
                             const isActive = sesionSeleccionada?.id === s.id
                             return (
