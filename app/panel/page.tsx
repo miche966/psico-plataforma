@@ -1877,6 +1877,37 @@ export default function PanelEvaluador() {
         </div>
       </div>
 
+      {/* CHIPS DE FILTROS ACTIVOS */}
+      {(filtro || procesoSeleccionadoId !== 'todos' || seleccionados.length > 0) && (
+        <div className="flex items-center gap-2 flex-wrap mb-4 px-1 animate-in fade-in">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Filtros Activos:</span>
+          {filtro && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
+              Búsqueda: "{filtro}"
+              <button onClick={() => setFiltro('')} className="hover:text-indigo-900 font-bold ml-1">✕</button>
+            </span>
+          )}
+          {procesoSeleccionadoId !== 'todos' && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
+              Proceso: {procesos.find(p => p.id === procesoSeleccionadoId)?.nombre || 'Filtrado'}
+              <button onClick={() => setProcesoSeleccionadoId('todos')} className="hover:text-indigo-900 font-bold ml-1">✕</button>
+            </span>
+          )}
+          {seleccionados.length > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
+              Marcados: {seleccionados.length} evaluados
+              <button onClick={() => setSeleccionados([])} className="hover:text-indigo-900 font-bold ml-1">✕</button>
+            </span>
+          )}
+          <button 
+            onClick={() => { setFiltro(''); setProcesoSeleccionadoId('todos'); setSeleccionados([]); }} 
+            className="text-xs font-semibold text-slate-500 hover:text-slate-800 underline ml-2"
+          >
+            Limpiar todo
+          </button>
+        </div>
+      )}
+
       {candidatos.length === 0 ? (
         <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl shadow-sm">
           <p className="text-slate-500 mb-4">No hay evaluaciones todavía.</p>
@@ -2113,14 +2144,14 @@ export default function PanelEvaluador() {
                             <button 
                               key={s.id} 
                               onClick={() => setSesionSeleccionada(s)} 
-                              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border flex flex-col items-start gap-0.5 ${
+                              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all border flex flex-col items-start gap-1 min-w-[110px] max-w-[220px] ${
                                 isActive 
-                                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' 
-                                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-md scale-[1.02]' 
+                                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
                               }`}
                             >
-                              <span className="truncate max-w-[120px]">{label}</span>
-                              <span className={`text-[9px] ${isActive ? 'text-indigo-200' : 'text-slate-400'}`}>{fecha}</span>
+                              <span className="font-semibold text-[11px] leading-tight text-left break-words w-full">{label}</span>
+                              <span className={`text-[9px] font-medium ${isActive ? 'text-indigo-200' : 'text-slate-400'}`}>{fecha}</span>
                             </button>
                           )
                         })}

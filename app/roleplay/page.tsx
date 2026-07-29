@@ -414,16 +414,26 @@ export default function RolePlayPage() {
         <div className="p-5 bg-slate-900/90 border-b border-slate-800/80 backdrop-blur-md flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-slate-800 border border-indigo-500/30 flex items-center justify-center font-bold text-white shadow-lg">
+              {reproduciendoAudio && (
+                <div className="absolute -inset-2 rounded-2xl bg-indigo-500/30 animate-ping pointer-events-none"></div>
+              )}
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-slate-800 border border-indigo-500/30 flex items-center justify-center font-bold text-white shadow-lg relative z-10">
                 {esAtencion ? 'LB' : 'CG'}
               </div>
-              <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-slate-900 rounded-full animate-pulse"></span>
+              <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-slate-900 rounded-full animate-pulse z-20"></span>
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold text-white">{esAtencion ? 'Laura Benítez' : 'Carlos Gómez'}</h2>
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
                   Llamada en Línea
+                  {reproduciendoAudio && (
+                    <span className="flex items-end gap-0.5 h-2.5 ml-0.5">
+                      <span className="w-0.5 bg-emerald-400 rounded-full animate-bounce h-full"></span>
+                      <span className="w-0.5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.15s] h-full"></span>
+                      <span className="w-0.5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.3s] h-full"></span>
+                    </span>
+                  )}
                 </span>
               </div>
               <p className="text-[10px] text-slate-400">
@@ -604,6 +614,18 @@ export default function RolePlayPage() {
                     >
                       {escuchando ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
                     </button>
+                    {escuchando && (
+                      <div className="flex items-center gap-2 my-1 px-3 py-1 bg-slate-900/90 border border-emerald-500/40 rounded-full shadow-md animate-in fade-in">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                        <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Entrada de Micrófono Activa</span>
+                        <div className="flex items-end gap-0.5 h-3 ml-1">
+                          <span className="w-1 bg-emerald-500 rounded-full animate-bounce h-full"></span>
+                          <span className="w-0.5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.1s] h-full"></span>
+                          <span className="w-1 bg-emerald-500 rounded-full animate-bounce [animation-delay:0.2s] h-full"></span>
+                          <span className="w-0.5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.3s] h-full"></span>
+                        </div>
+                      </div>
+                    )}
                     <p className="text-[10px] text-slate-400 font-medium animate-pulse text-center">
                       {escuchando ? "Hable ahora. La simulación transcribirá su voz..." : "Presiona el micrófono para hablar"}
                     </p>
