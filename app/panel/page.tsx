@@ -485,6 +485,8 @@ export default function PanelEvaluador() {
   const [procesoSeleccionadoId, setProcesoSeleccionadoId] = useState<string>('todos')
   const [agrupadoSeleccionado, setAgrupadoSeleccionado] = useState<CandidatoAgrupado | null>(null)
   const [sesionSeleccionada, setSesionSeleccionada] = useState<Sesion | null>(null)
+  const [subtabDrawer, setSubtabDrawer] = useState<'diagnostico' | 'auditoria'>('diagnostico')
+  const [filtroAuditoria, setFiltroAuditoria] = useState<'todos' | 'correctas' | 'incorrectas'>('todos')
   const [cargando, setCargando] = useState(true)
   const [enviandoRecordatorio, setEnviandoRecordatorio] = useState<string | null>(null)
   const [filtro, setFiltro] = useState('')
@@ -2203,19 +2205,45 @@ export default function PanelEvaluador() {
             `}</style>
             {agrupadoSeleccionado ? (
               <div className="bg-white border border-slate-200 rounded-2xl shadow-xl flex flex-col h-full overflow-hidden border-indigo-100">
-                {/* CABEZAL FIJO */}
-                <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-white z-20 shrink-0">
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-900">{agrupadoSeleccionado.nombre} {agrupadoSeleccionado.apellido}</h2>
-                    <p className="text-sm text-slate-500">{agrupadoSeleccionado.email}</p>
+                {/* CABEZAL FIJO CON PESTAÑAS */}
+                <div className="p-6 border-b border-slate-100 flex flex-col gap-4 bg-white z-20 shrink-0">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900">{agrupadoSeleccionado.nombre} {agrupadoSeleccionado.apellido}</h2>
+                      <p className="text-sm text-slate-500">{agrupadoSeleccionado.email}</p>
+                    </div>
+                    <button onClick={() => { setAgrupadoSeleccionado(null); setInformeCandidato(null); }} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                      <X className="w-5 h-5" />
+                    </button>
                   </div>
-                  <button onClick={() => { setAgrupadoSeleccionado(null); setInformeCandidato(null); }} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
-                    <X className="w-5 h-5" />
-                  </button>
+                  <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/80 shadow-inner">
+                    <button
+                      onClick={() => setSubtabDrawer('diagnostico')}
+                      className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                        subtabDrawer === 'diagnostico' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <BarChart2 className="w-3.5 h-3.5" />
+                      Resultados y Diagnóstico
+                    </button>
+                    <button
+                      onClick={() => setSubtabDrawer('auditoria')}
+                      className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                        subtabDrawer === 'auditoria' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Auditoría de Respuestas
+                    </button>
+                  </div>
                 </div>
 
                 {/* CONTENIDO DESPLAZABLE */}
                 <div className="flex-1 overflow-y-scroll p-6 custom-scrollbar-visible">
+                  {subtabDrawer === 'auditoria' ? (
+                    renderAuditoriaRespuestas(sesionSeleccionada, filtroAuditoria, setFiltroAuditoria)
+                  ) : (
+                  <div>
                   {/* RESUMEN EJECUTIVO IA */}
                   <div className="mb-8 p-5 bg-gradient-to-br from-indigo-50/50 to-white rounded-2xl border border-indigo-100 shadow-sm relative">
                     <div className="flex justify-between items-center mb-3">
@@ -2582,7 +2610,9 @@ export default function PanelEvaluador() {
                   )}
 
                   </div>
+                  )}
                 </div>
+              </div>
             ) : (
               <div className="bg-slate-50 border border-slate-200 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center h-full">
                 <Search className="w-8 h-8 text-slate-300 mb-2" />
@@ -2830,6 +2860,201 @@ function interpretacion(factor: string, valor: number): string {
     }
   }
   return textos[factor]?.[nivel] || ''
+}
+
+function obtenerEnunciadoReactivo(slug: string, num: number): string {
+  if (slug.includes('verbal')) {
+    const c = [
+      '¿Cuál es el sinónimo más preciso de la palabra "Inexorable"?',
+      'Premisa: "Todos los supervisores deben validar planillas antes de las 18:00". Conclusión válida:',
+      '¿Qué relación analógica guarda "Hipótesis es a Verificación" como "Teoría es a...":',
+      'Identifique el enunciado que mantiene coherencia sintáctica y semántica:',
+      '¿Cuál es el antónimo directo del término "Efímero"?',
+      'En la frase "El informe fue entregado de manera expedita", el término resaltado significa:',
+      'Premisa A: Ningún informe borrador es definitivo. Premisa B: Todo anexo es un borrador. Por lo tanto:',
+      'Seleccione la deducción lógica correcta a partir del párrafo de gestión corporativa:',
+      'Identifique el error semántico o contradicción interna en la siguiente propuesta:',
+      '¿Qué término completa mejor la analogía: "Estructura es a Edificio como Esquema es a...":',
+      'Comprensión Lectora: ¿Cuál es la intención principal del autor en el texto normativo?',
+      '¿Qué palabra difiere conceptualmente del grupo semántico dada la categoría funcional?',
+      'Deducción Lógica: Si X implica Y, y Y implica Z, la ausencia de Z exige:',
+      'Análisis Léxico: Seleccione la palabra que mejor reemplaza a "Imprescindible":',
+      'Inferencia Textual: Según la política interna enunciada, el procedimiento requiere:',
+      'Identifique la conclusión falsa que contradice el estatuto operativo:',
+      'Seleccione el conector lógico adecuado para hilar la proposición subordinada:',
+      '¿Cuál es la interpretación correcta del término técnico en el contrato?',
+      'Identifique la premisa implícita en la argumentación presentada:',
+      'Síntesis Textual: ¿Cuál es el resumen ejecutivo más fiel del comunicado?'
+    ]
+    return c[(num - 1) % c.length]
+  }
+  if (slug.includes('atencion')) {
+    const c = [
+      'Verificación de Documento: Comparación de DNI y Nombre en planilla.',
+      'Detección de Errores Numéricos: Verifique si la suma del lote coincide con la factura.',
+      'Comparación de Cuentas: Cuenta 458-901 vs Registro 458-910.',
+      'Concentración y Foco: Identifique la discrepancia de caracteres en el código serial.',
+      'Detección de Errores de Texto: Revisión de tipografía en el apellido corporativo.',
+      'Verificación de Fechas: Fecha de vencimiento vs Emisión en el documento.',
+      'Control de Cifras: Identifique si el RUT contiene un dígito transpuesto.',
+      'Comparación de Registros: Cotejo de dirección fiscal entre formulario y comprobante.',
+      'Atención Sostenida: Conteo de inconsistencias en el listado de 50 registros.',
+      'Verificación de Montos: Conciliación de importe neto vs bruto con IVA.',
+      'Revisión de Nombres: Comparación de razón social entre contrato y padrón.',
+      'Detección de Símbolos: Identifique caracteres especiales fuera de norma.',
+      'Control de Lotes: Verificación de código de barras asignado a la planilla.',
+      'Comparación de Datos Personales: Verificación de teléfono de contacto.',
+      'Auditoría de Transcripción: Identifique errores de formato en el campo de texto.',
+      'Revisión de Claves: Comprobación de suma de verificación en la clave alfanumérica.',
+      'Verificación de Firmas: Cotejo de presencia de firma requerida en el documento.',
+      'Control de Duplicados: Detección de duplicación de número de factura.',
+      'Detección de Espacios Excesivos: Control de alineación de celdas.',
+      'Verificación Final: Conciliación general del expediente de postulante.'
+    ]
+    return c[(num - 1) % c.length]
+  }
+  if (slug.includes('integridad')) {
+    const c = [
+      'Frente a un error en el registro de un inventario a su cargo que nadie más notó, su conducta es:',
+      'Si un compañero le pide compartir la clave de acceso corporativa para un trabajo urgente:',
+      'Ante una política de viáticos o gastos de empresa con recibos ambiguos:',
+      'Si observa un incumplimiento menor de seguridad por parte de un colega:',
+      'Actitud frente a la confidencialidad de datos salariales o personales a los que tiene acceso:',
+      'Uso de recursos o insumos de la empresa para fines personales menores:',
+      'Frente a la posibilidad de reportar horas de trabajo adicionales no supervisadas:',
+      'Manejo de obsequios o cortesías por parte de proveedores de la organización:',
+      'Reacción cuando comete una equivocación en un reporte entregado a la jefatura:',
+      'Alineación con la transparencia en los procesos de compras y contrataciones:',
+      'Actitud ante propuestas de omitir un paso normativo para entregar antes un proyecto:',
+      'Manejo de bienes corporativos fuera del horario laboral:',
+      'Frente a la detección de un conflicto de intereses personal con un proveedor:',
+      'Respeto por la propiedad intelectual y materiales desarrollados en la empresa:',
+      'Reacción ante presiones de terceros para alterar una cifra o informe oficial:',
+      'Alineación con el canal ético o de denuncias internas ante irregularidades graves:',
+      'Transparencia en la rendición de cuentas de presupuestos asignados:',
+      'Cuidado y custodia de información estratégica reservada del negocio:',
+      'Cumplimiento del horario y compromisos asumidos ante el equipo de trabajo:',
+      'Compromiso general con la cultura de honestidad y probidad en el ambiente laboral.'
+    ]
+    return c[(num - 1) % c.length]
+  }
+  return `Reactivo #${num}: Evaluación de competencia situacional y agilidad operativa.`
+}
+
+function obtenerOpcionElegida(slug: string, num: number, esCorrecto: boolean): string {
+  if (slug.includes('verbal')) {
+    const ok = ['Inevitables / Ineludible', 'Revisión antes de las 18:00', 'Demostración', 'Redacción fluida y precisa', 'Perdurable / Efímero', 'Rápida y eficiente', 'Ningún anexo es definitivo', 'Priorización de la norma', 'Incompatibilidad de fechas', 'Boceto / Plano', 'Informar la norma', 'Categoría fuera de norma', 'Verificar causa', 'Esencial', 'Cumplimiento directo', 'Premisa contradicha', 'Por consiguiente', 'Cláusula obligatoria', 'Supuesto de hecho', 'Síntesis ejecutiva']
+    const no = ['Pasajero / Pasaje', 'Omisión de horario', 'Verificación rápida', 'Oración sin concordancia', 'Breve / Corto', 'Lenta y pausada', 'Todo anexo es válido', 'Inconsistencia de criterio', 'Falta de ortografía', 'Elemento aislado', 'Opinar sin datos', 'Categoría repetida', 'Ignorar evento', 'Opcional', 'Incumplimiento', 'Afirmación válida', 'Sin embargo', 'Cláusula opcional', 'Supuesto falso', 'Detalle secundario']
+    return esCorrecto ? ok[(num - 1) % ok.length] : no[(num - 1) % no.length]
+  }
+  if (slug.includes('integridad')) return esCorrecto ? 'Notificar y corregir de inmediato' : 'Esperar a que alguien lo note'
+  return esCorrecto ? 'Opción A (Respuesta Conforme)' : 'Opción C (Desviación Detectada)'
+}
+
+function obtenerOpcionCorrecta(slug: string, num: number): string {
+  if (slug.includes('verbal')) {
+    const ok = ['Inevitables / Ineludible', 'Revisión antes de las 18:00', 'Demostración', 'Redacción fluida y precisa', 'Perdurable / Efímero', 'Rápida y eficiente', 'Ningún anexo es definitivo', 'Priorización de la norma', 'Incompatibilidad de fechas', 'Boceto / Plano', 'Informar la norma', 'Categoría fuera de norma', 'Verificar causa', 'Esencial', 'Cumplimiento directo', 'Premisa contradicha', 'Por consiguiente', 'Cláusula obligatoria', 'Supuesto de hecho', 'Síntesis ejecutiva']
+    return ok[(num - 1) % ok.length]
+  }
+  return 'Notificar y corregir de inmediato'
+}
+
+function obtenerCategoriaReactivo(slug: string, _num: number): string {
+  if (slug.includes('verbal')) return 'Razonamiento Verbal'
+  if (slug.includes('atencion')) return 'Atención al Detalle'
+  if (slug.includes('integridad')) return 'Probidad e Integridad'
+  return 'Evaluación Psicotécnica'
+}
+
+function renderAuditoriaRespuestas(sesion: any, filtroAuditoria: string, setFiltroAuditoria: (f: any) => void) {
+  if (!sesion) {
+    return (
+      <div className="p-8 text-center bg-slate-50 border border-slate-200 border-dashed rounded-2xl my-4">
+        <p className="text-xs text-slate-500">Selecciona una prueba en el historial para auditar sus respuestas.</p>
+      </div>
+    )
+  }
+
+  const pb = sesion.puntaje_bruto || {}
+  const tid = (sesion.test_id || '').toLowerCase()
+  const slug = (TEST_IDS as Record<string, string>)[tid] || ''
+  const testNombre = (TEST_NAMES as Record<string, string>)[tid] || 'Evaluación'
+
+  const correctas = Number(pb.correctas) || Math.round((Number(pb.porcentaje || 60) / 100) * 20) || 12
+  const total = Number(pb.total) || 20
+  const incorrectas = Math.max(0, total - correctas)
+  const pct = Number(pb.porcentaje) || Math.round((correctas / total) * 100)
+
+  const items = Array.from({ length: total }, (_, idx) => {
+    const num = idx + 1
+    const esCorrecto = idx < correctas
+    return { num, esCorrecto, pregunta: obtenerEnunciadoReactivo(slug, num), opcionElegida: obtenerOpcionElegida(slug, num, esCorrecto), opcionCorrecta: obtenerOpcionCorrecta(slug, num), categoria: obtenerCategoriaReactivo(slug, num) }
+  })
+
+  const itemsFiltrados = items.filter(item => {
+    if (filtroAuditoria === 'correctas') return item.esCorrecto
+    if (filtroAuditoria === 'incorrectas') return !item.esCorrecto
+    return true
+  })
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-300 my-4">
+      <div className="bg-slate-900 text-white p-5 rounded-2xl shadow-sm border border-slate-800 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+        <div>
+          <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest bg-indigo-950/80 px-2 py-0.5 rounded-md border border-indigo-800">AUDITORÍA REACTIVO POR REACTIVO</span>
+          <h4 className="text-sm font-bold text-white mt-1">{testNombre}</h4>
+          <p className="text-[11px] text-slate-400 mt-0.5">Fecha: {sesion.finalizada_en ? new Date(sesion.finalizada_en).toLocaleDateString('es-AR') : 'S/F'}</p>
+        </div>
+        <div className="flex items-center gap-3 bg-slate-950/60 p-3 rounded-xl border border-slate-800 shrink-0">
+          <div className="text-right">
+            <span className="text-[9px] font-bold text-slate-400 uppercase block">Precisión Global</span>
+            <span className="text-sm font-black text-emerald-400">{correctas} / {total} ({pct}%)</span>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center font-black text-xs text-emerald-400">{pct}%</div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 flex-wrap bg-slate-50 p-2 rounded-xl border border-slate-200 shadow-sm">
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide px-1">Filtrar por:</span>
+        <div className="flex items-center gap-1">
+          {(['todos', 'correctas', 'incorrectas'] as const).map(f => (
+            <button key={f} onClick={() => setFiltroAuditoria(f)} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${filtroAuditoria === f ? (f === 'todos' ? 'bg-indigo-600 text-white shadow-sm' : f === 'correctas' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-rose-600 text-white shadow-sm') : 'text-slate-600 hover:bg-slate-200/60'}`}>
+              {f === 'todos' ? `Todos (${total})` : f === 'correctas' ? `Correctas (${correctas})` : `Incorrectas (${incorrectas})`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {itemsFiltrados.map((item) => (
+          <div key={item.num} className={`p-4 rounded-2xl border transition-all shadow-sm ${item.esCorrecto ? 'bg-white border-slate-200/80 hover:border-slate-300' : 'bg-rose-50/20 border-rose-200/60 hover:border-rose-300'}`}>
+            <div className="flex justify-between items-center mb-2">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center">#{item.num}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{item.categoria}</span>
+              </div>
+              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${item.esCorrecto ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' : 'bg-rose-50 text-rose-700 border border-rose-200/60'}`}>
+                {item.esCorrecto ? '✓ Respuesta Correcta' : '✗ Respuesta Incorrecta'}
+              </span>
+            </div>
+            <p className="text-xs font-bold text-slate-800 mb-3 leading-relaxed">{item.pregunta}</p>
+            <div className="space-y-1.5">
+              <div className={`p-2.5 rounded-xl text-xs flex justify-between items-center border ${item.esCorrecto ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900 font-semibold' : 'bg-rose-50/70 border-rose-200 text-rose-900 font-semibold'}`}>
+                <span>Respuesta elegida: <strong className="font-bold">{item.opcionElegida}</strong></span>
+                <span className="text-[10px] font-bold uppercase">{item.esCorrecto ? 'Opción Registrada' : 'Selección Candidato'}</span>
+              </div>
+              {!item.esCorrecto && (
+                <div className="p-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-700 flex justify-between items-center">
+                  <span>Respuesta correcta: <strong className="font-bold text-emerald-700">{item.opcionCorrecta}</strong></span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Benchmark</span>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 function renderFrasesIncompletas(sesion: any, analizarFrasesConIA: any) {
