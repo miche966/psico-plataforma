@@ -2158,122 +2158,9 @@ export default function PanelEvaluador() {
                     </div>
                   </div>
 
-                  {/* VIDEO ENTREVISTAS */}
-                  {videosCandidato.length > 0 && (
-                    <div className="mb-8">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <Video className="w-3 h-3" /> Video Entrevistas
-                      </p>
-                      <div className="space-y-4">
-                        {videosCandidato.map((v, i) => (
-                          <div key={i} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-                              <h5 className="text-sm font-bold text-slate-800">Pregunta {i + 1}: {v.preguntas_video?.pregunta}</h5>
-                              
-                              {/* SELECTOR DE VELOCIDAD DE REPRODUCCIÓN */}
-                              <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shrink-0 self-start sm:self-auto shadow-sm">
-                                <span className="text-[9px] font-bold text-slate-400 px-1.5 uppercase">Velocidad</span>
-                                {[1, 1.25, 1.5, 2].map((vel) => {
-                                  const selectVel = velocidadesVideo[i] || 1
-                                  const esActivo = selectVel === vel
-                                  return (
-                                    <button
-                                      key={vel}
-                                      onClick={() => {
-                                        const videoEl = document.getElementById(`video-entrevista-${i}`) as HTMLVideoElement
-                                        if (videoEl) {
-                                          videoEl.playbackRate = vel
-                                          setVelocidadesVideo(prev => ({ ...prev, [i]: vel }))
-                                        }
-                                      }}
-                                      className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all ${
-                                        esActivo 
-                                          ? 'bg-indigo-600 text-white shadow-sm scale-105' 
-                                          : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
-                                      }`}
-                                    >
-                                      {vel}x
-                                    </button>
-                                  )
-                                })}
-                              </div>
-                            </div>
-                            <video id={`video-entrevista-${i}`} src={v.url_video} controls className="w-full aspect-video rounded-xl shadow-sm bg-black mb-3" />
-                            {v.transcripcion ? (
-                              <div className="bg-white p-3 rounded-xl border border-slate-200 text-[11px] text-slate-600 italic">"{v.transcripcion}"</div>
-                            ) : (
-                              <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm">
-                                <div className="flex items-center gap-2">
-                                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                                  <span className="text-[11px] font-medium text-slate-700 leading-snug">Este video aún no cuenta con transcripción ni análisis de actitud en la plataforma.</span>
-                                </div>
-                                <button
-                                  onClick={() => procesarVideoConIA(v.id, v.url_video, i)}
-                                  disabled={procesandoVideos[v.id]}
-                                  className={`text-[10px] font-bold px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 transition-all shrink-0 flex items-center justify-center gap-1.5 ${
-                                    procesandoVideos[v.id] ? 'opacity-70 cursor-not-allowed' : ''
-                                  }`}
-                                >
-                                  {procesandoVideos[v.id] ? (
-                                    <>
-                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                      Procesando...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Sparkles className="w-3 h-3" />
-                                      Analizar con IA
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-                            )}
-                            {v.analisis_ia && (
-                               <div className="mt-3 p-4 bg-slate-950/40 rounded-2xl border border-slate-850 space-y-4">
-                                 {v.analisis_ia.actitud && (
-                                   <div className="space-y-1">
-                                     <div className="flex items-center gap-2">
-                                       <Eye className="w-3.5 h-3.5 text-indigo-400" />
-                                       <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider">ANÁLISIS NO VERBAL Y COMUNICACIÓN</span>
-                                     </div>
-                                     <p className="text-[11px] text-slate-300 leading-relaxed">
-                                       {typeof v.analisis_ia.actitud === 'string' ? v.analisis_ia.actitud : JSON.stringify(v.analisis_ia.actitud)}
-                                     </p>
-                                   </div>
-                                 )}
-                                 {v.analisis_ia.analisis_discurso && (
-                                   <div className="space-y-1 pt-3 border-t border-slate-800/50">
-                                     <div className="flex items-center gap-2">
-                                       <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-                                       <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">ANÁLISIS DEL DISCURSO Y CONTENIDO</span>
-                                     </div>
-                                     <p className="text-[11px] text-slate-300 leading-relaxed">
-                                       {v.analisis_ia.analisis_discurso}
-                                     </p>
-                                   </div>
-                                 )}
-                                 {!v.analisis_ia.actitud && !v.analisis_ia.analisis_discurso && (
-                                   <div className="space-y-1">
-                                     <div className="flex items-center gap-2">
-                                       <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                                       <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider">Análisis de Actitud</span>
-                                     </div>
-                                     <p className="text-[11px] text-slate-300 leading-relaxed">
-                                       {obtenerTextoAnalisis(v.analisis_ia)}
-                                     </p>
-                                   </div>
-                                 )}
-                               </div>
-                             )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
                   {/* RESULTADOS DETALLADOS DEL TEST */}
                   {sesionSeleccionada && (
-                    <div className="mt-8 pt-8 border-t border-slate-100 animate-in fade-in duration-500">
+                    <div id="seccion-resultados-test" className="my-6 p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm animate-in fade-in duration-500">
                       <div className="flex items-center justify-between mb-6">
                         <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Resultados del Test</h4>
                         <a href={`/informe?candidato=${agrupadoSeleccionado.id}`} target="_blank" className="text-[10px] font-bold text-indigo-600 hover:underline">Ver Informe Completo →</a>
@@ -2391,8 +2278,122 @@ export default function PanelEvaluador() {
                       </button>
                     </div>
                   )}
+
+                  {/* VIDEO ENTREVISTAS */}
+                  {videosCandidato.length > 0 && (
+                    <div className="mb-8">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <Video className="w-3 h-3" /> Video Entrevistas
+                      </p>
+                      <div className="space-y-4">
+                        {videosCandidato.map((v, i) => (
+                          <div key={i} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                              <h5 className="text-sm font-bold text-slate-800">Pregunta {i + 1}: {v.preguntas_video?.pregunta}</h5>
+                              
+                              {/* SELECTOR DE VELOCIDAD DE REPRODUCCIÓN */}
+                              <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shrink-0 self-start sm:self-auto shadow-sm">
+                                <span className="text-[9px] font-bold text-slate-400 px-1.5 uppercase">Velocidad</span>
+                                {[1, 1.25, 1.5, 2].map((vel) => {
+                                  const selectVel = velocidadesVideo[i] || 1
+                                  const esActivo = selectVel === vel
+                                  return (
+                                    <button
+                                      key={vel}
+                                      onClick={() => {
+                                        const videoEl = document.getElementById(`video-entrevista-${i}`) as HTMLVideoElement
+                                        if (videoEl) {
+                                          videoEl.playbackRate = vel
+                                          setVelocidadesVideo(prev => ({ ...prev, [i]: vel }))
+                                        }
+                                      }}
+                                      className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all ${
+                                        esActivo 
+                                          ? 'bg-indigo-600 text-white shadow-sm scale-105' 
+                                          : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+                                      }`}
+                                    >
+                                      {vel}x
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                            <video id={`video-entrevista-${i}`} src={v.url_video} controls className="w-full aspect-video rounded-xl shadow-sm bg-black mb-3" />
+                            {v.transcripcion ? (
+                              <div className="bg-white p-3 rounded-xl border border-slate-200 text-[11px] text-slate-600 italic">"{v.transcripcion}"</div>
+                            ) : (
+                              <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm">
+                                <div className="flex items-center gap-2">
+                                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                                  <span className="text-[11px] font-medium text-slate-700 leading-snug">Este video aún no cuenta con transcripción ni análisis de actitud en la plataforma.</span>
+                                </div>
+                                <button
+                                  onClick={() => procesarVideoConIA(v.id, v.url_video, i)}
+                                  disabled={procesandoVideos[v.id]}
+                                  className={`text-[10px] font-bold px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 transition-all shrink-0 flex items-center justify-center gap-1.5 ${
+                                    procesandoVideos[v.id] ? 'opacity-70 cursor-not-allowed' : ''
+                                  }`}
+                                >
+                                  {procesandoVideos[v.id] ? (
+                                    <>
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      Procesando...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Sparkles className="w-3 h-3" />
+                                      Analizar con IA
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            )}
+                            {v.analisis_ia && (
+                               <div className="mt-3 p-4 bg-slate-950/40 rounded-2xl border border-slate-850 space-y-4">
+                                 {v.analisis_ia.actitud && (
+                                   <div className="space-y-1">
+                                     <div className="flex items-center gap-2">
+                                       <Eye className="w-3.5 h-3.5 text-indigo-400" />
+                                       <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider">ANÁLISIS NO VERBAL Y COMUNICACIÓN</span>
+                                     </div>
+                                     <p className="text-[11px] text-slate-300 leading-relaxed">
+                                       {typeof v.analisis_ia.actitud === 'string' ? v.analisis_ia.actitud : JSON.stringify(v.analisis_ia.actitud)}
+                                     </p>
+                                   </div>
+                                 )}
+                                 {v.analisis_ia.analisis_discurso && (
+                                   <div className="space-y-1 pt-3 border-t border-slate-800/50">
+                                     <div className="flex items-center gap-2">
+                                       <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+                                       <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">ANÁLISIS DEL DISCURSO Y CONTENIDO</span>
+                                     </div>
+                                     <p className="text-[11px] text-slate-300 leading-relaxed">
+                                       {v.analisis_ia.analisis_discurso}
+                                     </p>
+                                   </div>
+                                 )}
+                                 {!v.analisis_ia.actitud && !v.analisis_ia.analisis_discurso && (
+                                   <div className="space-y-1">
+                                     <div className="flex items-center gap-2">
+                                       <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                                       <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider">Análisis de Actitud</span>
+                                     </div>
+                                     <p className="text-[11px] text-slate-300 leading-relaxed">
+                                       {obtenerTextoAnalisis(v.analisis_ia)}
+                                     </p>
+                                   </div>
+                                 )}
+                               </div>
+                             )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  </div>
                 </div>
-              </div>
             ) : (
               <div className="bg-slate-50 border border-slate-200 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center h-full">
                 <Search className="w-8 h-8 text-slate-300 mb-2" />
