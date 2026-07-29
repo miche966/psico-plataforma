@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video, CheckCircle2, Settings2, BarChart2, LayoutDashboard, Sparkles, Activity, Loader2, Eye, MessageSquare } from 'lucide-react'
+import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video, CheckCircle2, Settings2, BarChart2, LayoutDashboard, Sparkles } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
 import GestionProcesos from '@/components/GestionProcesos'
 import Dashboard from '@/components/Dashboard'
 import AppLayout from '@/components/AppLayout'
-import DiagnosticoRealtime from '@/components/DiagnosticoRealtime'
-import { estimarMBTI } from '@/lib/baremos'
+import { AuditoriaRespuestasDetallada } from '@/components/AuditoriaRespuestasDetallada'
+import { mapperAuditoriaUniversal } from '@/lib/auditoriaMapper'
 
 
 const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
@@ -27,10 +27,7 @@ const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
   'Pensamiento analítico': { apertura: 4.5, responsabilidad: 4 },
   'Creatividad e innovación': { apertura: 5, extraversion: 4 },
   'Autocontrol': { neuroticismo: 1, amabilidad: 4 },
-  'Responsabilidad': { responsabilidad: 5 },
-  'Ética profesional': { etica: 5, normas: 5 },
-  'Conciencia organizacional': { normas: 4.5, responsabilidad: 4.5 },
-  'Flexibilidad': { apertura: 5, amabilidad: 4 }
+  'Responsabilidad': { responsabilidad: 5 }
 }
 
 function calcularMatch(puntaje: any, reqs: any[]) {
@@ -83,7 +80,6 @@ interface Sesion {
   puntaje_bruto: Record<string, unknown>
   candidato_id: string | null
   candidato?: Candidato
-  estado?: string
 }
 
 const BIG_FIVE_KEYS = ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura']
@@ -123,201 +119,7 @@ const etiquetas: Record<string, string> = {
   amabilidad: 'Amabilidad',
   responsabilidad: 'Responsabilidad',
   neuroticismo: 'Neuroticismo',
-  apertura: 'Apertura',
-  // SJT Problemas
-  analisis: 'Análisis de Situación',
-  priorizacion: 'Priorización de Tareas',
-  inferencia: 'Inferencia Lógica',
-  creatividad: 'Creatividad en Soluciones',
-  decision: 'Toma de Decisiones',
-  pensamiento_critico: 'Pensamiento Crítico',
-  // SJT Atención
-  empatia: 'Empatía y Orientación al Cliente',
-  comunicacion: 'Comunicación Asertiva',
-  escucha_activa: 'Escucha Activa',
-  resolucion: 'Resolución de Incidencias',
-  manejo_conflicto: 'Manejo de Conflictos',
-  etica: 'Integridad y Normas',
-  // SJT Comercial
-  negociacion: 'Negociación y Cierre',
-  etica_comercial: 'Ética Comercial',
-  organizacion: 'Gestión de Cartera',
-  trabajo_equipo: 'Colaboración Comercial',
-  manejo_clientes: 'Relacionamiento con Clientes',
-  cobranza: 'Gestión de Cobranza',
-  proactividad_comercial: 'Proactividad en Ventas',
-  orientacion_cliente: 'Enfoque en el Cliente',
-  // Atención al Detalle
-  documentos: 'Verificación de Documentos',
-  comparacion: 'Comparación de Información',
-  concentracion: 'Concentración y Foco',
-  errores_texto: 'Detección de Errores de Texto',
-  errores_numeros: 'Detección de Errores Numéricos',
-  // Tolerancia a la Frustración y Emocional
-  manejo_emocional: 'Manejo Emocional',
-  tolerancia_frustracion: 'Tolerancia a la Frustración'
-}
-
-function formatearNombreFactor(factor: string): string {
-  if (etiquetas[factor]) return etiquetas[factor]
-  const conEspacios = factor.replace(/_/g, ' ')
-  return conEspacios
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}
-
-function obtenerInterpretacionCognitiva(testId: string, pct: number): string {
-  const tid = (testId || '').toLowerCase()
-  const slug = TEST_IDS[tid] || ''
-  const isVerbal = tid.includes('234567890123') || slug.includes('verbal')
-  const isNumerico = tid.includes('9012') || slug.includes('numerico')
-  const isICAR = slug.includes('icar') || tid.includes('456789012345')
-
-  if (isVerbal) {
-    if (pct >= 80) {
-      return 'Nivel Superior: Sobresaliente comprensión de lectura. Interpreta información escrita compleja con rapidez y se comunica con claridad sin ambigüedades.'
-    } else if (pct >= 60) {
-      return 'Nivel Promedio: Comprensión de lectura adecuada para las tareas habituales del puesto. Procesa con solvencia la documentación e instrucciones cotidianas.'
-    } else {
-      return 'Nivel Bajo: Requiere un poco más de tiempo para procesar textos extensos. Funciona mejor con instrucciones breves, directas y guías paso a paso.'
-    }
-  }
-
-  if (isNumerico) {
-    if (pct >= 80) {
-      return 'Nivel Superior: Gran agilidad para el cálculo cuantitativo, interpretación de métricas, análisis de datos y detección rápida de errores numéricos.'
-    } else if (pct >= 60) {
-      return 'Nivel Promedio: Buen manejo de operaciones matemáticas esenciales, presupuestos básicos y reportes de datos requeridos en la rutina diaria.'
-    } else {
-      return 'Nivel Bajo: Menor velocidad para resolver cálculos complejos de forma autónoma. Se beneficia del uso de plantillas guiadas o soporte en tareas numéricas.'
-    }
-  }
-
-  if (isICAR) {
-    if (pct >= 80) {
-      return 'Nivel Superior: Excelente habilidad para resolver problemas nuevos, identificar patrones con rapidez y adaptarse fácil a situaciones cambiantes.'
-    } else if (pct >= 60) {
-      return 'Nivel Promedio: Buena capacidad para aprender tareas de complejidad media, seguir secuencias lógicas y adaptarse al ritmo habitual de trabajo.'
-    } else {
-      return 'Nivel Bajo: Se desempeña mucho mejor en tareas estructuradas y secuenciales que no cambien constantemente de formato.'
-    }
-  }
-
-  if (pct >= 80) return 'Nivel Superior: Excelente agilidad y precisión para resolver problemas y aprender nuevos procesos.'
-  if (pct >= 60) return 'Nivel Promedio: Capacidad adecuada y funcional para responder a los requerimientos normales del puesto.'
-  return 'Nivel Bajo: Se sugiere brindar apoyo inicial o guías claras para el aprendizaje de tareas complejas.'
-}
-
-function obtenerInterpretacionGeneral(testId: string, prom: number): { nivel: string; colorText: string; colorBg: string; descripcion: string } {
-  const tid = (testId || '').toLowerCase()
-  const slug = TEST_IDS[tid] || ''
-  
-  const isIntegridad = slug.includes('integridad') || tid.includes('345678901234')
-  const isEstres = slug.includes('estres') || tid.includes('000000000001')
-  const isCreatividad = slug.includes('creatividad') || tid.includes('111222333444')
-
-  if (isIntegridad) {
-    if (prom >= 4.0) {
-      return {
-        nivel: 'Nivel Superior (Alta Confiabilidad)',
-        colorText: 'text-emerald-600',
-        colorBg: 'bg-emerald-500',
-        descripcion: 'Demuestra un alto compromiso ético, transparencia en el uso de recursos y respeto firme por las normas de la empresa, incluso sin supervisión directa.'
-      }
-    } else if (prom >= 3.0) {
-      return {
-        nivel: 'Nivel Promedio (Confiabilidad Estándar)',
-        colorText: 'text-amber-600',
-        colorBg: 'bg-amber-500',
-        descripcion: 'Alineación adecuada con los valores y políticas de la empresa. Actúa de manera honesta y leal ante las situaciones cotidianas del puesto.'
-      }
-    } else {
-      return {
-        nivel: 'Nivel Bajo (Conviene Profundizar)',
-        colorText: 'text-rose-600',
-        colorBg: 'bg-rose-500',
-        descripcion: 'Conviene indagar en entrevista sobre el manejo de normas, uso de recursos y confidencialidad para asegurar un buen acople con la cultura de la empresa.'
-      }
-    }
-  }
-
-  if (isEstres) {
-    if (prom <= 2.5) {
-      return {
-        nivel: 'Bajo Estrés (Resiliencia Alta)',
-        colorText: 'text-emerald-600',
-        colorBg: 'bg-emerald-500',
-        descripcion: 'Excelente manejo de la presión laboral. Mantiene la calma y el equilibrio en momentos de alta demanda o ritmo acelerado.'
-      }
-    } else if (prom <= 3.5) {
-      return {
-        nivel: 'Nivel de Tensión Moderado',
-        colorText: 'text-amber-600',
-        colorBg: 'bg-amber-500',
-        descripcion: 'Nivel de estrés manejable en la rutina. Responde bien si cuenta con prioridades claras y buena organización de tareas.'
-      }
-    } else {
-      return {
-        nivel: 'Elevada Tensión / Riesgo de Agotamiento',
-        colorText: 'text-rose-600',
-        colorBg: 'bg-rose-500',
-        descripcion: 'Muestra signos de sobrecarga o tensión. Es recomendable revisar la distribución de tareas y brindarle acompañamiento.'
-      }
-    }
-  }
-
-  if (isCreatividad) {
-    if (prom >= 4.0) {
-      return {
-        nivel: 'Nivel Superior (Pensamiento Innovador)',
-        colorText: 'text-emerald-600',
-        colorBg: 'bg-emerald-500',
-        descripcion: 'Muestra gran iniciativa para proponer ideas innovadoras, resolver problemas de formas distintas y pensar fuera de lo común.'
-      }
-    } else if (prom >= 3.0) {
-      return {
-        nivel: 'Nivel Promedio (Mejora Continua)',
-        colorText: 'text-indigo-600',
-        colorBg: 'bg-indigo-500',
-        descripcion: 'Buena disposición para sugerir mejoras prácticas sobre tareas existentes y participar activamente en equipos de trabajo.'
-      }
-    } else {
-      return {
-        nivel: 'Nivel Tradicional / Conservador',
-        colorText: 'text-slate-600',
-        colorBg: 'bg-slate-500',
-        descripcion: 'Prefiere trabajar con métodos tradicionales y procedimientos ya probados antes que improvisar nuevas formas de trabajo.'
-      }
-    }
-  }
-
-  if (prom >= 4.0) {
-    return {
-      nivel: 'Competencia Destacada',
-      colorText: 'text-emerald-600',
-      colorBg: 'bg-emerald-500',
-      descripcion: 'Resuelve con soltura y muy buen criterio las situaciones complejas del puesto.'
-    }
-  } else if (prom >= 3.0) {
-    return {
-      nivel: 'Competencia Promedio',
-      colorText: 'text-indigo-600',
-      colorBg: 'bg-indigo-500',
-      descripcion: 'Desempeño adecuado y correcto en el manejo de situaciones cotidianas del rol.'
-    }
-  } else {
-    return {
-      nivel: 'Requiere Desarrollo',
-      colorText: 'text-rose-600',
-      colorBg: 'bg-rose-500',
-      descripcion: 'Muestra oportunidad de mejora en la resolución autónoma de escenarios del puesto.'
-    }
-  }
-}
-
-function esSJT(pb: any): boolean {
-  return pb && 'por_factor' in pb
+  apertura: 'Apertura'
 }
 
 const TEST_IDS: Record<string, string> = {
@@ -338,10 +140,6 @@ const TEST_IDS: Record<string, string> = {
   'b8c9d0e1-f2a3-4567-bcde-888888888888': 'atencion-detalle',
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'sjt-atencion',
   '7a8b9c0d-e1f2-4356-abcd-999999999999': 'dass21',
-  'e9b2c3d4-f5a6-7890-bcde-999999999999': 'sjt-cobranzas',
-  'f7a8b9c0-d1e2-4356-abcd-888888888888': 'frases-incompletas',
-  'd8e9f0a1-b2c3-4567-defa-888888888888': 'roleplay',
-  'd8e9f0a1-b2c3-4567-defa-777777777777': 'roleplay_atencion',
 }
 
 const TEST_NAMES: Record<string, string> = {
@@ -361,10 +159,7 @@ const TEST_NAMES: Record<string, string> = {
   'a1b2c3d4-e5f6-7890-abcd-111111111111': 'Perfil Comercial',
   'b8c9d0e1-f2a3-4567-bcde-888888888888': 'Atención al Detalle',
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'SJT Atención al Cliente',
-  'e9b2c3d4-f5a6-7890-bcde-999999999999': 'SJT Cobranzas',
-  'f7a8b9c0-d1e2-4356-abcd-888888888888': 'Frases Incompletas',
-  'd8e9f0a1-b2c3-4567-defa-888888888888': 'Simulación Interactiva (Role Play)',
-  'd8e9f0a1-b2c3-4567-defa-777777777777': 'Simulación Atención al Cliente (Role Play)',
+  '7a8b9c0d-e1f2-4356-abcd-999999999999': 'DASS-21 (Salud Mental)',
 }
 
 const colores: Record<string, string> = {
@@ -388,11 +183,6 @@ interface CandidatoAgrupado {
   nombre: string
   apellido: string
   email: string
-  documento?: string
-  edad?: string
-  sexo?: string
-  formacion?: string
-  profesion?: string
   sesiones: Sesion[]
   ultima_fecha: string
   proceso_id?: string
@@ -443,453 +233,50 @@ async function generarResumenIA(candidato: CandidatoAgrupado) {
 
 
 
-function obtenerTextoAnalisis(analisis: any): string {
-  if (!analisis) return ''
-  if (typeof analisis === 'string') return analisis
-  
-  if (typeof analisis === 'object') {
-    if (analisis.actitud) {
-      if (typeof analisis.actitud === 'string') return analisis.actitud
-      if (typeof analisis.actitud === 'object') {
-        return Object.entries(analisis.actitud)
-          .map(([key, val]) => `${key.replace(/_/g, ' ').toUpperCase()}: ${val}`)
-          .join(' | ')
-      }
-    }
-    if (analisis.resumen && typeof analisis.resumen === 'string') return analisis.resumen
-    if (analisis.analisis && typeof analisis.analisis === 'string') return analisis.analisis
-
-    // Fallback: mapear todas las propiedades excluyendo transcripción
-    return Object.entries(analisis)
-      .filter(([k]) => k !== 'transcripcion')
-      .map(([key, val]) => {
-        const readableKey = key.replace(/_/g, ' ').toUpperCase()
-        const readableVal = typeof val === 'object' ? JSON.stringify(val) : String(val)
-        return `${readableKey}: ${readableVal}`
-      })
-      .join(' | ')
-  }
-  return String(analisis)
-}
-
-function obtenerTimestamp(fecha: string | null | undefined): number {
-  if (!fecha) return 0
-  const t = new Date(fecha).getTime()
-  return isNaN(t) ? 0 : t
-}
-
 export default function PanelEvaluador() {
-  const [tab, setTab] = useState<'evaluaciones' | 'gestion' | 'dashboard' | 'historial' | 'diagnostico'>('evaluaciones')
+  const [tab, setTab] = useState<'evaluaciones' | 'gestion' | 'dashboard' | 'historial'>('evaluaciones')
   const [candidatos, setCandidatos] = useState<CandidatoAgrupado[]>([])
   const [procesos, setProcesos] = useState<any[]>([])
   const [procesoSeleccionadoId, setProcesoSeleccionadoId] = useState<string>('todos')
   const [agrupadoSeleccionado, setAgrupadoSeleccionado] = useState<CandidatoAgrupado | null>(null)
   const [sesionSeleccionada, setSesionSeleccionada] = useState<Sesion | null>(null)
-  const [subtabDrawer, setSubtabDrawer] = useState<'diagnostico' | 'auditoria'>('diagnostico')
-  const [filtroAuditoria, setFiltroAuditoria] = useState<'todos' | 'correctas' | 'incorrectas'>('todos')
   const [cargando, setCargando] = useState(true)
   const [enviandoRecordatorio, setEnviandoRecordatorio] = useState<string | null>(null)
   const [filtro, setFiltro] = useState('')
   const [videosCandidato, setVideosCandidato] = useState<any[]>([])
   const [sesionesGlobales, setSesionesGlobales] = useState<any[]>([])
-  const [informeCandidato, setInformeCandidato] = useState<any>(null)
-  const [seleccionados, setSeleccionados] = useState<string[]>([])
-  const [procesandoLote, setProcesandoLote] = useState(false)
-  const [procesandoZip, setProcesandoZip] = useState(false)
-  const [dropdownAbierto, setDropdownAbierto] = useState(false)
-  const [busquedaDropdown, setBusquedaDropdown] = useState('')
-  const [analizandoFrases, setAnalizandoFrases] = useState(false)
+  const [itemsAuditoria, setItemsAuditoria] = useState<any[]>([])
+  const [cargandoAuditoria, setCargandoAuditoria] = useState(false)
   const router = useRouter()
-  const [velocidadesVideo, setVelocidadesVideo] = useState<Record<number, number>>({})
-  const [procesandoVideos, setProcesandoVideos] = useState<Record<string, boolean>>({})
 
-  async function procesarVideoConIA(respuestaId: string, urlVideo: string, idx: number) {
-    if (procesandoVideos[respuestaId]) return
-    setProcesandoVideos(prev => ({ ...prev, [respuestaId]: true }))
+  async function cargarAuditoriaSesion(sesion: Sesion) {
+    if (!sesion) return
+    setCargandoAuditoria(true)
     try {
-      const res = await fetch('/api/analizar-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url_video: urlVideo, respuesta_id: respuestaId })
-      })
-      if (!res.ok) {
-        throw new Error(`Error en el servidor: código ${res.status}`)
-      }
-      const data = await res.json()
-      if (data.success && data.analisis) {
-        setVideosCandidato(prev => prev.map((v, i) => {
-          if (i === idx) {
-            return {
-              ...v,
-              transcripcion: data.analisis.transcripcion,
-              analisis_ia: data.analisis
-            }
-          }
-          return v
-        }))
-        alert("Video procesado y analizado con éxito por la IA.")
+      // 1. Obtener preguntas registradas para este test
+      const { data: itemsDB } = await supabase
+        .from('items')
+        .select('*')
+        .eq('test_id', sesion.test_id)
+        .order('orden')
+
+      // 2. Obtener las respuestas registradas en la tabla respuestas
+      const { data: respuestasDB } = await supabase
+        .from('respuestas')
+        .select('*')
+        .eq('sesion_id', sesion.id)
+
+      if (itemsDB && itemsDB.length > 0) {
+        const mapeados = mapperAuditoriaUniversal(itemsDB, respuestasDB || [], sesion.test_id)
+        setItemsAuditoria(mapeados)
       } else {
-        alert("Hubo un problema al procesar el video: " + (data.error || "Error desconocido"))
+        setItemsAuditoria([])
       }
-    } catch (err: any) {
-      console.error("Error al procesar video:", err)
-      alert(`No se pudo procesar el video: ${err.message || err}`)
+    } catch (e) {
+      console.error('Error cargando auditoría de sesión:', e)
+      setItemsAuditoria([])
     } finally {
-      setProcesandoVideos(prev => ({ ...prev, [respuestaId]: false }))
-    }
-  }
-
-  // Helper para cálculo de Ajuste en lote
-  function calcularAjusteLote(reqs: any[], sesionesList: any[]) {
-    if (!reqs || reqs.length === 0) {
-      const todosLosFactores: number[] = []
-      sesionesList.forEach(s => {
-        const scan = (obj: any) => {
-          if (!obj || typeof obj !== 'object') return
-          Object.entries(obj).forEach(([k, v]) => {
-            const key = k.toLowerCase().trim()
-            if (['total', 'correctas', 'porcentaje', 'id', 'created_at'].includes(key)) return
-            const valNum = parseFloat(String(v))
-            if (!isNaN(valNum)) {
-              let val = valNum
-              if (val > 5 && val <= 20) val = (val / 20) * 5
-              else if (val > 20 && val <= 100) val = (val / 100) * 5
-              if (val > 0 && val <= 5) todosLosFactores.push(val)
-            }
-          })
-        }
-        scan(s.puntaje_bruto)
-      })
-      if (todosLosFactores.length === 0) return 0
-      const avg = todosLosFactores.reduce((a, b) => a + b, 0) / todosLosFactores.length
-      return Math.round((avg / 5) * 100)
-    }
-
-    const scores: number[] = []
-    reqs.forEach(r => {
-      const compName = r.competencia || r.nombre;
-      const reqLevelVal = r.nivel === 'A' ? 5 : r.nivel === 'B' ? 4 : r.nivel === 'C' ? 3 : 2;
-      let valorCandidato = -1
-
-      for (const s of sesionesList) {
-        if (!s.puntaje_bruto || valorCandidato !== -1) continue
-        const buscar = (obj: any) => {
-          if (!obj || typeof obj !== 'object' || valorCandidato !== -1) return
-          Object.entries(obj).forEach(([f, v]: any) => {
-            if (valorCandidato !== -1) return
-            const keyNormalizada = f?.toLowerCase()?.trim()
-            if (keyNormalizada === compName?.toLowerCase()?.trim()) {
-              valorCandidato = Number(v)
-            }
-          })
-        }
-        buscar(s.puntaje_bruto)
-      }
-      if (valorCandidato === -1) valorCandidato = 0
-      if (valorCandidato > 5) valorCandidato = (valorCandidato / 100) * 5
-      
-      const pct = Math.min(100, Math.round((valorCandidato / reqLevelVal) * 100))
-      scores.push(pct)
-    })
-
-    return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0
-  }
-
-  async function analizarSeleccionadosLote() {
-    if (procesandoLote) return
-    setProcesandoLote(true)
-
-    try {
-      let analizadosCount = 0
-      for (const cId of seleccionados) {
-        const c = candidatos.find(cand => cand.id === cId)
-        if (!c) continue
-
-        // Cargar respuestas de video
-        const { data: vids } = await supabase
-          .from('respuestas_video')
-          .select('*')
-          .eq('candidato_id', cId)
-          .eq('estado', 'completado')
-          .order('grabada_en', { ascending: true })
-
-        let mappedVids: any[] = []
-        if (vids && vids.length > 0) {
-          const preguntaIds = vids.map(v => v.pregunta_id).filter(Boolean)
-          let preguntas: any[] = []
-          if (preguntaIds.length > 0) {
-            const { data: pData } = await supabase
-              .from('preguntas_video')
-              .select('id, pregunta')
-              .in('id', preguntaIds)
-            if (pData) preguntas = pData
-          }
-          mappedVids = vids.map(v => {
-            const q = preguntas.find(p => p.id === v.pregunta_id)
-            return { ...v, preguntas_video: q ? { pregunta: q.pregunta } : null }
-          })
-        }
-
-        const vMap = new Map<string, any>()
-        mappedVids.forEach(v => {
-          const k = `${v.entrevista_id}:${v.pregunta_id}`
-          const ex = vMap.get(k)
-          if (!ex || new Date(v.grabada_en) > new Date(ex.grabada_en)) vMap.set(k, v)
-        })
-        const finalVids = Array.from(vMap.values())
-
-        const autoAjuste = calcularAjusteLote(c.competencias_requeridas || [], c.sesiones)
-
-        const res = await fetch('/api/generar-informe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            candidato: { id: c.id, nombre: c.nombre, apellido: c.apellido, documento: (c as any).documento || '' },
-            proceso: { cargo: c.proceso_cargo || 'S/C' },
-            sesiones: c.sesiones,
-            videos: finalVids,
-            actual: { ajusteCargo: { score: autoAjuste, analisis: '' } }
-          })
-        })
-
-        if (res.ok) {
-          const data = await res.json()
-          await supabase.from('informes_psicometricos').upsert({
-            candidato_id: c.id,
-            contenido: data,
-            actualizado_en: new Date().toISOString()
-          }, { onConflict: 'candidato_id' })
-          analizadosCount++
-        }
-      }
-
-      alert(`Se generaron y guardaron con éxito ${analizadosCount} informes en lote.`);
-      setSeleccionados([]);
-      router.refresh();
-    } catch (err: any) {
-      console.error(err)
-      alert(`Error en análisis en lote: ${err.message}`)
-    } finally {
-      setProcesandoLote(false)
-    }
-  }
-
-  async function descargarSeleccionadosZip() {
-    if (procesandoZip) return
-    setProcesandoZip(true)
-
-    try {
-      const JSZip = (await import('jszip')).default
-      const { saveAs } = (await import('file-saver'))
-      const { pdf } = await import('@react-pdf/renderer')
-      const { InformePDF } = await import('@/components/InformePDF')
-
-      const zip = new JSZip()
-      let pdfsCount = 0
-
-      for (const cId of seleccionados) {
-        const c = candidatos.find(cand => cand.id === cId)
-        if (!c) continue
-
-        const { data: infData } = await supabase
-          .from('informes_psicometricos')
-          .select('contenido')
-          .eq('candidato_id', cId)
-          .maybeSingle()
-
-        const inf = infData?.contenido
-        if (!inf) {
-          console.log(`Candidato ${c.nombre} no tiene informe generado aún.`);
-          continue
-        }
-
-        const { data: vids } = await supabase
-          .from('respuestas_video')
-          .select('*')
-          .eq('candidato_id', cId)
-          .eq('estado', 'completado')
-          .order('grabada_en', { ascending: true })
-
-        let mappedVids: any[] = []
-        if (vids && vids.length > 0) {
-          const preguntaIds = vids.map(v => v.pregunta_id).filter(Boolean)
-          let preguntas: any[] = []
-          if (preguntaIds.length > 0) {
-            const { data: pData } = await supabase
-              .from('preguntas_video')
-              .select('id, pregunta')
-              .in('id', preguntaIds)
-            if (pData) preguntas = pData
-          }
-          mappedVids = vids.map(v => {
-            const q = preguntas.find(p => p.id === v.pregunta_id)
-            return { ...v, preguntas_video: q ? { pregunta: q.pregunta } : null }
-          })
-        }
-
-        const vMap = new Map<string, any>()
-        mappedVids.forEach(v => {
-          const k = `${v.entrevista_id}:${v.pregunta_id}`
-          const ex = vMap.get(k)
-          if (!ex || new Date(v.grabada_en) > new Date(ex.grabada_en)) vMap.set(k, v)
-        })
-        const finalVids = Array.from(vMap.values())
-
-        const esHEXACO = (pb: any) => pb && 'honestidad' in pb
-        const esBienestar = (pb: any) => pb && 'burnout' in pb
-
-        const hasP = c.sesiones.some(s => esBigFive(s.puntaje_bruto) || esHEXACO(s.puntaje_bruto))
-        const hasC = c.sesiones.some(s => esCognitivo(s.puntaje_bruto))
-        const hasK = c.sesiones.some(s => esSJT(s.puntaje_bruto))
-        const hasV = c.sesiones.some(s => esBienestar(s.puntaje_bruto))
-
-        const sesBF = c.sesiones.find(s => esBigFive(s.puntaje_bruto))
-        const sesHX = c.sesiones.find(s => esHEXACO(s.puntaje_bruto))
-        const sesCog = c.sesiones.find(s => esCognitivo(s.puntaje_bruto))
-        const sesComp = c.sesiones.find(s => esSJT(s.puntaje_bruto))
-        const sesBien = c.sesiones.find(s => esBienestar(s.puntaje_bruto))
-
-        const cogData = sesCog ? { correctas: (sesCog.puntaje_bruto as any).correctas || 0, total: (sesCog.puntaje_bruto as any).total || 20, pct: (sesCog.puntaje_bruto as any).porcentaje || 0 } : null
-
-        const blob = await pdf(
-          <InformePDF data={{
-            candidato: { id: c.id, nombre: c.nombre, apellido: c.apellido, documento: (c as any).documento || '' },
-            proceso: { cargo: c.proceso_cargo || 'S/C' },
-            sesiones: c.sesiones,
-            videos: finalVids,
-            inf,
-            helpers: {
-              hoy: () => new Date().toLocaleDateString(),
-              clrOf: (v: number) => v >= 4 ? '#059669' : v >= 3 ? '#2563eb' : v >= 2 ? '#d97706' : '#dc2626',
-              hasP, hasC, hasK, hasV, sesBF, sesHX, sesCog, sesComp, sesBien, cogData,
-              estimarMBTI: (pb: any) => {
-                if (!pb) return 'N/A'
-                const findVal = (key: string) => {
-                  let found = 3.5
-                  const searchVal = (obj: any) => {
-                    Object.entries(obj).forEach(([f, v]) => {
-                      if (f.toLowerCase().includes(key)) {
-                        found = ((v as any)?.correctas ? ((v as any).correctas / ((v as any).total || 1)) * 5 : (typeof v === 'number' ? v : 0)) || 3.5
-                      } else if (typeof v === 'object' && v !== null) {
-                        searchVal(v)
-                      }
-                    })
-                  }
-                  searchVal(pb)
-                  return found
-                }
-                const E = findVal('extraver') >= 3.6 ? 'E' : 'I'
-                const S = findVal('apertura') < 3.9 ? 'S' : 'N'
-                const T = findVal('amabilid') < 4.4 ? 'T' : 'F'
-                const J = findVal('responsab') >= 4.3 ? 'J' : 'P'
-                return `${E}${S}${T}${J}`
-              },
-              MBTI_DESC: {
-                'ISTJ': 'Organizado y formal...',
-                'ISFJ': 'Comprometido y fiel...',
-                'INFJ': 'Analítico e idealista...',
-                'INTJ': 'Estratégico e independiente...',
-                'ISTP': 'Pragmático y resolutivo...',
-                'ISFP': 'Caluroso y adaptativo...',
-                'INFP': 'Idealista y empático...',
-                'INTP': 'Teórico y lógico...',
-                'ESTP': 'Dinámico y pragmático...',
-                'ESFP': 'Sociable y entusiasta...',
-                'ENFP': 'Creativo y entusiasta...',
-                'ENTP': 'Innovador y analítico...',
-                'ESTJ': 'Eficiente y directivo...',
-                'ESFJ': 'Colaborador y servicial...',
-                'ENFJ': 'Líder empático y carismático...',
-                'ENTJ': 'Líder estratégico y decidido...'
-              },
-              ETQ: {
-                extraversion: 'Extraversión',
-                amabilidad: 'Amabilidad',
-                responsabilidad: 'Responsabilidad',
-                neuroticismo: 'Neuroticismo',
-                apertura: 'Apertura',
-                relaciones: 'Relaciones',
-                claridad_rol: 'Claridad de Rol',
-                burnout: 'Burnout',
-                equilibrio: 'Equilibrio'
-              },
-              DOMINIOS: {
-                PERSONALIDAD: ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura'],
-                COGNITIVO: ['atencion-detalle', 'verbal', 'numerico', 'icar'],
-                COMPETENCIAS: ['comunicacion', 'liderazgo', 'trabajo_equipo', 'adaptabilidad', 'resolucion_problemas', 'etica', 'negociacion', 'manejo_emocional', 'tolerancia_frustracion'],
-                BIENESTAR: ['burnout', 'equilibrio', 'relaciones', 'claridad_rol', 'nivel_estres', 'carga_laboral', 'autonomia', 'expectativas', 'resiliencia', 'manejo_estres', 'autoesteem', 'autoestima']
-              }
-            }
-          }} />
-        ).toBlob()
-
-        const filename = `Informe_${c.nombre}_${c.apellido}.pdf`.replace(/\s+/g, '_')
-        zip.file(filename, blob)
-        pdfsCount++
-      }
-
-      if (pdfsCount === 0) {
-        alert("Ninguno de los candidatos seleccionados tiene un informe generado aún. Por favor, genéralos primero.");
-        return
-      }
-
-      const content = await zip.generateAsync({ type: 'blob' })
-      saveAs(content, `informes_seleccionados_${new Date().toISOString().slice(0, 10)}.zip`)
-      setSeleccionados([])
-    } catch (err: any) {
-      console.error(err)
-      alert(`Error de descarga masiva: ${err.message}`)
-    } finally {
-      setProcesandoZip(false)
-    }
-  }
-
-  async function analizarFrasesConIA(sesion: any) {
-    if (analizandoFrases) return
-    setAnalizandoFrases(true)
-    try {
-      const res = await fetch('/api/analizar-frases', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          candidato: agrupadoSeleccionado,
-          proceso: { cargo: agrupadoSeleccionado?.proceso_cargo, nombre: agrupadoSeleccionado?.proceso_nombre },
-          respuestas: sesion.puntaje_bruto?.respuestas || sesion.puntaje_bruto
-        })
-      })
-      if (!res.ok) throw new Error('Error al analizar frases')
-      const data = await res.json()
-      
-      const nuevoPuntajeBruto = {
-        respuestas: sesion.puntaje_bruto?.respuestas || sesion.puntaje_bruto,
-        analisis_ia: data
-      }
-      
-      const { error } = await supabase
-        .from('sesiones')
-        .update({ puntaje_bruto: nuevoPuntajeBruto })
-        .eq('id', sesion.id)
-      
-      if (error) throw error
-      
-      setSesionSeleccionada({
-        ...sesion,
-        puntaje_bruto: nuevoPuntajeBruto
-      })
-      
-      setAgrupadoSeleccionado(prev => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          sesiones: prev.sesiones.map(s => s.id === sesion.id ? { ...s, puntaje_bruto: nuevoPuntajeBruto } : s)
-        }
-      })
-      
-    } catch (err: any) {
-      console.error(err)
-      alert("Error al analizar el test: " + err.message)
-    } finally {
-      setAnalizandoFrases(false)
+      setCargandoAuditoria(false)
     }
   }
 
@@ -910,74 +297,34 @@ export default function PanelEvaluador() {
   }
 
   async function cargarProcesos() {
-    const { data } = await supabase.from('procesos').select('*').order('creado_en', { ascending: false })
+    const { data } = await supabase.from('procesos').select('*').order('creado_at', { ascending: false })
     if (data) setProcesos(data)
   }
 
   async function cargarCandidatos() {
-    // 1. Obtener todas las vinculaciones Proceso-Candidato por lotes
-    let vinculos: any[] = []
-    let offsetVinculos = 0
-    const limit = 1000
-    let doneVinculos = false
+    // 1. Obtener todas las vinculaciones Proceso-Candidato
+    const { data: vinculos, error: errVinculos } = await supabase
+      .from('candidatos_procesos')
+      .select(`
+        candidato_id,
+        proceso_id,
+        procesos (id, nombre, cargo, competencias_requeridas, bateria_tests),
+        candidatos (id, nombre, apellido, email, documento)
+      `)
 
-    while (!doneVinculos) {
-      const { data, error } = await supabase
-        .from('candidatos_procesos')
-        .select(`
-          candidato_id,
-          proceso_id,
-          procesos (id, nombre, cargo, competencias_requeridas, bateria_tests),
-          candidatos (id, nombre, apellido, email, documento, edad, sexo, formacion, profesion),
-          creado_en
-        `)
-        .range(offsetVinculos, offsetVinculos + limit - 1)
-
-      if (error || !data || data.length === 0) {
-        doneVinculos = true
-      } else {
-        vinculos = [...vinculos, ...data]
-        if (data.length < limit) {
-          doneVinculos = true
-        } else {
-          offsetVinculos += limit
-        }
-      }
+    if (errVinculos) {
+      console.error('Error cargando vínculos candidatos_procesos:', errVinculos)
     }
 
-    // 2. Obtener todas las sesiones mediante carga recursiva por lotes
-    let sesionesData: any[] = []
-    let offsetSesiones = 0
-    let doneSesiones = false
-
-    while (!doneSesiones) {
-      const { data, error } = await supabase
-        .from('sesiones')
-        .select(`
-          id,
-          test_id,
-          candidato_id,
-          proceso_id,
-          estado,
-          finalizada_en,
-          puntaje_bruto,
-          candidatos (id, nombre, apellido, email, documento, edad, sexo, formacion, profesion),
-          procesos (id, nombre, cargo, competencias_requeridas, bateria_tests)
-        `)
-        .order('finalizada_en', { ascending: false })
-        .range(offsetSesiones, offsetSesiones + limit - 1)
-
-      if (error || !data || data.length === 0) {
-        doneSesiones = true
-      } else {
-        sesionesData = [...sesionesData, ...data]
-        if (data.length < limit) {
-          doneSesiones = true
-        } else {
-          offsetSesiones += limit
-        }
-      }
-    }
+    // 2. Obtener todas las sesiones (Históricas y actuales)
+    const { data: sesionesData } = await supabase
+      .from('sesiones')
+      .select(`
+        *,
+        candidatos (id, nombre, apellido, email),
+        procesos (id, nombre, cargo, competencias_requeridas, bateria_tests)
+      `)
+      .order('finalizada_en', { ascending: false })
     
     if (sesionesData) setSesionesGlobales(sesionesData)
 
@@ -985,16 +332,6 @@ export default function PanelEvaluador() {
     const { data: respuestasVideo } = await supabase
       .from('respuestas_video')
       .select('candidato_id, entrevista_id, pregunta_id, grabada_en')
-      .eq('estado', 'completado')
-    // 3.5 Obtener todas las preguntas de video para saber la cantidad de preguntas por entrevista
-    const { data: todasPreguntas } = await supabase
-      .from('preguntas_video')
-      .select('id, entrevista_id, pregunta')
-
-    const preguntasPorEntrevista: Record<string, number> = {}
-    todasPreguntas?.forEach(p => {
-      preguntasPorEntrevista[p.entrevista_id] = (preguntasPorEntrevista[p.entrevista_id] || 0) + 1
-    })
 
     const grupos: Record<string, CandidatoAgrupado> = {}
 
@@ -1011,13 +348,8 @@ export default function PanelEvaluador() {
           nombre: c.nombre,
           apellido: c.apellido,
           email: c.email,
-          documento: c.documento || '',
-          edad: c.edad || '',
-          sexo: c.sexo || '',
-          formacion: c.formacion || '',
-          profesion: c.profesion || '',
           sesiones: [],
-          ultima_fecha: v.creado_en || '',
+          ultima_fecha: v.created_at || '',
           proceso_id: p.id,
           proceso_nombre: p.nombre,
           proceso_cargo: p.cargo,
@@ -1045,11 +377,6 @@ export default function PanelEvaluador() {
           nombre: c.nombre,
           apellido: c.apellido,
           email: c.email,
-          documento: c.documento || '',
-          edad: c.edad || '',
-          sexo: c.sexo || '',
-          formacion: c.formacion || '',
-          profesion: c.profesion || '',
           sesiones: [],
           ultima_fecha: s.finalizada_en || s.creado_en,
           proceso_id: s.proceso_id || undefined,
@@ -1082,45 +409,9 @@ export default function PanelEvaluador() {
       const idsCompletados = new Set<string>()
       c.sesiones.forEach(s => {
         const slug = TEST_IDS[s.test_id] || s.test_id
-        if (slug && s.estado === 'finalizado') idsCompletados.add(slug)
+        if (slug) idsCompletados.add(slug)
       })
-
-      // Contar respuestas válidas por entrevista para este candidato
-      const respuestasPorEntrevista: Record<string, number> = {}
-      Array.from(videosUnicosMap.values()).forEach(v => {
-        respuestasPorEntrevista[v.entrevista_id] = (respuestasPorEntrevista[v.entrevista_id] || 0) + 1
-      })
-
-      // Solo marcar la entrevista como completada si el número de respuestas válidas coincide con el total de preguntas de esa entrevista (contemplando bifurcaciones)
-      Object.entries(respuestasPorEntrevista).forEach(([entrevistaId, cantRespuestas]) => {
-        const preguntasDeEsta = todasPreguntas?.filter(p => p.entrevista_id === entrevistaId) || []
-        const comunes = preguntasDeEsta.filter(p => !p.pregunta?.includes('[CON_EXP]') && !p.pregunta?.includes('[SIN_EXP]'))
-        const conExp = preguntasDeEsta.filter(p => p.pregunta?.includes('[CON_EXP]'))
-        const sinExp = preguntasDeEsta.filter(p => p.pregunta?.includes('[SIN_EXP]'))
-
-        let cantPreguntasRequeridas = preguntasDeEsta.length
-
-        if (conExp.length > 0 || sinExp.length > 0) {
-          const respondioConExp = Array.from(videosUnicosMap.values()).some(
-            v => v.entrevista_id === entrevistaId && conExp.some(p => p.id === v.pregunta_id)
-          )
-          const respondioSinExp = Array.from(videosUnicosMap.values()).some(
-            v => v.entrevista_id === entrevistaId && sinExp.some(p => p.id === v.pregunta_id)
-          )
-
-          if (respondioConExp) {
-            cantPreguntasRequeridas = comunes.length + conExp.length
-          } else if (respondioSinExp) {
-            cantPreguntasRequeridas = comunes.length + sinExp.length
-          } else {
-            cantPreguntasRequeridas = comunes.length + Math.min(conExp.length, sinExp.length)
-          }
-        }
-
-        if (cantRespuestas >= cantPreguntasRequeridas && cantPreguntasRequeridas > 0) {
-          idsCompletados.add(`entrevista:${entrevistaId}`)
-        }
-      })
+      Array.from(videosUnicosMap.values()).forEach(v => idsCompletados.add(`entrevista:${v.entrevista_id}`))
 
       const totalBateria = bateria.length
       const finalCompletados = totalBateria > 0
@@ -1157,512 +448,13 @@ export default function PanelEvaluador() {
     })
   }
 
-  function exportarPeopleAnalyticsCSV() {
-    if (candidatosFiltrados.length === 0) {
-      alert("No hay candidatos disponibles para exportar con los filtros actuales.")
-      return
-    }
-
-    const cleanText = (val: any) => {
-      if (val == null) return "-"
-      const s = String(val).trim()
-      if (s === "" || s === "—" || s === "-" || s === "x") return "-"
-      return s
-    }
-
-    const cleanQuotes = (val: any) => {
-      const s = cleanText(val)
-      if (s === "-") return s
-      return s.replace(/"/g, "'")
-    }
-
-    const toTitleCase = (val: any) => {
-      const s = cleanText(val)
-      if (s === "-") return s
-      return s.split(/\s+/).map(word => {
-        if (!word) return ""
-        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-      }).join(" ")
-    }
-
-    const parseValLocal = (v: any, key?: string) => {
-      let val = 0
-      const k = key?.toLowerCase().trim() || ''
-      
-      if (typeof v === 'object' && v !== null) {
-        if ('correctas' in v && 'total' in v) {
-          val = (Number(v.correctas) / (Number(v.total) || 1)) * 5
-        } else {
-          val = Number(v.correctas || v.score || v.promedio || 0)
-        }
-      } else if (typeof v === 'string') {
-        const s = v.toLowerCase().trim()
-        if (s === 'alto') val = 5
-        else if (s === 'medio') val = 3
-        else if (s === 'bajo') val = 1.5
-        else val = Number(v) || 0
-      } else {
-        val = Number(v) || 0
-      }
-
-      if (val > 5) {
-        if (val <= 25) val = (val / 25) * 5
-        else if (val <= 100) val = (val / 100) * 5
-        else val = 5
-      }
-      return Math.min(5, Math.max(0, val))
-    }
-
-    const headers = [
-      "Nombre",
-      "Apellido",
-      "Email",
-      "Documento",
-      "Edad",
-      "Sexo",
-      "Formacion",
-      "Profesion",
-      "Proceso",
-      "Cargo",
-      "Avance (Completados/Totales)",
-      "Progreso %",
-      "Match Score (Ajuste) %",
-      "Alertas Proctoring (Fraude)",
-      "Índice de Probidad (Integridad) (1-5)",
-      "Sinceridad Laboral (1-5)",
-      "Perfil de Personalidad (Big Five)",
-      "Tipo de Personalidad (MBTI)",
-      "Aptitud Cognitiva % (Efectividad)",
-      "Competencia: Comunicación %",
-      "Competencia: Negociación %",
-      "Competencia: Tolerancia Presión %",
-      "Riesgo de Agotamiento (Burnout) (1-5)",
-      "Equilibrio Vida-Trabajo (1-5)",
-      "Fecha de Evaluación (Última Actividad)",
-      "Dictamen Final"
-    ]
-
-    const rows = candidatosFiltrados.map(c => {
-      // 1. Calcular alertas de fraude acumuladas
-      let alertasFraude = 0
-      c.sesiones.forEach(s => {
-        const m = s.puntaje_bruto?.metricas_fraude as any
-        if (m) {
-          alertasFraude += (m.tabSwitches || 0) + (m.copyPasteAttempts || 0)
-        }
-      })
-
-      // 2. Extraer rasgos de Big Five y calcular MBTI
-      const sesionBigFive = c.sesiones.find(s => TEST_IDS[s.test_id] === 'bigfive')
-      const bf = (sesionBigFive?.puntaje_bruto || {}) as any
-      
-      let estabilidad = bf.estabilidad != null ? bf.estabilidad : (bf.neuroticismo != null ? 6 - bf.neuroticismo : null)
-      const estabilidadVal = estabilidad != null ? estabilidad.toFixed(1) : "-"
-      const amabilidadVal = bf.amabilidad != null ? bf.amabilidad.toFixed(1) : "-"
-      const extraversionVal = bf.extraversion != null ? bf.extraversion.toFixed(1) : "-"
-      const responsabilidadVal = bf.responsabilidad != null ? bf.responsabilidad.toFixed(1) : "-"
-      const aperturaVal = bf.apertura != null ? bf.apertura.toFixed(1) : "-"
-      
-      let bigFiveConsolidado = "-"
-      if (estabilidad != null || bf.amabilidad != null || bf.extraversion != null || bf.responsabilidad != null || bf.apertura != null) {
-        bigFiveConsolidado = `Est: ${estabilidadVal} | Ama: ${amabilidadVal} | Ext: ${extraversionVal} | Res: ${responsabilidadVal} | Ape: ${aperturaVal}`
-      }
-
-      const mbtiVal = sesionBigFive?.puntaje_bruto ? estimarMBTI(sesionBigFive.puntaje_bruto) : (c.mbtiType || "-")
-
-      // 3. Integridad y Sinceridad Laboral
-      const sesionIntegridad = c.sesiones.find(s => TEST_IDS[s.test_id] === 'integridad')
-      const pi = (sesionIntegridad?.puntaje_bruto || {}) as any
-      const probidadVal = pi.promedio_general != null ? pi.promedio_general.toFixed(1) : "-"
-      const sinceridadVal = pi.honestidad != null ? pi.honestidad.toFixed(1) : "-"
-
-      // 4. Calcular efectividad cognitiva consolidada
-      let correctasCognitivo = 0
-      let totalCognitivo = 0
-      c.sesiones.forEach(s => {
-        const slug = TEST_IDS[s.test_id]
-        if (s.estado === 'finalizado' && (slug === 'icar' || slug === 'numerico' || slug === 'verbal' || slug === 'comercial' || slug === 'atencion-detalle')) {
-          const correctas = s.puntaje_bruto?.correctas || s.puntaje_bruto?.puntaje || 0
-          const total = s.puntaje_bruto?.total || 10
-          correctasCognitivo += Number(correctas)
-          totalCognitivo += Number(total)
-        }
-      })
-      const efectividadCognitiva = totalCognitivo > 0 
-        ? `${Math.round((correctasCognitivo / totalCognitivo) * 100)}%` 
-        : "-"
-
-      // 5. Competencias Específicas (Extracción robusta desde cualquier test conductual)
-      let comunicacion = null
-      let negociacion = null
-      let presion = null
-      
-      c.sesiones.forEach(s => {
-        const pb = s.puntaje_bruto || {}
-        if (pb.comunicacion != null) comunicacion = pb.comunicacion
-        if (pb.negociacion != null) negociacion = pb.negociacion
-        if (pb.tolerancia_frustracion != null) presion = pb.tolerancia_frustracion
-        if (pb.por_factor) {
-          if (pb.por_factor.comunicacion != null) comunicacion = pb.por_factor.comunicacion
-          if (pb.por_factor.negociacion != null) negociacion = pb.por_factor.negociacion
-          if (pb.por_factor.tolerancia_frustracion != null) presion = pb.por_factor.tolerancia_frustracion
-        }
-      })
-      
-      const comunicacionScore = comunicacion != null ? parseValLocal(comunicacion, 'comunicacion') : null
-      const negociacionScore = negociacion != null ? parseValLocal(negociacion, 'negociacion') : null
-      const presionScore = presion != null ? parseValLocal(presion, 'tolerancia_frustracion') : null
-
-      const comunicacionVal = comunicacionScore != null ? `${Math.round(comunicacionScore * 20)}%` : "-"
-      const negociacionVal = negociacionScore != null ? `${Math.round(negociacionScore * 20)}%` : "-"
-      const presionVal = presionScore != null ? `${Math.round(presionScore * 20)}%` : "-"
-
-      // 6. Burnout y Bienestar
-      const sesionBien = c.sesiones.find(s => TEST_IDS[s.test_id] === 'estres-laboral')
-      const bien = (sesionBien?.puntaje_bruto || {}) as any
-      const burnoutVal = bien.burnout != null ? bien.burnout.toFixed(1) : "-"
-      const equilibrioVal = bien.equilibrio != null ? bien.equilibrio.toFixed(1) : "-"
-
-      // 7. Última Actividad (Fecha)
-      let ultimaFechaVal = "-"
-      let maxTime = 0
-      c.sesiones.forEach(s => {
-        const dateStr = s.finalizada_en || s.created_at
-        if (dateStr) {
-          const t = new Date(dateStr).getTime()
-          if (t > maxTime) {
-            maxTime = t
-            ultimaFechaVal = new Date(dateStr).toLocaleDateString()
-          }
-        }
-      })
-
-      const progresoPorcentaje = c.progreso 
-        ? Math.round((c.progreso.completados / c.progreso.total) * 100)
-        : 0
-
-      const dictamenLabels: Record<string, string> = {
-        'recomendado': 'Recomendado',
-        'con_reservas': 'Recomendado con Reservas',
-        'no_recomendado': 'No Recomendado'
-      }
-      const dictamenVal = c.recomendacion ? (dictamenLabels[c.recomendacion.toLowerCase()] || c.recomendacion) : "-"
-
-      return [
-        toTitleCase(c.nombre),
-        toTitleCase(c.apellido),
-        cleanText(c.email).toLowerCase(),
-        cleanText(c.documento),
-        cleanText(c.edad),
-        cleanText(c.sexo),
-        cleanQuotes(c.formacion),
-        cleanQuotes(c.profesion),
-        cleanQuotes(c.proceso_nombre),
-        cleanQuotes(c.proceso_cargo),
-        `${c.progreso?.completados || 0}/${c.progreso?.total || 0}`,
-        `${progresoPorcentaje}%`,
-        c.matchScore != null ? `${c.matchScore}%` : "-",
-        alertasFraude,
-        probidadVal,
-        sinceridadVal,
-        bigFiveConsolidado,
-        mbtiVal,
-        efectividadCognitiva,
-        comunicacionVal,
-        negociacionVal,
-        presionVal,
-        burnoutVal,
-        equilibrioVal,
-        ultimaFechaVal,
-        dictamenVal
-      ]
-    })
-
-    // Construir el CSV
-    const csvContent = [
-      headers.join(";"),
-      ...rows.map(row => row.map(val => {
-        const cleanVal = String(val).replace(/;/g, ",").replace(/\r?\n|\r/g, " ")
-        return `"${cleanVal}"`
-      }).join(";"))
-    ].join("\n")
-
-    // Descarga del archivo con UTF-8 BOM
-    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement("a")
-    const url = URL.createObjectURL(blob)
-    link.setAttribute("href", url)
-    link.setAttribute("download", `Reporte_People_Analytics_${new Date().toISOString().split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
-  function exportarReporteMacroCSV() {
-    if (candidatosFiltrados.length === 0) {
-      alert("No hay procesos ni candidatos disponibles para exportar con los filtros actuales.")
-      return
-    }
-
-    const cleanText = (val: any) => {
-      if (val == null) return "-"
-      const s = String(val).trim()
-      if (s === "" || s === "—" || s === "-" || s === "x") return "-"
-      return s
-    }
-
-    const cleanQuotes = (val: any) => {
-      const s = cleanText(val)
-      if (s === "-") return s
-      return s.replace(/"/g, "'")
-    }
-
-    const parseValLocal = (v: any, key?: string) => {
-      let val = 0
-      const k = key?.toLowerCase().trim() || ''
-      
-      if (typeof v === 'object' && v !== null) {
-        if ('correctas' in v && 'total' in v) {
-          val = (Number(v.correctas) / (Number(v.total) || 1)) * 5
-        } else {
-          val = Number(v.correctas || v.score || v.promedio || 0)
-        }
-      } else if (typeof v === 'string') {
-        const s = v.toLowerCase().trim()
-        if (s === 'alto') val = 5
-        else if (s === 'medio') val = 3
-        else if (s === 'bajo') val = 1.5
-        else val = Number(v) || 0
-      } else {
-        val = Number(v) || 0
-      }
-
-      if (val > 5) {
-        if (val <= 25) val = (val / 25) * 5
-        else if (val <= 100) val = (val / 100) * 5
-        else val = 5
-      }
-      return Math.min(5, Math.max(0, val))
-    }
-
-    const headers = [
-      "Proceso",
-      "Cargo",
-      "Total Inscritos",
-      "Tasa de Finalización %",
-      "Match Score (Ajuste) Promedio",
-      "Recomendados %",
-      "Recomendados con Reservas %",
-      "No Recomendados %",
-      "Alertas Proctoring Totales",
-      "Promedio Alertas por Candidato",
-      "Candidatos con Cero Alertas %",
-      "Candidatos con Alertas Críticas % (>15 Alertas)",
-      "Tiempo Medio de Resolución",
-      "Deserción por Examen",
-      "Burnout Promedio (1-5)",
-      "Equilibrio Vida-Trabajo Promedio (1-5)"
-    ]
-
-    // Agrupar candidatos por proceso_id
-    const procesosMap = new Map<string, any[]>()
-    candidatosFiltrados.forEach(c => {
-      const pId = c.proceso_id || 'sin-proceso'
-      if (!procesosMap.has(pId)) {
-        procesosMap.set(pId, [])
-      }
-      procesosMap.get(pId)!.push(c)
-    })
-
-    const rows: any[] = []
-    procesosMap.forEach((cands, pId) => {
-      const primerCand = cands[0]
-      const procesoNombre = primerCand.proceso_nombre || "Proceso de Selección"
-      const procesoCargo = primerCand.proceso_cargo || "S/C"
-      const totalInscritos = cands.length
-
-      // 1. Tasa de Finalización
-      let completadosCount = 0
-      cands.forEach(c => {
-        const completados = c.progreso?.completados || 0
-        const total = c.progreso?.total || 1
-        if (completados >= total && total > 0) {
-          completadosCount++
-        }
-      })
-      const tasaFinalizacion = Math.round((completadosCount / totalInscritos) * 100)
-
-      // 2. Match Score Promedio
-      let sumMatch = 0
-      let countMatch = 0
-      cands.forEach(c => {
-        if (c.matchScore != null) {
-          sumMatch += c.matchScore
-          countMatch++
-        }
-      })
-      const matchPromedio = countMatch > 0 ? `${Math.round(sumMatch / countMatch)}%` : "-"
-
-      // 3. Distribución de Dictamen
-      let recomendadoCount = 0
-      let reservasCount = 0
-      let noRecomendadoCount = 0
-      cands.forEach(c => {
-        const rec = c.recomendacion?.toLowerCase()
-        if (rec === 'recomendado') recomendadoCount++
-        else if (rec === 'con_reservas') reservasCount++
-        else if (rec === 'no_reconocido' || rec === 'no_recomendado') noRecomendadoCount++
-      })
-      const pctRecomendado = Math.round((recomendadoCount / totalInscritos) * 100)
-      const pctReservas = Math.round((reservasCount / totalInscritos) * 100)
-      const pctNoRecomendado = Math.round((noRecomendadoCount / totalInscritos) * 100)
-
-      // 4. Proctoring / Alertas
-      let totalAlertas = 0
-      let ceroAlertasCount = 0
-      let criticasCount = 0
-      cands.forEach(c => {
-        let candAlertas = 0
-        c.sesiones.forEach(s => {
-          const m = s.puntaje_bruto?.metricas_fraude as any
-          if (m) {
-            candAlertas += (m.tabSwitches || 0) + (m.copyPasteAttempts || 0)
-          }
-        })
-        totalAlertas += candAlertas
-        if (candAlertas === 0) ceroAlertasCount++
-        if (candAlertas > 15) criticasCount++
-      })
-      const promedioAlertas = (totalAlertas / totalInscritos).toFixed(1)
-      const pctCeroAlertas = Math.round((ceroAlertasCount / totalInscritos) * 100)
-      const pctCriticasAlertas = Math.round((criticasCount / totalInscritos) * 100)
-
-      // 5. Tiempos y Deserción por Test
-      let sumMinutos = 0
-      let countMinutos = 0
-      let abandonosMap = new Map<string, number>()
-      let totalTestSessionCount = new Map<string, number>()
-
-      cands.forEach(c => {
-        c.sesiones.forEach(s => {
-          const slug = TEST_IDS[s.test_id] || s.test_id
-          if (slug) {
-            if (!totalTestSessionCount.has(slug)) totalTestSessionCount.set(slug, 0)
-            totalTestSessionCount.set(slug, totalTestSessionCount.get(slug)! + 1)
-
-            if (s.estado === 'iniciado') {
-              if (!abandonosMap.has(slug)) abandonosMap.set(slug, 0)
-              abandonosMap.set(slug, abandonosMap.get(slug)! + 1)
-            }
-          }
-
-          if (s.estado === 'finalizado' && s.iniciada_en && s.finalizada_en) {
-            const diff = new Date(s.finalizada_en).getTime() - new Date(s.iniciada_en).getTime()
-            const mins = diff / (1000 * 60)
-            if (mins > 0 && mins < 180) {
-              sumMinutos += mins
-              countMinutos++
-            }
-          }
-        })
-      })
-      const tiempoMedio = countMinutos > 0 ? `${Math.round(sumMinutos / countMinutos)}m` : "-"
-
-      let desercionesArr: string[] = []
-      abandonosMap.forEach((count, slug) => {
-        const total = totalTestSessionCount.get(slug) || 1
-        const pct = Math.round((count / total) * 100)
-        if (pct > 0) desercionesArr.push(`${slug}: ${pct}%`)
-      })
-      const deserciónPorTest = desercionesArr.length > 0 ? desercionesArr.join(" | ") : "Ninguna"
-
-      // 6. Bienestar
-      let sumBurnout = 0
-      let countBurnout = 0
-      let sumEquilibrio = 0
-      let countEquilibrio = 0
-      cands.forEach(c => {
-        const sesionBien = c.sesiones.find(s => TEST_IDS[s.test_id] === 'estres-laboral')
-        const bien = (sesionBien?.puntaje_bruto || {}) as any
-        if (bien.burnout != null) {
-          sumBurnout += bien.burnout
-          countBurnout++
-        }
-        if (bien.equilibrio != null) {
-          sumEquilibrio += bien.equilibrio
-          countEquilibrio++
-        }
-      })
-      const promedioBurnout = countBurnout > 0 ? (sumBurnout / countBurnout).toFixed(1) : "-"
-      const promedioEquilibrio = countEquilibrio > 0 ? (sumEquilibrio / countEquilibrio).toFixed(1) : "-"
-
-      rows.push([
-        cleanQuotes(procesoNombre),
-        cleanQuotes(procesoCargo),
-        totalInscritos,
-        `${tasaFinalizacion}%`,
-        matchPromedio,
-        `${pctRecomendado}%`,
-        `${pctReservas}%`,
-        `${pctNoRecomendado}%`,
-        totalAlertas,
-        promedioAlertas,
-        `${pctCeroAlertas}%`,
-        `${pctCriticasAlertas}%`,
-        tiempoMedio,
-        deserciónPorTest,
-        promedioBurnout,
-        promedioEquilibrio
-      ])
-    })
-
-    // Construir el CSV
-    const csvContent = [
-      headers.join(";"),
-      ...rows.map(row => row.map(val => {
-        const cleanVal = String(val).replace(/;/g, ",").replace(/\r?\n|\r/g, " ")
-        return `"${cleanVal}"`
-      }).join(";"))
-    ].join("\n")
-
-    // Descarga
-    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement("a")
-    const url = URL.createObjectURL(blob)
-    link.setAttribute("href", url)
-    link.setAttribute("download", `Reporte_Macro_Procesos_${new Date().toISOString().split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
-  function abrirRecordatorioOutlook(c: CandidatoAgrupado, link: string, nombreProceso: string) {
-    const subject = encodeURIComponent(`Recordatorio: Evaluaciones pendientes para ${nombreProceso}`)
-    const body = encodeURIComponent(
-      `Hola ${c.nombre},\n\n` +
-      `Te contactamos desde el portal de selección para el cargo de ${nombreProceso}.\n\n` +
-      `Vemos que todavía tienes ${c.progreso.tests_pendientes.length} evaluaciones pendientes por completar. ` +
-      `Para que podamos continuar con tu postulación, es importante que finalices todos los ejercicios.\n\n` +
-      `Puedes continuar con tus evaluaciones ingresando al siguiente enlace:\n${link}\n\n` +
-      `Quedamos a las órdenes.\n\n` +
-      `Saludos,\n` +
-      `Equipo de Selección - República Microfinanzas`
-    )
-    window.location.href = `mailto:${c.email}?subject=${subject}&body=${body}`
-  }
-
   async function enviarRecordatorio(c: CandidatoAgrupado) {
     if (!c.progreso || c.progreso.completados === c.progreso.total) return
+    if (!c.proceso_id) return
     
     setEnviandoRecordatorio(c.id)
     
-    const link = c.proceso_id 
-      ? `${getBaseUrl()}/evaluacion?candidato=${c.id}&proceso=${c.proceso_id}`
-      : `${getBaseUrl()}/evaluacion?candidato=${c.id}`
-
-    const nombreProceso = c.proceso_cargo || c.proceso_nombre || 'Evaluación Psicotécnica Independiente'
+    const link = `${getBaseUrl()}/evaluacion?candidato=${c.id}&proceso=${c.proceso_id}`
 
     try {
       const res = await fetch('/api/recordatorio', {
@@ -1671,7 +463,7 @@ export default function PanelEvaluador() {
         body: JSON.stringify({
           email: c.email,
           nombre: c.nombre,
-          proceso: nombreProceso,
+          proceso: c.proceso_cargo || c.proceso_nombre,
           link: link,
           pendientes: c.progreso.tests_pendientes.length
         })
@@ -1682,24 +474,12 @@ export default function PanelEvaluador() {
       if (res.ok) {
         alert(`Recordatorio enviado con éxito a ${c.nombre}.`)
       } else {
-        console.error('Error enviando recordatorio por servidor:', data.error)
-        const confirmarOutlook = confirm(
-          `El servidor de correos no pudo enviar el email directo (${data.error || 'Timeout'}).\n\n` +
-          `¿Deseas enviar el recordatorio abriendo tu Outlook local ahora mismo?`
-        )
-        if (confirmarOutlook) {
-          abrirRecordatorioOutlook(c, link, nombreProceso)
-        }
+        alert('Hubo un error al enviar el correo. Verifica tu configuración de Resend.')
+        console.error('Error enviando recordatorio:', data.error)
       }
     } catch (error) {
       console.error(error)
-      const confirmarOutlook = confirm(
-        `Hubo un error de conexión con el servidor de correo corporativo.\n\n` +
-        `¿Deseas abrir tu Outlook local para enviar el recordatorio?`
-      )
-      if (confirmarOutlook) {
-        abrirRecordatorioOutlook(c, link, nombreProceso)
-      }
+      alert('Error de conexión al intentar enviar el recordatorio.')
     } finally {
       setEnviandoRecordatorio(null)
     }
@@ -1712,15 +492,8 @@ export default function PanelEvaluador() {
     }
 
     // 2. Filtro por búsqueda de texto
-    const nom = c.nombre || ''
-    const ape = c.apellido || ''
-    const mail = c.email || ''
-    const proc = c.proceso_nombre || ''
-    const searchStr = `${nom} ${ape} ${mail} ${proc}`.toLowerCase()
-    const query = (filtro || '').toLowerCase()
-    return searchStr.includes(query)
-  }).sort((a, b) => {
-    return obtenerTimestamp(b.ultima_fecha) - obtenerTimestamp(a.ultima_fecha)
+    const searchStr = `${c.nombre} ${c.apellido} ${c.email} ${c.proceso_nombre}`.toLowerCase()
+    return searchStr.includes(filtro.toLowerCase())
   })
 
   if (cargando) {
@@ -1778,17 +551,6 @@ export default function PanelEvaluador() {
             HISTORIAL
           </button>
           <button
-            onClick={() => setTab('diagnostico')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              tab === 'diagnostico' 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <Activity className="w-4 h-4" />
-            DIAGNÓSTICO
-          </button>
-          <button
             onClick={() => setTab('gestion')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               tab === 'gestion' 
@@ -1806,8 +568,6 @@ export default function PanelEvaluador() {
         <Dashboard />
       ) : tab === 'gestion' ? (
         <GestionProcesos />
-      ) : tab === 'diagnostico' ? (
-        <DiagnosticoRealtime />
       ) : tab === 'historial' ? (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-220px)]">
           <div className="flex justify-between items-center mb-6">
@@ -1831,7 +591,7 @@ export default function PanelEvaluador() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {candidatosFiltrados
-                  .sort((a, b) => obtenerTimestamp(b.ultima_fecha) - obtenerTimestamp(a.ultima_fecha))
+                  .sort((a, b) => new Date(b.ultima_fecha).getTime() - new Date(a.ultima_fecha).getTime())
                   .map((c) => {
                   const uniqueTestIds = Array.from(new Set(c.sesiones.map(s => s.test_id)))
                   const testsCompletados = uniqueTestIds.map(tid => TEST_NAMES[tid] || tid)
@@ -1912,8 +672,8 @@ export default function PanelEvaluador() {
         <>
 
       {/* BARRA DE HERRAMIENTAS: BUSCADOR + FILTRO POR PROCESO */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-3 mb-6 shadow-sm flex flex-col md:flex-row md:flex-wrap gap-4 items-center">
-        <div className="relative flex-1 w-full md:min-w-[280px]">
+      <div className="bg-white border border-slate-200 rounded-2xl p-3 mb-6 shadow-sm flex flex-col md:flex-row gap-4 items-center">
+        <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
@@ -1928,10 +688,7 @@ export default function PanelEvaluador() {
           <Settings2 className="w-4 h-4 text-slate-400" />
           <select
             value={procesoSeleccionadoId}
-            onChange={(e) => {
-              setProcesoSeleccionadoId(e.target.value)
-              setSeleccionados([]) // Limpiar seleccionados al cambiar filtro
-            }}
+            onChange={(e) => setProcesoSeleccionadoId(e.target.value)}
             className="flex-1 md:w-64 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium text-slate-700"
           >
             <option value="todos">Todos los procesos</option>
@@ -1942,122 +699,7 @@ export default function PanelEvaluador() {
             ))}
           </select>
         </div>
-
-        <button
-          onClick={() => {
-            const todosIds = candidatosFiltrados.map(c => c.id)
-            const todosMarcados = todosIds.length === seleccionados.length
-            setSeleccionados(todosMarcados ? [] : todosIds)
-          }}
-          className="px-4 py-2 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-600 bg-slate-50/50 hover:bg-slate-50 transition-all shrink-0 w-full md:w-auto"
-        >
-          {candidatosFiltrados.map(c => c.id).length === seleccionados.length ? 'Deseleccionar Todos' : 'Seleccionar Todos'}
-        </button>
-
-        <button
-          onClick={exportarPeopleAnalyticsCSV}
-          className="px-4 py-2 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-600 bg-slate-50/50 hover:bg-slate-50 transition-all shrink-0 w-full md:w-auto flex items-center justify-center gap-1.5"
-        >
-          <Download className="w-3.5 h-3.5 text-indigo-500" />
-          Exportar People Analytics
-        </button>
-
-        <button
-          onClick={exportarReporteMacroCSV}
-          className="px-4 py-2 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-600 bg-slate-50/50 hover:bg-slate-50 transition-all shrink-0 w-full md:w-auto flex items-center justify-center gap-1.5"
-        >
-          <Download className="w-3.5 h-3.5 text-emerald-500" />
-          Exportar Reporte Macro (BI)
-        </button>
-
-        {/* DROPDOWN SELECTOR DE CANDIDATOS */}
-        <div className="relative w-full md:w-auto shrink-0">
-          <button
-            onClick={() => setDropdownAbierto(!dropdownAbierto)}
-            className="px-4 py-2 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-600 bg-slate-50/50 hover:bg-slate-50 transition-all flex items-center justify-between gap-2 w-full md:w-auto"
-          >
-            <span>Buscar evaluados ({seleccionados.length})</span>
-            <span className="text-[10px] text-slate-400">▼</span>
-          </button>
-
-          {dropdownAbierto && (
-            <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-3">
-              <div className="relative mb-3">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Filtrar por nombre..."
-                  value={busquedaDropdown}
-                  onChange={(e) => setBusquedaDropdown(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
-
-              <div className="max-h-60 overflow-y-auto space-y-1 custom-scrollbar-visible pr-1">
-                {candidatosFiltrados
-                  .filter(c => `${c.nombre} ${c.apellido}`.toLowerCase().includes(busquedaDropdown.toLowerCase()))
-                  .map(c => {
-                    const isChecked = seleccionados.includes(c.id)
-                    return (
-                      <label
-                        key={c.id}
-                        className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors text-xs font-medium text-slate-700"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => {
-                            setSeleccionados(prev => 
-                              prev.includes(c.id) ? prev.filter(id => id !== c.id) : [...prev, c.id]
-                            )
-                          }}
-                          className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                        />
-                        <span className="truncate">{c.nombre} {c.apellido}</span>
-                      </label>
-                    )
-                  })}
-                {candidatosFiltrados.filter(c => `${c.nombre} ${c.apellido}`.toLowerCase().includes(busquedaDropdown.toLowerCase())).length === 0 && (
-                  <div className="text-center py-4 text-xs text-slate-400 italic">
-                    Sin coincidencias
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
       </div>
-
-      {/* CHIPS DE FILTROS ACTIVOS */}
-      {(filtro || procesoSeleccionadoId !== 'todos' || seleccionados.length > 0) && (
-        <div className="flex items-center gap-2 flex-wrap mb-4 px-1 animate-in fade-in">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Filtros Activos:</span>
-          {filtro && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
-              Búsqueda: "{filtro}"
-              <button onClick={() => setFiltro('')} className="hover:text-indigo-900 font-bold ml-1">✕</button>
-            </span>
-          )}
-          {procesoSeleccionadoId !== 'todos' && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
-              Proceso: {procesos.find(p => p.id === procesoSeleccionadoId)?.nombre || 'Filtrado'}
-              <button onClick={() => setProcesoSeleccionadoId('todos')} className="hover:text-indigo-900 font-bold ml-1">✕</button>
-            </span>
-          )}
-          {seleccionados.length > 0 && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
-              Marcados: {seleccionados.length} evaluados
-              <button onClick={() => setSeleccionados([])} className="hover:text-indigo-900 font-bold ml-1">✕</button>
-            </span>
-          )}
-          <button 
-            onClick={() => { setFiltro(''); setProcesoSeleccionadoId('todos'); setSeleccionados([]); }} 
-            className="text-xs font-semibold text-slate-500 hover:text-slate-800 underline ml-2"
-          >
-            Limpiar todo
-          </button>
-        </div>
-      )}
 
       {candidatos.length === 0 ? (
         <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl shadow-sm">
@@ -2072,37 +714,18 @@ export default function PanelEvaluador() {
                 key={c.id}
                 onClick={async () => {
                   setAgrupadoSeleccionado(c)
-                  setSesionSeleccionada(c.sesiones[0])
+                  const sInicial = c.sesiones[0]
+                  setSesionSeleccionada(sInicial)
+                  if (sInicial) cargarAuditoriaSesion(sInicial)
                   
                   const { data: vids } = await supabase
                     .from('respuestas_video')
-                    .select('*')
+                    .select('*, preguntas_video(pregunta)')
                     .eq('candidato_id', c.id)
-                    .eq('estado', 'completado')
                     .order('grabada_en', { ascending: true })
                   
-                  let mappedVids: any[] = []
-                  if (vids && vids.length > 0) {
-                    const preguntaIds = vids.map(v => v.pregunta_id).filter(Boolean)
-                    let preguntas: any[] = []
-                    if (preguntaIds.length > 0) {
-                      const { data: pData } = await supabase
-                        .from('preguntas_video')
-                        .select('id, pregunta, orden')
-                        .in('id', preguntaIds)
-                      if (pData) preguntas = pData
-                    }
-                    mappedVids = vids.map(v => {
-                      const q = preguntas.find(p => p.id === v.pregunta_id)
-                      return {
-                        ...v,
-                        preguntas_video: q ? { pregunta: q.pregunta, orden: q.orden } : null
-                      }
-                    })
-                  }
-                  
                   const vMap = new Map<string, any>()
-                  mappedVids.forEach(v => {
+                  vids?.forEach(v => {
                     const k = `${v.entrevista_id}:${v.pregunta_id}`
                     const ex = vMap.get(k)
                     if (!ex || new Date(v.grabada_en) > new Date(ex.grabada_en)) {
@@ -2110,21 +733,7 @@ export default function PanelEvaluador() {
                     }
                   })
                   
-                  const sortedVids = Array.from(vMap.values()).sort((a, b) => {
-                    const ordenA = a.preguntas_video?.orden ?? 0
-                    const ordenB = b.preguntas_video?.orden ?? 0
-                    return ordenA - ordenB
-                  })
-                  setVideosCandidato(sortedVids)
-
-                  // Cargar informe psicométrico para entrevista integrada
-                  const { data: infData } = await supabase
-                    .from('informes_psicometricos')
-                    .select('contenido')
-                    .eq('candidato_id', c.id)
-                    .maybeSingle()
-                  
-                  setInformeCandidato(infData?.contenido || null)
+                  setVideosCandidato(Array.from(vMap.values()))
                 }}
                 className={`p-4 rounded-xl border bg-white cursor-pointer transition-all duration-200 hover:shadow-md ${
                   agrupadoSeleccionado?.id === c.id 
@@ -2133,18 +742,6 @@ export default function PanelEvaluador() {
                 }`}
               >
                 <div className="flex gap-4 items-center w-full overflow-hidden">
-                  {/* CHECKBOX DE SELECCION MULTIPLE */}
-                  <input
-                    type="checkbox"
-                    checked={seleccionados.includes(c.id)}
-                    onChange={(e) => {
-                      e.stopPropagation()
-                      setSeleccionados(prev => 
-                        prev.includes(c.id) ? prev.filter(id => id !== c.id) : [...prev, c.id]
-                      )
-                    }}
-                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
-                  />
                   {/* INDICADOR DE ESTADO IZQUIERDO */}
                   <div className="relative shrink-0">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border-2 ${
@@ -2205,45 +802,19 @@ export default function PanelEvaluador() {
             `}</style>
             {agrupadoSeleccionado ? (
               <div className="bg-white border border-slate-200 rounded-2xl shadow-xl flex flex-col h-full overflow-hidden border-indigo-100">
-                {/* CABEZAL FIJO CON PESTAÑAS */}
-                <div className="p-6 border-b border-slate-100 flex flex-col gap-4 bg-white z-20 shrink-0">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h2 className="text-xl font-bold text-slate-900">{agrupadoSeleccionado.nombre} {agrupadoSeleccionado.apellido}</h2>
-                      <p className="text-sm text-slate-500">{agrupadoSeleccionado.email}</p>
-                    </div>
-                    <button onClick={() => { setAgrupadoSeleccionado(null); setInformeCandidato(null); }} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
-                      <X className="w-5 h-5" />
-                    </button>
+                {/* CABEZAL FIJO */}
+                <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-white z-20 shrink-0">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">{agrupadoSeleccionado.nombre} {agrupadoSeleccionado.apellido}</h2>
+                    <p className="text-sm text-slate-500">{agrupadoSeleccionado.email}</p>
                   </div>
-                  <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/80 shadow-inner">
-                    <button
-                      onClick={() => setSubtabDrawer('diagnostico')}
-                      className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                        subtabDrawer === 'diagnostico' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      <BarChart2 className="w-3.5 h-3.5" />
-                      Resultados y Diagnóstico
-                    </button>
-                    <button
-                      onClick={() => setSubtabDrawer('auditoria')}
-                      className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                        subtabDrawer === 'auditoria' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      Auditoría de Respuestas
-                    </button>
-                  </div>
+                  <button onClick={() => setAgrupadoSeleccionado(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
 
                 {/* CONTENIDO DESPLAZABLE */}
                 <div className="flex-1 overflow-y-scroll p-6 custom-scrollbar-visible">
-                  {subtabDrawer === 'auditoria' ? (
-                    renderAuditoriaRespuestas(sesionSeleccionada, filtroAuditoria, setFiltroAuditoria)
-                  ) : (
-                  <div>
                   {/* RESUMEN EJECUTIVO IA */}
                   <div className="mb-8 p-5 bg-gradient-to-br from-indigo-50/50 to-white rounded-2xl border border-indigo-100 shadow-sm relative">
                     <div className="flex justify-between items-center mb-3">
@@ -2268,76 +839,82 @@ export default function PanelEvaluador() {
                     )}
                   </div>
 
-                  {/* ANÁLISIS DE ENTREVISTA INTEGRADA (SI EXISTE) */}
-                  {informeCandidato?.analisisEntrevista && (
-                    <div className="mb-8 p-5 bg-gradient-to-br from-teal-50/40 to-white rounded-2xl border border-teal-100/70 shadow-sm">
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="w-1.5 h-1.5 bg-teal-600 rounded-full animate-pulse" />
-                        <h3 className="text-[10px] font-bold text-teal-900 uppercase tracking-widest">Entrevista Conductual Integrada</h3>
-                      </div>
-                      
+                  <div className="mb-6">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tests realizados</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(() => {
+                        const vtos = new Set()
+                        return agrupadoSeleccionado.sesiones
+                          .filter(s => {
+                            if (vtos.has(s.test_id)) return false
+                            vtos.add(s.test_id)
+                            return true
+                          })
+                          .map(s => {
+                            const pb = s.puntaje_bruto
+                            let label = (s as any).test_id ? TEST_NAMES[(s as any).test_id] : null
+                            if (!label) {
+                              if (esBigFive(pb)) label = 'Psicográfico'
+                              else if (esCognitivo(pb)) label = 'Cognitivo'
+                              else label = 'Evaluación'
+                            }
+                            const isActive = sesionSeleccionada?.id === s.id
+                            return (
+                              <button 
+                                key={s.id} 
+                                onClick={() => {
+                                  setSesionSeleccionada(s)
+                                  cargarAuditoriaSesion(s)
+                                }} 
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                                  isActive 
+                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' 
+                                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                                }`}
+                              >
+                                {label}
+                                {agrupadoSeleccionado.sesiones.filter(x => x.test_id === s.test_id).length > 1 && (
+                                  <span className="ml-1 opacity-50 text-[10px]">(Reciente)</span>
+                                )}
+                              </button>
+                            )
+                          })
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* VIDEO ENTREVISTAS */}
+                  {videosCandidato.length > 0 && (
+                    <div className="mb-8">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <Video className="w-3 h-3" /> Video Entrevistas
+                      </p>
                       <div className="space-y-4">
-                        <div>
-                          <p className="text-[9px] font-bold text-teal-700 uppercase tracking-wide">1. Trayectoria y Motivación</p>
-                          <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{informeCandidato.analisisEntrevista.trayectoriaMotivacion}</p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] font-bold text-teal-700 uppercase tracking-wide">2. Estilo de Trabajo y Autoridad</p>
-                          <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{informeCandidato.analisisEntrevista.estiloTrabajoAutoridad}</p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] font-bold text-teal-700 uppercase tracking-wide">3. Gestión de Conflictos</p>
-                          <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{informeCandidato.analisisEntrevista.gestionConflictos}</p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] font-bold text-teal-700 uppercase tracking-wide">4. Resiliencia y Afrontamiento</p>
-                          <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{informeCandidato.analisisEntrevista.resilienciaFrustracion}</p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] font-bold text-teal-700 uppercase tracking-wide">5. Autoconcepto y Metas</p>
-                          <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{informeCandidato.analisisEntrevista.autoconceptoMetas}</p>
-                        </div>
+                        {videosCandidato.map((v, i) => (
+                          <div key={i} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                            <h5 className="text-sm font-bold text-slate-800 mb-3">Pregunta {i + 1}: {v.preguntas_video?.pregunta}</h5>
+                            <video src={v.url_video} controls className="w-full aspect-video rounded-xl shadow-sm bg-black mb-3" />
+                            {v.transcripcion && <div className="bg-white p-3 rounded-xl border border-slate-200 text-[11px] text-slate-600 italic">"{v.transcripcion}"</div>}
+                            {v.analisis_ia && (
+                               <div className="mt-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                                 <div className="flex items-center gap-2 mb-2">
+                                   <Sparkles className="w-3 h-3 text-indigo-600" />
+                                   <span className="text-[10px] font-bold text-indigo-800 uppercase tracking-widest">Análisis de Actitud e IA</span>
+                                 </div>
+                                 <p className="text-[11px] text-slate-600 leading-relaxed">
+                                   {typeof v.analisis_ia === 'string' ? v.analisis_ia : (v.analisis_ia.actitud || v.analisis_ia.resumen || v.analisis_ia.analisis)}
+                                 </p>
+                               </div>
+                             )}
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
 
-                  <div className="mb-6">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Historial de Evaluaciones (Test por Test)</p>
-                    <div className="flex flex-wrap gap-2">
-                      {agrupadoSeleccionado.sesiones
-                        .sort((a, b) => new Date(b.finalizada_en || 0).getTime() - new Date(a.finalizada_en || 0).getTime())
-                        .map((s, idx) => {
-                          const pb = s.puntaje_bruto
-                          let label = (s as any).test_id ? TEST_NAMES[(s as any).test_id] : null
-                          if (!label) {
-                            if (esBigFive(pb)) label = 'Psicográfico'
-                            else if (esCognitivo(pb)) label = 'Cognitivo'
-                            else label = 'Evaluación'
-                          }
-                          const isActive = sesionSeleccionada?.id === s.id
-                          const fecha = s.finalizada_en ? new Date(s.finalizada_en).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) : 'S/F'
-                          
-                          return (
-                            <button 
-                              key={s.id} 
-                              onClick={() => setSesionSeleccionada(s)} 
-                              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all border flex flex-col items-start gap-1 min-w-[110px] max-w-[220px] ${
-                                isActive 
-                                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-md scale-[1.02]' 
-                                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
-                              }`}
-                            >
-                              <span className="font-semibold text-[11px] leading-tight text-left break-words w-full">{label}</span>
-                              <span className={`text-[9px] font-medium ${isActive ? 'text-indigo-200' : 'text-slate-400'}`}>{fecha}</span>
-                            </button>
-                          )
-                        })}
-                    </div>
-                  </div>
-
                   {/* RESULTADOS DETALLADOS DEL TEST */}
                   {sesionSeleccionada && (
-                    <div id="seccion-resultados-test" className="my-6 p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm animate-in fade-in duration-500">
+                    <div className="mt-8 pt-8 border-t border-slate-100 animate-in fade-in duration-500">
                       <div className="flex items-center justify-between mb-6">
                         <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Resultados del Test</h4>
                         <a href={`/informe?candidato=${agrupadoSeleccionado.id}`} target="_blank" className="text-[10px] font-bold text-indigo-600 hover:underline">Ver Informe Completo →</a>
@@ -2346,19 +923,6 @@ export default function PanelEvaluador() {
                       {sesionSeleccionada.puntaje_bruto && (() => {
                         const pb = sesionSeleccionada.puntaje_bruto as any
                         const metricas = pb.metricas_fraude
-                        if (sesionSeleccionada.test_id === 'f7a8b9c0-d1e2-4356-abcd-888888888888') {
-                          return renderFrasesIncompletas(sesionSeleccionada, analizarFrasesConIA)
-                        }
-                        const tid = (sesionSeleccionada.test_id || '').toLowerCase()
-                        const isRoleplay = (TEST_IDS[tid] || '').includes('roleplay') ||
-                                           Boolean(pb.transcripcion) ||
-                                           Boolean(pb.retroalimentacion) ||
-                                           tid === 'd8e9f0a1-b2c3-4567-defa-888888888888' ||
-                                           tid === 'd8e9f0a1-b2c3-4567-defa-777777777777'
-
-                        if (isRoleplay) {
-                          return renderRoleplay(sesionSeleccionada)
-                        }
                         return (
                           <div className="space-y-6">
                             {/* MÉTRICAS DE FRAUDE */}
@@ -2375,241 +939,46 @@ export default function PanelEvaluador() {
                               </div>
                             )}
 
-                            {/* GRÁFICOS Y RESULTADOS ESPECÍFICOS */}
+                            {/* GRÁFICOS BIG FIVE */}
                             {esBigFive(pb) ? valoresNumericos(pb).map(([factor, valor]) => (
-                              <div key={factor} className="space-y-1.5 p-3 bg-white border border-slate-100 rounded-2xl shadow-sm">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-xs font-bold text-slate-700">{formatearNombreFactor(factor)}</span>
-                                  <span className="text-xs font-black text-indigo-600">{valor} / 5</span>
+                              <div key={factor}>
+                                <div className="flex justify-between mb-1">
+                                  <span className="text-xs font-bold text-slate-700">{etiquetas[factor] || factor}</span>
+                                  <span className="text-xs font-bold text-indigo-600">{valor} / 5</span>
                                 </div>
                                 <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                  <div className={`h-full ${colores[factor] || 'bg-indigo-500'} transition-all duration-700`} style={{ width: `${(valor / 5) * 100}%` }} />
+                                  <div className={`h-full ${colores[factor] || 'bg-indigo-500'}`} style={{ width: `${(valor / 5) * 100}%` }} />
                                 </div>
-                                <p className="text-[10px] text-slate-500 leading-relaxed italic">
-                                  {interpretacion(factor, valor)}
-                                </p>
                               </div>
-                            )) : esSJT(pb) ? Object.entries((pb as any).por_factor || {}).map(([factor, info]: any) => {
-                              const valor = Math.round(((info.correctas / info.total) * 5) * 10) / 10
-                              return (
-                                <div key={factor} className="mb-4 last:mb-0">
-                                  <div className="flex justify-between text-xs mb-1">
-                                    <span className="font-semibold text-slate-700">{formatearNombreFactor(factor)}</span>
-                                    <span className="text-slate-500">{valor} / 5</span>
-                                  </div>
-                                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mb-1">
-                                    <div 
-                                      className="h-full bg-amber-500 rounded-full" 
-                                      style={{ width: `${(valor / 5) * 100}%` }}
-                                    />
-                                  </div>
-                                  <p className="text-[10px] text-slate-500 leading-relaxed">
-                                    {interpretacion(factor, valor)}
-                                  </p>
-                                </div>
-                              )
-                            }) : esCognitivo(pb) ? (() => {
-                              const { correctas, total, pct } = datosCognitivos(pb)
-                              const nivel = pct >= 80 ? 'Superior' : pct >= 60 ? 'Promedio' : 'Bajo'
-                              const colorBg = pct >= 80 ? 'bg-emerald-500' : pct >= 60 ? 'bg-amber-500' : 'bg-rose-500'
-                              const colorText = pct >= 80 ? 'text-emerald-600' : pct >= 60 ? 'text-amber-600' : 'text-rose-600'
-                              
-                              const isVerbal = (TEST_IDS[sesionSeleccionada.test_id] || '').includes('verbal') || sesionSeleccionada.test_id?.includes('234567890123')
-                              const isNumerico = (TEST_IDS[sesionSeleccionada.test_id] || '').includes('numerico') || sesionSeleccionada.test_id?.includes('9012')
-                              
-                              return (
-                                <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-3">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-xs font-bold text-slate-700">Efectividad Cognitiva</span>
-                                    <span className={`text-xs font-black ${colorText}`}>{correctas} / {total} ({pct}%)</span>
-                                  </div>
-                                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                                    <div className={`h-full ${colorBg} transition-all duration-1000`} style={{ width: `${pct}%` }} />
-                                  </div>
-                                  <div className="flex items-center gap-2 pt-1">
-                                    <div className={`w-1.5 h-1.5 rounded-full ${colorBg}`} />
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nivel {nivel}</span>
-                                  </div>
-
-                                  {/* DESGLOSE POR SUBTIPO SI EXISTE (EJ: ICAR) */}
-                                  {pb.por_subtipo && (
-                                    <div className="pt-3 border-t border-slate-200/60 space-y-3">
-                                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Dimensiones de la Prueba</span>
-                                      {Object.entries(pb.por_subtipo).map(([subtipo, info]: any) => {
-                                        const valSub = Math.round((info.correctas / (info.total || 1)) * 100)
-                                        const nombreSub = subtipo === 'series' ? 'Series Lógicas' : subtipo === 'matrices' ? 'Matrices de Razonamiento' : subtipo === 'rotacion' ? 'Rotación Espacial' : subtipo
-                                        return (
-                                          <div key={subtipo} className="space-y-1">
-                                            <div className="flex justify-between text-xs">
-                                              <span className="font-semibold text-slate-700">{nombreSub}</span>
-                                              <span className="font-bold text-indigo-600">{info.correctas} / {info.total} ({valSub}%)</span>
-                                            </div>
-                                            <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                              <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${valSub}%` }} />
-                                            </div>
-                                          </div>
-                                        )
-                                      })}
-                                    </div>
-                                  )}
-
-                                  {/* DESCRIPCIÓN Y DIAGNÓSTICO CUALITATIVO DEL NIVEL ALCANZADO */}
-                                  <div className="pt-2 border-t border-slate-200/60">
-                                    <p className="text-[11px] font-medium text-slate-600 italic leading-relaxed">
-                                      {obtenerInterpretacionCognitiva(sesionSeleccionada.test_id, pct)}
-                                    </p>
-                                  </div>
-                                </div>
-                              )
-                            })() : (() => {
-                              const prom = promedioPuntaje(pb)
-                              const interp = obtenerInterpretacionGeneral(sesionSeleccionada.test_id, prom)
-                              
-                              return (
-                                <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-3">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-xs font-bold text-slate-700">Puntaje General</span>
-                                    <span className={`text-xs font-black ${interp.colorText}`}>{prom} / 5</span>
-                                  </div>
-                                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                                    <div className={`h-full ${interp.colorBg} transition-all duration-1000`} style={{ width: `${(prom / 5) * 100}%` }} />
-                                  </div>
-                                  <div className="flex items-center gap-2 pt-1">
-                                    <div className={`w-1.5 h-1.5 rounded-full ${interp.colorBg}`} />
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{interp.nivel}</span>
-                                  </div>
-                                  <div className="pt-2 border-t border-slate-200/60">
-                                    <p className="text-[11px] font-medium text-slate-600 italic leading-relaxed">
-                                      {interp.descripcion}
-                                    </p>
-                                  </div>
-                                </div>
-                              )
-                            })()}
+                            )) : (
+                              <div className="bg-slate-50 p-4 rounded-xl text-center">
+                                <p className="text-xs text-slate-500">Puntaje General: <span className="font-bold text-slate-800">{promedioPuntaje(pb)} / 5</span></p>
+                              </div>
+                            )}
                           </div>
                         )
                       })()}
+
+                      {/* INTEGRACIÓN DE AUDITORÍA DETALLADA DE RESPUESTAS */}
+                      {sesionSeleccionada && (
+                        <div className="mt-6">
+                          {cargandoAuditoria ? (
+                            <div className="py-8 text-center text-xs text-slate-400">
+                              Cargando auditoría de respuestas...
+                            </div>
+                          ) : (
+                            <AuditoriaRespuestasDetallada 
+                              tituloTest={`Auditoría de Respuestas: ${TEST_NAMES[sesionSeleccionada.test_id] || 'Evaluación'}`}
+                              respuestas={itemsAuditoria} 
+                            />
+                          )}
+                        </div>
+                      )}
 
                       <button onClick={() => generarPDF(sesionSeleccionada)} className="w-full mt-8 flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all">
                         <Download className="w-4 h-4" /> Descargar PDF
                       </button>
                     </div>
-                  )}
-
-                  {/* VIDEO ENTREVISTAS */}
-                  {videosCandidato.length > 0 && (
-                    <div className="mb-8">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <Video className="w-3 h-3" /> Video Entrevistas
-                      </p>
-                      <div className="space-y-4">
-                        {videosCandidato.map((v, i) => (
-                          <div key={i} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-                              <h5 className="text-sm font-bold text-slate-800">Pregunta {i + 1}: {v.preguntas_video?.pregunta}</h5>
-                              
-                              {/* SELECTOR DE VELOCIDAD DE REPRODUCCIÓN */}
-                              <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shrink-0 self-start sm:self-auto shadow-sm">
-                                <span className="text-[9px] font-bold text-slate-400 px-1.5 uppercase">Velocidad</span>
-                                {[1, 1.25, 1.5, 2].map((vel) => {
-                                  const selectVel = velocidadesVideo[i] || 1
-                                  const esActivo = selectVel === vel
-                                  return (
-                                    <button
-                                      key={vel}
-                                      onClick={() => {
-                                        const videoEl = document.getElementById(`video-entrevista-${i}`) as HTMLVideoElement
-                                        if (videoEl) {
-                                          videoEl.playbackRate = vel
-                                          setVelocidadesVideo(prev => ({ ...prev, [i]: vel }))
-                                        }
-                                      }}
-                                      className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all ${
-                                        esActivo 
-                                          ? 'bg-indigo-600 text-white shadow-sm scale-105' 
-                                          : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
-                                      }`}
-                                    >
-                                      {vel}x
-                                    </button>
-                                  )
-                                })}
-                              </div>
-                            </div>
-                            <video id={`video-entrevista-${i}`} src={v.url_video} controls className="w-full aspect-video rounded-xl shadow-sm bg-black mb-3" />
-                            {v.transcripcion ? (
-                              <div className="bg-white p-3 rounded-xl border border-slate-200 text-[11px] text-slate-600 italic">"{v.transcripcion}"</div>
-                            ) : (
-                              <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm">
-                                <div className="flex items-center gap-2">
-                                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                                  <span className="text-[11px] font-medium text-slate-700 leading-snug">Este video aún no cuenta con transcripción ni análisis de actitud en la plataforma.</span>
-                                </div>
-                                <button
-                                  onClick={() => procesarVideoConIA(v.id, v.url_video, i)}
-                                  disabled={procesandoVideos[v.id]}
-                                  className={`text-[10px] font-bold px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 transition-all shrink-0 flex items-center justify-center gap-1.5 ${
-                                    procesandoVideos[v.id] ? 'opacity-70 cursor-not-allowed' : ''
-                                  }`}
-                                >
-                                  {procesandoVideos[v.id] ? (
-                                    <>
-                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                      Procesando...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Sparkles className="w-3 h-3" />
-                                      Analizar con IA
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-                            )}
-                            {v.analisis_ia && (
-                               <div className="mt-3 p-4 bg-slate-950/40 rounded-2xl border border-slate-850 space-y-4">
-                                 {v.analisis_ia.actitud && (
-                                   <div className="space-y-1">
-                                     <div className="flex items-center gap-2">
-                                       <Eye className="w-3.5 h-3.5 text-indigo-400" />
-                                       <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider">ANÁLISIS NO VERBAL Y COMUNICACIÓN</span>
-                                     </div>
-                                     <p className="text-[11px] text-slate-300 leading-relaxed">
-                                       {typeof v.analisis_ia.actitud === 'string' ? v.analisis_ia.actitud : JSON.stringify(v.analisis_ia.actitud)}
-                                     </p>
-                                   </div>
-                                 )}
-                                 {v.analisis_ia.analisis_discurso && (
-                                   <div className="space-y-1 pt-3 border-t border-slate-800/50">
-                                     <div className="flex items-center gap-2">
-                                       <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-                                       <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">ANÁLISIS DEL DISCURSO Y CONTENIDO</span>
-                                     </div>
-                                     <p className="text-[11px] text-slate-300 leading-relaxed">
-                                       {v.analisis_ia.analisis_discurso}
-                                     </p>
-                                   </div>
-                                 )}
-                                 {!v.analisis_ia.actitud && !v.analisis_ia.analisis_discurso && (
-                                   <div className="space-y-1">
-                                     <div className="flex items-center gap-2">
-                                       <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                                       <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider">Análisis de Actitud</span>
-                                     </div>
-                                     <p className="text-[11px] text-slate-300 leading-relaxed">
-                                       {obtenerTextoAnalisis(v.analisis_ia)}
-                                     </p>
-                                   </div>
-                                 )}
-                               </div>
-                             )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  </div>
                   )}
                 </div>
               </div>
@@ -2622,43 +991,6 @@ export default function PanelEvaluador() {
           </div>
         </div>
       )}
-
-      {/* BARRA DE ACCIONES MASIVAS FLOTANTE */}
-      {seleccionados.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md border border-slate-800 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 z-50 animate-bounce-short">
-          <div className="flex items-center gap-3 border-r border-slate-800 pr-6">
-            <div className="w-6 h-6 rounded-full bg-indigo-600 text-[10px] font-black flex items-center justify-center">
-              {seleccionados.length}
-            </div>
-            <span className="text-xs font-bold text-slate-300">perfiles seleccionados</span>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => analizarSeleccionadosLote()}
-              disabled={procesandoLote}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-800 disabled:text-slate-500 text-xs font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
-            >
-              {procesandoLote ? 'Analizando...' : '✦ Analizar en Lote'}
-            </button>
-            
-            <button
-              onClick={() => descargarSeleccionadosZip()}
-              disabled={procesandoZip}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-800 disabled:text-slate-500 text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-1.5"
-            >
-              {procesandoZip ? 'Generando ZIP...' : '📥 Descargar PDFs (.zip)'}
-            </button>
-            
-            <button
-              onClick={() => setSeleccionados([])}
-              className="px-3 py-2 hover:bg-slate-800 text-xs font-bold text-slate-400 hover:text-white rounded-xl transition-all"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
     </>
   )}
     </AppLayout>
@@ -2666,9 +998,8 @@ export default function PanelEvaluador() {
 }
 
 async function generarPDF(sesion: Sesion) {
-  const cand = sesion.candidatos || sesion.candidato
-  const nombre = cand
-    ? `${cand.nombre} ${cand.apellido}`
+  const nombre = sesion.candidato
+    ? `${sesion.candidato.nombre} ${sesion.candidato.apellido}`
     : 'Evaluación anónima'
   const fecha = new Date(sesion.finalizada_en).toLocaleDateString('es-AR', {
     day: '2-digit', month: '2-digit', year: 'numeric'
@@ -2690,14 +1021,11 @@ async function generarPDF(sesion: Sesion) {
     apertura: 'Apertura'
   }
 
-  const esFrasesIncompletas = (pb: any) => pb && ('analisis_ia' in pb || typeof pb.respuestas === 'object');
-  const esRoleplay = (pb: any) => sesion.test_id === 'd8e9f0a1-b2c3-4567-defa-888888888888' || sesion.test_id === 'd8e9f0a1-b2c3-4567-defa-777777777777';
-
   const pdfData = {
     sesion, nombre, fecha,
     helpers: {
-      esBigFive, esCognitivo, esSJT, esFrasesIncompletas, esRoleplay, valoresNumericos, promedioPuntaje, datosCognitivos,
-      coloresRGB, etiquetasPDF: etiquetas, interpretacion
+      esBigFive, esCognitivo, valoresNumericos, promedioPuntaje, datosCognitivos,
+      coloresRGB, etiquetasPDF, interpretacion
     }
   }
 
@@ -2747,580 +1075,7 @@ function interpretacion(factor: string, valor: number): string {
       alto: 'Alta curiosidad intelectual, creatividad y apertura al cambio. Destaca en roles que requieren innovación.',
       moderado: 'Equilibrio entre creatividad y pragmatismo. Se adapta tanto a entornos estructurados como creativos.',
       bajo: 'Preferencia por métodos conocidos y entornos predecibles. Destaca en roles con procesos claros y definidos.'
-    },
-    // SJT Análisis
-    analisis: {
-      alto: 'Excelente capacidad para desglosar situaciones complejas en componentes manejables, identificando la raíz del problema de forma lógica.',
-      moderado: 'Capacidad adecuada para analizar problemas estándar. Puede requerir apoyo en escenarios de ambigüedad extrema.',
-      bajo: 'Tiende a ver los problemas de forma superficial. Puede tener dificultades para identificar causas raíz en procesos complejos.'
-    },
-    priorizacion: {
-      alto: 'Gran habilidad para jerarquizar urgencias y recursos, optimizando el tiempo de respuesta ante múltiples demandas simultáneas.',
-      moderado: 'Organiza sus tareas de forma efectiva en condiciones normales. Bajo presión extrema, la jerarquización puede verse afectada.',
-      bajo: 'Dificultad para discernir entre lo urgente y lo importante. Puede dispersar energía en tareas de bajo impacto.'
-    },
-    inferencia: {
-      alto: 'Destaca en conectar puntos de información aparentemente aislados para anticipar consecuencias y escenarios futuros con precisión.',
-      moderado: 'Capacidad lógica estándar. Realiza deducciones correctas basadas en hechos evidentes.',
-      bajo: 'Le cuesta anticipar consecuencias a largo plazo. Prefiere trabajar con información explícita y directa.'
-    },
-    creatividad: {
-      alto: 'Alta disposición para proponer soluciones fuera de los marcos convencionales, buscando la eficiencia a través de la innovación disruptiva.',
-      moderado: 'Propone mejoras incrementales sobre procesos conocidos. Mantiene un equilibrio entre lo nuevo y lo probado.',
-      bajo: 'Estilo de resolución conservador. Prefiere seguir protocolos establecidos y métodos tradicionales.'
-    },
-    // SJT Atención
-    empatia: {
-      alto: 'Capacidad genuina de sintonizar con la necesidad del cliente, validando su emoción antes de proceder a la solución técnica.',
-      moderado: 'Mantiene un trato cordial y profesional. Logra entender la necesidad del cliente sin involucramiento emocional profundo.',
-      bajo: 'Trato funcional y distante. Puede ser percibido como poco sensible ante la frustración o el problema del usuario.'
-    },
-    comunicacion: {
-      alto: 'Habilidad superior para transmitir información de forma clara y amable, manteniendo la calma incluso en situaciones de alta demanda.',
-      moderado: 'Comunicación clara en situaciones habituales. Puede perder fluidez en interacciones de alta tensión.',
-      bajo: 'Comunicación limitada o excesivamente técnica. Puede generar malentendidos por falta de claridad o tono inadecuado.'
-    },
-    escucha_activa: {
-      alto: 'Procesamiento profundo del mensaje del usuario, asegurando que se entiende el problema real antes de intervenir o sugerir.',
-      moderado: 'Escucha lo suficiente para dar una respuesta estándar. Puede omitir detalles sutiles en conversaciones largas.',
-      bajo: 'Tiende a interrumpir o a presuponer la solución antes de que el cliente termine de exponer su caso.'
-    },
-    resolucion: {
-      alto: 'Orientación pragmática a dar respuesta efectiva y oportuna, cerrando el ciclo de la consulta con un alto estándar de satisfacción.',
-      moderado: 'Logra resolver la mayoría de los casos dentro de los tiempos esperados. Puede demorar ante excepciones.',
-      bajo: 'Falta de agilidad en la resolución. Tiende a derivar problemas simples o a quedar atrapado en la burocracia del proceso.'
-    },
-    manejo_conflicto: {
-      alto: 'Gran temple para navegar interacciones difíciles, transformando una queja o reclamo en una oportunidad de fidelización estratégica.',
-      moderado: 'Maneja situaciones tensas con profesionalismo. Evita el conflicto directo pero puede ceder ante presión excesiva.',
-      bajo: 'Dificultad para manejar críticas o enojos. Puede reaccionar de forma defensiva o evitar la interacción conflictiva.'
-    },
-    etica: {
-      alto: 'Adherencia inquebrantable a los protocolos y valores de la organización, asegurando un trato justo y transparente para todos.',
-      moderado: 'Sigue las normas generales de la empresa. Puede flexibilizar criterios menores si la situación lo amerita.',
-      bajo: 'Riesgo de omitir protocolos en favor de la rapidez o la comodidad personal. Falta de consistencia ética.'
-    },
-    // SJT Comercial
-    negociacion: {
-      alto: 'Habilidad táctica superior para encontrar el equilibrio entre los intereses del cliente y los objetivos de rentabilidad corporativa.',
-      moderado: 'Capacidad de persuasión básica. Logra acuerdos en condiciones de mercado estándar.',
-      bajo: 'Dificultad para defender márgenes o condiciones. Tiende a ceder rápidamente o a perder cierres por falta de firmeza.'
-    },
-    etica_comercial: {
-      alto: 'Compromiso total con la honestidad en la venta, priorizando la relación a largo plazo y la confianza sobre el beneficio inmediato.',
-      moderado: 'Venta transparente bajo los estándares del sector. Evita malas prácticas evidentes.',
-      bajo: 'Prioriza el cierre a toda costa. Riesgo de omitir información relevante o de sobrevender capacidades reales.'
-    },
-    organizacion: {
-      alto: 'Disciplina excepcional en la gestión de cartera y seguimiento de prospectos, asegurando que ninguna oportunidad quede al azar.',
-      moderado: 'Mantiene un orden básico de sus contactos y agenda. Puede mejorar en la sistematicidad del seguimiento.',
-      bajo: 'Gestión comercial desorganizada. Pérdida de oportunidades por falta de seguimiento o mala planificación de rutas.'
-    },
-    trabajo_equipo: {
-      alto: 'Colaboración proactiva con otras áreas para potenciar la oferta comercial y asegurar que la promesa de venta sea cumplida.',
-      moderado: 'Participa en reuniones de equipo y colabora cuando se le solicita explícitamente.',
-      bajo: 'Estilo de trabajo individualista. Puede generar fricciones con áreas operativas por falta de comunicación.'
-    },
-    // Atención al Detalle
-    documentos: {
-      alto: 'Excelente velocidad y precisión en el cotejo de datos complejos y verificación documental, asegurando cero fallos de información.',
-      moderado: 'Capacidad de verificación estándar. Realiza comprobaciones eficientes en condiciones habituales.',
-      bajo: 'Velocidad de verificación reducida o propensión a pasar por alto discrepancias sutiles en la documentación.'
-    },
-    comparacion: {
-      alto: 'Alta agudeza visual para contrastar múltiples fuentes de datos de forma paralela sin cometer errores de transcripción.',
-      moderado: 'Compara información de manera satisfactoria, con un ritmo de trabajo estable.',
-      bajo: 'Dificultad para detectar inconsistencias menores al cruzar bases de datos o listados extensos.'
-    },
-    concentracion: {
-      alto: 'Gran resistencia a la fatiga cognitiva, manteniendo un nivel de foco constante durante tareas repetitivas y prolongadas.',
-      moderado: 'Mantiene un nivel de concentración adecuado durante la jornada laboral estándar.',
-      bajo: 'Nivel de dispersión elevado ante tareas rutinarias o estímulos distractores en el ambiente.'
-    },
-    errores_texto: {
-      alto: 'Excepcional capacidad para identificar fallas tipográficas, ortográficas o de redacción en documentos críticos.',
-      moderado: 'Identifica los errores ortográficos o gramaticales más evidentes en textos estándares.',
-      bajo: 'Tiende a pasar por alto errores de escritura o inconsistencias textuales.'
-    },
-    errores_numeros: {
-      alto: 'Alta precisión y velocidad mental para identificar discrepancias en cifras, códigos o montos financieros.',
-      moderado: 'Detecta errores numéricos evidentes. Puede requerir más tiempo para revisar planillas complejas.',
-      bajo: 'Propensión a pasar por alto errores de codificación o valores numéricos incorrectos.'
-    },
-    // Tolerancia a la Frustración y Emocional
-    manejo_emocional: {
-      alto: 'Excelente autocontrol de sus propias emociones en momentos críticos, permitiendo respuestas racionales y empáticas.',
-      moderado: 'Mantiene una estabilidad emocional adecuada frente a las demandas habituales de los clientes.',
-      bajo: 'Dificultad para canalizar la frustración, pudiendo verse afectado su desempeño ante interacciones difíciles.'
-    },
-    tolerancia_frustracion: {
-      alto: 'Gran capacidad para sobreponerse rápidamente a rechazos o metas no alcanzadas, manteniendo la motivación intacta.',
-      moderado: 'Maneja la frustración de forma estándar. Requiere períodos de recuperación tras experiencias muy negativas.',
-      bajo: 'Se desmotiva con facilidad ante obstáculos o negativas reiteradas por parte de los clientes.'
     }
   }
   return textos[factor]?.[nivel] || ''
-}
-
-function obtenerEnunciadoReactivo(slug: string, num: number): string {
-  if (slug.includes('verbal')) {
-    const c = [
-      '¿Cuál es el sinónimo más preciso de la palabra "Inexorable"?',
-      'Premisa: "Todos los supervisores deben validar planillas antes de las 18:00". Conclusión válida:',
-      '¿Qué relación analógica guarda "Hipótesis es a Verificación" como "Teoría es a...":',
-      'Identifique el enunciado que mantiene coherencia sintáctica y semántica:',
-      '¿Cuál es el antónimo directo del término "Efímero"?',
-      'En la frase "El informe fue entregado de manera expedita", el término resaltado significa:',
-      'Premisa A: Ningún informe borrador es definitivo. Premisa B: Todo anexo es un borrador. Por lo tanto:',
-      'Seleccione la deducción lógica correcta a partir del párrafo de gestión corporativa:',
-      'Identifique el error semántico o contradicción interna en la siguiente propuesta:',
-      '¿Qué término completa mejor la analogía: "Estructura es a Edificio como Esquema es a...":',
-      'Comprensión Lectora: ¿Cuál es la intención principal del autor en el texto normativo?',
-      '¿Qué palabra difiere conceptualmente del grupo semántico dada la categoría funcional?',
-      'Deducción Lógica: Si X implica Y, y Y implica Z, la ausencia de Z exige:',
-      'Análisis Léxico: Seleccione la palabra que mejor reemplaza a "Imprescindible":',
-      'Inferencia Textual: Según la política interna enunciada, el procedimiento requiere:',
-      'Identifique la conclusión falsa que contradice el estatuto operativo:',
-      'Seleccione el conector lógico adecuado para hilar la proposición subordinada:',
-      '¿Cuál es la interpretación correcta del término técnico en el contrato?',
-      'Identifique la premisa implícita en la argumentación presentada:',
-      'Síntesis Textual: ¿Cuál es el resumen ejecutivo más fiel del comunicado?'
-    ]
-    return c[(num - 1) % c.length]
-  }
-  if (slug.includes('atencion')) {
-    const c = [
-      'Verificación de Documento: Comparación de DNI y Nombre en planilla.',
-      'Detección de Errores Numéricos: Verifique si la suma del lote coincide con la factura.',
-      'Comparación de Cuentas: Cuenta 458-901 vs Registro 458-910.',
-      'Concentración y Foco: Identifique la discrepancia de caracteres en el código serial.',
-      'Detección de Errores de Texto: Revisión de tipografía en el apellido corporativo.',
-      'Verificación de Fechas: Fecha de vencimiento vs Emisión en el documento.',
-      'Control de Cifras: Identifique si el RUT contiene un dígito transpuesto.',
-      'Comparación de Registros: Cotejo de dirección fiscal entre formulario y comprobante.',
-      'Atención Sostenida: Conteo de inconsistencias en el listado de 50 registros.',
-      'Verificación de Montos: Conciliación de importe neto vs bruto con IVA.',
-      'Revisión de Nombres: Comparación de razón social entre contrato y padrón.',
-      'Detección de Símbolos: Identifique caracteres especiales fuera de norma.',
-      'Control de Lotes: Verificación de código de barras asignado a la planilla.',
-      'Comparación de Datos Personales: Verificación de teléfono de contacto.',
-      'Auditoría de Transcripción: Identifique errores de formato en el campo de texto.',
-      'Revisión de Claves: Comprobación de suma de verificación en la clave alfanumérica.',
-      'Verificación de Firmas: Cotejo de presencia de firma requerida en el documento.',
-      'Control de Duplicados: Detección de duplicación de número de factura.',
-      'Detección de Espacios Excesivos: Control de alineación de celdas.',
-      'Verificación Final: Conciliación general del expediente de postulante.'
-    ]
-    return c[(num - 1) % c.length]
-  }
-  if (slug.includes('integridad')) {
-    const c = [
-      'Frente a un error en el registro de un inventario a su cargo que nadie más notó, su conducta es:',
-      'Si un compañero le pide compartir la clave de acceso corporativa para un trabajo urgente:',
-      'Ante una política de viáticos o gastos de empresa con recibos ambiguos:',
-      'Si observa un incumplimiento menor de seguridad por parte de un colega:',
-      'Actitud frente a la confidencialidad de datos salariales o personales a los que tiene acceso:',
-      'Uso de recursos o insumos de la empresa para fines personales menores:',
-      'Frente a la posibilidad de reportar horas de trabajo adicionales no supervisadas:',
-      'Manejo de obsequios o cortesías por parte de proveedores de la organización:',
-      'Reacción cuando comete una equivocación en un reporte entregado a la jefatura:',
-      'Alineación con la transparencia en los procesos de compras y contrataciones:',
-      'Actitud ante propuestas de omitir un paso normativo para entregar antes un proyecto:',
-      'Manejo de bienes corporativos fuera del horario laboral:',
-      'Frente a la detección de un conflicto de intereses personal con un proveedor:',
-      'Respeto por la propiedad intelectual y materiales desarrollados en la empresa:',
-      'Reacción ante presiones de terceros para alterar una cifra o informe oficial:',
-      'Alineación con el canal ético o de denuncias internas ante irregularidades graves:',
-      'Transparencia en la rendición de cuentas de presupuestos asignados:',
-      'Cuidado y custodia de información estratégica reservada del negocio:',
-      'Cumplimiento del horario y compromisos asumidos ante el equipo de trabajo:',
-      'Compromiso general con la cultura de honestidad y probidad en el ambiente laboral.'
-    ]
-    return c[(num - 1) % c.length]
-  }
-  return `Reactivo #${num}: Evaluación de competencia situacional y agilidad operativa.`
-}
-
-function obtenerOpcionElegida(slug: string, num: number, esCorrecto: boolean): string {
-  if (slug.includes('verbal')) {
-    const ok = ['Inevitables / Ineludible', 'Revisión antes de las 18:00', 'Demostración', 'Redacción fluida y precisa', 'Perdurable / Efímero', 'Rápida y eficiente', 'Ningún anexo es definitivo', 'Priorización de la norma', 'Incompatibilidad de fechas', 'Boceto / Plano', 'Informar la norma', 'Categoría fuera de norma', 'Verificar causa', 'Esencial', 'Cumplimiento directo', 'Premisa contradicha', 'Por consiguiente', 'Cláusula obligatoria', 'Supuesto de hecho', 'Síntesis ejecutiva']
-    const no = ['Pasajero / Pasaje', 'Omisión de horario', 'Verificación rápida', 'Oración sin concordancia', 'Breve / Corto', 'Lenta y pausada', 'Todo anexo es válido', 'Inconsistencia de criterio', 'Falta de ortografía', 'Elemento aislado', 'Opinar sin datos', 'Categoría repetida', 'Ignorar evento', 'Opcional', 'Incumplimiento', 'Afirmación válida', 'Sin embargo', 'Cláusula opcional', 'Supuesto falso', 'Detalle secundario']
-    return esCorrecto ? ok[(num - 1) % ok.length] : no[(num - 1) % no.length]
-  }
-  if (slug.includes('integridad')) return esCorrecto ? 'Notificar y corregir de inmediato' : 'Esperar a que alguien lo note'
-  return esCorrecto ? 'Opción A (Respuesta Conforme)' : 'Opción C (Desviación Detectada)'
-}
-
-function obtenerOpcionCorrecta(slug: string, num: number): string {
-  if (slug.includes('verbal')) {
-    const ok = ['Inevitables / Ineludible', 'Revisión antes de las 18:00', 'Demostración', 'Redacción fluida y precisa', 'Perdurable / Efímero', 'Rápida y eficiente', 'Ningún anexo es definitivo', 'Priorización de la norma', 'Incompatibilidad de fechas', 'Boceto / Plano', 'Informar la norma', 'Categoría fuera de norma', 'Verificar causa', 'Esencial', 'Cumplimiento directo', 'Premisa contradicha', 'Por consiguiente', 'Cláusula obligatoria', 'Supuesto de hecho', 'Síntesis ejecutiva']
-    return ok[(num - 1) % ok.length]
-  }
-  return 'Notificar y corregir de inmediato'
-}
-
-function obtenerCategoriaReactivo(slug: string, _num: number): string {
-  if (slug.includes('verbal')) return 'Razonamiento Verbal'
-  if (slug.includes('atencion')) return 'Atención al Detalle'
-  if (slug.includes('integridad')) return 'Probidad e Integridad'
-  return 'Evaluación Psicotécnica'
-}
-
-function renderAuditoriaRespuestas(sesion: any, filtroAuditoria: string, setFiltroAuditoria: (f: any) => void) {
-  if (!sesion) {
-    return (
-      <div className="p-8 text-center bg-slate-50 border border-slate-200 border-dashed rounded-2xl my-4">
-        <p className="text-xs text-slate-500">Selecciona una prueba en el historial para auditar sus respuestas.</p>
-      </div>
-    )
-  }
-
-  const pb = sesion.puntaje_bruto || {}
-  const tid = (sesion.test_id || '').toLowerCase()
-  const slug = (TEST_IDS as Record<string, string>)[tid] || ''
-  const testNombre = (TEST_NAMES as Record<string, string>)[tid] || 'Evaluación'
-
-  const correctas = Number(pb.correctas) || Math.round((Number(pb.porcentaje || 60) / 100) * 20) || 12
-  const total = Number(pb.total) || 20
-  const incorrectas = Math.max(0, total - correctas)
-  const pct = Number(pb.porcentaje) || Math.round((correctas / total) * 100)
-
-  const items = Array.from({ length: total }, (_, idx) => {
-    const num = idx + 1
-    const esCorrecto = idx < correctas
-    return { num, esCorrecto, pregunta: obtenerEnunciadoReactivo(slug, num), opcionElegida: obtenerOpcionElegida(slug, num, esCorrecto), opcionCorrecta: obtenerOpcionCorrecta(slug, num), categoria: obtenerCategoriaReactivo(slug, num) }
-  })
-
-  const itemsFiltrados = items.filter(item => {
-    if (filtroAuditoria === 'correctas') return item.esCorrecto
-    if (filtroAuditoria === 'incorrectas') return !item.esCorrecto
-    return true
-  })
-
-  return (
-    <div className="space-y-6 animate-in fade-in duration-300 my-4">
-      <div className="bg-slate-900 text-white p-5 rounded-2xl shadow-sm border border-slate-800 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-        <div>
-          <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest bg-indigo-950/80 px-2 py-0.5 rounded-md border border-indigo-800">AUDITORÍA REACTIVO POR REACTIVO</span>
-          <h4 className="text-sm font-bold text-white mt-1">{testNombre}</h4>
-          <p className="text-[11px] text-slate-400 mt-0.5">Fecha: {sesion.finalizada_en ? new Date(sesion.finalizada_en).toLocaleDateString('es-AR') : 'S/F'}</p>
-        </div>
-        <div className="flex items-center gap-3 bg-slate-950/60 p-3 rounded-xl border border-slate-800 shrink-0">
-          <div className="text-right">
-            <span className="text-[9px] font-bold text-slate-400 uppercase block">Precisión Global</span>
-            <span className="text-sm font-black text-emerald-400">{correctas} / {total} ({pct}%)</span>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center font-black text-xs text-emerald-400">{pct}%</div>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between gap-2 flex-wrap bg-slate-50 p-2 rounded-xl border border-slate-200 shadow-sm">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide px-1">Filtrar por:</span>
-        <div className="flex items-center gap-1">
-          {(['todos', 'correctas', 'incorrectas'] as const).map(f => (
-            <button key={f} onClick={() => setFiltroAuditoria(f)} className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${filtroAuditoria === f ? (f === 'todos' ? 'bg-indigo-600 text-white shadow-sm' : f === 'correctas' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-rose-600 text-white shadow-sm') : 'text-slate-600 hover:bg-slate-200/60'}`}>
-              {f === 'todos' ? `Todos (${total})` : f === 'correctas' ? `Correctas (${correctas})` : `Incorrectas (${incorrectas})`}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        {itemsFiltrados.map((item) => (
-          <div key={item.num} className={`p-4 rounded-2xl border transition-all shadow-sm ${item.esCorrecto ? 'bg-white border-slate-200/80 hover:border-slate-300' : 'bg-rose-50/20 border-rose-200/60 hover:border-rose-300'}`}>
-            <div className="flex justify-between items-center mb-2">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center">#{item.num}</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{item.categoria}</span>
-              </div>
-              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${item.esCorrecto ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' : 'bg-rose-50 text-rose-700 border border-rose-200/60'}`}>
-                {item.esCorrecto ? '✓ Respuesta Correcta' : '✗ Respuesta Incorrecta'}
-              </span>
-            </div>
-            <p className="text-xs font-bold text-slate-800 mb-3 leading-relaxed">{item.pregunta}</p>
-            <div className="space-y-1.5">
-              <div className={`p-2.5 rounded-xl text-xs flex justify-between items-center border ${item.esCorrecto ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900 font-semibold' : 'bg-rose-50/70 border-rose-200 text-rose-900 font-semibold'}`}>
-                <span>Respuesta elegida: <strong className="font-bold">{item.opcionElegida}</strong></span>
-                <span className="text-[10px] font-bold uppercase">{item.esCorrecto ? 'Opción Registrada' : 'Selección Candidato'}</span>
-              </div>
-              {!item.esCorrecto && (
-                <div className="p-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-700 flex justify-between items-center">
-                  <span>Respuesta correcta: <strong className="font-bold text-emerald-700">{item.opcionCorrecta}</strong></span>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">Benchmark</span>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function renderFrasesIncompletas(sesion: any, analizarFrasesConIA: any) {
-  const pb = sesion.puntaje_bruto || {}
-  const respuestas = pb.respuestas || pb
-  const analisis = pb.analisis_ia
-
-  const FRASES_ESTIMULO: Record<number, string> = {
-    1: 'Siempre me gustó',
-    2: 'Cuando me enfrento a varias opciones',
-    3: 'Lo más importante en la vida es',
-    4: 'Siempre me preocupó',
-    5: 'Creo que soy hábil para',
-    6: 'Lo más difícil para mí es',
-    7: 'Controlarme es muy difícil para mí cuando',
-    8: 'Cuando las cosas no se dan como yo esperaba',
-    9: 'En un grupo yo',
-    10: 'En el futuro me veo',
-    11: 'Nunca imaginé que yo',
-    12: 'Me fastidia',
-    13: 'No sé explicar por qué todos dicen',
-    14: 'No estoy de acuerdo',
-    15: 'Me aburre',
-    16: 'El mayor cambio de mi vida',
-    17: 'Cuando me enfrento a un cambio',
-    18: 'Este cargo significa para mí',
-    19: 'Mis jefes',
-    20: 'Me gusta trabajar con',
-    21: 'Mi mayor desafío ha sido',
-    22: 'En síntesis, yo'
-  }
-
-  const errorDetalles = analisis?.auditoriaOrtografica?.detalles || []
-
-  return (
-    <div className="space-y-6 font-sans">
-      
-      {/* LISTADO DE RESPUESTAS CUALITATIVAS */}
-      <div className="bg-slate-50/50 rounded-2xl border border-slate-100 p-6 space-y-4">
-        <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Frases Completadas por el Candidato</h5>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[300px] overflow-y-auto pr-2">
-          {Object.entries(FRASES_ESTIMULO).map(([idStr, estimulo]) => {
-            const id = Number(idStr)
-            const resp = respuestas[id] || ''
-            return (
-              <div key={id} className="p-3 bg-white border border-slate-100 rounded-xl">
-                <p className="text-[10px] text-slate-400 font-bold">Frase {id}</p>
-                <p className="text-xs text-slate-800 leading-relaxed mt-1">
-                  <span className="font-bold text-indigo-700">{estimulo}...</span> {resp || <span className="text-rose-400 italic">No completada</span>}
-                </p>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* ACCIÓN DE ANÁLISIS POR IA */}
-      {!analisis ? (
-        <div className="text-center py-6 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-          <p className="text-xs text-slate-500 mb-4">La IA de Gemini puede realizar un análisis psicométrico y ortográfico profundo de este test.</p>
-          <button
-            onClick={() => analizarFrasesConIA(sesion)}
-            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md disabled:bg-slate-300 disabled:cursor-not-allowed transition-all"
-          >
-            ✦ Analizar con IA
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          
-          {/* AUDITORÍA ORTOGRÁFICA */}
-          <div className={`p-5 rounded-2xl border ${analisis.auditoriaOrtografica?.tieneErrores ? 'bg-rose-50/30 border-rose-100' : 'bg-emerald-50/30 border-emerald-100'}`}>
-            <h5 className={`text-xs font-bold uppercase tracking-wider mb-3 ${analisis.auditoriaOrtografica?.tieneErrores ? 'text-rose-700' : 'text-emerald-700'}`}>
-              Auditoría Ortográfica
-            </h5>
-            {analisis.auditoriaOrtografica?.tieneErrores ? (
-              <div className="space-y-3">
-                <p className="text-xs text-slate-600">Se identificaron <strong>{analisis.auditoriaOrtografica.conteoErrores}</strong> errores ortográficos o de sintaxis:</p>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-rose-100 text-left text-xs">
-                    <thead>
-                      <tr className="text-rose-800 font-bold">
-                        <th className="py-2 pr-3">Frase</th>
-                        <th className="py-2 px-3">Escrito</th>
-                        <th className="py-2 px-3">Corrección</th>
-                        <th className="py-2 pl-3">Tipo</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-rose-50 text-slate-600">
-                      {errorDetalles.map((det: any, i: number) => (
-                        <tr key={i}>
-                          <td className="py-2 pr-3 font-semibold">Frase {det.frase}</td>
-                          <td className="py-2 px-3 line-through text-rose-500">{det.original}</td>
-                          <td className="py-2 px-3 font-semibold text-emerald-600">{det.corregida}</td>
-                          <td className="py-2 pl-3"><span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded text-[9px] font-bold">{det.tipo}</span></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-emerald-600">✓ No se encontraron errores ortográficos ni de sintaxis en las respuestas del candidato. Redacción óptima.</p>
-            )}
-          </div>
-
-          {/* ANÁLISIS PSICOMÉTRICO */}
-          <div className="bg-slate-50/50 rounded-2xl border border-slate-100 p-5 space-y-4">
-            <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Análisis de Proyección Psicométrica</h5>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-white p-4 border border-slate-100 rounded-xl shadow-sm">
-                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Dinámica Intelectual y Laboral</p>
-                <p className="text-xs text-slate-600 leading-relaxed">{analisis.analisisClinico?.dinamicaLaboral}</p>
-              </div>
-              <div className="bg-white p-4 border border-slate-100 rounded-xl shadow-sm">
-                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Actitud Interpersonal y Autoridad</p>
-                <p className="text-xs text-slate-600 leading-relaxed">{analisis.analisisClinico?.interpersonal}</p>
-              </div>
-              <div className="bg-white p-4 border border-slate-100 rounded-xl shadow-sm">
-                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Manejo Emocional y Resiliencia</p>
-                <p className="text-xs text-slate-600 leading-relaxed">{analisis.analisisClinico?.emocional}</p>
-              </div>
-              <div className="bg-white p-4 border border-slate-100 rounded-xl shadow-sm">
-                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Autoconcepto y Valores</p>
-                <p className="text-xs text-slate-600 leading-relaxed">{analisis.analisisClinico?.autoconcepto}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* CONCLUSIÓN EJECUTIVA */}
-          <div className="bg-slate-900 text-white rounded-2xl p-5 space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h5 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Conclusiones del Evaluador</h5>
-              <span className={`px-3 py-1 rounded-full text-[9px] font-black tracking-wider ${
-                analisis.conclusion?.veredicto?.includes('RESERVAS') ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                analisis.conclusion?.veredicto?.includes('NO') ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
-                'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              }`}>
-                {analisis.conclusion?.veredicto}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="space-y-2">
-                <p className="font-bold text-emerald-400 flex items-center gap-1.5">🟢 Fortalezas Claras</p>
-                <ul className="list-disc pl-4 space-y-1 text-slate-300">
-                  {analisis.conclusion?.fortalezas?.map((f: string, i: number) => <li key={i}>{f}</li>)}
-                </ul>
-              </div>
-              <div className="space-y-2">
-                <p className="font-bold text-amber-400 flex items-center gap-1.5">🟡 Áreas de Atención</p>
-                <ul className="list-disc pl-4 space-y-1 text-slate-300">
-                  {analisis.conclusion?.areasAtencion?.map((a: string, i: number) => <li key={i}>{a}</li>)}
-                </ul>
-              </div>
-            </div>
-
-            {analisis.conclusion?.recomendacionGestion && (
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 mt-2">
-                <p className="text-[10px] text-indigo-400 font-bold uppercase mb-1">Guía de Gestión de Liderazgo</p>
-                <p className="text-xs text-slate-300 leading-relaxed">{analisis.conclusion.recomendacionGestion}</p>
-              </div>
-            )}
-          </div>
-
-        </div>
-      )}
-
-    </div>
-  )
-}
-
-function renderRoleplay(sesion: any) {
-  const pb = sesion.puntaje_bruto || {}
-  const porFactor = pb.por_factor || {}
-  const transcripcion = pb.transcripcion || []
-  const retroalimentacion = pb.retroalimentacion || ''
-
-  return (
-    <div className="space-y-6">
-      {/* 1. Dimensiones Evaluadas */}
-      <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-4">
-        <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Dimensiones de Desempeño</h5>
-        {Object.entries(porFactor).map(([factor, puntajeDirecto]: any) => {
-          const valorNum = typeof puntajeDirecto === 'number' 
-            ? puntajeDirecto 
-            : (typeof puntajeDirecto === 'object' && puntajeDirecto !== null && 'correctas' in puntajeDirecto 
-                ? Math.round(((Number(puntajeDirecto.correctas) / (Number(puntajeDirecto.total) || 1)) * 100)) 
-                : parseFloat(String(puntajeDirecto)) || 0)
-          const valorEscala = Math.round((valorNum / 20) * 10) / 10
-          
-          return (
-            <div key={factor} className="space-y-1.5">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-semibold text-slate-700">{factor}</span>
-                <span className="font-black text-indigo-600">{valorEscala} / 5 ({valorNum}%)</span>
-              </div>
-              <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-indigo-600 rounded-full transition-all duration-1000" 
-                  style={{ width: `${valorNum}%` }}
-                />
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* 2. Retroalimentación General de IA */}
-      {retroalimentacion && (
-        <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/50">
-          <h5 className="text-xs font-bold text-indigo-800 uppercase tracking-wider mb-2">Retroalimentación del Evaluador IA</h5>
-          <p className="text-xs text-slate-600 leading-relaxed italic">"{retroalimentacion}"</p>
-        </div>
-      )}
-
-      {/* 3. Transcripción de la Conversación (Preguntas y Respuestas) */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-        <div className="p-4 bg-slate-50 border-b border-slate-200">
-          <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-sans">Transcripción de la Simulación (Preguntas y Respuestas)</h5>
-          <p className="text-[10px] text-slate-400 mt-1">Historial del diálogo sostenido entre el candidato y el cliente simulado.</p>
-        </div>
-        
-        <div className="p-4 space-y-4 max-h-[400px] overflow-y-auto bg-slate-50/30">
-          {transcripcion.length === 0 ? (
-            <p className="text-xs text-slate-400 italic text-center py-4">No hay transcripción disponible para esta sesión.</p>
-          ) : (
-            transcripcion.map((msg: any, idx: number) => {
-              const esModel = msg.role === 'model' || msg.role === 'assistant'
-              const esAtencion = sesion.test_id === 'd8e9f0a1-b2c3-4567-defa-777777777777'
-              const remitente = esModel ? `Cliente (${esAtencion ? 'Laura Benítez' : 'Carlos Gómez'})` : 'Candidato (Analista)'
-              
-              let textoLimpio = String(msg.content || '')
-              try {
-                while (textoLimpio.startsWith('{') || textoLimpio.includes('"respuesta":')) {
-                  const p = JSON.parse(textoLimpio)
-                  if (typeof p === 'object' && p !== null) {
-                    textoLimpio = p.respuesta || p.content || p.text || textoLimpio
-                  } else {
-                    break
-                  }
-                }
-              } catch (e) {
-                const match = textoLimpio.match(/"respuesta"\s*:\s*"(.*)"/s)
-                if (match && match[1]) {
-                  textoLimpio = match[1].replace(/\\"/g, '"').replace(/\\n/g, ' ')
-                }
-              }
-
-              return (
-                <div key={idx} className={`flex flex-col ${esModel ? 'items-start' : 'items-end'}`}>
-                  <span className="text-[9px] font-bold text-slate-400 mb-1">{remitente}</span>
-                  <div className={`p-3 rounded-2xl max-w-[85%] text-xs leading-relaxed ${
-                    esModel 
-                      ? 'bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200/60' 
-                      : 'bg-indigo-600 text-white rounded-tr-none'
-                  }`}>
-                    {textoLimpio}
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
-      </div>
-    </div>
-  )
 }

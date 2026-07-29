@@ -26,7 +26,6 @@ export default function SjtComercialPage() {
   const [seleccionada, setSeleccionada] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
-  const procesoId = searchParams.get('proceso')
 
   useEffect(() => {
     cargarItems()
@@ -98,7 +97,6 @@ export default function SjtComercialPage() {
     const { data: sesion, error } = await supabase.from('sesiones').insert({
       test_id: 'b2c3d4e5-f6a7-8901-bcde-222222222222',
       candidato_id: candidatoId || null,
-      proceso_id: procesoId || null,
       estado: 'finalizado',
       iniciada_en: new Date().toISOString(),
       finalizada_en: new Date().toISOString(),
@@ -109,7 +107,8 @@ export default function SjtComercialPage() {
 
     await supabase.from('respuestas').insert(
       todosLosItems.map(item => ({
-        sesion_id: sesion.id, item_id: item.id,
+        sesion_id: sesion.id, 
+        item_id: item.id,
         valor: todasLasRespuestas[item.id] === item.respuesta_correcta ? 1 : 0,
         tiempo_respuesta: 0
       }))
@@ -147,14 +146,14 @@ export default function SjtComercialPage() {
   const tiempoColor = tiempoRestante <= 15 ? '#dc2626' : tiempoRestante <= 30 ? '#ea580c' : '#1e293b'
 
   const factorLabel: Record<string, string> = {
-    manejo_clientes: 'Relacionamiento con Clientes',
-    cobranza: 'Gestión de Cobranza',
-    etica_comercial: 'Ética Comercial',
-    negociacion: 'Negociación y Cierre',
-    proactividad_comercial: 'Proactividad en Ventas',
-    orientacion_cliente: 'Enfoque en el Cliente',
-    organizacion: 'Gestión de Cartera',
-    trabajo_equipo: 'Colaboración Comercial'
+    manejo_clientes: 'Manejo de clientes',
+    cobranza: 'Gestión de cobranza',
+    etica_comercial: 'Ética comercial',
+    negociacion: 'Negociación',
+    proactividad_comercial: 'Proactividad',
+    orientacion_cliente: 'Orientación al cliente',
+    organizacion: 'Organización',
+    trabajo_equipo: 'Trabajo en equipo'
   }
 
   return (
