@@ -167,6 +167,48 @@ function formatearNombreFactor(factor: string): string {
     .join(' ')
 }
 
+function obtenerInterpretacionCognitiva(testId: string, pct: number): string {
+  const tid = (testId || '').toLowerCase()
+  const slug = TEST_IDS[tid] || ''
+  const isVerbal = tid.includes('234567890123') || slug.includes('verbal')
+  const isNumerico = tid.includes('9012') || slug.includes('numerico')
+  const isICAR = slug.includes('icar') || tid.includes('456789012345')
+
+  if (isVerbal) {
+    if (pct >= 80) {
+      return 'Nivel Superior: Excelente capacidad para interpretar textos complejos, asimilar normativas de alta densidad y comunicar conceptos con precisión sin ambigüedades.'
+    } else if (pct >= 60) {
+      return 'Nivel Promedio: Adecuada comprensión de lectura y razonamiento sobre procedimientos estándar. Procesa con solvencia la documentación escrita habitual del puesto.'
+    } else {
+      return 'Nivel Bajo: Requiere mayor tiempo para procesar textos extensos. Se beneficia de instrucciones escritas breves, estructuradas y guías directas.'
+    }
+  }
+
+  if (isNumerico) {
+    if (pct >= 80) {
+      return 'Nivel Superior: Sobresaliente agilidad para el cálculo cuantitativo, interpretación de métricas, análisis estadístico y detección de discrepancias numéricas.'
+    } else if (pct >= 60) {
+      return 'Nivel Promedio: Buen manejo de operaciones matemáticas esenciales, presupuestos básicos y tablas de datos requeridos en el trabajo operativo diario.'
+    } else {
+      return 'Nivel Bajo: Dificultad o menor rapidez en ejercicios matemáticos complejos. Se sugiere el uso de plantillas de cálculo automatizadas o soporte en tareas cuantitativas.'
+    }
+  }
+
+  if (isICAR) {
+    if (pct >= 80) {
+      return 'Nivel Superior: Alta flexibilidad cognitiva para resolver problemas abstractos novedosos, identificar patrones en matrices lógicas y visualizar relaciones espaciales.'
+    } else if (pct >= 60) {
+      return 'Nivel Promedio: Capacidad razonable para aprender nuevas tareas de complejidad media, adaptarse a cambios de procedimiento y deducir secuencias lógicas.'
+    } else {
+      return 'Nivel Bajo: Menor velocidad de adaptación ante problemas inéditos o abstractos. Se desempeña mejor en tareas secuenciales y bien estructuradas.'
+    }
+  }
+
+  if (pct >= 80) return 'Nivel Superior: Agilidad cognitiva destacada en velocidad y precisión de resolución de problemas.'
+  if (pct >= 60) return 'Nivel Promedio: Capacidad cognitiva funcional y adecuada para requerimientos estándar del rol.'
+  return 'Nivel Bajo: Requiere acompañamiento o guías estructuradas ante procesos complejos.'
+}
+
 function esSJT(pb: any): boolean {
   return pb && 'por_factor' in pb
 }
@@ -2276,14 +2318,10 @@ export default function PanelEvaluador() {
                                     </div>
                                   )}
 
-                                  {/* DESCRIPCIÓN DEL DOMINIO EVALUADO (EJ: VERBAL / NUMÉRICO) */}
+                                  {/* DESCRIPCIÓN Y DIAGNÓSTICO CUALITATIVO DEL NIVEL ALCANZADO */}
                                   <div className="pt-2 border-t border-slate-200/60">
-                                    <p className="text-[10px] text-slate-500 italic leading-relaxed">
-                                      {isVerbal
-                                        ? 'Evaluación de la capacidad de comprensión de lectura, deducción lógica de premisas verbales, agilidad de análisis de información escrita y precisión léxica.'
-                                        : isNumerico
-                                        ? 'Evaluación de la capacidad de procesamiento cuantitativo, razonamiento lógico-matemático, cálculo rápido y resolución de problemas numéricos.'
-                                        : 'Evaluación de la agilidad cognitiva general y capacidad de resolución de problemas abstractos.'}
+                                    <p className="text-[11px] font-medium text-slate-600 italic leading-relaxed">
+                                      {obtenerInterpretacionCognitiva(sesionSeleccionada.test_id, pct)}
                                     </p>
                                   </div>
                                 </div>
