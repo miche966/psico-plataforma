@@ -512,7 +512,7 @@ export default function PanelEvaluador() {
   }
 
   async function cargarCandidatos() {
-    // 1. Obtener la totalidad de candidatos registrados
+    // 1. Obtener la totalidad de candidatos registrados con actividad real
     const { data: candidatosTodos, error: errCand } = await supabase
       .from('candidatos')
       .select('*')
@@ -614,7 +614,7 @@ export default function PanelEvaluador() {
         },
         matchScore
       }
-    })
+    }).filter(c => c.sesiones.length > 0 || c.progreso.completados > 0)
 
     setCandidatos(resultado)
   }
