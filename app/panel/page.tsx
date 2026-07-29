@@ -297,7 +297,7 @@ export default function PanelEvaluador() {
   }
 
   async function cargarProcesos() {
-    const { data } = await supabase.from('procesos').select('*').order('creado_at', { ascending: false })
+    const { data } = await supabase.from('procesos').select('*')
     if (data) setProcesos(data)
   }
 
