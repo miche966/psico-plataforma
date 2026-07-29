@@ -140,6 +140,8 @@ const TEST_IDS: Record<string, string> = {
   'b8c9d0e1-f2a3-4567-bcde-888888888888': 'atencion-detalle',
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'sjt-atencion',
   '7a8b9c0d-e1f2-4356-abcd-999999999999': 'dass21',
+  'c3d4e5f6-a7b8-9012-cdef-999999999999': 'roleplay',
+  'roleplay': 'roleplay',
 }
 
 const TEST_NAMES: Record<string, string> = {
@@ -160,6 +162,8 @@ const TEST_NAMES: Record<string, string> = {
   'b8c9d0e1-f2a3-4567-bcde-888888888888': 'Atención al Detalle',
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'SJT Atención al Cliente',
   '7a8b9c0d-e1f2-4356-abcd-999999999999': 'DASS-21 (Salud Mental)',
+  'c3d4e5f6-a7b8-9012-cdef-999999999999': 'Simulación de Roleplay IA',
+  'roleplay': 'Simulación de Roleplay IA',
 }
 
 const colores: Record<string, string> = {
