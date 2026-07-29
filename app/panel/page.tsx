@@ -512,30 +512,25 @@ export default function PanelEvaluador() {
   }
 
   async function cargarCandidatos() {
-    // 1. Obtener todas las vinculaciones Proceso-Candidato
-    const { data: vinculos, error: errVinculos } = await supabase
-      .from('candidatos_procesos')
-      .select(`
-        candidato_id,
-        proceso_id,
-        procesos (id, nombre, cargo, competencias_requeridas, bateria_tests),
-        candidatos (id, nombre, apellido, email, documento)
-      `)
+    // 1. Obtener la totalidad de candidatos registrados
+    const { data: candidatosTodos, error: errCand } = await supabase
+      .from('candidatos')
+      .select('*')
+      .order('creado_en', { ascending: false })
 
-    if (errVinculos) {
-      console.error('Error cargando vínculos candidatos_procesos:', errVinculos)
+    if (errCand) {
+      console.error('Error cargando candidatos:', errCand)
     }
 
-    // 2. Obtener todas las sesiones (Históricas y actuales)
+    // 2. Obtener los vínculos activos con procesos en la tabla sesiones
     const { data: sesionesData } = await supabase
       .from('sesiones')
       .select(`
         *,
-        candidatos (id, nombre, apellido, email),
         procesos (id, nombre, cargo, competencias_requeridas, bateria_tests)
       `)
       .order('finalizada_en', { ascending: false })
-    
+
     if (sesionesData) setSesionesGlobales(sesionesData)
 
     // 3. Obtener respuestas de video
@@ -543,70 +538,26 @@ export default function PanelEvaluador() {
       .from('respuestas_video')
       .select('candidato_id, entrevista_id, pregunta_id, grabada_en')
 
-    const grupos: Record<string, CandidatoAgrupado> = {}
-
-    // A. CARGAR ASIGNADOS (Los que están en la tarjeta del proceso)
-    vinculos?.forEach((v: any) => {
-      const c = v.candidatos
-      const p = v.procesos
-      if (!c || !p) return
-
-      const key = c.id
-      if (!grupos[key]) {
-        grupos[key] = {
-          id: c.id,
-          nombre: c.nombre,
-          apellido: c.apellido,
-          email: c.email,
-          sesiones: [],
-          ultima_fecha: v.created_at || '',
-          proceso_id: p.id,
-          proceso_nombre: p.nombre,
-          proceso_cargo: p.cargo,
-          competencias_requeridas: p.competencias_requeridas,
-          bateria_tests: p.bateria_tests
-        }
-      } else {
-        // Si ya existe, concatenar nombres de procesos si son distintos
-        if (grupos[key].proceso_id !== p.id) {
-          grupos[key].proceso_nombre += `, ${p.nombre}`
-        }
+    // Agrupar todas las sesiones por candidato_id
+    const sesionesPorCandidato: Record<string, any[]> = {}
+    sesionesData?.forEach(s => {
+      if (!sesionesPorCandidato[s.candidato_id]) {
+        sesionesPorCandidato[s.candidato_id] = []
       }
+      sesionesPorCandidato[s.candidato_id].push(s)
     })
 
-    // B. CARGAR HISTÓRICOS
-    sesionesData?.forEach((s: any) => {
-      const c = s.candidatos
-      if (!c) return
-
-      const key = c.id
-
-      if (!grupos[key]) {
-        grupos[key] = {
-          id: c.id,
-          nombre: c.nombre,
-          apellido: c.apellido,
-          email: c.email,
-          sesiones: [],
-          ultima_fecha: s.finalizada_en || s.creado_en,
-          proceso_id: s.proceso_id || undefined,
-          proceso_nombre: s.procesos?.nombre || 'Evaluación Independiente',
-          proceso_cargo: s.procesos?.cargo || 'Sin cargo asignado',
-          competencias_requeridas: s.procesos?.competencias_requeridas,
-          bateria_tests: s.procesos?.bateria_tests
-        }
-      }
-      grupos[key].sesiones.push(s)
-      const fechaSesion = s.finalizada_en || s.creado_en
-      if (fechaSesion && (!grupos[key].ultima_fecha || new Date(fechaSesion) > new Date(grupos[key].ultima_fecha))) {
-        grupos[key].ultima_fecha = fechaSesion
-      }
-    })
-
-    const resultado = Object.values(grupos).map(c => {
-      const bateria = c.bateria_tests || []
-      const misVideos = respuestasVideo?.filter(rv => rv.candidato_id === c.id) || []
+    const resultado: CandidatoAgrupado[] = (candidatosTodos || []).map((c: any) => {
+      const misSesiones = sesionesPorCandidato[c.id] || []
+      const primerSesionProceso = misSesiones.find(s => s.procesos)
       
+      const procesoNombre = primerSesionProceso?.procesos?.nombre || 'Evaluación Independiente'
+      const procesoCargo = primerSesionProceso?.procesos?.cargo || 'Sin cargo asignado'
+      const procesoId = primerSesionProceso?.proceso_id || undefined
+      const competenciasReq = primerSesionProceso?.procesos?.competencias_requeridas || []
+      const bateria = primerSesionProceso?.procesos?.bateria_tests || []
+
+      const misVideos = respuestasVideo?.filter(rv => rv.candidato_id === c.id) || []
       const videosUnicosMap = new Map<string, any>()
       misVideos.forEach(v => {
         const k = `${v.entrevista_id}:${v.pregunta_id}`
@@ -617,7 +568,7 @@ export default function PanelEvaluador() {
       })
 
       const idsCompletados = new Set<string>()
-      c.sesiones.forEach(s => {
+      misSesiones.forEach(s => {
         const slug = TEST_IDS[s.test_id] || s.test_id
         if (slug) idsCompletados.add(slug)
       })
@@ -628,11 +579,34 @@ export default function PanelEvaluador() {
         ? bateria.filter(tId => idsCompletados.has(tId)).length
         : idsCompletados.size
 
-      const sesionBigFive = c.sesiones.find(s => TEST_IDS[s.test_id] === 'bigfive')
-      const matchScore = calcularMatch(sesionBigFive?.puntaje_bruto, c.competencias_requeridas || [])
+      const sesionBigFive = misSesiones.find(s => TEST_IDS[s.test_id] === 'bigfive')
+      const matchScore = calcularMatch(sesionBigFive?.puntaje_bruto, competenciasReq)
+
+      let ultimaFecha = c.creado_en
+      misSesiones.forEach(s => {
+        const f = s.finalizada_en || s.creado_en
+        if (f && new Date(f) > new Date(ultimaFecha)) {
+          ultimaFecha = f
+        }
+      })
 
       return {
-        ...c,
+        id: c.id,
+        nombre: c.nombre,
+        apellido: c.apellido,
+        email: c.email,
+        documento: c.documento || '',
+        edad: c.edad || '',
+        sexo: c.sexo || '',
+        formacion: c.formacion || '',
+        profesion: c.profesion || '',
+        sesiones: misSesiones,
+        ultima_fecha: ultimaFecha,
+        proceso_id: procesoId,
+        proceso_nombre: procesoNombre,
+        proceso_cargo: procesoCargo,
+        competencias_requeridas: competenciasReq,
+        bateria_tests: bateria,
         progreso: {
           completados: finalCompletados,
           total: totalBateria || finalCompletados || 1,
