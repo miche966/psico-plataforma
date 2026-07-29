@@ -271,10 +271,41 @@ export default function PanelEvaluador() {
         .eq('sesion_id', sesion.id)
 
       if (itemsDB && itemsDB.length > 0) {
-        const mapeados = mapperAuditoriaUniversal(itemsDB, respuestasDB || [], sesion.test_id)
+        const mapeados = mapperAuditoriaUniversal(itemsDB, respuestasDB || [], sesion.test_id || '')
         setItemsAuditoria(mapeados)
       } else {
-        setItemsAuditoria([])
+        // Fallback dinámico para sesiones de Roleplay o evaluativas sin ítems estáticos
+        const pb = sesion.puntaje_bruto as any
+        const pbStr = JSON.stringify(pb || {}).toLowerCase()
+
+        if (pb && (pb.por_factor || pbStr.includes('transcripcion') || pbStr.includes('mensajes') || pbStr.includes('interaccion'))) {
+          const factores = pb.por_factor ? Object.entries(pb.por_factor) : []
+          const sinteticos = factores.map(([fact, obj]: [string, any], idx) => ({
+            id: `sintetico-${idx}`,
+            numItem: idx + 1,
+            categoria: fact.toUpperCase(),
+            pregunta: `Evaluación de competencia situacional y desempeño en factor: ${fact}`,
+            opcionSeleccionada: `Rendimiento obtenido: ${obj.correctas || 0} de ${obj.total || 0} (${Math.round(((obj.correctas || 0) / (obj.total || 1)) * 100)}%)`,
+            opcionCorrecta: `Desempeño esperado: Nivel Máximo (${obj.total || 0}/${obj.total || 0})`,
+            esTextoAbierto: false,
+            esCorrecto: (obj.correctas || 0) === (obj.total || 0)
+          }))
+
+          setItemsAuditoria(sinteticos.length > 0 ? sinteticos : [
+            {
+              id: 'sintetico-1',
+              numItem: 1,
+              categoria: 'EVALUACIÓN GLOBAL',
+              pregunta: 'Registro de Desempeño General del Candidato',
+              opcionSeleccionada: `Puntaje Acreditado: ${pb.porcentaje || pb.promedio_general || 100}%`,
+              opcionCorrecta: 'Puntaje Conforme Acreditado',
+              esTextoAbierto: false,
+              esCorrecto: true
+            }
+          ])
+        } else {
+          setItemsAuditoria([])
+        }
       }
     } catch (e) {
       console.error('Error cargando auditoría de sesión:', e)
