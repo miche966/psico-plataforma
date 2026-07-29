@@ -1020,15 +1020,17 @@ export default function PanelEvaluador() {
                                       )}
                                     </div>
 
-                                    {/* Retroalimentación de la IA */}
+                                    {/* Retroalimentación de la IA con texto oscuro hiperlegible */}
                                     {pbRoleplay.retroalimentacion && (
-                                      <div className="p-4 bg-slate-950/80 rounded-xl border border-slate-800 text-xs text-slate-200 leading-relaxed shadow-inner">
-                                        <span className="font-bold text-indigo-400 block mb-1.5 uppercase tracking-wider text-[10px]">
-                                          Análisis Cualitativo de IA:
-                                        </span>
-                                        {pbRoleplay.retroalimentacion}
-                                      </div>
-                                    )}
+                                       <div className="p-4 bg-slate-100 rounded-xl border border-slate-300 text-xs text-slate-900 leading-relaxed shadow-sm font-medium">
+                                         <span className="font-extrabold text-indigo-700 block mb-1.5 uppercase tracking-wider text-[11px]">
+                                           Análisis Cualitativo de IA:
+                                         </span>
+                                         <p className="text-slate-900 font-medium">
+                                           {pbRoleplay.retroalimentacion}
+                                         </p>
+                                       </div>
+                                     )}
 
                                     {/* Burbujas del Diálogo Estilizadas de Alto Contraste */}
                                     <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar-visible p-3 bg-slate-950 rounded-xl border border-slate-800">
