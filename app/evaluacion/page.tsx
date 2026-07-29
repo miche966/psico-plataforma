@@ -69,8 +69,10 @@ const TEST_IDS: Record<string, string> = {
 export default function PortalCandidatoPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const candidatoId = searchParams.get('candidato')
-  const procesoId = searchParams.get('proceso')
+  const candidatoIdRaw = searchParams.get('candidato')
+  const procesoIdRaw = searchParams.get('proceso')
+  const candidatoId = candidatoIdRaw ? candidatoIdRaw.trim() : null
+  const procesoId = procesoIdRaw ? procesoIdRaw.trim() : null
 
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
