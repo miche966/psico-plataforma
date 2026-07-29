@@ -30,9 +30,10 @@ export function mapperAuditoriaUniversal(
     } else if (resp) {
       if (resp.opcion_texto) {
         opcionSeleccionada = resp.opcion_texto
-      } else if (typeof resp.valor === 'number' && Array.isArray(item.opciones)) {
-        const idx = resp.valor - 1
-        opcionSeleccionada = item.opciones[idx] || item.opciones[0] || String(resp.valor)
+      } else if (typeof resp.valor === 'number' && Array.isArray(item.opciones) && item.opciones.length > 0) {
+        // Mapear el índice o valor del ítem a la opción exacta de la lista de opciones
+        const idx = (resp.valor > 0 && resp.valor <= item.opciones.length) ? resp.valor - 1 : 0
+        opcionSeleccionada = item.opciones[idx] || item.respuesta_correcta || `Opción ${resp.valor}`
       } else if (typeof resp.valor === 'string') {
         opcionSeleccionada = resp.valor
       } else if (resp.valor === 1 && item.respuesta_correcta) {
