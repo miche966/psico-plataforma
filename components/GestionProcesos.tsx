@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Plus, Check, Link as LinkIcon, Search, FileText, X, Eye, Settings, Clock, CheckCircle2, BellRing, Upload, ClipboardPaste, UserPlus, Download, Video, Briefcase, Award } from 'lucide-react'
+import { Plus, Check, Link as LinkIcon, Search, FileText, X, Eye, Settings, Clock, CheckCircle2, BellRing, Upload, ClipboardPaste, UserPlus, Download, Video } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
@@ -26,9 +26,6 @@ const TESTS_DISPONIBLES = [
   { key: 'creatividad', label: 'Creatividad' },
   { key: 'sjt-problemas', label: 'SJT Problemas' },
   { key: 'dass21', label: 'DASS-21' },
-  { key: 'frases-incompletas', label: 'Frases Incompletas' },
-  { key: 'roleplay', label: 'Role Play: Cobranzas (IA)' },
-  { key: 'roleplay_atencion', label: 'Role Play: Atención al Cliente (IA)' },
 ]
 
 const COMPETENCIAS_ALLES = [
@@ -77,9 +74,6 @@ const SLUG_TO_ID: Record<string, string> = {
   'sjt-atencion': 'f6a7b8c9-d0e1-2345-fabc-666666666666',
   'sjt-cobranzas': 'e9b2c3d4-f5a6-7890-bcde-999999999999',
   'dass21': '7a8b9c0d-e1f2-4356-abcd-999999999999',
-  'frases-incompletas': 'f7a8b9c0-d1e2-4356-abcd-888888888888',
-  'roleplay': 'd8e9f0a1-b2c3-4567-defa-888888888888',
-  'roleplay_atencion': 'd8e9f0a1-b2c3-4567-defa-777777777777',
 }
 
 export default function GestionProcesos() {
@@ -106,7 +100,6 @@ export default function GestionProcesos() {
   const [textoMasivo, setTextoMasivo] = useState('')
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'completado' | 'incompleto' | 'pendiente'>('todos')
   const [videoRespuestas, setVideoRespuestas] = useState<any[]>([])
-  const [preguntasVideo, setPreguntasVideo] = useState<any[]>([])
 
   useEffect(() => {
     cargarDatos()
@@ -475,32 +468,19 @@ export default function GestionProcesos() {
       if (slugPrimerTest.startsWith('entrevista:')) testIdFinal = slugPrimerTest.split(':')[1]
       else if (SLUG_TO_ID[slugPrimerTest]) testIdFinal = SLUG_TO_ID[slugPrimerTest]
 
-      // 1. Obtener sesiones actuales de este proceso para evitar duplicados manualmente
-      const { data: actuales } = await supabase
+      // Vincular a TODOS los candidatos que no tengan proceso_id o que estén huérfanos
+      const sesionesNuevas = candidatos.map(c => ({
+        candidato_id: c.id,
+        proceso_id: procesoSeleccionado.id,
+        test_id: testIdFinal,
+        estado: 'pendiente'
+      }))
+
+      const { error } = await supabase
         .from('sesiones')
-        .select('candidato_id')
-        .eq('proceso_id', procesoSeleccionado.id)
-        .eq('test_id', testIdFinal)
+        .upsert(sesionesNuevas, { onConflict: 'candidato_id,proceso_id' })
       
-      const idsConSesion = new Set(actuales?.map(s => s.candidato_id) || [])
-
-      // 2. Filtrar candidatos que realmente no tienen vínculo
-      const sesionesNuevas = candidatos
-        .filter(c => !idsConSesion.has(c.id))
-        .map(c => ({
-          candidato_id: c.id,
-          proceso_id: procesoSeleccionado.id,
-          test_id: testIdFinal,
-          estado: 'pendiente'
-        }))
-
-      if (sesionesNuevas.length > 0) {
-        const { error } = await supabase
-          .from('sesiones')
-          .insert(sesionesNuevas)
-        
-        if (error) throw error
-      }
+      if (error) throw error
       
       await cargarDatos()
       alert('¡Vínculos restaurados con éxito!')
@@ -518,39 +498,8 @@ export default function GestionProcesos() {
       const { data: pData, error: pe } = await supabase.from('procesos').select('*').order('creado_en', { ascending: false })
       const { data: cData, error: ce } = await supabase.from('candidatos').select('id, nombre, apellido, email').order('creado_en', { ascending: false })
       const { data: eData, error: ee } = await supabase.from('entrevistas_video').select('id, nombre').order('creada_en', { ascending: false })
-      // Chunk candidate IDs to avoid the 1000-row PostgREST select limit in Supabase
-      const candidateIds = cData ? cData.map(c => c.id) : []
-      const chunkSize = 50
-      const chunks = []
-      for (let i = 0; i < candidateIds.length; i += chunkSize) {
-        chunks.push(candidateIds.slice(i, i + chunkSize))
-      }
-
-      let sData: any[] = []
-      let se: any = null
-      
-      if (candidateIds.length > 0) {
-        try {
-          const results = await Promise.all(
-            chunks.map(chunk =>
-              supabase
-                .from('sesiones')
-                .select('*')
-                .in('candidato_id', chunk)
-            )
-          )
-          results.forEach(res => {
-            if (res.data) sData = sData.concat(res.data)
-            if (res.error && !se) se = res.error
-          })
-        } catch (err: any) {
-          console.error('Error loading sessions in chunks:', err)
-          se = err
-        }
-      }
-
-      const { data: vData, error: ve } = await supabase.from('respuestas_video').select('candidato_id, entrevista_id, pregunta_id').eq('estado', 'completado')
-      const { data: qData } = await supabase.from('preguntas_video').select('id, entrevista_id')
+      const { data: sData, error: se } = await supabase.from('sesiones').select('*')
+      const { data: vData, error: ve } = await supabase.from('respuestas_video').select('candidato_id, entrevista_id')
 
       if (pe) console.error('Error Procesos:', pe)
       if (ce) console.error('Error Candidatos:', ce)
@@ -568,7 +517,6 @@ export default function GestionProcesos() {
       if (eData) setEntrevistas(eData)
       if (sData) setSesiones(sData)
       if (vData) setVideoRespuestas(vData)
-      if (qData) setPreguntasVideo(qData)
     } catch (err) {
       console.error('Falla total:', err)
     } finally {
@@ -686,72 +634,6 @@ export default function GestionProcesos() {
               {entrevistas.length === 0 && (
                 <p className="text-[10px] text-slate-400 italic p-2">No hay video entrevistas creadas.</p>
               )}
-            </div>
-          </div>
-
-          {/* APARTADO: DESCRIPCIÓN Y COMPETENCIAS DEL PUESTO */}
-          <div className="space-y-4 mb-6 pt-4 border-t border-slate-100">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-indigo-500" />
-                Misión y Tareas del Puesto
-              </label>
-              <textarea
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none min-h-[100px] resize-y text-slate-700 dark:text-slate-200"
-                value={form.descripcion_cargo}
-                onChange={e => setForm({ ...form, descripcion_cargo: e.target.value })}
-                placeholder="Describa el objetivo principal del rol, tareas clave y responsabilidades..."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <Award className="w-3.5 h-3.5 text-indigo-500" />
-                Competencias Requeridas (Martha Alles)
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                {COMPETENCIAS_ALLES.map(comp => {
-                  const seleccionado = form.competencias_requeridas.find(c => c.nombre === comp)
-                  return (
-                    <div key={comp} className="flex items-center justify-between p-2 hover:bg-white dark:hover:bg-slate-900 rounded-xl transition-all">
-                      <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <input 
-                          type="checkbox" 
-                          checked={!!seleccionado}
-                          onChange={e => {
-                            if (e.target.checked) {
-                              setForm({ ...form, competencias_requeridas: [...form.competencias_requeridas, { nombre: comp, nivel: 'B' }] })
-                            } else {
-                              setForm({ ...form, competencias_requeridas: form.competencias_requeridas.filter(c => c.nombre !== comp) })
-                            }
-                          }}
-                          className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-600"
-                        />
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{comp}</span>
-                      </label>
-                      
-                      {seleccionado && (
-                        <select
-                          className="px-2 py-1 text-[11px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500/20"
-                          value={seleccionado.nivel}
-                          onChange={e => {
-                            const val = e.target.value
-                            setForm({
-                              ...form,
-                              competencias_requeridas: form.competencias_requeridas.map(c => c.nombre === comp ? { ...c, nivel: val } : c)
-                            })
-                          }}
-                        >
-                          <option value="A">A (Excelente / Altísimo)</option>
-                          <option value="B">B (Bueno / Avanzado)</option>
-                          <option value="C">C (Mínimo / Medio)</option>
-                          <option value="D">D (Básico / No Requerido)</option>
-                        </select>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
             </div>
           </div>
 
@@ -885,10 +767,11 @@ export default function GestionProcesos() {
                   </h4>
                   <div className="flex flex-wrap gap-1.5">
                     {procesoSeleccionado.bateria_tests?.map(tKey => {
-                      const tInfo = [...TESTS_DISPONIBLES, ...entrevistas.map(e => ({ key: `entrevista:${e.id}`, label: `🎥 ${e.nombre}` }))].find(t => t.key === tKey)
+                      const tInfo = [...TESTS_DISPONIBLES, ...entrevistas.map(e => ({ key: `entrevista:${e.id}`, label: `🎥 ${e.nombre || 'Videoentrevista / Roleplay'}` }))].find(t => t.key === tKey)
+                      const displayLabel = tInfo?.label || (tKey.startsWith('entrevista:') ? '🎥 Roleplay / Videoentrevista' : tKey)
                       return (
                         <span key={tKey} className="px-3 py-1.5 bg-slate-50 text-slate-600 text-[10px] rounded-xl font-bold border border-slate-100 flex items-center gap-1.5">
-                          {tInfo?.label || tKey}
+                          {displayLabel}
                         </span>
                       )
                     })}
@@ -897,45 +780,6 @@ export default function GestionProcesos() {
                     )}
                   </div>
                 </div>
-
-                {/* PERFIL REQUERIDO PARA EL CARGO */}
-                {(procesoSeleccionado.descripcion_cargo || (procesoSeleccionado.competencias_requeridas && procesoSeleccionado.competencias_requeridas.length > 0)) && (
-                  <div className="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4 shadow-sm">
-                    <h4 className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2">
-                      <Briefcase className="w-4 h-4 text-indigo-500" />
-                      Perfil y Requisitos del Cargo
-                    </h4>
-                    
-                    {procesoSeleccionado.descripcion_cargo && (
-                      <div className="space-y-1">
-                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Misión y Tareas Clave</span>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                          {procesoSeleccionado.descripcion_cargo}
-                        </p>
-                      </div>
-                    )}
-                    
-                    {procesoSeleccionado.competencias_requeridas && procesoSeleccionado.competencias_requeridas.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Modelo de Ajuste Conductual</span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {procesoSeleccionado.competencias_requeridas.map((comp: any, idx: number) => (
-                            <div key={idx} className="flex items-center justify-between bg-white dark:bg-slate-900 px-3 py-2 rounded-xl border border-slate-100 dark:border-slate-800/60 shadow-sm">
-                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate pr-2">{comp.nombre}</span>
-                              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                                comp.nivel === 'A' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400' :
-                                comp.nivel === 'B' ? 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400' :
-                                'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                              }`}>
-                                Nivel {comp.nivel}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {/* PARTICIPANTES ACTUALES */}
                 <div>
@@ -972,36 +816,14 @@ export default function GestionProcesos() {
                           const misSesiones = sesiones.filter(s => s.candidato_id === c.id)
                           const misVideos = videoRespuestas.filter(v => v.candidato_id === c.id)
                           
-                          // Agrupar por pregunta_id para evitar duplicados
-                          const videosUnicosMap = new Map<string, any>()
-                          misVideos.forEach(v => {
-                            const k = `${v.entrevista_id}:${v.pregunta_id}`
-                            videosUnicosMap.set(k, v)
-                          })
-
                           const testsCompletadosIds = misSesiones.map(s => s.test_id)
-
-                          // Contar respuestas válidas por entrevista para este candidato
-                          const respuestasPorEntrevista: Record<string, number> = {}
-                          Array.from(videosUnicosMap.values()).forEach(v => {
-                            respuestasPorEntrevista[v.entrevista_id] = (respuestasPorEntrevista[v.entrevista_id] || 0) + 1
-                          })
-
-                          // Contar preguntas totales por entrevista
-                          const preguntasPorEntrevista: Record<string, number> = {}
-                          preguntasVideo.forEach(p => {
-                            preguntasPorEntrevista[p.entrevista_id] = (preguntasPorEntrevista[p.entrevista_id] || 0) + 1
-                          })
+                          const videosCompletadosIds = misVideos.map(v => v.entrevista_id)
                           
                           const uniqueCompletados = new Set<string>()
                           testsAsignadosSlugs.forEach(slug => {
                             if (slug.startsWith('entrevista:')) {
                               const entId = slug.split(':')[1]
-                              const cantRespuestas = respuestasPorEntrevista[entId] || 0
-                              const cantPreguntas = preguntasPorEntrevista[entId] || 0
-                              if (cantRespuestas >= cantPreguntas && cantPreguntas > 0) {
-                                uniqueCompletados.add(slug)
-                              }
+                              if (videosCompletadosIds.includes(entId)) uniqueCompletados.add(slug)
                             } else {
                               const id = SLUG_TO_ID[slug]
                               // Verificación redundante para asegurar match
