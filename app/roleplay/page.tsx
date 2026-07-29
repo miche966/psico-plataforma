@@ -489,7 +489,7 @@ export default function RolePlayPage() {
                         <li><strong>Contener y Empatizar:</strong> Saludar profesionalmente, validar la molestia de la clienta por el error y disculparte sinceramente.</li>
                         <li><strong>Indagar detalles:</strong> Solicitar su número de DNI o Cuenta para validar la transacción en el sistema de manera calmada.</li>
                         <li><strong>Ofrecer solución clara:</strong> Explicar el proceso administrativo de reintegro (se acreditará en un plazo de 24 a 48 horas hábiles).</li>
-                        <li><strong>Mantener la calidad:</strong> Cuidar el tono de voz, la asertividad y el profesionalismo durante todo el diálogo.</li>
+                        <li><strong>Tono y Estilo:</strong> Mantener un tono y estilo de comunicación lo más profesional posible en todo momento.</li>
                       </ul>
                     </div>
                   </>
@@ -512,7 +512,7 @@ export default function RolePlayPage() {
                         <li><strong>Identificarte profesionalmente:</strong> Saludar al cliente, identificarte con tu nombre e indicar que llamas en representación de República Microfinanzas.</li>
                         <li><strong>Indagar el motivo:</strong> Indagar el motivo del atraso en sus pagos.</li>
                         <li><strong>Negociar un compromiso:</strong> Encontrar una solución de pago viable (promesa de pago para una fecha específica o posibilidad de refinanciación) adaptada a su situación.</li>
-                        <li><strong>Mantener la calidad:</strong> Cumplir con el tono de voz respetuoso y el protocolo de cobranzas en todo momento.</li>
+                        <li><strong>Tono y Estilo:</strong> Mantener un tono y estilo de comunicación lo más profesional posible durante todo el diálogo.</li>
                       </ul>
                     </div>
                   </>
