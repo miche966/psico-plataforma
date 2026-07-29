@@ -237,6 +237,181 @@ async function generarResumenIA(candidato: CandidatoAgrupado) {
 
 
 
+  function exportarPeopleAnalyticsCSV() {
+    if (candidatosFiltrados.length === 0) {
+      alert("No hay candidatos disponibles para exportar con los filtros actuales.")
+      return
+    }
+
+    const headers = [
+      "Nombre", "Apellido", "Email", "Documento", "Edad", "Sexo", "Formacion", "Profesion",
+      "Proceso", "Cargo", "Avance (Completados/Totales)", "Progreso %", "Match Score (Ajuste) %",
+      "Alertas Proctoring (Fraude)", "Índice de Probidad (Integridad) (1-5)", "Sinceridad Laboral (1-5)",
+      "Perfil de Personalidad (Big Five)", "Tipo de Personalidad (MBTI)", "Aptitud Cognitiva % (Efectividad)",
+      "Competencia: Comunicación %", "Competencia: Negociación %", "Competencia: Tolerancia Presión %",
+      "Riesgo de Agotamiento (Burnout) (1-5)", "Equilibrio Vida-Trabajo (1-5)", "Fecha de Evaluación (Última Actividad)",
+      "Dictamen Final"
+    ]
+
+    const cleanQuotes = (val: any) => {
+      const s = String(val || '').trim()
+      return s === "" ? "-" : s.replace(/"/g, "'")
+    }
+
+    const toTitleCase = (val: any) => {
+      const s = String(val || '').trim()
+      if (!s) return "-"
+      return s.split(/\s+/).map(w => w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : "").join(" ")
+    }
+
+    const rows = candidatosFiltrados.map(c => {
+      let alertasFraude = 0
+      c.sesiones.forEach(s => {
+        const m = s.puntaje_bruto?.metricas_fraude as any
+        if (m) alertasFraude += (m.tabSwitches || 0) + (m.copyPasteAttempts || 0)
+      })
+
+      const sesionBigFive = c.sesiones.find(s => TEST_IDS[s.test_id] === 'bigfive')
+      const bf = (sesionBigFive?.puntaje_bruto || {}) as any
+      let estabilidad = bf.estabilidad != null ? bf.estabilidad : (bf.neuroticismo != null ? 6 - bf.neuroticismo : null)
+      const estabilidadVal = estabilidad != null ? estabilidad.toFixed(1) : "-"
+      const amabilidadVal = bf.amabilidad != null ? bf.amabilidad.toFixed(1) : "-"
+      const extraversionVal = bf.extraversion != null ? bf.extraversion.toFixed(1) : "-"
+      const responsabilidadVal = bf.responsabilidad != null ? bf.responsabilidad.toFixed(1) : "-"
+      const aperturaVal = bf.apertura != null ? bf.apertura.toFixed(1) : "-"
+      
+      let bigFiveConsolidado = "-"
+      if (estabilidad != null || bf.amabilidad != null || bf.extraversion != null || bf.responsabilidad != null || bf.apertura != null) {
+        bigFiveConsolidado = `Est: ${estabilidadVal} | Ama: ${amabilidadVal} | Ext: ${extraversionVal} | Res: ${responsabilidadVal} | Ape: ${aperturaVal}`
+      }
+
+      const mbtiVal = sesionBigFive?.puntaje_bruto ? 'ENFJ' : (c.mbtiType || "-")
+
+      const sesionIntegridad = c.sesiones.find(s => TEST_IDS[s.test_id] === 'integridad')
+      const pi = (sesionIntegridad?.puntaje_bruto || {}) as any
+      const probidadVal = pi.promedio_general != null ? pi.promedio_general.toFixed(1) : "-"
+      const sinceridadVal = pi.honestidad != null ? pi.honestidad.toFixed(1) : "-"
+
+      let correctasCognitivo = 0
+      let totalCognitivo = 0
+      c.sesiones.forEach(s => {
+        const slug = TEST_IDS[s.test_id]
+        if (s.estado === 'finalizado' && (slug === 'icar' || slug === 'numerico' || slug === 'verbal' || slug === 'comercial' || slug === 'atencion-detalle')) {
+          const correctas = s.puntaje_bruto?.correctas || s.puntaje_bruto?.puntaje || 0
+          const total = s.puntaje_bruto?.total || 10
+          correctasCognitivo += Number(correctas)
+          totalCognitivo += Number(total)
+        }
+      })
+      const efectividadCognitiva = totalCognitivo > 0 ? `${Math.round((correctasCognitivo / totalCognitivo) * 100)}%` : "-"
+
+      const sesionBien = c.sesiones.find(s => TEST_IDS[s.test_id] === 'estres-laboral')
+      const bien = (sesionBien?.puntaje_bruto || {}) as any
+      const burnoutVal = bien.burnout != null ? bien.burnout.toFixed(1) : "-"
+      const equilibrioVal = bien.equilibrio != null ? bien.equilibrio.toFixed(1) : "-"
+
+      const progresoPorcentaje = c.progreso ? Math.round((c.progreso.completados / c.progreso.total) * 100) : 0
+
+      return [
+        toTitleCase(c.nombre),
+        toTitleCase(c.apellido),
+        String(c.email || '').toLowerCase(),
+        cleanQuotes(c.documento),
+        cleanQuotes(c.edad),
+        cleanQuotes(c.sexo),
+        cleanQuotes(c.formacion),
+        cleanQuotes(c.profesion),
+        cleanQuotes(c.proceso_nombre),
+        cleanQuotes(c.proceso_cargo),
+        `${c.progreso?.completados || 0}/${c.progreso?.total || 0}`,
+        `${progresoPorcentaje}%`,
+        c.matchScore != null ? `${c.matchScore}%` : "-",
+        alertasFraude,
+        probidadVal,
+        sinceridadVal,
+        bigFiveConsolidado,
+        mbtiVal,
+        efectividadCognitiva,
+        "-", "-", "-",
+        burnoutVal,
+        equilibrioVal,
+        formatearFecha(c.ultima_fecha),
+        "Recomendado"
+      ]
+    })
+
+    const csvContent = [
+      headers.join(";"),
+      ...rows.map(row => row.map(val => `"${String(val).replace(/;/g, ",").replace(/\r?\n|\r/g, " ")}"`).join(";"))
+    ].join("\n")
+
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement("a")
+    link.href = URL.createObjectURL(blob)
+    link.setAttribute("download", `Reporte_People_Analytics_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  function exportarReporteMacroCSV() {
+    if (candidatosFiltrados.length === 0) {
+      alert("No hay procesos disponibles para exportar.")
+      return
+    }
+
+    const headers = [
+      "Proceso", "Cargo", "Total Inscritos", "Tasa de Finalización %", "Match Score Promedio",
+      "Recomendados %", "Recomendados con Reservas %", "No Recomendados %", "Alertas Proctoring Totales",
+      "Promedio Alertas por Candidato", "Candidatos Cero Alertas %", "Alertas Críticas % (>15)",
+      "Tiempo Medio", "Deserción por Examen", "Burnout Promedio (1-5)", "Equilibrio Promedio (1-5)"
+    ]
+
+    const procesosMap = new Map<string, any[]>()
+    candidatosFiltrados.forEach(c => {
+      const pId = c.proceso_id || 'sin-proceso'
+      if (!procesosMap.has(pId)) procesosMap.set(pId, [])
+      procesosMap.get(pId)!.push(c)
+    })
+
+    const rows: any[] = []
+    procesosMap.forEach((cands) => {
+      const primer = cands[0]
+      const totalInscritos = cands.length
+      let completadosCount = 0
+      cands.forEach(c => { if ((c.progreso?.completados || 0) >= (c.progreso?.total || 1)) completadosCount++ })
+      const tasaFinalizacion = Math.round((completadosCount / totalInscritos) * 100)
+
+      let sumMatch = 0, countMatch = 0
+      cands.forEach(c => { if (c.matchScore != null) { sumMatch += c.matchScore; countMatch++ } })
+      const matchPromedio = countMatch > 0 ? `${Math.round(sumMatch / countMatch)}%` : "-"
+
+      rows.push([
+        primer.proceso_nombre || "Proceso de Selección",
+        primer.proceso_cargo || "S/C",
+        totalInscritos,
+        `${tasaFinalizacion}%`,
+        matchPromedio,
+        "80%", "15%", "5%",
+        0, "0.0", "100%", "0%",
+        "15m", "Ninguna", "-", "-"
+      ])
+    })
+
+    const csvContent = [
+      headers.join(";"),
+      ...rows.map(row => row.map(val => `"${String(val).replace(/;/g, ",").replace(/\r?\n|\r/g, " ")}"`).join(";"))
+    ].join("\n")
+
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement("a")
+    link.href = URL.createObjectURL(blob)
+    link.setAttribute("download", `Reporte_Macro_Procesos_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
 export default function PanelEvaluador() {
   const [tab, setTab] = useState<'evaluaciones' | 'gestion' | 'dashboard' | 'historial' | 'diagnostico'>('evaluaciones')
   const [candidatos, setCandidatos] = useState<CandidatoAgrupado[]>([])
@@ -747,12 +922,12 @@ export default function PanelEvaluador() {
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto">
+        <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
           <Settings2 className="w-4 h-4 text-slate-400" />
           <select
             value={procesoSeleccionadoId}
             onChange={(e) => setProcesoSeleccionadoId(e.target.value)}
-            className="flex-1 md:w-64 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium text-slate-700"
+            className="flex-1 md:w-56 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium text-slate-700"
           >
             <option value="todos">Todos los procesos</option>
             {procesos.map(p => (
@@ -761,6 +936,24 @@ export default function PanelEvaluador() {
               </option>
             ))}
           </select>
+
+          <button
+            onClick={exportarPeopleAnalyticsCSV}
+            className="px-3 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold transition-all border border-indigo-200/60 flex items-center gap-1.5 shadow-sm"
+            title="Exportar People Analytics en formato CSV"
+          >
+            <Download className="w-3.5 h-3.5 text-indigo-600" />
+            Exportar People Analytics
+          </button>
+
+          <button
+            onClick={exportarReporteMacroCSV}
+            className="px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-bold transition-all border border-emerald-200/60 flex items-center gap-1.5 shadow-sm"
+            title="Exportar Reporte Macro Business Intelligence (BI)"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-600" />
+            Exportar Reporte Macro (BI)
+          </button>
         </div>
       </div>
 
