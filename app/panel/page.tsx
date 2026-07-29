@@ -1054,10 +1054,10 @@ export default function PanelEvaluador() {
                                             </div>
 
                                             <div
-                                              className={`p-3.5 rounded-2xl max-w-[88%] text-xs leading-relaxed shadow-md ${
+                                              className={`p-4 rounded-2xl max-w-[88%] text-xs md:text-sm leading-relaxed shadow-sm font-semibold ${
                                                 esCandidato
-                                                  ? 'bg-indigo-600 text-white rounded-tr-none border border-indigo-400 font-medium'
-                                                  : 'bg-slate-800 text-white rounded-tl-none border border-slate-700 font-medium'
+                                                  ? 'bg-indigo-100 text-indigo-950 rounded-tr-none border border-indigo-300'
+                                                  : 'bg-slate-100 text-slate-950 rounded-tl-none border border-slate-300'
                                               }`}
                                             >
                                               {texto}
