@@ -891,8 +891,9 @@ export default function PanelEvaluador() {
                             let label = (s as any).test_id ? TEST_NAMES[(s as any).test_id] : null
                             if (!label || label === 'Evaluación') {
                               const pbStr = JSON.stringify(pb || {}).toLowerCase()
-                              if (pbStr.includes('escucha_activa') || pbStr.includes('manejo_conflicto')) label = 'SJT Atención al Cliente'
-                              else if (pbStr.includes('negociacion') || pbStr.includes('etica')) label = 'SJT Cobranzas'
+                              if (s.test_id === 'e5f6a7b8-c9d0-1234-efab-555555555555') label = 'Simulación Situacional: Cobranzas'
+                              else if (pbStr.includes('escucha_activa') || pbStr.includes('manejo_conflicto')) label = 'SJT Atención al Cliente'
+                              else if (pbStr.includes('negociacion') || pbStr.includes('etica')) label = 'Simulación Situacional: Cobranzas'
                               else if (pbStr.includes('roleplay') || pbStr.includes('simulacion') || pbStr.includes('mensajes') || pbStr.includes('transcripcion')) label = 'Simulación de Roleplay IA'
                               else if (esBigFive(pb)) label = 'Psicográfico (Big Five)'
                               else if (esCognitivo(pb)) label = 'Capacidad Cognitiva'
@@ -995,6 +996,70 @@ export default function PanelEvaluador() {
                                 <p className="text-xs text-slate-500">Puntaje General: <span className="font-bold text-slate-800">{promedioPuntaje(pb)} / 5</span></p>
                               </div>
                             )}
+
+                            {/* RENDERIZADO ESPECIAL DE ROLEPLAY IA (TRANSCRIPCIÓN CHAT EN VIVO) */}
+                            {(() => {
+                              const pbRoleplay = sesionSeleccionada.puntaje_bruto as any
+                              const transcripcion = pbRoleplay?.transcripcion || pbRoleplay?.mensajes || pbRoleplay?.historial
+                              if (Array.isArray(transcripcion) && transcripcion.length > 0) {
+                                return (
+                                  <div className="mt-6 bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 shadow-xl space-y-4">
+                                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                                      <div className="flex items-center gap-2">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                                        <h4 className="font-bold text-sm text-emerald-400 uppercase tracking-wider">
+                                          Transcripción del Roleplay IA (Simulación en Vivo)
+                                        </h4>
+                                      </div>
+                                      {pbRoleplay.acuerdo_alcanzado !== undefined && (
+                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                                          pbRoleplay.acuerdo_alcanzado ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                        }`}>
+                                          {pbRoleplay.acuerdo_alcanzado ? '✓ Acuerdo Alcanzado' : '✗ Sin Acuerdo'}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* Retroalimentación de la IA */}
+                                    {pbRoleplay.retroalimentacion && (
+                                      <div className="p-3.5 bg-slate-800/80 rounded-xl border border-slate-700/60 text-xs text-slate-300 leading-relaxed">
+                                        <span className="font-bold text-indigo-400 block mb-1 uppercase tracking-wider text-[10px]">
+                                          Análisis Cualitativo de IA:
+                                        </span>
+                                        {pbRoleplay.retroalimentacion}
+                                      </div>
+                                    )}
+
+                                    {/* Burbujas del Diálogo */}
+                                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar-visible">
+                                      {transcripcion.map((msg: any, mIdx: number) => {
+                                        const esCandidato = msg.rol === 'user' || msg.rol === 'candidato' || msg.sender === 'user'
+                                        return (
+                                          <div
+                                            key={mIdx}
+                                            className={`flex flex-col ${esCandidato ? 'items-end' : 'items-start'}`}
+                                          >
+                                            <span className="text-[9px] font-semibold text-slate-400 mb-1">
+                                              {esCandidato ? 'Evaluado (Analista)' : 'Cliente Moroso (Carlos Gómez - IA)'}
+                                            </span>
+                                            <div
+                                              className={`p-3 rounded-2xl max-w-[85%] text-xs leading-relaxed ${
+                                                esCandidato
+                                                  ? 'bg-indigo-600 text-white rounded-tr-none'
+                                                  : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-none'
+                                              }`}
+                                            >
+                                              {msg.contenido || msg.texto || msg.content || JSON.stringify(msg)}
+                                            </div>
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  </div>
+                                )
+                              }
+                              return null
+                            })()}
                           </div>
                         )
                       })()}
