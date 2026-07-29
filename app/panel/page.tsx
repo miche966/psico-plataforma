@@ -1030,26 +1030,35 @@ export default function PanelEvaluador() {
                                       </div>
                                     )}
 
-                                    {/* Burbujas del Diálogo */}
-                                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar-visible">
+                                    {/* Burbujas del Diálogo Estilizadas */}
+                                    <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar-visible p-2 bg-slate-950/40 rounded-xl border border-slate-800">
                                       {transcripcion.map((msg: any, mIdx: number) => {
-                                        const esCandidato = msg.rol === 'user' || msg.rol === 'candidato' || msg.sender === 'user'
+                                        const r = String(msg.rol || msg.role || msg.sender || '').toLowerCase()
+                                        // Discriminación estricta de roles: user/candidato vs assistant/model/bot
+                                        const esCandidato = r === 'user' || r === 'candidato' || r === 'analista' || r === 'evaluado'
+
+                                        // Obtener texto limpio
+                                        const texto = msg.contenido || msg.texto || msg.content || (typeof msg === 'string' ? msg : JSON.stringify(msg))
+
                                         return (
                                           <div
                                             key={mIdx}
-                                            className={`flex flex-col ${esCandidato ? 'items-end' : 'items-start'}`}
+                                            className={`flex flex-col ${esCandidato ? 'items-end' : 'items-start'} space-y-1`}
                                           >
-                                            <span className="text-[9px] font-semibold text-slate-400 mb-1">
-                                              {esCandidato ? 'Evaluado (Analista)' : 'Cliente Moroso (Carlos Gómez - IA)'}
-                                            </span>
+                                            <div className="flex items-center gap-1.5 px-1">
+                                              <span className={`text-[10px] font-bold ${esCandidato ? 'text-indigo-400' : 'text-amber-400'}`}>
+                                                {esCandidato ? `Evaluado (${agrupadoSeleccionado.nombre} ${agrupadoSeleccionado.apellido})` : 'Cliente Moroso (Carlos Gómez - IA)'}
+                                              </span>
+                                            </div>
+
                                             <div
-                                              className={`p-3 rounded-2xl max-w-[85%] text-xs leading-relaxed ${
+                                              className={`p-3.5 rounded-2xl max-w-[88%] text-xs leading-relaxed shadow-sm ${
                                                 esCandidato
-                                                  ? 'bg-indigo-600 text-white rounded-tr-none'
-                                                  : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-none'
+                                                  ? 'bg-indigo-600 text-white rounded-tr-none border border-indigo-500 font-medium'
+                                                  : 'bg-slate-800 text-slate-100 rounded-tl-none border border-slate-700 font-normal'
                                               }`}
                                             >
-                                              {msg.contenido || msg.texto || msg.content || JSON.stringify(msg)}
+                                              {texto}
                                             </div>
                                           </div>
                                         )
