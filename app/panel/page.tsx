@@ -2237,18 +2237,54 @@ export default function PanelEvaluador() {
                               const colorBg = pct >= 80 ? 'bg-emerald-500' : pct >= 60 ? 'bg-amber-500' : 'bg-rose-500'
                               const colorText = pct >= 80 ? 'text-emerald-600' : pct >= 60 ? 'text-amber-600' : 'text-rose-600'
                               
+                              const isVerbal = (TEST_IDS[sesionSeleccionada.test_id] || '').includes('verbal') || sesionSeleccionada.test_id?.includes('234567890123')
+                              const isNumerico = (TEST_IDS[sesionSeleccionada.test_id] || '').includes('numerico') || sesionSeleccionada.test_id?.includes('9012')
+                              
                               return (
-                                <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-                                  <div className="flex justify-between items-center mb-3">
+                                <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                                  <div className="flex justify-between items-center">
                                     <span className="text-xs font-bold text-slate-700">Efectividad Cognitiva</span>
                                     <span className={`text-xs font-black ${colorText}`}>{correctas} / {total} ({pct}%)</span>
                                   </div>
-                                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden mb-3">
+                                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                                     <div className={`h-full ${colorBg} transition-all duration-1000`} style={{ width: `${pct}%` }} />
                                   </div>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 pt-1">
                                     <div className={`w-1.5 h-1.5 rounded-full ${colorBg}`} />
                                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nivel {nivel}</span>
+                                  </div>
+
+                                  {/* DESGLOSE POR SUBTIPO SI EXISTE (EJ: ICAR) */}
+                                  {pb.por_subtipo && (
+                                    <div className="pt-3 border-t border-slate-200/60 space-y-3">
+                                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Dimensiones de la Prueba</span>
+                                      {Object.entries(pb.por_subtipo).map(([subtipo, info]: any) => {
+                                        const valSub = Math.round((info.correctas / (info.total || 1)) * 100)
+                                        const nombreSub = subtipo === 'series' ? 'Series Lógicas' : subtipo === 'matrices' ? 'Matrices de Razonamiento' : subtipo === 'rotacion' ? 'Rotación Espacial' : subtipo
+                                        return (
+                                          <div key={subtipo} className="space-y-1">
+                                            <div className="flex justify-between text-xs">
+                                              <span className="font-semibold text-slate-700">{nombreSub}</span>
+                                              <span className="font-bold text-indigo-600">{info.correctas} / {info.total} ({valSub}%)</span>
+                                            </div>
+                                            <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                              <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${valSub}%` }} />
+                                            </div>
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  )}
+
+                                  {/* DESCRIPCIÓN DEL DOMINIO EVALUADO (EJ: VERBAL / NUMÉRICO) */}
+                                  <div className="pt-2 border-t border-slate-200/60">
+                                    <p className="text-[10px] text-slate-500 italic leading-relaxed">
+                                      {isVerbal
+                                        ? 'Evaluación de la capacidad de comprensión de lectura, deducción lógica de premisas verbales, agilidad de análisis de información escrita y precisión léxica.'
+                                        : isNumerico
+                                        ? 'Evaluación de la capacidad de procesamiento cuantitativo, razonamiento lógico-matemático, cálculo rápido y resolución de problemas numéricos.'
+                                        : 'Evaluación de la agilidad cognitiva general y capacidad de resolución de problemas abstractos.'}
+                                    </p>
                                   </div>
                                 </div>
                               )
