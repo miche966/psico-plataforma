@@ -9,6 +9,7 @@ import GestionProcesos from '@/components/GestionProcesos'
 import Dashboard from '@/components/Dashboard'
 import AppLayout from '@/components/AppLayout'
 import DiagnosticoRealtime from '@/components/DiagnosticoRealtime'
+import { estimarMBTI } from '@/lib/baremos'
 
 
 const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
@@ -1061,85 +1062,7 @@ export default function PanelEvaluador() {
       return Math.min(5, Math.max(0, val))
     }
 
-    const calcularMBTI = (pb: any) => {
-      if (!pb) return "-"
-      const findVal = (key: string) => {
-        let found = 2.5
-        const searchVal = (obj: any) => {
-          Object.entries(obj).forEach(([f, v]) => {
-            if (f.toLowerCase().includes(key)) {
-              found = ((v as any)?.correctas ? ((v as any).correctas / ((v as any).total || 1)) * 5 : (typeof v === 'number' ? v : 0)) || 2.5
-            } else if (typeof v === 'object' && v !== null) {
-              searchVal(v)
-            }
-          })
-        }
-        searchVal(pb)
-        return found
-      }
-      const E = findVal('extraver') >= 2.7 ? 'E' : 'I'
-      const S = findVal('apertura') < 2.7 ? 'S' : 'N'
-      const T = findVal('amabilid') < 2.7 ? 'T' : 'F'
-      const J = findVal('responsab') >= 2.7 ? 'J' : 'P'
-      return `${E}${S}${T}${J}`
-    }
-
-    const headers = [
-      "Nombre",
-      "Apellido",
-      "Email",
-      "Documento",
-      "Edad",
-      "Sexo",
-      "Formacion",
-      "Profesion",
-      "Proceso",
-      "Cargo",
-      "Avance (Completados/Totales)",
-      "Progreso %",
-      "Match Score (Ajuste) %",
-      "Alertas Proctoring (Fraude)",
-      "Índice de Probidad (Integridad) (1-5)",
-      "Sinceridad Laboral (1-5)",
-      "Perfil de Personalidad (Big Five)",
-      "Tipo de Personalidad (MBTI)",
-      "Aptitud Cognitiva % (Efectividad)",
-      "Competencia: Comunicación %",
-      "Competencia: Negociación %",
-      "Competencia: Tolerancia Presión %",
-      "Riesgo de Agotamiento (Burnout) (1-5)",
-      "Equilibrio Vida-Trabajo (1-5)",
-      "Fecha de Evaluación (Última Actividad)",
-      "Dictamen Final"
-    ]
-
-    const rows = candidatosFiltrados.map(c => {
-      // 1. Calcular alertas de fraude acumuladas
-      let alertasFraude = 0
-      c.sesiones.forEach(s => {
-        const m = s.puntaje_bruto?.metricas_fraude as any
-        if (m) {
-          alertasFraude += (m.tabSwitches || 0) + (m.copyPasteAttempts || 0)
-        }
-      })
-
-      // 2. Extraer rasgos de Big Five y calcular MBTI
-      const sesionBigFive = c.sesiones.find(s => TEST_IDS[s.test_id] === 'bigfive')
-      const bf = (sesionBigFive?.puntaje_bruto || {}) as any
-      
-      let estabilidad = bf.estabilidad != null ? bf.estabilidad : (bf.neuroticismo != null ? 6 - bf.neuroticismo : null)
-      const estabilidadVal = estabilidad != null ? estabilidad.toFixed(1) : "-"
-      const amabilidadVal = bf.amabilidad != null ? bf.amabilidad.toFixed(1) : "-"
-      const extraversionVal = bf.extraversion != null ? bf.extraversion.toFixed(1) : "-"
-      const responsabilidadVal = bf.responsabilidad != null ? bf.responsabilidad.toFixed(1) : "-"
-      const aperturaVal = bf.apertura != null ? bf.apertura.toFixed(1) : "-"
-      
-      let bigFiveConsolidado = "-"
-      if (estabilidad != null || bf.amabilidad != null || bf.extraversion != null || bf.responsabilidad != null || bf.apertura != null) {
-        bigFiveConsolidado = `Est: ${estabilidadVal} | Ama: ${amabilidadVal} | Ext: ${extraversionVal} | Res: ${responsabilidadVal} | Ape: ${aperturaVal}`
-      }
-      
-      const mbtiVal = c.mbtiType || calcularMBTI(sesionBigFive?.puntaje_bruto)
+      const mbtiVal = sesionBigFive?.puntaje_bruto ? estimarMBTI(sesionBigFive.puntaje_bruto) : (c.mbtiType || "-")
 
       // 3. Integridad y Sinceridad Laboral
       const sesionIntegridad = c.sesiones.find(s => TEST_IDS[s.test_id] === 'integridad')
