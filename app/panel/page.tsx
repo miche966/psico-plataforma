@@ -238,7 +238,7 @@ async function generarResumenIA(candidato: CandidatoAgrupado) {
 
 
 export default function PanelEvaluador() {
-  const [tab, setTab] = useState<'evaluaciones' | 'gestion' | 'dashboard' | 'historial'>('evaluaciones')
+  const [tab, setTab] = useState<'evaluaciones' | 'gestion' | 'dashboard' | 'historial' | 'diagnostico'>('evaluaciones')
   const [candidatos, setCandidatos] = useState<CandidatoAgrupado[]>([])
   const [procesos, setProcesos] = useState<any[]>([])
   const [procesoSeleccionadoId, setProcesoSeleccionadoId] = useState<string>('todos')
@@ -586,6 +586,17 @@ export default function PanelEvaluador() {
             HISTORIAL
           </button>
           <button
+            onClick={() => setTab('diagnostico')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              tab === 'diagnostico' 
+                ? 'bg-white text-indigo-600 shadow-sm' 
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            DIAGNÓSTICO
+          </button>
+          <button
             onClick={() => setTab('gestion')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               tab === 'gestion' 
@@ -603,6 +614,23 @@ export default function PanelEvaluador() {
         <Dashboard />
       ) : tab === 'gestion' ? (
         <GestionProcesos />
+      ) : tab === 'diagnostico' ? (
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm animate-in fade-in duration-300">
+          <div className="mb-6">
+            <h2 className="text-lg font-bold text-slate-900">Diagnóstico Cualitativo e IA</h2>
+            <p className="text-xs text-slate-500">Evaluación consolidada de discurso, perfil MBTI y ajuste competencial</p>
+          </div>
+          {agrupadoSeleccionado ? (
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+              <h3 className="font-bold text-slate-900 text-sm mb-2">{agrupadoSeleccionado.nombre} {agrupadoSeleccionado.apellido}</h3>
+              <p className="text-xs text-slate-600 leading-relaxed">{agrupadoSeleccionado.resumen_ia || "Generando síntesis de diagnóstico..."}</p>
+            </div>
+          ) : (
+            <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
+              <p className="text-xs text-slate-500">Selecciona un candidato en la pestaña ANÁLISIS para visualizar su diagnóstico detallado.</p>
+            </div>
+          )}
+        </div>
       ) : tab === 'historial' ? (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-220px)]">
           <div className="flex justify-between items-center mb-6">
