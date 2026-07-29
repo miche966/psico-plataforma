@@ -120,8 +120,8 @@ export default function PortalCandidatoPage() {
       if (errCand) console.error("Error al cargar candidato:", errCand)
       if (errProc) console.error("Error al cargar proceso:", errProc)
 
-      if (!cand) throw new Error('Candidato no encontrado en el sistema')
-      if (!proc) throw new Error('Proceso no encontrado en el sistema')
+      if (!cand) throw new Error(`Candidato no encontrado en la base de datos (ID: ${candidatoId})`)
+      if (!proc) throw new Error(`Proceso de selección no encontrado (ID: ${procesoId})`)
 
       setCandidato(cand)
       setProceso(proc)
