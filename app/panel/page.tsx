@@ -1022,16 +1022,16 @@ export default function PanelEvaluador() {
 
                                     {/* Retroalimentación de la IA */}
                                     {pbRoleplay.retroalimentacion && (
-                                      <div className="p-3.5 bg-slate-800/80 rounded-xl border border-slate-700/60 text-xs text-slate-300 leading-relaxed">
-                                        <span className="font-bold text-indigo-400 block mb-1 uppercase tracking-wider text-[10px]">
+                                      <div className="p-4 bg-slate-950/80 rounded-xl border border-slate-800 text-xs text-slate-200 leading-relaxed shadow-inner">
+                                        <span className="font-bold text-indigo-400 block mb-1.5 uppercase tracking-wider text-[10px]">
                                           Análisis Cualitativo de IA:
                                         </span>
                                         {pbRoleplay.retroalimentacion}
                                       </div>
                                     )}
 
-                                    {/* Burbujas del Diálogo Estilizadas */}
-                                    <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar-visible p-2 bg-slate-950/40 rounded-xl border border-slate-800">
+                                    {/* Burbujas del Diálogo Estilizadas de Alto Contraste */}
+                                    <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar-visible p-3 bg-slate-950 rounded-xl border border-slate-800">
                                       {transcripcion.map((msg: any, mIdx: number) => {
                                         const r = String(msg.rol || msg.role || msg.sender || '').toLowerCase()
                                         // Discriminación estricta de roles: user/candidato vs assistant/model/bot
@@ -1046,16 +1046,16 @@ export default function PanelEvaluador() {
                                             className={`flex flex-col ${esCandidato ? 'items-end' : 'items-start'} space-y-1`}
                                           >
                                             <div className="flex items-center gap-1.5 px-1">
-                                              <span className={`text-[10px] font-bold ${esCandidato ? 'text-indigo-400' : 'text-amber-400'}`}>
+                                              <span className={`text-[11px] font-extrabold tracking-wide ${esCandidato ? 'text-indigo-400' : 'text-amber-400'}`}>
                                                 {esCandidato ? `Evaluado (${agrupadoSeleccionado.nombre} ${agrupadoSeleccionado.apellido})` : 'Cliente Moroso (Carlos Gómez - IA)'}
                                               </span>
                                             </div>
 
                                             <div
-                                              className={`p-3.5 rounded-2xl max-w-[88%] text-xs leading-relaxed shadow-sm ${
+                                              className={`p-3.5 rounded-2xl max-w-[88%] text-xs leading-relaxed shadow-md ${
                                                 esCandidato
-                                                  ? 'bg-indigo-600 text-white rounded-tr-none border border-indigo-500 font-medium'
-                                                  : 'bg-slate-800 text-slate-100 rounded-tl-none border border-slate-700 font-normal'
+                                                  ? 'bg-indigo-600 text-white rounded-tr-none border border-indigo-400 font-medium'
+                                                  : 'bg-slate-800 text-white rounded-tl-none border border-slate-700 font-medium'
                                               }`}
                                             >
                                               {texto}
