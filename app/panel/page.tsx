@@ -240,6 +240,7 @@ export default function PanelEvaluador() {
   const [enviandoRecordatorio, setEnviandoRecordatorio] = useState<string | null>(null)
   const [filtro, setFiltro] = useState('')
   const [ordenFecha, setOrdenFecha] = useState<'desc' | 'asc'>('desc')
+  const [estadoFiltro, setEstadoFiltro] = useState<'todos' | 'pendiente' | 'en curso' | 'completada'>('todos')
   const [videosCandidato, setVideosCandidato] = useState<any[]>([])
   const [sesionesGlobales, setSesionesGlobales] = useState<any[]>([])
   const [itemsAuditoria, setItemsAuditoria] = useState<any[]>([])
@@ -591,6 +592,12 @@ export default function PanelEvaluador() {
     const searchStr = norm(`${c.nombre} ${c.apellido} ${c.email} ${c.proceso_nombre}`)
     return searchStr.includes(norm(filtro))
   }).sort(ordenFecha === 'desc' ? ordenarPorPostulacionDescendente : ordenarPorPostulacionAscendente)
+
+  const conteoEstados = candidatos.reduce((acc, c) => {
+    const estado = c.estado_operativo || 'pendiente'
+    acc[estado] = (acc[estado] || 0) + 1
+    return acc
+  }, { pendiente: 0, 'en curso': 0, completada: 0 } as Record<string, number>)
 
   function exportarPeopleAnalyticsCSV() {
     if (candidatosFiltrados.length === 0) {
@@ -971,6 +978,20 @@ export default function PanelEvaluador() {
       ) : (
         <>
 
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" aria-label="Resumen de postulaciones">
+        {[
+          { label: 'Total', value: candidatos.length, tone: 'text-slate-800' },
+          { label: 'Pendientes', value: conteoEstados.pendiente || 0, tone: 'text-slate-600' },
+          { label: 'En curso', value: conteoEstados['en curso'] || 0, tone: 'text-amber-600' },
+          { label: 'Completadas', value: conteoEstados.completada || 0, tone: 'text-emerald-600' }
+        ].map(item => (
+          <div key={item.label} className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
+            <div className={`text-xl font-bold ${item.tone}`}>{item.value}</div>
+            <div className="text-[10px] text-slate-500 uppercase tracking-wide">{item.label}</div>
+          </div>
+        ))}
+      </div>
+
       {/* BARRA DE HERRAMIENTAS: BUSCADOR + FILTRO POR PROCESO */}
       <div className="bg-white border border-slate-200 rounded-2xl p-3 mb-6 shadow-sm flex flex-col md:flex-row gap-4 items-center">
         <div className="relative flex-1 w-full">
@@ -998,6 +1019,17 @@ export default function PanelEvaluador() {
               </option>
             ))}
           </select>
+          <select
+            value={estadoFiltro}
+            onChange={(e) => setEstadoFiltro(e.target.value as 'todos' | 'pendiente' | 'en curso' | 'completada')}
+            className="flex-1 md:w-44 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium text-slate-700"
+            aria-label="Filtrar por estado"
+          >
+            <option value="todos">Todos los estados</option>
+            <option value="pendiente">Pendientes</option>
+            <option value="en curso">En curso</option>
+            <option value="completada">Completadas</option>
+          </select>
 
           <select
             value={ordenFecha}
@@ -1015,6 +1047,12 @@ export default function PanelEvaluador() {
           >
             <Download className="w-3.5 h-3.5 text-indigo-600" />
             Exportar People Analytics
+          </button>
+          <button
+            onClick={() => { setFiltro(''); setProcesoSeleccionadoId('todos'); setEstadoFiltro('todos'); setOrdenFecha('desc') }}
+            className="px-3 py-2 text-slate-500 hover:text-indigo-600 rounded-xl text-xs font-bold transition-all"
+          >
+            Limpiar filtros
           </button>
 
           <button
@@ -1132,6 +1170,13 @@ export default function PanelEvaluador() {
                   <div className="flex-1 min-w-0 pr-2">
                     <div className="font-bold text-slate-900 leading-tight truncate">{c.nombre} {c.apellido}</div>
                     <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mt-0.5 truncate">{c.proceso_nombre || 'Proceso independiente'}</div>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${c.estado_operativo === 'completada' ? 'bg-emerald-50 text-emerald-700' : c.estado_operativo === 'en curso' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                        {c.estado_operativo || 'pendiente'}
+                      </span>
+                      <span className="text-[10px] text-slate-500">{c.progreso?.completados || 0}/{c.progreso?.total || 0} evaluaciones</span>
+                    </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="text-xs text-slate-500 truncate">{c.email || 'Sin email'}</span>
                       <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap bg-slate-100 px-1.5 py-0.5 rounded-md">
