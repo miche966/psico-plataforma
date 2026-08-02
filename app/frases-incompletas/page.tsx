@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { Clock, CheckCircle, AlertTriangle } from 'lucide-react'
+
+const FRASES_INCOMPLETAS_ID = 'f7a8b9c0-d1e2-4356-abcd-888888888888'
 
 const FRASES_ESTIMULO: { id: number, texto: string }[] = [
   { id: 1, texto: 'Siempre me gustó' },
@@ -48,25 +49,27 @@ export default function FrasesIncompletasPage() {
 
   // Cargar datos y respuestas parciales
   useEffect(() => {
-    if (candidatoId) {
-      supabase.from('candidatos').select('nombre, apellido')
-        .eq('id', candidatoId).single()
-        .then(({ data }) => { 
-          if (data) setNombreCandidato(`${data.nombre} ${data.apellido}`) 
-        })
-      
-      // Intentar recuperar autoguardado local
-      const saved = localStorage.getItem(`frases_draft_${candidatoId}`)
-      if (saved) {
-        try {
-          setRespuestas(JSON.parse(saved))
-        } catch (e) {
-          console.error(e)
+    async function cargarDatos() {
+      if (candidatoId && procesoId) {
+        const token = searchParams.get('token') || ''
+        const response = await fetch(`/api/evaluacion/public-data?candidato=${encodeURIComponent(candidatoId)}&proceso=${encodeURIComponent(procesoId)}&token=${encodeURIComponent(token)}&test_id=${encodeURIComponent(FRASES_INCOMPLETAS_ID)}`, { cache: 'no-store' })
+        const payload = await response.json().catch(() => ({}))
+        if (response.ok && payload.candidato) setNombreCandidato(`${payload.candidato.nombre} ${payload.candidato.apellido}`)
+
+        // Intentar recuperar autoguardado local
+        const saved = localStorage.getItem(`frases_draft_${candidatoId}`)
+        if (saved) {
+          try {
+            setRespuestas(JSON.parse(saved))
+          } catch (e) {
+            console.error(e)
+          }
         }
       }
+      setCargando(false)
     }
-    setCargando(false)
-  }, [candidatoId])
+    cargarDatos()
+  }, [candidatoId, procesoId, searchParams])
 
   // Temporizador de cuenta regresiva
   useEffect(() => {
@@ -128,18 +131,14 @@ export default function FrasesIncompletasPage() {
     setEnviando(true)
 
     try {
-      // Registrar la sesión finalizada en Supabase
-      const { error } = await supabase.from('sesiones').insert({
-        test_id: 'f7a8b9c0-d1e2-4356-abcd-888888888888',
-        candidato_id: candidatoId || null,
-        proceso_id: procesoId || null,
-        estado: 'finalizado',
-        iniciada_en: new Date(Date.now() - (900 - tiempoRestante) * 1000).toISOString(),
-        finalizada_en: new Date().toISOString(),
-        puntaje_bruto: datosRespuestas
+      if (!candidatoId || !procesoId) throw new Error('Faltan candidato o proceso en la URL')
+      const token = searchParams.get('token') || ''
+      const response = await fetch('/api/evaluacion/public-data', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'finalize', candidato_id: candidatoId, proceso_id: procesoId, token, test_id: FRASES_INCOMPLETAS_ID, puntaje_bruto: datosRespuestas, respuestas: [] })
       })
-
-      if (error) throw error
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.error || 'Error al guardar la evaluación')
 
       // Limpiar borrador local
       if (candidatoId) {
