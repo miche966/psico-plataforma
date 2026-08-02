@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import { createClient } from '@supabase/supabase-js'
+import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { PUNTAJES_VERSION } from '@/lib/puntajes'
 
 export const maxDuration = 60; // Evitar timeouts
@@ -85,9 +85,7 @@ export async function POST(req: Request) {
     }
 
     // Inicializar Supabase Admin
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    const supabaseAdmin = createClient(supabaseUrl, supabaseKey)
+    const supabaseAdmin = createSupabaseAdmin()
 
     // 1. Verificar si ya existe el informe generado en la base de datos
     const { data: informeExistente } = await supabaseAdmin

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai'
-import { createClient } from '@supabase/supabase-js'
+import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 
 const SYSTEM_PROMPT = `
 Actúas como Carlos Gómez, un cliente de microfinanzas con un microcrédito comercial atrasado 45 días por un monto de $35,000 pesos uruguayos.
@@ -52,7 +53,7 @@ INSTRUCCIONES DE COMPORTAMIENTO:
 export async function POST(req: Request) {
   try {
     const payload = await req.json()
-    const { action, mensajes, nuevoMensaje, candidatoId, procesoId, testId, latenciaPromedio, turnosTotales } = payload
+    const { action, mensajes, nuevoMensaje, candidatoId, procesoId, testId, token, latenciaPromedio, turnosTotales } = payload
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: 'Falta la llave de API de Gemini.' }, { status: 500 })
@@ -176,6 +177,9 @@ export async function POST(req: Request) {
 
     // ACCIÓN 2: EVALUACIÓN FINAL DE LA TRANSCRIPCIÓN
     if (action === 'evaluar') {
+      if (!candidatoId || !procesoId || !token || !validarTokenEvaluacion(String(token), String(candidatoId), String(procesoId))) {
+        return NextResponse.json({ error: 'Token de evaluaciÃ³n invÃ¡lido o vencido' }, { status: 401 })
+      }
       if (!candidatoId || !procesoId || !testId) {
         return NextResponse.json({ error: 'Faltan parámetros requeridos para guardar la sesión.' }, { status: 400 })
       }
@@ -307,9 +311,7 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
       }
 
       // Guardar el resultado en Supabase
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      const supabaseAdmin = createClient(supabaseUrl, supabaseKey)
+      const supabaseAdmin = createSupabaseAdmin()
 
       // 1. Buscar si existe la sesión en progreso
       const { data: sesionExistente } = await supabaseAdmin

@@ -388,6 +388,7 @@ export default function RolePlayPage() {
           candidatoId,
           procesoId,
           testId: TEST_ID,
+          token,
           latenciaPromedio: promedioLatencia,
           turnosTotales: totalTurnos
         })

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 
 export async function POST(request: Request) {
   try {
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+    const supabaseAdmin = createSupabaseAdmin()
     const { data, error } = await supabaseAdmin.storage
       .from('videos-entrevista')
       .createSignedUploadUrl(fileName)

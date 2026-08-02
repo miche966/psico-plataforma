@@ -265,7 +265,7 @@ export default function ResponderPage() {
           const resSupaPresigned = await fetch('/api/supabase-presigned', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fileName })
+            body: JSON.stringify({ fileName, candidatoId, procesoId, entrevistaId: entrevistaId, token })
           })
           
           if (resSupaPresigned.ok) {
