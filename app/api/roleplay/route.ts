@@ -55,6 +55,57 @@ export async function POST(req: Request) {
     const payload = await req.json()
     const { action, mensajes, nuevoMensaje, candidatoId, procesoId, testId, token, latenciaPromedio, turnosTotales } = payload
 
+    // ACCIÓN 0A: INICIAR/REANUDAR SESIÓN
+    if (action === 'iniciar') {
+      if (!candidatoId || !procesoId || !testId || !token || !validarTokenEvaluacion(String(token), String(candidatoId), String(procesoId))) {
+        return NextResponse.json({ error: 'Token de evaluación inválido o vencido' }, { status: 401 })
+      }
+      const supabaseAdmin = createSupabaseAdmin()
+      const { data: candidato, error: candidatoError } = await supabaseAdmin
+        .from('candidatos')
+        .select('nombre, apellido')
+        .eq('id', candidatoId)
+        .single()
+      if (candidatoError || !candidato) {
+        return NextResponse.json({ error: 'Candidato no encontrado' }, { status: 404 })
+      }
+      const { data: sesionExistente } = await supabaseAdmin
+        .from('sesiones')
+        .select('id, estado')
+        .eq('candidato_id', candidatoId)
+        .eq('proceso_id', procesoId)
+        .eq('test_id', testId)
+        .maybeSingle()
+      if (sesionExistente?.estado === 'finalizado') {
+        return NextResponse.json({ candidato, alreadyCompleted: true })
+      }
+      if (!sesionExistente) {
+        await supabaseAdmin.from('sesiones').insert({
+          candidato_id: candidatoId,
+          proceso_id: procesoId,
+          test_id: testId,
+          estado: 'en_progreso'
+        })
+      }
+      return NextResponse.json({ candidato, alreadyCompleted: false })
+    }
+
+    // ACCIÓN 0B: DESCARTAR SESIÓN DEMASIADO BREVE
+    if (action === 'descartar') {
+      if (!candidatoId || !procesoId || !testId || !token || !validarTokenEvaluacion(String(token), String(candidatoId), String(procesoId))) {
+        return NextResponse.json({ error: 'Token de evaluación inválido o vencido' }, { status: 401 })
+      }
+      const supabaseAdmin = createSupabaseAdmin()
+      await supabaseAdmin
+        .from('sesiones')
+        .delete()
+        .eq('candidato_id', candidatoId)
+        .eq('proceso_id', procesoId)
+        .eq('test_id', testId)
+        .neq('estado', 'finalizado')
+      return NextResponse.json({ success: true })
+    }
+
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: 'Falta la llave de API de Gemini.' }, { status: 500 })
     }
