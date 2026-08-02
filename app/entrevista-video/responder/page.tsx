@@ -74,12 +74,7 @@ export default function ResponderPage() {
 
   useEffect(() => {
     if (entrevistaId) cargarDatos()
-    if (candidatoId) {
-      supabase.from('candidatos').select('nombre, apellido')
-        .eq('id', candidatoId).single()
-        .then(({ data }) => { if (data) setNombreCandidato(`${data.nombre} ${data.apellido}`) })
-    }
-  }, [entrevistaId, candidatoId])
+  }, [entrevistaId, candidatoId, procesoId, token])
 
   useEffect(() => {
     if (estado === 'bienvenida' || estado === 'confirmacion' || estado === 'finalizado') return
@@ -110,15 +105,20 @@ export default function ResponderPage() {
   }, [estado])
 
   async function cargarDatos() {
-    const { data: entrevistaData } = await supabase
-      .from('entrevistas_video').select('*').eq('id', entrevistaId).single()
-    setEntrevista(entrevistaData)
+    const params = new URLSearchParams({ entrevista: entrevistaId || '' })
+    if (candidatoId) params.set('candidato', candidatoId)
+    if (procesoId) params.set('proceso', procesoId)
+    if (token) params.set('token', token)
+    const response = await fetch(`/api/entrevista-video/candidato?${params.toString()}`, { cache: 'no-store' })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) { console.error(data.error); setCargando(false); return }
 
-    const { data: preguntasData } = await supabase
-      .from('preguntas_video').select('*')
-      .eq('entrevista_id', entrevistaId).order('orden')
-    setPreguntas(preguntasData || [])
-    setTodasLasPreguntas(preguntasData || [])
+    setEntrevista(data.entrevista || null)
+    if (data.candidato) setNombreCandidato(`${data.candidato.nombre} ${data.candidato.apellido}`)
+
+    const preguntasData = data.preguntas || []
+    setPreguntas(preguntasData)
+    setTodasLasPreguntas(preguntasData)
     setCargando(false)
   }
 
@@ -307,15 +307,19 @@ export default function ResponderPage() {
       setErrorUpload(true)
       
       try {
-        await supabase.from('respuestas_video').insert({
-          pregunta_id: preguntas[preguntaActual].id,
-          candidato_id: candidatoId || null,
-          entrevista_id: entrevistaId,
-          url_video: null,
-          duracion: preguntas[preguntaActual].tiempo_respuesta,
-          estado: 'error_upload',
-          transcripcion: logs.join(' | '),
-          analisis: extraData
+        await fetch('/api/entrevista-video/candidato', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'guardar_respuesta',
+            exito: false,
+            candidatoId, procesoId, token,
+            entrevistaId,
+            preguntaId: preguntas[preguntaActual].id,
+            duracion: preguntas[preguntaActual].tiempo_respuesta,
+            logs: logs.join(' | '),
+            extraData
+          })
         })
       } catch (logErr) {
         console.error('Error insertando log en respuestas_video:', logErr)
@@ -324,14 +328,21 @@ export default function ResponderPage() {
     }
 
     // Upload exitoso: guardar en BD y continuar
-    const { data: insertData } = await supabase.from('respuestas_video').insert({
-      pregunta_id: preguntas[preguntaActual].id,
-      candidato_id: candidatoId || null,
-      entrevista_id: entrevistaId,
-      url_video: urlVideo,
-      duracion: preguntas[preguntaActual].tiempo_respuesta,
-      estado: 'completado'
-    }).select('id').single()
+    const guardarRes = await fetch('/api/entrevista-video/candidato', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'guardar_respuesta',
+        exito: true,
+        candidatoId, procesoId, token,
+        entrevistaId,
+        preguntaId: preguntas[preguntaActual].id,
+        duracion: preguntas[preguntaActual].tiempo_respuesta,
+        urlVideo
+      })
+    })
+    const guardarData = await guardarRes.json().catch(() => ({}))
+    const insertData = guardarRes.ok ? guardarData.respuesta : null
 
     // Disparar análisis de IA en segundo plano (sin esperar)
     if (insertData) {
