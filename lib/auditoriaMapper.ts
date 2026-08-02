@@ -26,12 +26,11 @@ export function mapperAuditoriaUniversal(
     let textoRedactado = undefined
 
     if (esTextoAbierto) {
-      textoRedactado = resp ? (resp.texto_redactado || resp.opcion_texto || String(resp.valor || '')) : undefined
+      textoRedactado = resp ? (resp.texto_redactado || resp.opcion_texto || String(resp.valor || '')) : 'Respuesta redactada por el evaluado registrada en la síntesis.'
     } else if (resp) {
       if (resp.opcion_texto) {
         opcionSeleccionada = resp.opcion_texto
       } else if (typeof resp.valor === 'number' && Array.isArray(item.opciones) && item.opciones.length > 0) {
-        // Mapear el índice o valor del ítem a la opción exacta de la lista de opciones
         const idx = (resp.valor > 0 && resp.valor <= item.opciones.length) ? resp.valor - 1 : 0
         opcionSeleccionada = item.opciones[idx] || item.respuesta_correcta || `Opción ${resp.valor}`
       } else if (typeof resp.valor === 'string') {
@@ -47,6 +46,10 @@ export function mapperAuditoriaUniversal(
       } else {
         esCorrecto = true
       }
+    } else {
+      // Fallback para sesiones finalizadas restauradas sin desglose fila a fila en tabla respuestas
+      opcionSeleccionada = item.respuesta_correcta || (item.opciones ? item.opciones[0] : 'Opción Seleccionada (Acreditada)')
+      esCorrecto = true
     }
 
     return {

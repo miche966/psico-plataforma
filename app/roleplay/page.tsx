@@ -22,12 +22,13 @@ export default function RolePlayPage() {
 
   // Estados de carga e inicialización
   const [cargando, setCargando] = useState(true)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [candidato, setCandidato] = useState<any>(null)
   
   // Estados de la llamada
   const [llamadaIniciada, setLlamadaIniciada] = useState(false)
   const [guardandoEvaluacion, setGuardandoEvaluacion] = useState(false)
+  const [reproduciendoAudio, setReproduciendoAudio] = useState(false)
   const [mensajes, setMensajes] = useState<Array<{ role: 'user' | 'model', content: string; cooperacion?: number }>>([])
   const mensajesRef = useRef<Array<{ role: 'user' | 'model', content: string; cooperacion?: number }>>([])
   const [turnoActual, setTurnoActual] = useState(0)
@@ -215,9 +216,19 @@ export default function RolePlayPage() {
     utterance.rate = 1.05 // Velocidad de habla natural
     utterance.pitch = 0.95 // Tono de voz de cliente cansado / serio
 
+    utterance.onstart = () => {
+      setReproduciendoAudio(true)
+    }
+
     utterance.onend = () => {
+      setReproduciendoAudio(false)
       botFinTimeRef.current = Date.now()
     }
+
+    utterance.onerror = () => {
+      setReproduciendoAudio(false)
+    }
+
     botFinTimeRef.current = Date.now() // Salvaguarda
 
     window.speechSynthesis.speak(utterance)

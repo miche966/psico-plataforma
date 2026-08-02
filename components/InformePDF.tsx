@@ -1,7 +1,6 @@
-/* eslint-disable react/display-name */
-/* eslint-disable @next/next/no-img-element */
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
+import { normalizarPuntaje, colorPuntaje, interpretacionVigente } from '@/lib/puntajes';
 
 // Registro de fuentes para un look premium
 Font.register({
@@ -149,7 +148,7 @@ export const InformePDF = ({ data }: any) => {
     };
   })();
 
-  const clrOf = (v: number) => v >= 4 ? '#059669' : v >= 3 ? '#2563eb' : v >= 2 ? '#d97706' : '#dc2626';
+  const clrOf = (v: number) => colorPuntaje(v);
 
   const sesionFrases = sesiones.find((s: any) => s.test_id === 'f7a8b9c0-d1e2-4356-abcd-888888888888');
   const analisisFrases = sesionFrases?.puntaje_bruto?.analisis_ia;
@@ -171,47 +170,14 @@ export const InformePDF = ({ data }: any) => {
     });
 
     return Array.from(mapa.entries()).map(([factor, { valor, sid }]) => {
-      let vNum = 0;
-      const k = factor.toLowerCase().trim();
-      
-      if (typeof valor === 'object' && valor !== null) {
-        if (k === 'metricas_fraude') {
-          const alertas = (valor.events?.length || 0) + (valor.tabSwitches || 0) + (valor.copyPasteAttempts || 0);
-          vNum = Math.max(0, 5 - (alertas * 0.5));
-        } else if ('correctas' in valor && 'total' in valor) {
-          vNum = (Number(valor.correctas) / (Number(valor.total) || 1)) * 5;
-        } else {
-          vNum = Number(valor.correctas || valor.score || valor.valor || 0);
-        }
-      } else if (typeof valor === 'string') {
-        const s = valor.toLowerCase().trim();
-        vNum = s === 'alto' ? 5 : s === 'medio' ? 3 : s === 'bajo' ? 1.5 : (Number(valor) || 0);
-      } else {
-        vNum = Number(valor) || 0;
-      }
-      
-      let finalV = vNum;
-
-      // Normalización a escala 5
-      if (finalV > 5) {
-        if (finalV <= 25) finalV = (finalV / 25) * 5;
-        else if (finalV <= 100) finalV = (finalV / 100) * 5;
-        else finalV = 5;
-      }
-
-      // Inversión lógica selectiva
-      if (['neuroticismo', 'nivel_estres', 'burnout'].includes(k)) {
-        finalV = Math.max(0, 6 - finalV);
-      }
-
-      const vNorm = Math.round(Math.min(5, Math.max(0, finalV)) * 10) / 10;
+      const vNorm = Math.round(normalizarPuntaje(valor, factor) * 10) / 10;
       const clr = clrOf(vNorm);
       const fk = `${sid}_${factor}`;
 
       // Narrativas fallback e integración con IA profunda
-      const desc = inf.interpretacionPorFactor?.[fk] || 
-                   inf.interpretacionPorFactor?.[factor.toLowerCase()] || 
-                   obtenerInterpretacionLocal(factor, vNorm);
+      const desc = interpretacionVigente(inf)
+        ? (inf.interpretacionPorFactor?.[fk] || inf.interpretacionPorFactor?.[factor.toLowerCase()] || obtenerInterpretacionLocal(factor, vNorm))
+        : obtenerInterpretacionLocal(factor, vNorm);
 
       return (
         <View key={factor} style={styles.factorBlock}>
@@ -241,7 +207,7 @@ export const InformePDF = ({ data }: any) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>I. Diagnóstico Estratégico y Ajuste al Perfil</Text>
+          <Text style={styles.sectionTitle}>I. Evaluacion General y Ajuste al Puesto</Text>
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
             <View style={{ width: '25%', backgroundColor: '#f0f9ff', padding: 10, borderRadius: 6, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 20, fontWeight: 'bold', color: clrOf((inf.ajusteCargo?.score || 0)/20) }}>{inf.ajusteCargo?.score || 0}%</Text>
@@ -254,14 +220,14 @@ export const InformePDF = ({ data }: any) => {
           
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 5 }}>
             <View style={{ flex: 1, backgroundColor: '#f0fdf4', padding: 8, borderRadius: 6, border: '1px solid #bbf7d0' }}>
-              <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#16a34a', marginBottom: 4 }}>FORTALEZAS CLAVE</Text>
+              <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#16a34a', marginBottom: 4 }}>FORTALEZAS PRINCIPALES</Text>
               {(inf.fortalezas || []).map((f: any, i: number) => (
                 <View key={i} style={{ marginBottom: 4 }}>
                   {typeof f === 'object' ? (
                     <>
-                      <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#14532d' }}>• {f.tendencia || f.competencia || 'Fortaleza'}</Text>
-                      <Text style={{ fontSize: 6, color: '#166534', marginLeft: 6 }}>Mecanismo: {f.mecanismo || 'No especificado'}</Text>
-                      <Text style={{ fontSize: 6, color: '#166534', marginLeft: 6 }}>Impacto: {f.impacto_organizacional || f.impacto || 'No especificado'}</Text>
+                      <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#14532d' }}>• {f.tendencia || f.competencia || f.titulo || f.nombre || f.fortaleza || 'Fortaleza'}</Text>
+                      <Text style={{ fontSize: 6, color: '#166534', marginLeft: 6 }}>QuÃ© se observa: {f.mecanismo || f.descripcion || f.queSeObserva || f.observacion || 'No especificado'}</Text>
+                      <Text style={{ fontSize: 6, color: '#166534', marginLeft: 6 }}>QuÃ© puede aportar: {f.impacto_organizacional || f.impacto || f.valor || f.consecuencia || f.quePuedeAportar || 'No especificado'}</Text>
                     </>
                   ) : (
                     <Text style={{ fontSize: 7, color: '#14532d' }}>• {f}</Text>
@@ -276,8 +242,8 @@ export const InformePDF = ({ data }: any) => {
                   {typeof f === 'object' ? (
                     <>
                       <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#7c2d12' }}>• {f.tendencia || f.competencia || 'Área de mejora'}</Text>
-                      <Text style={{ fontSize: 6, color: '#9a3412', marginLeft: 6 }}>Mecanismo: {f.mecanismo || 'No especificado'}</Text>
-                      <Text style={{ fontSize: 6, color: '#9a3412', marginLeft: 6 }}>Impacto: {f.impacto_organizacional || f.impacto || 'No especificado'}</Text>
+                      <Text style={{ fontSize: 6, color: '#9a3412', marginLeft: 6 }}>QuÃ© se observa: {f.mecanismo || f.descripcion || f.queSeObserva || f.observacion || 'No especificado'}</Text>
+                      <Text style={{ fontSize: 6, color: '#9a3412', marginLeft: 6 }}>QuÃ© puede aportar: {f.impacto_organizacional || f.impacto || f.valor || f.consecuencia || f.quePuedeAportar || 'No especificado'}</Text>
                     </>
                   ) : (
                     <Text style={{ fontSize: 7, color: '#7c2d12' }}>• {f}</Text>
@@ -289,7 +255,7 @@ export const InformePDF = ({ data }: any) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>II. Auditoría de Proceso y Confiabilidad</Text>
+          <Text style={styles.sectionTitle}>II. Controles del proceso</Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #e2e8f0' }}>
               <Text style={{ fontSize: 6, color: '#64748b', fontWeight: 'bold', marginBottom: 4 }}>ÍNDICE DE CONFIANZA</Text>
@@ -307,7 +273,7 @@ export const InformePDF = ({ data }: any) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>III. Matriz de Potencial Conductual (Soft Skills)</Text>
+          <Text style={styles.sectionTitle}>III. Habilidades para el trabajo</Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={{ flex: 1, backgroundColor: '#f5f3ff', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #ddd6fe' }}>
               <Text style={{ fontSize: 7, color: '#7c3aed', fontWeight: 'bold', marginBottom: 4 }}>{labelLiderazgo}</Text>
@@ -333,14 +299,14 @@ export const InformePDF = ({ data }: any) => {
 
         {hasP && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>IV. Evaluación Psicométrica por Técnica (Personalidad)</Text>
+            <Text style={styles.sectionTitle}>IV. Resultados de la evaluacion (Personalidad)</Text>
             {renderFactores(DOMINIOS.PERSONALIDAD, sesBF)}
           </View>
         )}
 
         {hasC && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>V. Evaluación Psicométrica por Técnica (Cognitivo y Atención)</Text>
+            <Text style={styles.sectionTitle}>V. Resultados de la evaluacion (Atencion y tareas)</Text>
             {sesCog.length > 0 && (() => {
               let sumaCorrectas = 0
               let sumaTotal = 0
@@ -385,14 +351,14 @@ export const InformePDF = ({ data }: any) => {
 
         {hasK && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>VI. Evaluación Psicométrica por Técnica (Competencias)</Text>
+            <Text style={styles.sectionTitle}>VI. Resultados de la evaluacion (Competencias)</Text>
             {renderFactores(DOMINIOS.COMPETENCIAS, sesComp)}
           </View>
         )}
 
         {hasV && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>VII. Evaluación Psicométrica por Técnica (Bienestar)</Text>
+            <Text style={styles.sectionTitle}>VII. Resultados de la evaluacion (Bienestar)</Text>
             {renderFactores(DOMINIOS.BIENESTAR, sesBien)}
           </View>
         )}

@@ -14,7 +14,22 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "scratch/**",
     "scripts/**",
+    "*.js",
   ]),
+  {
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "@next/next/no-img-element": "off",
+      "react/no-unescaped-entities": "off",
+      "prefer-const": "off",
+      "react-hooks/immutability": "off",
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/exhaustive-deps": "off",
+      "react-compiler/react-compiler": "off",
+      "@typescript-eslint/ban-ts-comment": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

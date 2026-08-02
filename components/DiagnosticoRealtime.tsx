@@ -313,7 +313,7 @@ export default function DiagnosticoRealtime() {
             type="text" 
             placeholder="Buscar por candidato, test o detalles de error..."
             value={busqueda}
-            onChange={(e) => setFiltro('todos') || setBusqueda(e.target.value)}
+            onChange={(e) => { setFiltro('todos'); setBusqueda(e.target.value); }}
             className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl pl-11 pr-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-slate-700 focus:ring-1 focus:ring-slate-700 transition-all"
           />
         </div>

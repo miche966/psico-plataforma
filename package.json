@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types tests/ordenamiento-postulaciones.test.ts",
     "prepare": "husky install"
   },
   "dependencies": {
@@ -25,7 +27,7 @@
     "jszip": "^3.10.1",
     "lucide-react": "^1.11.0",
     "next": "latest",
-    "nodemailer": "^8.0.7",
+    "nodemailer": "^6.9.13",
     "papaparse": "^5.5.3",
     "react": "latest",
     "react-dom": "latest",
@@ -36,7 +38,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/file-saver": "^2.0.7",
     "@types/node": "^20",
-    "@types/nodemailer": "^8.0.0",
+    "@types/nodemailer": "^6.4.15",
     "@types/papaparse": "^5.5.2",
     "@types/react": "latest",
     "@types/react-dom": "latest",

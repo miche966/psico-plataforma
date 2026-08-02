@@ -30,6 +30,7 @@ export async function POST(req: Request) {
       - Evalúa su actitud conductual y expresión no verbal (contacto visual, gestos manuales, claridad vocal, nivel de energía, expresión facial) en la propiedad "actitud".
       - Analiza el contenido y fondo de su discurso basándote en la transcripción (su estrategia de resolución ante el problema planteado, el manejo de los límites de su rol, su vocabulario conceptual de servicio, etc.) en la propiedad "analisis_discurso". No utilices jergas de psicología clínica.
       - Resume su respuesta en 3 puntos clave de valor organizacional en la propiedad "puntos_clave".
+      - Sé conciso: la transcripción debe ser fiel pero no agregues comentarios innecesarios. No trunques ninguna cadena ni devuelvas JSON incompleto.
       
       Devuelve el resultado EXCLUSIVAMENTE en formato JSON con la siguiente estructura:
       {
@@ -56,7 +57,8 @@ export async function POST(req: Request) {
         const model = genAI.getGenerativeModel({
           model: 'gemini-2.5-flash',
           generationConfig: {
-            maxOutputTokens: 1000,
+            maxOutputTokens: 3000,
+            temperature: 0.2,
             responseMimeType: 'application/json'
           }
         })

@@ -407,7 +407,7 @@ export default function GestionProcesos() {
           nombre: c.nombre, 
           proceso: procesoSeleccionado.cargo, 
           link, 
-          pendientes: 'los tests restantes' 
+          pendientes: 'los tests restantes', candidato_id: c.id, proceso_id: procesoSeleccionado.id 
         })
       })
       if (res.ok) alert(`Recordatorio enviado a ${c.nombre}`)

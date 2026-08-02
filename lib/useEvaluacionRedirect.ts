@@ -1,15 +1,17 @@
-import { useEffect } from 'react'
+﻿import { useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export function useEvaluacionRedirect(finalizado: boolean): boolean {
+export function useEvaluacionRedirect(finalizado: boolean, actividadIniciada = true): boolean {
   const router = useRouter()
   const searchParams = useSearchParams()
   const evaluacion = searchParams.get('evaluacion')
   const candidato = searchParams.get('candidato')
   const proceso = searchParams.get('proceso')
+  const token = searchParams.get('token')
+  const tokenQuery = token ? '&token=' + encodeURIComponent(token) : ''
 
   useEffect(() => {
-    if (!finalizado) {
+    if (!finalizado && actividadIniciada) {
       const handleBeforeUnload = (e: BeforeUnloadEvent) => {
         e.preventDefault()
         e.returnValue = ''
@@ -19,7 +21,7 @@ export function useEvaluacionRedirect(finalizado: boolean): boolean {
       const handleBlur = () => { lastBlurTime = Date.now() }
       const handleFocus = () => {
         if (lastBlurTime && (Date.now() - lastBlurTime) > 2000) {
-          alert("Recordatorio: Toda salida de la pestaña o actividad inusual queda registrada en el sistema de auditoría. Por favor, completa el test sin distracciones.")
+          alert("Recordatorio: Toda salida de la pestaÃ±a o actividad inusual queda registrada en el sistema de auditorÃ­a. Por favor, completa el test sin distracciones.")
         }
         lastBlurTime = 0
       }
@@ -34,7 +36,7 @@ export function useEvaluacionRedirect(finalizado: boolean): boolean {
         window.removeEventListener('focus', handleFocus)
       }
     }
-  }, [finalizado])
+  }, [finalizado, actividadIniciada])
 
   useEffect(() => {
     if (finalizado && evaluacion === '1' && candidato && proceso) {
@@ -47,3 +49,4 @@ export function useEvaluacionRedirect(finalizado: boolean): boolean {
 
   return evaluacion === '1'
 }
+

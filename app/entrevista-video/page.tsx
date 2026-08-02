@@ -10,6 +10,7 @@ interface Entrevista {
   id: string
   nombre: string
   created_at: string
+  creada_en?: string
 }
 
 export default function EntrevistasVideoPage() {
@@ -147,7 +148,7 @@ export default function EntrevistasVideoPage() {
                 
                 <div className="flex items-center gap-2 text-xs text-slate-500 mb-6">
                   <Calendar className="w-3.5 h-3.5" />
-                  Creada el {formatearFecha(entrevista.creada_en)}
+                  Creada el {formatearFecha(entrevista.creada_en || entrevista.created_at || '')}
                 </div>
               </div>
 

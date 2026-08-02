@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { normalizarPuntaje, colorPuntaje, PUNTAJES_VERSION, interpretacionVigente } from '@/lib/puntajes'
 import { supabase } from '@/lib/supabase'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { InformePDF } from '@/components/InformePDF'
@@ -32,14 +33,22 @@ const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
 // Tipos base
 type Rec = 'recomendado' | 'con_reservas' | 'no_recomendado'
 
+export type NarrativeItem = string | {
+  tendencia?: string
+  competencia?: string
+  mecanismo?: string
+  impacto_organizacional?: string
+}
+
 interface InformeState {
   recomendacion: Rec
   fundamentacion: string
-  fortalezas: string[]
-  oportunidadesMejora: string[]
+  fortalezas: NarrativeItem[]
+  oportunidadesMejora: NarrativeItem[]
   resumenEjecutivo: string
   ajusteCargo: { score: number, analisis: string }
   interpretacionPorFactor: Record<string, string>
+  interpretacionVersion?: number
   nombreEvaluador: string
   mbti?: string
   mbtiType?: string
@@ -63,6 +72,7 @@ interface InformeState {
 }
 
 import { ETQ } from '@/lib/labels'
+import { estimarMBTI, estimarMBTIDesdeSesiones } from '@/lib/baremos'
 
 
 const DOMINIOS = {
@@ -85,22 +95,22 @@ const REC_LABELS: Record<Rec, string> = {
 }
 
 const MBTI_DESC: Record<string, string> = {
-  'ISTJ': 'Perfil Logista: Se caracteriza por un enfoque profundamente metódico y una lealtad notable hacia los estándares de calidad establecidos. Posee una capacidad innata para la organización detallada y el seguimiento riguroso de procesos, actuando como un pilar de estabilidad dentro del equipo. Su valor reside en una responsabilidad silenciosa y constante, prefiriendo entornos donde la previsibilidad y el orden permitan una ejecución técnica de alta confiabilidad.',
-  'ISFJ': 'Perfil Protector: Demuestra una dedicación genuina y un sentido de la responsabilidad orientado al bienestar y soporte del entorno laboral. Su enfoque es minucioso y armónico, destacando por una memoria operativa excepcional para los detalles que otros podrían pasar por alto. Es un perfil que fomenta la cohesión grupal mediante un trato profesional cálido y una ética de trabajo basada en el servicio y la constancia.',
-  'INFJ': 'Perfil Consejero: Caracterizado por una visión estratégica profunda y un compromiso firme con los valores institucionales. Posee una intuición aguda para comprender las dinámicas humanas y anticipar necesidades futuras, lo que le permite liderar con propósito e integridad. Su enfoque es organizado y reflexivo, buscando siempre la coherencia entre las acciones diarias y el impacto a largo plazo de la organización.',
-  'INTJ': 'Perfil Estratega: Manifiesta un estilo de pensamiento altamente analítico y orientado a la optimización de sistemas complejos. Se destaca por una independencia de criterio y una curiosidad intelectual que le permite diseñar soluciones innovadoras con un enfoque estrictamente lógico. Es un perfil que valora la eficiencia estratégica y la mejora continua, aportando una visión clara y objetiva para la toma de decisiones críticas.',
-  'ISTP': 'Perfil Virtuoso: Se identifica un perfil con una marcada autonomía y un enfoque profundamente pragmático ante los desafíos. Posee una habilidad natural para desglosar situaciones complejas y abordarlas con una lógica directa y pausada, manteniendo un enfoque objetivo incluso en entornos de alta presión. Su estilo es observador y analítico, prefiriendo comprender la mecánica interna de los procesos antes de intervenir, lo que le otorga una gran precisión en la ejecución técnica.',
-  'ISFP': 'Perfil Aventurero: Posee una sensibilidad profesional única y una gran capacidad de adaptación ante entornos dinámicos. Su enfoque es práctico y armonioso, destacando por un estilo de trabajo flexible que evita la rigidez innecesaria. Es un perfil que aporta una visión detallista a las tareas, prefiriendo ambientes que permitan una ejecución fluida y donde se valore la autenticidad y el respeto mutuo.',
-  'INFP': 'Perfil Mediador: Empático y leal, con una fuerte orientación hacia proyectos que posean un propósito o impacto humano significativo. Se caracteriza por una curiosidad natural y una mente abierta que le permite explorar múltiples soluciones creativas. Su valor reside en su capacidad para integrar valores humanos en la estrategia operativa, fomentando un clima de trabajo auténtico, colaborativo y con visión de futuro.',
-  'INTP': 'Perfil Lógico: Se destaca por una curiosidad intelectual incesante y una preferencia por el análisis conceptual profundo. Es un perfil reflexivo que disfruta desarmando ideas para entender cómo funcionan, aportando una visión innovadora y objetiva a los procesos. Valora la autonomía profesional y se desempeña con excelencia en roles que demanden investigación, desarrollo de marcos de trabajo o resolución de problemas complejos.',
-  'ESTP': 'Perfil Emprendedor: Enérgico y audaz, con un enfoque pragmático orientado a la acción inmediata y la obtención de resultados en terreno. Posee una gran capacidad para navegar la incertidumbre y responder con agilidad ante crisis operativas. Su comunicación es directa y funcional, destacando por un carisma natural que le permite movilizar recursos y personas de manera eficiente en situaciones de alta exigencia.',
-  'ESFP': 'Perfil Animador: Se caracteriza por un entusiasmo contagioso y una habilidad natural para dinamizar equipos de trabajo. Posee un enfoque práctico y centrado en el presente, logrando que las tareas complejas se perciban como alcanzables y motivadoras. Su valor reside en su gran inteligencia social y su capacidad para resolver conflictos de manera espontánea, asegurando un ambiente laboral vibrante y colaborativo.',
-  'ENFP': 'Perfil Activista: Creativo y optimista, con una visión entusiasta hacia la innovación y el desarrollo de nuevas posibilidades. Posee una facilidad de palabra y una apertura mental que favorecen la generación constante de ideas disruptivas. Su ajuste es ideal para roles que exijan iniciativa propia y la capacidad de inspirar a otros, actuando como un catalizador de energía positiva y crecimiento dentro de la organización.',
-  'ENTP': 'Perfil Innovador: Estratégico y mentalmente ágil, se destaca por su capacidad para cuestionar el status quo y proponer mejoras sustanciales mediante el debate de ideas. Posee una curiosidad intelectual que lo impulsa a explorar nuevos enfoques con gran audacia. Su valor reside en su capacidad para encontrar oportunidades ocultas y diseñar soluciones que desafíen los límites convencionales para optimizar el rendimiento del área.',
-  'ESTJ': 'Perfil Ejecutivo: Caracterizado por una organización impecable y una determinación clara hacia el cumplimiento de hitos operativos. Posee un liderazgo basado en la honestidad, el orden y el respeto por los procedimientos establecidos. Su enfoque es decidido y eficiente, aportando la estructura necesaria para que la organización funcione con la precisión de un sistema bien coordinado.',
-  'ESFJ': 'Perfil Cónsul: Responsable y sociable, enfoca su energía en asegurar que las necesidades operativas y humanas sean atendidas con equilibrio y calidez. Posee una gran capacidad para la coordinación y la gestión de personas, fomentando la lealtad y la armonía del equipo. Su valor reside en su compromiso con la cultura organizacional y su habilidad para crear entornos de trabajo productivos y seguros.',
-  'ENFJ': 'Perfil Protagonista: Líder inspirador y empático, posee una gran capacidad de organización orientada al éxito colectivo y al desarrollo del potencial humano. Se destaca por una comunicación persuasiva y con propósito, logrando alinear las metas individuales con los objetivos estratégicos de la empresa. Su enfoque es integrador, actuando como un puente de confianza y motivación en toda la organización.',
-  'ENTJ': 'Perfil Comandante: Decidido y con una visión estratégica de alto alcance, su liderazgo natural impulsa la ejecución de metas institucionales complejas con una eficiencia notable. No teme a los desafíos y posee un estilo de pensamiento orientado a resultados tangibles y a la excelencia operativa. Su valor reside en su capacidad para tomar decisiones difíciles de manera objetiva, asegurando la competitividad a largo plazo.'
+  ISTJ: 'Tiende a trabajar de forma ordenada y responsable. Puede sentirse mas comodo cuando las tareas, los plazos y las prioridades estan bien definidos.',
+  ISFJ: 'Suele prestar atencion a las necesidades de otras personas y cumplir sus responsabilidades con constancia. Puede aportar un trato cuidadoso y confiable.',
+  INFJ: 'Tiende a reflexionar antes de actuar y a considerar el efecto de sus decisiones en otras personas. Puede aportar una mirada atenta y orientada a objetivos.',
+  INTJ: 'Suele analizar las situaciones con calma y buscar formas de mejorar el trabajo. Puede desenvolverse bien cuando tiene objetivos claros y margen para organizarse.',
+  ISTP: 'Tiende a abordar los problemas de manera practica y directa. Puede adaptarse bien cuando necesita encontrar soluciones en situaciones cambiantes.',
+  ISFP: 'Suele valorar el trato respetuoso y una forma de trabajo flexible. Puede aportar atencion a los detalles y una actitud cuidadosa en las tareas.',
+  INFP: 'Tiende a considerar las necesidades de las personas y a buscar sentido en lo que hace. Puede aportar sensibilidad, escucha y disposicion para colaborar.',
+  INTP: 'Suele tomarse tiempo para comprender como funcionan las cosas antes de decidir. Puede aportar analisis y alternativas cuando enfrenta problemas complejos.',
+  ESTP: 'Tiende a actuar con rapidez y a responder bien ante situaciones imprevistas. Puede desenvolverse con soltura en tareas que requieren contacto y decision.',
+  ESFP: 'Suele relacionarse con facilidad y aportar energia a los espacios de trabajo. Puede favorecer un trato cercano y una buena disposicion para colaborar.',
+  ENFP: 'Tiende a proponer ideas y a entusiasmarse con nuevas posibilidades. Puede aportar iniciativa, comunicacion y apertura para aprender.',
+  ENTP: 'Suele cuestionar las formas habituales de hacer las cosas y proponer alternativas. Puede aportar ideas y encontrar soluciones diferentes ante una dificultad.',
+  ESTJ: 'Tiende a organizar las tareas y a orientarse hacia el cumplimiento de objetivos. Puede asumir responsabilidades cuando cuenta con pautas y prioridades claras.',
+  ESFJ: 'Suele prestar atencion al funcionamiento del equipo y al trato con las personas. Puede aportar orden, colaboracion y disposicion para ayudar.',
+  ENFJ: 'Tiende a comprender las necesidades del equipo y a impulsar el trabajo conjunto. Puede aportar comunicacion, organizacion y apoyo a otras personas.',
+  ENTJ: 'Suele tomar decisiones con orientacion a resultados y organizar los recursos disponibles. Puede asumir responsabilidades de coordinacion cuando los objetivos estan definidos.'
 }
 
 // Estilos base de la UI
@@ -267,6 +277,7 @@ function InformePageContent() {
     oportunidadesMejora: ['', ''],
     ajusteCargo: { score: 0, analisis: '' },
     interpretacionPorFactor: {},
+    interpretacionVersion: undefined,
     nombreEvaluador: 'Antigravity AI',
     liderazgo: 0,
     adaptabilidad: 0,
@@ -446,55 +457,18 @@ function InformePageContent() {
     return nuevo
   }
 
-  const parseVal = (v: any, key?: string) => {
-    let val = 0
-    const k = key?.toLowerCase().trim() || ''
-    
-    if (typeof v === 'object' && v !== null) {
-      if (k === 'metricas_fraude') {
-        const alertas = (v.events?.length || 0) + (v.tabSwitches || 0) + (v.copyPasteAttempts || 0)
-        val = Math.max(0, 5 - (alertas * 0.5))
-      } else if ('correctas' in v && 'total' in v) {
-        val = (Number(v.correctas) / (Number(v.total) || 1)) * 5
-      } else {
-        val = Number(v.correctas || v.score || v.promedio || 0)
-      }
-    } else if (typeof v === 'string') {
-      const s = v.toLowerCase().trim()
-      if (s === 'alto') val = 5
-      else if (s === 'medio') val = 3
-      else if (s === 'bajo') val = 1.5
-      else val = Number(v) || 0
-    } else {
-      val = Number(v) || 0
-    }
-
-    // Inversión lógica selectiva (Escala 1-5):
-    if (k === 'neuroticismo' || k === 'nivel_estres' || k === 'burnout') {
-      val = Math.max(0, 6 - val)
-    }
-    // La inversión lógica para escalas 0-5 de errores fue eliminada ya que el motor
-    // ahora entrega directamente efectividad (correctas/total), evitando dobles inversiones.
-
-
-    // Normalización Final de Seguridad (Escala 0-5)
-    if (val > 5) {
-      if (val <= 25) val = (val / 25) * 5
-      else if (val <= 100) val = (val / 100) * 5
-      else val = 5
-    }
-    return Math.min(5, Math.max(0, val))
-  }
-
-  const clrOf = (v: number) => {
-    const val = (isNaN(v) || v === null || v === undefined) ? 0 : v
-    return val >= 4 ? '#059669' : val >= 3 ? '#2563eb' : val >= 2 ? '#d97706' : '#dc2626'
-  }
+  const parseVal = (v: any, key?: string) => normalizarPuntaje(v, key)
+  const clrOf = (v: number) => colorPuntaje(v)
   const upd = (k: keyof InformeState, v: any) => setInf(p => ({ ...p, [k]: v }))
   const updFactor = (fk: string, v: string) => setInf(p => ({
     ...p,
+    interpretacionVersion: PUNTAJES_VERSION,
     interpretacionPorFactor: { ...(p.interpretacionPorFactor || {}), [fk]: v }
   }))
+  const textoInterpretacion = (fk: string, factor: string, fallback: string) => {
+    if (!interpretacionVigente(inf)) return fallback
+    return inf.interpretacionPorFactor?.[fk] || inf.interpretacionPorFactor?.[factor.toLowerCase()] || fallback
+  }
 
   const esCargoLiderazgo = proceso?.cargo ? (
     proceso.cargo.toLowerCase().includes('jefe') ||
@@ -605,39 +579,14 @@ function InformePageContent() {
     return Array.from(mapa.entries())
   }
 
-  // MBTI Estimator
-  function estimarMBTI(pb: any) {
-    if (!pb) return null
-    // Búsqueda profunda de factores OCEAN si pb es un objeto complejo
-    const find = (key: string) => {
-      let found = 2.5
-      const search = (obj: any) => {
-        Object.entries(obj).forEach(([f, v]) => {
-          if (f.toLowerCase().includes(key)) {
-            found = (v?.correctas ? (v.correctas/v.total)*5 : (typeof v === 'number' ? v : 0)) || 2.5
-          } else if (typeof v === 'object' && v !== null) {
-            search(v)
-          }
-        })
-      }
-      search(pb)
-      return found
-    }
-
-    const E = find('extraver') >= 2.7 ? 'E' : 'I'
-    const S = find('apertura') < 2.7 ? 'S' : 'N'
-    const T = find('amabilid') < 2.7 ? 'T' : 'F'
-    const J = find('responsab') >= 2.7 ? 'J' : 'P'
-    return `${E}${S}${T}${J}`
-  }
-
   async function generarIA() {
     setGenerating(true)
     try {
+      const mbtiCalculado = inf.mbtiType || estimarMBTIDesdeSesiones(sesiones)
       const res = await fetch('/api/generar-informe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidato, proceso, sesiones, videos, actual: inf })
+        body: JSON.stringify({ candidato, proceso, sesiones, videos, actual: { ...inf, mbtiType: mbtiCalculado } })
       })
 
       if (!res.ok) {
@@ -732,14 +681,25 @@ function InformePageContent() {
           return limpio
         }
 
+        const normalizarNarrativa = (item: unknown): NarrativeItem => {
+          if (typeof item === 'string') return humanizar(item)
+          if (!item || typeof item !== 'object') return ''
+          const dato = item as Record<string, unknown>
+          return {
+            tendencia: humanizar(String(dato.tendencia || dato.competencia || dato.titulo || dato.nombre || dato.fortaleza || dato.area || '')),
+            mecanismo: humanizar(String(dato.mecanismo || dato.descripcion || dato.queSeObserva || dato.observacion || dato.situacion || '')),
+            impacto_organizacional: humanizar(String(dato.impacto_organizacional || dato.impacto || dato.valor || dato.consecuencia || dato.quePuedeAportar || ''))
+          }
+        }
         // BLINDAJE: Recuperamos el score que el Frontend ya calculó con éxito (ej: 61%)
         const scoreFrontend = inf.ajusteCargo?.score || 0;
         
         const nuevoInforme = {
           ...rawRes,
           fundamentacion: humanizar(rawRes.fundamentacion),
-          fortalezas: (rawRes.fortalezas || []).map((f: string) => humanizar(f)),
-          oportunidadesMejora: (rawRes.oportunidadesMejora || rawRes.areasDesarrollo || []).map((f: string) => humanizar(f)),
+          fortalezas: (rawRes.fortalezas || rawRes.fortalezasClave || rawRes.puntosFuertes || []).map(normalizarNarrativa),
+          oportunidadesMejora: (rawRes.oportunidadesMejora || rawRes.areasDesarrollo || rawRes.aspectosMejora || []).map(normalizarNarrativa),
+          interpretacionVersion: PUNTAJES_VERSION,
           interpretacionPorFactor: Object.fromEntries(
             Object.entries(rawRes.interpretacionPorFactor || {}).map(([k, v]) => [k, humanizar(v as string)])
           ),
@@ -828,10 +788,10 @@ MATRIZ DE POTENCIAL CONDUCTUAL:
 • Comunicación: ${inf.comunicacion}/100
 
 FORTALEZAS CLAVE:
-${(inf.fortalezas || []).map(f => typeof f === 'object' ? `• ${f.tendencia || f.competencia}: ${f.mecanismo}. Impacto: ${f.impacto_organizacional}` : `• ${f}`).join('\n') || 'No definidas'}
+${(inf.fortalezas || []).map((f: NarrativeItem) => typeof f === 'object' ? `• ${f.tendencia || f.competencia}: ${f.mecanismo}. Que puede aportar: ${f.impacto_organizacional}` : `• ${f}`).join('\n') || 'No definidas'}
 
 OPORTUNIDADES DE MEJORA:
-${(inf.oportunidadesMejora || []).map(o => typeof o === 'object' ? `• ${o.tendencia || o.competencia}: ${o.mecanismo}. Impacto: ${o.impacto_organizacional}` : `• ${o}`).join('\n') || 'No definidas'}
+${(inf.oportunidadesMejora || []).map((o: NarrativeItem) => typeof o === 'object' ? `• ${o.tendencia || o.competencia}: ${o.mecanismo}. Que puede aportar: ${o.impacto_organizacional}` : `• ${o}`).join('\n') || 'No definidas'}
 
 --------------------------------------------------
 3. FUNDAMENTACIÓN TÉCNICA
@@ -924,7 +884,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
             </button>
             <Suspense fallback={<div style={{ padding: '12px', fontSize: '0.8rem' }}>Cargando exportador...</div>}>
               <PDFDownloadLink
-                document={<InformePDF data={{ candidato, proceso, sesiones, videos, inf, helpers: { hoy: () => new Date().toLocaleDateString(), clrOf: (v: number) => v >= 4 ? '#059669' : v >= 3 ? '#2563eb' : v >= 2 ? '#d97706' : '#dc2626', hasP, hasC, hasK, hasV, sesBF, sesHX, sesCog, sesComp, sesBien, cogData, estimarMBTI, MBTI_DESC, ETQ, DOMINIOS } }} />}
+                document={<InformePDF data={{ candidato, proceso, sesiones, videos, inf, helpers: { hoy: () => new Date().toLocaleDateString(), clrOf: (v: number) => colorPuntaje(v), hasP, hasC, hasK, hasV, sesBF, sesHX, sesCog, sesComp, sesBien, cogData, estimarMBTI, MBTI_DESC, ETQ, DOMINIOS } }} />}
                 fileName={`Informe_${candidato.nombre}_${candidato.apellido}.pdf`}
                 style={{
                   background: '#10b981',
@@ -968,7 +928,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
         {/* ── 2. DIAGNÓSTICO ESTRATÉGICO ────────────────────────────────────── */}
         <div style={s.card}>
           <div style={s.cardHead}>
-            <span style={s.cardHeadTxt}>Diagnóstico Estratégico</span>
+            <span style={s.cardHeadTxt}>Evaluacion General</span>
             <span style={s.badge}>Ajuste Persona-Cargo</span>
           </div>
           <div style={{ padding: '1.25rem' }}>
@@ -1005,7 +965,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                 </span>
               </div>
               <div>
-                <label style={s.commentLabel}>Justificación del Ajuste al Perfil</label>
+                <label style={s.commentLabel}>Por que se recomienda</label>
                 <textarea
                   style={{ ...s.ta, minHeight: '120px' }}
                   value={inf.ajusteCargo?.analisis || ''}
@@ -1017,13 +977,13 @@ PsicoPlataforma - Gestión Inteligente de Talento
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '2rem' }}>
               <div style={{ background: '#f0fdf4', padding: '1.25rem', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
-                <h4 style={{ color: '#16a34a', margin: '0 0 1rem 0', fontSize: '0.9rem', fontWeight: 'bold' }}>✦ Fortalezas Clave</h4>
+                <h4 style={{ color: '#16a34a', margin: '0 0 1rem 0', fontSize: '0.9rem', fontWeight: 'bold' }}>Fortalezas principales</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {(inf.fortalezas || []).map((f, i) => (
+                  {(inf.fortalezas || []).map((f: NarrativeItem, i: number) => (
                     <div key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
                       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a' }} />
-                      <input
-                        style={{ background: 'transparent', border: 'none', borderBottom: '1px solid #dcfce7', width: '100%', fontSize: '0.9rem', color: '#14532d', padding: '2px 0' }}
+                      <textarea
+                        rows={2} style={{ background: 'transparent', border: '1px solid #dcfce7', borderRadius: '6px', width: '100%', fontSize: '0.9rem', lineHeight: '1.35', color: '#14532d', padding: '5px', resize: 'vertical', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
                         value={typeof f === 'object' ? `${f.tendencia || f.competencia} - ${f.mecanismo}` : f}
                         onChange={e => {
                           const n = [...inf.fortalezas]; 
@@ -1040,13 +1000,13 @@ PsicoPlataforma - Gestión Inteligente de Talento
                 </div>
               </div>
               <div style={{ background: '#fff7ed', padding: '1.25rem', borderRadius: '12px', border: '1px solid #ffedd5' }}>
-                <h4 style={{ color: '#ea580c', margin: '0 0 1rem 0', fontSize: '0.9rem', fontWeight: 'bold' }}>▲ Áreas de Desarrollo</h4>
+                <h4 style={{ color: '#ea580c', margin: '0 0 1rem 0', fontSize: '0.9rem', fontWeight: 'bold' }}>Aspectos a fortalecer</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {(inf.oportunidadesMejora || []).map((f, i) => (
+                  {(inf.oportunidadesMejora || []).map((f: NarrativeItem, i: number) => (
                     <div key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
                       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ea580c' }} />
-                      <input
-                        style={{ background: 'transparent', border: 'none', borderBottom: '1px solid #ffedd5', width: '100%', fontSize: '0.9rem', color: '#7c2d12', padding: '2px 0' }}
+                      <textarea
+                        rows={2} style={{ background: 'transparent', border: '1px solid #ffedd5', borderRadius: '6px', width: '100%', fontSize: '0.9rem', lineHeight: '1.35', color: '#7c2d12', padding: '5px', resize: 'vertical', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
                         value={typeof f === 'object' ? `${f.tendencia || f.competencia} - ${f.mecanismo}` : f}
                         onChange={e => {
                           const n = [...inf.oportunidadesMejora];
@@ -1069,7 +1029,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
         {/* ── 2.5 AUDITORÍA DE PROCESO E INTEGRIDAD (RESTAURADO) ─────────────── */}
         <div style={s.card}>
           <div style={s.cardHead}>
-            <span style={s.cardHeadTxt}>Auditoría de Proceso y Confiabilidad</span>
+            <span style={s.cardHeadTxt}>Controles del proceso</span>
             <span style={s.badge}>Control de Calidad</span>
           </div>
           <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
@@ -1098,7 +1058,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
         {/* ── 2.6 MATRIZ DE POTENCIAL CONDUCTUAL (SOFT SKILLS - PREMIUM) ────── */}
         <div style={s.card}>
           <div style={s.cardHead}>
-            <span style={s.cardHeadTxt}>Matriz de Potencial Conductual (Soft Skills)</span>
+            <span style={s.cardHeadTxt}>Habilidades para el trabajo</span>
             <span style={s.badge}>Análisis de Meta-Competencias</span>
           </div>
           <div style={{ padding: '1.25rem' }}>
@@ -1154,7 +1114,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
         {hasP && (
           <div style={s.card}>
             <div style={s.cardHead}>
-              <span style={s.cardHeadTxt}>II. Evaluación Psicométrica por Técnica (Personalidad)</span>
+              <span style={s.cardHeadTxt}>II. Resultados de la evaluacion (Personalidad)</span>
               <span style={s.badge}>Dimensiones del Big Five</span>
             </div>
 
@@ -1217,7 +1177,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       <span style={{ ...s.factLvl, color: clr }}>{Number(normVal.toFixed(1))}/5</span>
                     </div>
                     <div style={s.barBg}><div style={{ ...s.barFill, width: `${(normVal / 5) * 100}%`, background: clr }} /></div>
-                    <textarea style={s.taFact} rows={4} value={inf.interpretacionPorFactor?.[fk] || inf.interpretacionPorFactor?.[factor.toLowerCase()] || descSugerida} onChange={(e) => updFactor(fk, e.target.value)} />
+                    <textarea style={s.taFact} rows={4} value={textoInterpretacion(fk, factor, descSugerida)} onChange={(e) => updFactor(fk, e.target.value)} />
                   </div>
                 )
               })}
@@ -1229,19 +1189,18 @@ PsicoPlataforma - Gestión Inteligente de Talento
         {hasP && (
           <div style={s.card}>
             <div style={s.cardHead}>
-              <span style={s.cardHeadTxt}>Perfil Tipológico MBTI</span>
-              <span style={s.badge}>Estimación Psicométrica</span>
+              <span style={s.cardHeadTxt}>Estilo de trabajo estimado</span>
+              <span style={s.badge}>Estimacion orientativa</span>
             </div>
             {(() => {
-              const pbPersonalidad = getFactoresUnicos(DOMINIOS.PERSONALIDAD)[0]?.[1]?.valor;
-              const mbtiCodigo = inf.mbtiType || estimarMBTI(pbPersonalidad) || 'N/A';
+              const mbtiCodigo = inf.mbtiType || estimarMBTIDesdeSesiones(sesiones) || 'N/A';
               const mbtiDesc = MBTI_DESC[mbtiCodigo] || 'No se cuenta con datos suficientes para una estimación tipológica precisa.';
               
               return (
                 <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '1.5rem', alignItems: 'center' }}>
                   <div style={{ background: '#f0f9ff', padding: '2rem', borderRadius: '16px', border: '1px solid #bae6fd', textAlign: 'center' }}>
                     <div style={{ fontSize: '3rem', fontWeight: '900', color: '#0369a1' }}>{mbtiCodigo}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#0369a1', fontWeight: 'bold', textTransform: 'uppercase' }}>Tipo Estimado</div>
+                    <div style={{ fontSize: '0.75rem', color: '#0369a1', fontWeight: 'bold', textTransform: 'uppercase' }}>Estimacion orientativa</div>
                   </div>
                   <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                     <h4 style={{ color: '#1e293b', margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 'bold' }}>Análisis Tipológico</h4>
@@ -1249,7 +1208,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       {mbtiDesc}
                     </p>
                     <div style={{ marginTop: '1rem' }}>
-                      <label style={s.commentLabel}>Ajuste Tipológico al Cargo</label>
+                      <label style={s.commentLabel}>Como podria desempenarse en el puesto</label>
                       <textarea 
                         style={{ ...s.ta, fontSize: '0.85rem' }} 
                         rows={3} 
@@ -1303,6 +1262,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                   </div>
                   {getFactoresUnicos(DOMINIOS.COGNITIVO).filter(([k]) => !['correctas', 'total', 'score', 'percentil'].includes(k)).map(([factor, { valor, sesionId }]) => {
                     const vNorm = parseVal(valor, factor)
+                    const clr = clrOf(vNorm)
                     const fk = `${sesionId}_${factor.toLowerCase()}`
 
                     const narrativas: Record<string, any> = {
@@ -1345,13 +1305,13 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       <div key={factor} style={s.factBlk}>
                         <div style={s.factRow}>
                         <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
-                        <span style={{...s.factLvl, color:'#0369a1'}}>{Number(vNorm.toFixed(1))}/5</span>
+                        <span style={{...s.factLvl, color:clr}}>{Number(vNorm.toFixed(1))}/5</span>
                       </div>
-                        <div style={s.barBg}><div style={{...s.barFill, width:`${(vNorm/5)*100}%`, background:'#0369a1'}} /></div>
+                        <div style={s.barBg}><div style={{...s.barFill, width:`${(vNorm/5)*100}%`, background:clr}} /></div>
                         <textarea 
                           style={s.taFact} 
                           rows={4} 
-                          value={inf.interpretacionPorFactor?.[fk] || inf.interpretacionPorFactor?.[factor.toLowerCase()] || descSugerida} 
+                          value={textoInterpretacion(fk, factor, descSugerida)} 
                           onChange={(e) => updFactor(fk, e.target.value)} 
                         />
                       </div>
@@ -1437,7 +1397,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                     <textarea 
                       style={s.taFact} 
                       rows={4} 
-                      value={inf.interpretacionPorFactor?.[fk] || inf.interpretacionPorFactor?.[factor.toLowerCase()] || descSugerida} 
+                      value={textoInterpretacion(fk, factor, descSugerida)} 
                       onChange={(e) => updFactor(fk, e.target.value)} 
                     />
                   </div>
@@ -1531,7 +1491,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                     <textarea 
                       style={s.taFact} 
                       rows={4} 
-                      value={inf.interpretacionPorFactor?.[fk] || inf.interpretacionPorFactor?.[factor.toLowerCase()] || descSugerida} 
+                      value={textoInterpretacion(fk, factor, descSugerida)} 
                       onChange={(e) => updFactor(fk, e.target.value)} 
                     />
                   </div>

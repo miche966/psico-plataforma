@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { estimarMBTIDesdeSesiones } from '@/lib/baremos'
 
 export const maxDuration = 60; // 60 segundos para evitar timeouts en plan Hobby de Vercel
 
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
 
     // 1. SINCRONIZACIÓN DE SCORE Y MBTI
     let scoreFinal = actual?.ajusteCargo?.score || 0;
-    const mbtiType = actual?.mbtiType || 'N/A';
+    const mbtiType = actual?.mbtiType || estimarMBTIDesdeSesiones(sesiones) || 'N/A';
     
     // 2. NORMALIZACIÓN Y EXTRACCIÓN DE FACTORES (EL "BUZÓN" UNIFICADO)
     const factoresCrudos: Record<string, number> = {};
@@ -50,6 +51,12 @@ export async function POST(req: Request) {
         };
         scan(s.puntaje_bruto);
     });
+
+    // La IA recibe la escala final: alto = mayor estabilidad emocional.
+    if (typeof factoresCrudos.neuroticismo === 'number') {
+        factoresCrudos.estabilidad_emocional = Math.min(5, Math.max(0, 6 - factoresCrudos.neuroticismo));
+        delete factoresCrudos.neuroticismo;
+    }
 
     // 3. COMPILACIÓN DE TRANSCRIPCIONES DE VIDEO-ENTREVISTAS
     let discursoVideos = '';
@@ -132,6 +139,17 @@ REGLAS DE ORO DE REDACCIÓN (OBLIGATORIAS E INFLEXIBLES):
 9. SIN REFERENCIAS AL SOPORTE TECNOLÓGICO: Está estrictamente prohibido usar palabras como "video", "cámara", "grabación", "audio", "plataforma", "videoentrevista" o cualquier término que mencione la interfaz de software en los textos generados. Cuando analices las respuestas o el comportamiento observado en la entrevista, debes describirlo de forma implícita e integrada como "interacción directa", "comunicación discursiva", "estilo verbal", "comportamiento no verbal" o "presencia interactiva".
 10. INTEGRACIÓN INVISIBLE DE APORTES CUALITATIVOS Y SIMULACIONES (SI APLICA): Si se proveen datos de simulación, role play o transcripciones abajo, utiliza dicha información EXCLUSIVAMENTE para enriquecer y matizar las conclusiones del perfil (su estilo de persuasión, tolerancia ante la presión, búsqueda de consensos, escucha activa o manejo de objeciones). Queda ESTRICTAMENTE PROHIBIDO mencionar en el texto que se realizó o se observó una prueba, simulación, ejercicio o interacción, así como usar frases meta-referenciales (tales como "como se observó en...", "durante una interacción directa...", "en el diálogo con...", "tal como se evidenció...", "en el caso del comerciante..."). El informe debe describir las tendencias conductuales y competencias de la persona de forma 100% directa, integrada y declarativa (ej: en lugar de "como se observó en la negociación con el comerciante, logró un acuerdo" di simplemente "demuestra la habilidad de transformar objeciones iniciales en acuerdos viables a través de un diálogo sereno y estructurado"), redactando el resultado como una conclusión analítica consolidada.
 
+ESTILO DE REDACCIÓN OBLIGATORIO:
+- Utiliza un lenguaje claro, directo y profesional, pensado para responsables de selección y supervisores que no tienen formación en psicología.
+- Escribe frases naturales y relativamente breves. Evita palabras rebuscadas, explicaciones académicas y expresiones propias de informes técnicos.
+- Describe conductas concretas y su posible efecto en el trabajo. No presentes los resultados como diagnósticos ni como verdades absolutas.
+- Prefiere expresiones como “puede ayudar”, “tiende a”, “sería conveniente acompañar” y “podría beneficiarse de”.
+- Evita, salvo que sean imprescindibles, términos como “alineación conductual”, “adherencia”, “autogestión”, “autoconcepto”, “resiliencia”, “inteligencia emocional”, “metacognición”, “brechas”, “idoneidad”, “proctoring”, “percentil” y “psicométrico”. Reemplázalos por expresiones cotidianas.
+- En fortalezas y oportunidades, utiliza este enfoque: título breve; qué se observa; qué puede significar en el trabajo.
+- No repitas la misma idea en distintas secciones. No exageres las cualidades ni presentes las oportunidades de mejora como defectos permanentes.
+- Ejemplo de tono correcto: “Puede mantener la calma frente a reclamos y buscar una solución sin aumentar la tensión de la conversación.”
+- Ejemplo de tono a evitar: “Presenta una elevada competencia de regulación emocional y una sólida alineación conductual con el rol.”
+- El resultado debe sonar humano, equilibrado y útil para tomar una decisión laboral.
 CONTEXTO DEL PUESTO: ${proceso?.cargo || 'N/A'}
 AJUSTE ESTIMADO: ${scoreFinal}%
 PERFIL CONDUCTUAL (MBTI): ${mbtiType}
@@ -152,10 +170,11 @@ GUÍA DE INTERPRETACIÓN DE FACTORES (MUY IMPORTANTE PARA EVITAR CONTRADICCIONES
   * "resiliencia": 5.0 es adaptabilidad soberbia a la crisis. Puntajes bajos indican vulnerabilidad emocional y necesidad de validación externa.
   * "autoesteem" / "autoestima": 5.0 es alta seguridad. Puntajes bajos representan inseguridad técnica y temor marcado a cometer errores.
 
-- Factores de Riesgo (Menor puntaje es SALUDABLE/ÓPTIMO, mayor puntaje [ej: > 3.0] es CRÍTICO/DESFAVORABLE):
-  * "burnout" (Agotamiento crónico): 1.0 es vitalidad y energía excelente. Puntajes altos (ej: 4.0 - 5.0) indican un desgaste emocional y físico severo que pone en riesgo la operativa.
-  * "nivel_estres" / "estres" (Tensión operativa): 1.0 es calma operativa óptima. Puntajes altos indican un estado de tensión y agobio severo bajo demanda.
-  * "carga_laboral" (Saturación de tareas): 1.0 es volumen de trabajo cómodo y manejable. Puntajes altos indican sobrecarga, saturación and desorganización operativa.
+- Factores de Riesgo (Mayor puntaje es favorable; menor puntaje indica una situacion que conviene revisar):
+  * "estabilidad_emocional" (Manejo de la presion): 5.0 indica estabilidad y buen manejo de la presion. Puntajes bajos indican mayor sensibilidad ante la presion y necesidad de apoyo.
+  * "burnout" (Agotamiento crónico): 5.0 indica buen nivel de energía y bajo desgaste. Puntajes bajos indican mayor cansancio y señales de agotamiento que conviene atender.
+  * "nivel_estres" / "estres" (Tensión operativa): 5.0 indica calma y buen manejo de la presión. Puntajes bajos indican mayor tensión y agobio ante la demanda.
+  * "carga_laboral" (Saturación de tareas): 5.0 indica una carga de trabajo manejable. Puntajes bajos indican percepción de sobrecarga o dificultad para organizar la demanda.
 
 ${discursoVideos ? `TRANSCRIPCIONES Y DISCURSO DE LA VIDEO-ENTREVISTA CONDUCTUAL:\n${discursoVideos}` : ''}
 
@@ -178,7 +197,7 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
      "extraversion": "Nivel de interacción...",
      "amabilidad": "Calidez y trato...",
      "responsabilidad": "Compromiso y orden...",
-     "neuroticismo": "Estabilidad ante la presión...",
+     "estabilidad_emocional": "Estabilidad ante la presión...",
      "apertura": "Disposición al cambio..."
   },
   "recomendacion": "...",
@@ -200,6 +219,14 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
 *Nota: En metaCompetencias, sustituye los 0 por números enteros del 1 al 100 estimados según el perfil.*
 `;
 
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        maxOutputTokens: 12000,
+        responseMimeType: 'application/json'
+      }
+    });
+
     let result = null;
     let attempts = 0;
     const maxAttempts = 3;
@@ -211,15 +238,6 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
       try {
         attempts++;
         console.log(`[INFO] [GENERAR INFORME] Llamando a Gemini (Intento ${attempts}/${maxAttempts})...`);
-        
-        const model = genAI.getGenerativeModel({ 
-          model: 'gemini-2.5-flash',
-          generationConfig: {
-            maxOutputTokens: 2500,
-            responseMimeType: 'application/json'
-          }
-        });
-        
         const callStart = Date.now();
         result = await model.generateContent(prompt);
         const callDuration = ((Date.now() - callStart) / 1000).toFixed(2);
@@ -240,26 +258,37 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
     if (!result) {
       throw new Error('Fallo la llamada a la API de Gemini tras superar los reintentos máximos.');
     }
-
-    const text = (await result.response).text();
-    
     let resultado: any;
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      const rawJson = jsonMatch ? jsonMatch[0] : text;
-      resultado = JSON.parse(rawJson);
-    } catch (parseError: any) {
-      console.warn("Fallo el parseo inicial del informe, saneando caracteres...", parseError.message);
+    let ultimoError: Error | null = null;
+
+    for (let parseAttempt = 1; parseAttempt <= 2; parseAttempt++) {
+      const response = await result.response;
+      const finishReason = response.candidates?.[0]?.finishReason;
+      const text = response.text();
+
       try {
-        // Sanitizar barras invertidas que no formen escapes válidos y caracteres de control
-        const saneado = text
-          .replace(/\\(?!["\\/bfnrtu])/g, '\\\\')
-          .replace(/[\n\r]/g, ' ');
-        const jsonMatch = saneado.match(/\{[\s\S]*\}/);
-        resultado = JSON.parse(jsonMatch ? jsonMatch[0] : saneado);
-      } catch (secondError: any) {
-        throw new Error(`Estructura JSON inválida devuelta por el modelo: ${secondError.message}`);
+        if (finishReason === 'MAX_TOKENS') {
+          throw new Error('La respuesta del modelo fue truncada por alcanzar el límite de salida.');
+        }
+        const firstBrace = text.indexOf('{');
+        const lastBrace = text.lastIndexOf('}');
+        const rawJson = firstBrace >= 0 && lastBrace > firstBrace
+          ? text.slice(firstBrace, lastBrace + 1)
+          : text.trim();
+        resultado = JSON.parse(rawJson);
+        break;
+      } catch (parseError: any) {
+        ultimoError = parseError instanceof Error ? parseError : new Error(String(parseError));
+        console.warn(`[WARNING] [GENERAR INFORME] JSON inválido (intento ${parseAttempt}/2):`, ultimoError.message);
+        if (parseAttempt === 2) break;
+        result = await model.generateContent(`${prompt}
+
+REINTENTO OBLIGATORIO: la respuesta anterior no fue un JSON completo. Devuelve nuevamente el objeto completo, válido y cerrado. No uses Markdown, no agregues explicaciones y no cortes ninguna cadena.`);
       }
+    }
+
+    if (!resultado) {
+      throw new Error(`Estructura JSON inválida devuelta por el modelo: ${ultimoError?.message || 'respuesta vacía'}`);
     }
 
     resultado.ajusteCargo.score = scoreFinal;

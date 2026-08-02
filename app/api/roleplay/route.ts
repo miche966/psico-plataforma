@@ -129,6 +129,7 @@ export async function POST(req: Request) {
           const chat = chatModel.startChat({
             history,
             systemInstruction: {
+              role: 'user',
               parts: [{ text: systemInstructionPrompt }]
             }
           })

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as ChartTooltip, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
 import AppLayout from '@/components/AppLayout'
 import { Plus, Check, Copy, FileText, Search, UserPlus, RotateCcw, BarChart3, Users, Sparkles, BellRing, AlertCircle, Info, LayoutDashboard, Award, Briefcase, X, Target, PieChart, ShieldAlert } from 'lucide-react'
+import { normalizarContextoInterpretacion, obtenerInterpretacion } from '@/lib/interpretaciones/resolver'
 
 interface Candidato {
   id: string
@@ -337,7 +338,7 @@ export default function CandidatosPage() {
             <button
               className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-all text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={guardarCandidato}
-              disabled={guardando || !form.nombre || !form.apellido || !form.email}
+              disabled={guardando || !form.nombres || !form.apellidos || !form.email}
             >
               {guardando ? 'Guardando...' : 'Guardar candidato'}
             </button>
@@ -737,7 +738,10 @@ export default function CandidatosPage() {
                       return (
                         <div className="space-y-6">
                           {diagnostico.map(([factor, valor]) => {
-                            const info = interpretacionHumana(factor, valor)
+                            const testContexto = normalizarContextoInterpretacion(
+                              typeof sesionParaDetalle.test_id === 'string' ? sesionParaDetalle.test_id : undefined
+                            )
+                            const info = interpretacionHumana(factor, valor, testContexto)
                             const colorClass = valor >= 3.8 
                               ? 'bg-emerald-500' 
                               : valor >= 1.5 
@@ -942,14 +946,14 @@ export default function CandidatosPage() {
                   return bf ? extraerDiagnostico(bf.puntaje_bruto || bf.puntajes || bf.resultados || bf, bf.test_id) : []
                 })()
                 
-                const getValorOCEAN = (key: string) => {
-                  const found = diagnosticoBF.find(([k]) => k.toLowerCase() === key.toLowerCase())
-                  return found ? found[1] : 3.0
+                const getValorOCEAN = (key: string): number => {
+                  const found = diagnosticoBF.find(([k]) => String(k).toLowerCase() === key.toLowerCase())
+                  return found ? Number(found[1]) || 3.0 : 3.0
                 };
 
                 const matchVal = (() => {
                   if (diagnosticoBF.length === 0) return 75
-                  const avg = diagnosticoBF.reduce((acc, [, v]) => acc + v, 0) / diagnosticoBF.length
+                  const avg = diagnosticoBF.reduce((acc, [, v]) => acc + (Number(v) || 0), 0) / diagnosticoBF.length
                   return Math.round((avg / 5) * 100)
                 })();
 
@@ -958,9 +962,10 @@ export default function CandidatosPage() {
                   let maxK = ""
                   let maxV = -1
                   diagnosticoBF.forEach(([k, v]) => {
-                    if (k !== 'neuroticismo' && v > maxV) {
-                      maxV = v
-                      maxK = k
+                    const numV = Number(v) || 0
+                    if (String(k) !== 'neuroticismo' && numV > maxV) {
+                      maxV = numV
+                      maxK = String(k)
                     }
                   })
                   if (maxK === 'extraversion') return "Liderazgo e Influencia"
@@ -1717,7 +1722,7 @@ const ETIQUETAS: Record<string, string> = {
   latencia_promedio: 'Latencia Promedio'
 }
 
-function interpretacionHumana(factor: string, valor: number): { descripcion: string, pregunta: string } {
+function interpretacionHumana(factor: string, valor: number, testIdContexto?: string): { descripcion: string, pregunta: string } {
   // Umbrales para psicometría: 0-2.5 (Bajo), 2.5-4.0 (Moderado), 4.0-5 (Alto)
   const nivel = valor >= 4.0 ? 'alto' : valor >= 2.5 ? 'moderado' : 'bajo'
   const textos: Record<string, Record<string, { desc: string, q: string }>> = {
@@ -2230,7 +2235,7 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
         q: '¿Cómo maneja las críticas cuando alguien más detecta una imprecisión técnica en un trabajo que usted ya consideraba terminado?'
       }
     },
-    matrices: {
+    matrices_icar: {
       alto: {
         desc: 'Sobresaliente capacidad de abstracción. Identifica patrones complejos y relaciones lógicas no evidentes con rapidez, lo que indica un potencial intelectual muy alto para la resolución de problemas inéditos.',
         q: '¿Cómo aborda un problema del que no tiene ningún antecedente ni guía previa?'
@@ -2244,7 +2249,7 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
         q: '¿Qué es lo que más le ayuda a comprender un concepto que es puramente teórico?'
       }
     },
-    analogias: {
+    analogias_icar: {
       alto: {
         desc: 'Excelente fluidez verbal y capacidad de asociación semántica. Encuentra relaciones entre conceptos distantes con facilidad, lo que facilita la comunicación de ideas complejas y la síntesis de información.',
         q: '¿Cómo logra explicar un concepto técnico difícil a alguien que no conoce nada del tema?'
@@ -2300,21 +2305,7 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
         q: '¿Qué tipo de formación o soporte técnico siente que aceleraría su proceso de aprendizaje en esta nueva posición?'
       }
     },
-    matrices: {
-      alto: {
-        desc: 'Muestra una alta capacidad de abstracción e identificación de estructuras lógicas complejas. Su pensamiento es sistémico, lo que le permite entender cómo se relacionan diferentes variables en un proceso y encontrar soluciones a problemas inéditos.',
-        q: '¿Cómo aborda un problema del que no tiene antecedentes o guías previas para resolverlo?'
-      },
-      moderado: {
-        desc: 'Posee una capacidad de razonamiento abstracto funcional. Logra identificar patrones lógicos estándar y aplicarlos de forma coherente en sus tareas diarias, manteniendo un ritmo de aprendizaje adecuado.',
-        q: '¿Qué tipo de información o visualización le ayuda más a comprender el funcionamiento de un proceso nuevo?'
-      },
-      bajo: {
-        desc: 'Se desempeña mejor con instrucciones concretas y ejemplos prácticos. Su razonamiento abstracto se beneficia de apoyos visuales y de un enfoque paso a paso para la resolución de tareas complejas.',
-        q: '¿De qué manera descompone un concepto puramente teórico para poder aplicarlo a una tarea práctica?'
-      }
-    },
-    series: {
+    series_icar: {
       alto: {
         desc: 'Destaca por identificar rápidamente la lógica de progresión en series de datos o eventos. Su capacidad predictiva le permite anticipar tendencias y entender la evolución de procesos a partir de información fragmentada.',
         q: '¿Cómo logra identificar la regla que rige una serie de eventos o datos cuando estos parecen no tener una relación obvia?'
@@ -2328,7 +2319,7 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
         q: 'Cuando se enfrenta a un proceso que cambia constantemente, ¿qué estrategias usa para no perder el hilo de la secuencia?'
       }
     },
-    rotacion: {
+    rotacion_icar: {
       alto: {
         desc: 'Notable agilidad para manipular objetos y estructuras de forma mental. Esta competencia le facilita la comprensión de planos, diagramas o flujos de procesos complejos, visualizando el resultado final antes de la ejecución.',
         q: '¿De qué manera utiliza su capacidad de visualización para anticipar problemas en un flujo de trabajo o diseño técnico?'
@@ -2340,20 +2331,6 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
       bajo: {
         desc: 'Su razonamiento espacial es más concreto. Se desempeña mejor trabajando con elementos físicos o representaciones 2D simples, beneficiándose de instrucciones que minimicen la necesidad de rotación mental abstracta.',
         q: 'Cuando debe interpretar un gráfico o plano difícil, ¿qué pasos sigue para asegurar que su interpretación es correcta?'
-      }
-    },
-    analogias: {
-      alto: {
-        desc: 'Posee una buena capacidad de asociación semántica y fluidez verbal. Encuentra relaciones entre conceptos con facilidad, lo que favorece la comunicación de ideas y la síntesis de información en entornos de trabajo dinámicos.',
-        q: '¿Cómo logra explicar un tema complejo a alguien que no tiene formación técnica en esa área?'
-      },
-      moderado: {
-        desc: 'Muestra un manejo adecuado de las relaciones verbales. Su comunicación es lógica y clara, permitiéndole comprender y transmitir mensajes con un nivel de complejidad profesional estándar.',
-        q: '¿Qué estrategias utiliza para confirmar que su mensaje ha sido interpretado correctamente por su interlocutor?'
-      },
-      bajo: {
-        desc: 'Prefiere un lenguaje directo y literal para evitar ambigüedades. Su fortaleza reside en la comunicación pragmática, aunque puede requerir apoyo para interpretar mensajes con alta carga metafórica.',
-        q: 'Cuando lee un texto muy denso o técnico, ¿qué método sigue para no perder el hilo de la idea principal?'
       }
     },
     aptitud_calculo: {
@@ -2569,8 +2546,7 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
       }
     },
     // SJT Atención al Cliente
-    // SJT Atención al Cliente
-    etica: {
+    sjt_atencion_etica: {
       alto: {
         desc: 'Proyecta una integridad sólida en cada interacción, priorizando la transparencia y el respeto por los protocolos institucionales. Su conducta asegura que los intereses del cliente se gestionen siempre dentro del marco ético de la organización.',
         q: '¿Cómo ha manejado situaciones donde el cliente esperaba una promesa que usted sabía que la empresa no podría cumplir al 100%?'
@@ -2584,7 +2560,7 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
         q: '¿Cómo equilibra usted su instinto de cierre con la necesidad de asegurar que el cliente tiene toda la información relevante?'
       }
     },
-    empatia: {
+    sjt_atencion_empatia: {
       alto: {
         desc: 'Posee una notable capacidad para captar el estado emocional del cliente y validar su perspectiva con naturalidad. Este enfoque le permite gestionar situaciones de alta carga afectiva con serenidad, transformando interacciones en relaciones de confianza.',
         q: '¿Cómo logra validar la frustración de un cliente sin comprometer la política de la empresa ni dar una imagen de debilidad técnica?'
@@ -2655,7 +2631,7 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
       }
     },
     // SJT Comercial
-    negociacion: {
+    sjt_comercial_negociacion: {
       alto: {
         desc: 'Persuasión estratégica basada en valor. Detecta los disparadores de decisión del cliente y construye propuestas que alinean el beneficio del usuario con la rentabilidad del negocio. Cierra acuerdos complejos preservando márgenes y relaciones.',
         q: '¿Cómo logra que un cliente acepte un precio más alto que el de la competencia sin que sienta que está pagando de más?'
@@ -3023,7 +2999,8 @@ function interpretacionHumana(factor: string, valor: number): { descripcion: str
     }
   }
 
-  const res = textos[factor]?.[nivel] || {
+  // Usar el resolver productivo real importado desde lib/interpretaciones/resolver
+  const res = obtenerInterpretacion(textos, factor, nivel, testIdContexto) || {
     desc: 'El evaluado muestra un nivel ' + nivel + ' en esta dimensión, sugiriendo un desempeño ' + (nivel === 'alto' ? 'sobresaliente' : nivel === 'moderado' ? 'funcional' : 'con áreas de mejora') + '. Posee las habilidades para integrarse al rol, destacando su compromiso con la calidad.',
     q: '¿Podría darnos un ejemplo concreto de cómo ha aplicado esta competencia para resolver un desafío laboral?'
   }

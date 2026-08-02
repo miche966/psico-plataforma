@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
 import { Plus, Check, Link as LinkIcon, Search, FileText, X, Video, Eye, Settings, Clock, CheckCircle2, BellRing, Briefcase, Award } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
+import { TEST_IDS, calcularProgresoEvaluacion } from '@/lib/progresoEvaluacion'
 
 const TESTS_DISPONIBLES = [
   { key: 'bigfive', label: 'Big Five' },
@@ -32,10 +33,10 @@ const TESTS_DISPONIBLES = [
 ]
 
 const COMPETENCIAS_ALLES = [
-  'Orientación al cliente', 'Orientación a resultados', 'Trabajo en equipo', 'Adaptabilidad al cambio',
-  'Integridad', 'Iniciativa', 'Liderazgo', 'Comunicación', 'Negociación', 'Planificación y organización',
-  'Tolerancia a la presión', 'Pensamiento analítico', 'Creatividad e innovación', 'Desarrollo de relaciones',
-  'Autocontrol', 'Orientación al logro', 'Flexibilidad', 'Conciencia organizacional', 'Responsabilidad', 'Ética profesional'
+  'Orientaci?n al cliente', 'Orientaci?n a resultados', 'Trabajo en equipo', 'Adaptabilidad al cambio',
+  'Integridad', 'Iniciativa', 'Liderazgo', 'Comunicaci?n', 'Negociaci?n', 'Planificaci?n y organizacin',
+  'Tolerancia a la presi?n', 'Pensamiento anal?tico', 'Creatividad e innovaci?n', 'Desarrollo de relaciones',
+  'Autocontrol', 'Orientaci?n al logro', 'Flexibilidad', 'Conciencia organizacional', 'Responsabilidad', '?tica profesional'
 ]
 
 interface Proceso {
@@ -49,30 +50,6 @@ interface Proceso {
   total_candidatos?: number
   descripcion_cargo?: string
   competencias_requeridas?: { nombre: string; nivel: string }[]
-}
-
-const TEST_IDS: Record<string, string> = {
-  'a1b2c3d4-e5f6-7890-abcd-ef1234567890': 'bigfive',
-  'f6a7b8c9-d0e1-2345-fabc-456789012345': 'icar',
-  'd0e1f2a3-b4c5-6789-defa-000000000001': 'estres-laboral',
-  'e1f2a3b4-c5d6-7890-efab-111222333444': 'creatividad',
-  'e5f6a7b8-c9d0-1234-efab-345678901234': 'integridad',
-  'b2c3d4e5-f6a7-8901-bcde-f12345678901': 'hexaco',
-  'c3d4e5f6-a7b8-9012-cdef-123456789012': 'numerico',
-  'd4e5f6a7-b8c9-0123-defa-234567890123': 'verbal',
-  'a7b8c9d0-e1f2-3456-abcd-777777777777': 'sjt-ventas',
-  'e5f6a7b8-c9d0-1234-efab-555555555555': 'tolerancia-frustracion',
-  'f2a3b4c5-d6e7-8901-fabc-222333444555': 'sjt-problemas',
-  'c9d0e1f2-a3b4-5678-cdef-999999999999': 'sjt-legal',
-  'b2c3d4e5-f6a7-8901-bcde-222222222222': 'sjt-comercial',
-  'a1b2c3d4-e5f6-7890-abcd-111111111111': 'comercial',
-  'b8c9d0e1-f2a3-4567-bcde-888888888888': 'atencion-detalle',
-  'f6a7b8c9-d0e1-2345-fabc-666666666666': 'sjt-atencion',
-  '7a8b9c0d-e1f2-4356-abcd-999999999999': 'dass21',
-  'e9b2c3d4-f5a6-7890-bcde-999999999999': 'sjt-cobranzas',
-  'f7a8b9c0-d1e2-4356-abcd-888888888888': 'frases-incompletas',
-  'd8e9f0a1-b2c3-4567-defa-888888888888': 'roleplay',
-  'd8e9f0a1-b2c3-4567-defa-777777777777': 'roleplay_atencion',
 }
 
 interface Candidato {
@@ -162,7 +139,7 @@ export default function ProcesosPage() {
         setProcesos(procesos.map(p => p.id === procesoSeleccionado.id ? { ...p, ...form } : p))
         setMostrarForm(false)
         setModoEdicion(false)
-        alert('Proceso actualizado con éxito.')
+        alert('Proceso actualizado con xito.')
       } else {
         console.error('Error al actualizar:', error)
         alert('Hubo un error al actualizar el proceso.')
@@ -249,41 +226,20 @@ export default function ProcesosPage() {
         const misSesiones = sesiones?.filter(s => s.candidato_id === c.id) || []
         const misVideos = respVideo?.filter(rv => rv.candidato_id === c.id) || []
         
-        // Agrupar videos únicos por pregunta_id
+        // Agrupar videos nicos por pregunta_id
         const videosUnicosMap = new Map<string, any>()
         misVideos.forEach(v => {
           const k = `${v.entrevista_id}:${v.pregunta_id}`
           videosUnicosMap.set(k, v)
         })
 
-        const completadosLocal: string[] = []
-        
-        misSesiones.forEach(s => {
-          const key = TEST_IDS[s.test_id]
-          if (key && bateria.includes(key)) completadosLocal.push(key)
-        })
-        
-        // Contar respuestas válidas por entrevista para este candidato
-        const respuestasPorEntrevista: Record<string, number> = {}
-        Array.from(videosUnicosMap.values()).forEach(v => {
-          respuestasPorEntrevista[v.entrevista_id] = (respuestasPorEntrevista[v.entrevista_id] || 0) + 1
-        })
-
-        // Solo marcar la entrevista como completada si el número de respuestas válidas coincide con el total de preguntas de esa entrevista
-        Object.entries(respuestasPorEntrevista).forEach(([entrevistaId, cantRespuestas]) => {
-          const cantPreguntas = preguntasPorEntrevista[entrevistaId] || 0
-          const key = `entrevista:${entrevistaId}`
-          if (cantRespuestas >= cantPreguntas && cantPreguntas > 0 && bateria.includes(key)) {
-            completadosLocal.push(key)
-          }
-        })
-
-        const unicos = Array.from(new Set(completadosLocal))
+        const progresoCalculado = calcularProgresoEvaluacion(bateria, misSesiones, Array.from(videosUnicosMap.values()), preguntasPorEntrevista)
+        const unicos = progresoCalculado.testsCompletados
         
         return {
           ...c,
           progreso: {
-            completados: unicos.length,
+            completados: progresoCalculado.completados,
             total: bateria.length,
             tests: unicos
           }
@@ -323,18 +279,14 @@ export default function ProcesosPage() {
       const data = await res.json()
       
       if (res.ok) {
-        alert(`Recordatorio enviado con éxito a ${c.nombre}.`)
+        alert(`Recordatorio enviado con xito a ${c.nombre}.`)
       } else {
-        if (data.error?.includes('RESEND_API_KEY')) {
-          alert('Error: No se ha configurado la API Key de Resend en el servidor.')
-        } else {
-          alert('Hubo un error al enviar el correo. Por favor, verifica la configuración.')
-        }
+        alert(data.error || 'Hubo un error al enviar el correo. Verifique la configuracin del servidor SMTP de Zimbra (EMAIL_HOST, EMAIL_USER, EMAIL_PASS) en el servidor.')
         console.error('Error enviando recordatorio:', data.error)
       }
     } catch (error) {
       console.error(error)
-      alert('Error de conexión al intentar enviar el recordatorio.')
+      alert('Error de conexin al intentar enviar el recordatorio.')
     } finally {
       setEnviandoRecordatorio(null)
     }
@@ -393,7 +345,7 @@ export default function ProcesosPage() {
     <AppLayout>
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Procesos de selección</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Procesos de seleccin</h1>
           <p className="text-sm text-slate-500 mt-1">
             {procesos.length} proceso{procesos.length !== 1 ? 's' : ''} registrado{procesos.length !== 1 ? 's' : ''}
           </p>
@@ -421,7 +373,7 @@ export default function ProcesosPage() {
 
       {mostrarForm && (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-8 shadow-sm ring-1 ring-indigo-500/10">
-          <h2 className="text-lg font-bold text-slate-900 mb-6">{modoEdicion ? 'Editar proceso de selección' : 'Nuevo proceso de selección'}</h2>
+          <h2 className="text-lg font-bold text-slate-900 mb-6">{modoEdicion ? 'Editar proceso de seleccin' : 'Nuevo proceso de seleccin'}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-slate-700">Nombre del proceso *</label>
@@ -429,7 +381,7 @@ export default function ProcesosPage() {
                 className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                 value={form.nombre}
                 onChange={e => setForm({ ...form, nombre: e.target.value })}
-                placeholder="Ej: Selección Analistas Q2 2026"
+                placeholder="Ej: Seleccin Analistas Q2 2026"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -438,28 +390,28 @@ export default function ProcesosPage() {
                 className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                 value={form.cargo}
                 onChange={e => setForm({ ...form, cargo: e.target.value })}
-                placeholder="Ej: Analista de Crédito"
+                placeholder="Ej: Analista de Crdito"
               />
             </div>
           </div>
           
           <div className="flex flex-col gap-1.5 mb-4">
-            <label className="text-sm font-medium text-slate-700">Descripción corta</label>
+            <label className="text-sm font-medium text-slate-700">Descripcin corta</label>
             <input
               className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
               value={form.descripcion}
               onChange={e => setForm({ ...form, descripcion: e.target.value })}
-              placeholder="Descripción opcional del proceso"
+              placeholder="Descripcin opcional del proceso"
             />
           </div>
 
           <div className="flex flex-col gap-1.5 mb-6">
-            <label className="text-sm font-medium text-slate-700">Misión del puesto y responsabilidades</label>
+            <label className="text-sm font-medium text-slate-700">Misin del puesto y responsabilidades</label>
             <textarea
               className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all min-h-[80px] resize-y"
               value={form.descripcion_cargo}
               onChange={e => setForm({ ...form, descripcion_cargo: e.target.value })}
-              placeholder="Describa la misión principal y las tareas clave..."
+              placeholder="Describa la misin principal y las tareas clave..."
             />
           </div>
 
@@ -499,7 +451,7 @@ export default function ProcesosPage() {
                       >
                         <option value="A">A (Excelente)</option>
                         <option value="B">B (Bueno)</option>
-                        <option value="C">C (Mínimo)</option>
+                        <option value="C">C (Mnimo)</option>
                         <option value="D">D (No rq.)</option>
                       </select>
                     )}
@@ -511,7 +463,7 @@ export default function ProcesosPage() {
 
           <div className="flex flex-col gap-1.5 mb-6">
             <label className="text-sm font-medium text-slate-700 flex justify-between items-end">
-              Batería de tests *
+              Batera de tests *
               <div className="flex gap-2">
                 <button 
                   onClick={() => router.push('/entrevista-video')}
@@ -552,13 +504,13 @@ export default function ProcesosPage() {
 
               <div className="pt-4 border-t border-slate-200">
                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center">
-                  Videoentrevistas (Plantillas de Librería)
+                  Videoentrevistas (Plantillas de Librer?a)
                   {entrevistas.length === 0 && (
                     <button onClick={() => router.push('/entrevista-video/crear')} className="text-indigo-600 normal-case font-medium hover:underline">+ Crear nueva plantilla</button>
                   )}
                 </h4>
                 {entrevistas.length === 0 ? (
-                  <p className="text-[10px] text-slate-400 italic">No hay plantillas creadas en la librería.</p>
+                  <p className="text-[10px] text-slate-400 italic">No hay plantillas creadas en la librera.</p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {entrevistas.map(e => (
@@ -579,7 +531,7 @@ export default function ProcesosPage() {
                             className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-600 cursor-pointer"
                             readOnly
                           />
-                          <span className="text-xs font-medium text-slate-700 truncate">🎥 {e.nombre}</span>
+                          <span className="text-xs font-medium text-slate-700 truncate">Video {e.nombre}</span>
                         </label>
                         <button 
                           onClick={(ev) => { ev.preventDefault(); verPreviewEntrevista(e.id, e.nombre) }}
@@ -678,7 +630,7 @@ export default function ProcesosPage() {
 
               <div className="mb-8">
                 <div className="flex justify-between items-center mb-3">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Batería de tests ({procesoSeleccionado.bateria_tests?.length || 0})</h4>
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Batera de tests ({procesoSeleccionado.bateria_tests?.length || 0})</h4>
                   <button
                     onClick={iniciarEdicion}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-xs font-bold transition-all border border-indigo-100"
@@ -689,7 +641,7 @@ export default function ProcesosPage() {
                 
                   <div className="flex flex-wrap gap-1.5">
                     {procesoSeleccionado.bateria_tests?.map(tKey => {
-                      const tInfo = [...TESTS_DISPONIBLES, ...entrevistas.map(e => ({ key: `entrevista:${e.id}`, label: `🎥 ${e.nombre}` }))].find(t => t.key === tKey)
+                      const tInfo = [...TESTS_DISPONIBLES, ...entrevistas.map(e => ({ key: `entrevista:${e.id}`, label: `Video ${e.nombre}` }))].find(t => t.key === tKey)
                       return (
                         <span key={tKey} className="px-2 py-1 bg-slate-100 text-slate-600 text-[11px] rounded-md font-medium border border-slate-200 flex items-center gap-1">
                           {tInfo?.label || tKey}
@@ -712,7 +664,7 @@ export default function ProcesosPage() {
                   
                   {procesoSeleccionado.descripcion_cargo && (
                     <div className="space-y-1">
-                      <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Misión y Tareas Clave</span>
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Misin y Tareas Clave</span>
                       <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
                         {procesoSeleccionado.descripcion_cargo}
                       </p>
@@ -775,7 +727,7 @@ export default function ProcesosPage() {
                       <button
                         onClick={async () => {
                           const pendientes = candidatosProceso.filter(c => (c.progreso?.completados || 0) < (c.progreso?.total || 0))
-                          if (confirm(`¿Enviar recordatorios a ${pendientes.length} candidatos pendientes?`)) {
+                          if (confirm(`Enviar recordatorios a ${pendientes.length} candidatos pendientes?`)) {
                             for (const c of pendientes) {
                               await enviarRecordatorio(c)
                             }
@@ -862,7 +814,7 @@ export default function ProcesosPage() {
               <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
                 <FileText className="w-5 h-5 text-slate-400" />
               </div>
-              <h3 className="text-sm font-medium text-slate-900 mb-1">Ningún proceso seleccionado</h3>
+              <h3 className="text-sm font-medium text-slate-900 mb-1">Ningn proceso seleccionado</h3>
               <p className="text-xs text-slate-500 max-w-[200px]">Selecciona un proceso para asignar candidatos y ver resultados.</p>
             </div>
           )}
@@ -879,7 +831,7 @@ export default function ProcesosPage() {
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 leading-tight">{previewEntrevista.nombre}</h3>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5">Previsualización de preguntas</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5">Previsualizacin de preguntas</p>
                 </div>
               </div>
               <button onClick={() => setPreviewEntrevista(null)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createClient } from '@supabase/supabase-js'
+import { PUNTAJES_VERSION } from '@/lib/puntajes'
 
 export const maxDuration = 60; // Evitar timeouts
 
@@ -222,6 +223,12 @@ export async function POST(req: Request) {
       scan(s.puntaje_bruto);
     });
 
+    // La IA recibe la escala final: alto = mayor estabilidad emocional.
+    if (typeof factoresCrudos.neuroticismo === 'number') {
+        factoresCrudos.estabilidad_emocional = Math.min(5, Math.max(0, 6 - factoresCrudos.neuroticismo));
+        delete factoresCrudos.neuroticismo;
+    }
+
     // Compilar transcripciones de video
     let discursoVideos = '';
     const tieneVideos = videos && Array.isArray(videos) && videos.length > 0;
@@ -312,10 +319,11 @@ GUÍA DE INTERPRETACIÓN DE FACTORES (MUY IMPORTANTE PARA EVITAR CONTRADICCIONES
   * "resiliencia": 5.0 es adaptabilidad soberbia a la crisis. Puntajes bajos indican vulnerabilidad emocional y necesidad de validación externa.
   * "autoesteem" / "autoestima": 5.0 es alta seguridad. Puntajes bajos representan inseguridad técnica y temor marcado a cometer errores.
 
-- Factores de Riesgo (Menor puntaje es SALUDABLE/ÓPTIMO, mayor puntaje [ej: > 3.0] es CRÍTICO/DESFAVORABLE):
-  * "burnout" (Agotamiento crónico): 1.0 es vitalidad and energía excelente. Puntajes altos (ej: 4.0 - 5.0) indican un desgaste emocional y físico severo que pone en riesgo la operativa.
-  * "nivel_estres" / "estres" (Tensión operativa): 1.0 es calma operativa óptima. Puntajes altos indican un estado de tensión y agobio severo bajo demanda.
-  * "carga_laboral" (Saturación de tareas): 1.0 es volumen de trabajo cómodo y manejable. Puntajes altos indican sobrecarga, saturación and desorganización operativa.
+- Factores de Riesgo (Mayor puntaje es favorable; menor puntaje indica una situacion que conviene revisar):
+  * "estabilidad_emocional" (Manejo de la presion): 5.0 indica estabilidad y buen manejo de la presion. Puntajes bajos indican mayor sensibilidad ante la presion y necesidad de apoyo.
+  * "burnout" (Agotamiento crónico): 5.0 indica buen nivel de energía y bajo desgaste. Puntajes bajos indican mayor cansancio y señales de agotamiento que conviene atender.
+  * "nivel_estres" / "estres" (Tensión operativa): 5.0 indica calma y buen manejo de la presión. Puntajes bajos indican mayor tensión y agobio ante la demanda.
+  * "carga_laboral" (Saturación de tareas): 5.0 indica una carga de trabajo manejable. Puntajes bajos indican percepción de sobrecarga o dificultad para organizar la demanda.
 
 ${discursoVideos ? `TRANSCRIPCIONES Y DISCURSO DE LA VIDEO-ENTREVISTA CONDUCTUAL:\n${discursoVideos}` : ''}
 
@@ -338,7 +346,7 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
      "extraversion": "Nivel de interacción...",
      "amabilidad": "Calidez y trato...",
      "responsabilidad": "Compromiso y orden...",
-     "neuroticismo": "Estabilidad ante la presión...",
+     "estabilidad_emocional": "Estabilidad ante la presión...",
      "apertura": "Disposición al cambio..."
   },
   "recomendacion": "...",
