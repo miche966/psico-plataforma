@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
+
+const INTEGRIDAD_ID = 'e5f6a7b8-c9d0-1234-efab-345678901234'
 
 interface Item {
   id: string
@@ -36,53 +37,21 @@ export default function IntegridadPage() {
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0)
 
   const [sesionIdActual, setSesionIdActual] = useState<string | null>(null)
-  const INTEGRIDAD_ID = 'e5f6a7b8-c9d0-1234-efab-345678901234'
 
   useEffect(() => {
-    async function initSesion() {
-      const idUrl = searchParams.get('sesion')
-      if (idUrl) {
-        setSesionIdActual(idUrl)
-        await supabase.from('sesiones').update({ estado: 'iniciado' }).eq('id', idUrl)
-      } else if (candidatoId && procesoId) {
-        const { data: previa } = await supabase.from('sesiones')
-          .select('id')
-          .eq('candidato_id', candidatoId)
-          .eq('test_id', INTEGRIDAD_ID)
-          .neq('estado', 'finalizado')
-          .maybeSingle()
-        
-        if (previa) {
-          setSesionIdActual(previa.id)
-          await supabase.from('sesiones').update({ estado: 'iniciado' }).eq('id', previa.id)
-        } else {
-          const { data: nueva } = await supabase.from('sesiones').insert({
-            test_id: INTEGRIDAD_ID,
-            candidato_id: candidatoId,
-            proceso_id: procesoId,
-            estado: 'iniciado',
-            iniciada_en: new Date().toISOString()
-          }).select().single()
-          if (nueva) setSesionIdActual(nueva.id)
-        }
-      }
+    async function iniciar() {
+      if (!candidatoId || !procesoId) return
+      const token = searchParams.get('token') || ''
+      const idUrl = searchParams.get('sesion') || undefined
+      const response = await fetch('/api/evaluacion/public-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'start_resumable', candidato_id: candidatoId, proceso_id: procesoId, token, test_id: INTEGRIDAD_ID, sesion_id: idUrl }) })
+      const payload = await response.json().catch(() => ({}))
+      if (response.ok && payload.sesion?.id) setSesionIdActual(payload.sesion.id)
+      const datos = await fetch(`/api/evaluacion/public-data?candidato=${encodeURIComponent(candidatoId)}&proceso=${encodeURIComponent(procesoId)}&token=${encodeURIComponent(token)}&test_id=${encodeURIComponent(INTEGRIDAD_ID)}`, { cache: 'no-store' })
+      const info = await datos.json().catch(() => ({}))
+      if (datos.ok) { setItems(info.items || []); if (info.candidato) setNombreCandidato(`${info.candidato.nombre} ${info.candidato.apellido}`); setCargando(false) }
     }
-    initSesion()
+    iniciar()
   }, [candidatoId, procesoId, searchParams])
-
-  useEffect(() => {
-    cargarItems()
-    if (candidatoId) {
-      supabase
-        .from('candidatos')
-        .select('nombre, apellido')
-        .eq('id', candidatoId)
-        .single()
-        .then(({ data }) => {
-          if (data) setNombreCandidato(`${data.nombre} ${data.apellido}`)
-        })
-    }
-  }, [candidatoId])
 
   useEffect(() => {
     if (finalizado) return
@@ -91,18 +60,6 @@ export default function IntegridadPage() {
     }, 1000)
     return () => clearInterval(timer)
   }, [finalizado, tiempoInicio])
-
-  async function cargarItems() {
-    const { data, error } = await supabase
-      .from('items')
-      .select('*')
-      .eq('test_id', INTEGRIDAD_ID)
-      .order('orden')
-
-    if (error) { console.error(error); return }
-    setItems(data || [])
-    setCargando(false)
-  }
 
   function responder(valor: number) {
     const item = items[itemActual]
@@ -149,29 +106,14 @@ export default function IntegridadPage() {
 
     const resultado = { ...promedios, promedio_general }
 
-    if (sesionIdActual) {
-      const { data: sesion, error } = await supabase
-        .from('sesiones')
-        .update({
-          estado: 'finalizado',
-          finalizada_en: new Date().toISOString(),
-          puntaje_bruto: resultado
-        })
-        .eq('id', sesionIdActual)
-        .select()
-        .single()
-
-      if (error || !sesion) { console.error(error); return }
-
-      const respuestasParaGuardar = todasLasRespuestas.map(r => ({
-        sesion_id: sesion.id,
-        item_id: r.item_id,
-        valor: r.valor,
-        tiempo_respuesta: 0
-      }))
-
-      await supabase.from('respuestas').insert(respuestasParaGuardar)
-    }
+    if (!sesionIdActual || !candidatoId || !procesoId) return
+    const token = searchParams.get('token') || ''
+    const response = await fetch('/api/evaluacion/public-data', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'finalize', candidato_id: candidatoId, proceso_id: procesoId, token, test_id: INTEGRIDAD_ID, sesion_id: sesionIdActual, puntaje_bruto: resultado, respuestas: todasLasRespuestas.map(r => ({ item_id: r.item_id, valor: r.valor, tiempo_respuesta: 0 })) })
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) console.error('Error al guardar evaluación de Integridad:', payload.error)
   }
 
   if (cargando) return <div style={s.centro}><p>Cargando test...</p></div>
