@@ -1,9 +1,20 @@
 import * as nodemailer from 'nodemailer';
 import { NextResponse } from 'next/server';
+import { generarTokenEvaluacion } from '@/lib/server/evaluacionToken'
+import { requireAdminSession } from '@/lib/server/adminAuth'
 
 export async function POST(req: Request) {
   try {
-    let { email, nombre, proceso, link, pendientes } = await req.json();
+    const auth = await requireAdminSession(req)
+    if (auth.response) return auth.response
+    const { email, nombre, proceso, link: linkOriginal, pendientes, candidato_id, proceso_id } = await req.json();
+    let link = linkOriginal;
+    if (candidato_id && proceso_id) {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(req.url).origin
+      const token = generarTokenEvaluacion(String(candidato_id), String(proceso_id))
+      link = `${baseUrl.replace(/\/$/, '')}/evaluacion?candidato=${encodeURIComponent(candidato_id)}&proceso=${encodeURIComponent(proceso_id)}&token=${encodeURIComponent(token)}`
+    }
+
 
     // Sanitización de seguridad: Reemplazar localhost por el dominio público de producción para postulantes
     if (link && link.includes('localhost:3000')) {
@@ -70,8 +81,8 @@ export async function POST(req: Request) {
     await transporter.sendMail(mailOptions);
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error enviando email:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

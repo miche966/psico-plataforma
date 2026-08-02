@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
 import { Plus, Check, Link as LinkIcon, Search, FileText, X, Video, Eye, Settings, Clock, CheckCircle2, BellRing, Briefcase, Award } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
+import { getAdminHeaders, obtenerLinkEvaluacion } from '@/lib/evaluacionLink'
 
 const TESTS_DISPONIBLES = [
   { key: 'bigfive', label: 'Big Five' },
@@ -305,17 +306,27 @@ export default function ProcesosPage() {
     setEnviandoRecordatorio(c.id)
     
     const pendientes = (procesoSeleccionado.bateria_tests || []).filter(t => !c.progreso?.tests.includes(t))
-    const link = `${getBaseUrl()}/evaluacion?candidato=${c.id}&proceso=${procesoSeleccionado.id}`
+    let link = ''
+    try {
+      link = await obtenerLinkEvaluacion(c.id, procesoSeleccionado.id)
+    } catch (error) {
+      console.error('Error generando enlace firmado:', error)
+      alert(error instanceof Error ? error.message : 'No se pudo generar el enlace firmado.')
+      setEnviandoRecordatorio(null)
+      return
+    }
 
     try {
       const res = await fetch('/api/recordatorio', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAdminHeaders(),
         body: JSON.stringify({
           email: c.email,
           nombre: c.nombre,
           proceso: procesoSeleccionado.cargo,
           link: link,
+          candidato_id: c.id,
+          proceso_id: procesoSeleccionado.id,
           pendientes: pendientes.length
         })
       })
@@ -344,7 +355,15 @@ export default function ProcesosPage() {
     if (!procesoSeleccionado) return
     setAgregando(candidatoId)
 
-    const link = `${getBaseUrl()}/evaluacion?candidato=${candidatoId}&proceso=${procesoSeleccionado.id}`
+    let link = ''
+    try {
+      link = await obtenerLinkEvaluacion(candidatoId, procesoSeleccionado.id)
+    } catch (error) {
+      console.error('Error generando enlace firmado:', error)
+      alert(error instanceof Error ? error.message : 'No se pudo generar el enlace firmado.')
+      setAgregando('')
+      return
+    }
     navigator.clipboard.writeText(link)
 
     const ya = candidatosProceso.find(c => c.id === candidatoId)

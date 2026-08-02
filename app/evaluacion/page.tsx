@@ -113,8 +113,22 @@ export default function PortalCandidatoPage() {
     setMostrarSetup(false)
   }
 
+  async function validarAccesoFirmado() {
+    const token = searchParams.get('token')
+    if (!token) return
+    const response = await fetch('/api/evaluacion-access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ candidato_id: candidatoId, proceso_id: procesoId, token }),
+    })
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.error || 'El enlace de evaluacion no es valido')
+    }
+  }
   async function cargarDatosPortal() {
     try {
+      await validarAccesoFirmado()
       const [{ data: cand, error: errCand }, { data: proc, error: errProc }] = await Promise.all([
         supabase.from('candidatos').select('nombre, apellido').eq('id', candidatoId).maybeSingle(),
         supabase.from('procesos').select('nombre, cargo, bateria_tests').eq('id', procesoId).maybeSingle(),
@@ -192,18 +206,19 @@ export default function PortalCandidatoPage() {
 
   function iniciarTest(testKey: string) {
     localStorage.setItem(`last_started_${candidatoId}_${procesoId}`, testKey)
+    const token = searchParams.get('token')
+    const tokenParam = token ? `&token=${encodeURIComponent(token)}` : ''
 
     if (testKey.startsWith('entrevista:')) {
       const id = testKey.split(':')[1]
-      router.push(`/entrevista-video/responder?entrevista=${id}&candidato=${candidatoId}&proceso=${procesoId}&evaluacion=1`)
+      router.push(`/entrevista-video/responder?entrevista=${id}&candidato=${candidatoId}&proceso=${procesoId}&evaluacion=1${tokenParam}`)
       return
     }
 
     const ruta = RUTAS[testKey]
     if (!ruta) return
-    router.push(`${ruta}?candidato=${candidatoId}&proceso=${procesoId}&evaluacion=1`)
+    router.push(`${ruta}?candidato=${candidatoId}&proceso=${procesoId}&evaluacion=1${tokenParam}`)
   }
-
   // Hook para detectar si acaba de volver de un test y marcarlo completado
   useEffect(() => {
     if (cargando) return

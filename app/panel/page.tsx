@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video, CheckCircle2, Settings2, BarChart2, LayoutDashboard, Sparkles } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
+import { getAdminHeaders, obtenerLinkEvaluacion } from '@/lib/evaluacionLink'
 import GestionProcesos from '@/components/GestionProcesos'
 import Dashboard from '@/components/Dashboard'
 import AppLayout from '@/components/AppLayout'
@@ -638,17 +639,27 @@ export default function PanelEvaluador() {
     
     setEnviandoRecordatorio(c.id)
     
-    const link = `${getBaseUrl()}/evaluacion?candidato=${c.id}&proceso=${c.proceso_id}`
+    let link = ''
+    try {
+      link = await obtenerLinkEvaluacion(c.id, c.proceso_id)
+    } catch (error) {
+      console.error('Error generando enlace firmado:', error)
+      alert(error instanceof Error ? error.message : 'No se pudo generar el enlace firmado.')
+      setEnviandoRecordatorio(null)
+      return
+    }
 
     try {
       const res = await fetch('/api/recordatorio', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAdminHeaders(),
         body: JSON.stringify({
           email: c.email,
           nombre: c.nombre,
           proceso: c.proceso_cargo || c.proceso_nombre,
           link: link,
+          candidato_id: c.id,
+          proceso_id: c.proceso_id,
           pendientes: c.progreso.tests_pendientes.length
         })
       })
