@@ -13,6 +13,7 @@ import { AuditoriaRespuestasDetallada } from '@/components/AuditoriaRespuestasDe
 import { mapperAuditoriaUniversal } from '@/lib/auditoriaMapper'
 
 
+
 const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
   'Orientación al cliente': { amabilidad: 4.5, responsabilidad: 4 },
   'Orientación a resultados': { responsabilidad: 5, extraversion: 4 },
@@ -430,6 +431,34 @@ export default function PanelEvaluador() {
   const [sesionesGlobales, setSesionesGlobales] = useState<any[]>([])
   const [itemsAuditoria, setItemsAuditoria] = useState<any[]>([])
   const [cargandoAuditoria, setCargandoAuditoria] = useState(false)
+  const [velocidadesVideo, setVelocidadesVideo] = useState<Record<number, number>>({})
+  const [procesandoVideos, setProcesandoVideos] = useState<Record<string, boolean>>({})
+
+
+
+  async function procesarVideoConIA(respuestaId: string, urlVideo: string, idx: number) {
+    if (procesandoVideos[respuestaId]) return
+    setProcesandoVideos(prev => ({ ...prev, [respuestaId]: true }))
+    try {
+      const res = await fetch('/api/analizar-video', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url_video: urlVideo, respuesta_id: respuestaId }) })
+      const data = await res.json()
+      if (!res.ok || !data.analisis) throw new Error(data.error || 'No se pudo analizar el video')
+      setVideosCandidato(prev => prev.map((video, i) => i === idx ? { ...video, transcripcion: data.analisis.transcripcion, analisis_ia: data.analisis } : video))
+      alert('Analisis de video completado.')
+    } catch (error) {
+      console.error('Error analizando video:', error)
+      alert(error instanceof Error ? error.message : 'No se pudo analizar el video.')
+    } finally {
+      setProcesandoVideos(prev => ({ ...prev, [respuestaId]: false }))
+    }
+  }
+
+  function abrirRecordatorioOutlook(c: CandidatoAgrupado, link: string) {
+    const proceso = c.proceso_cargo || c.proceso_nombre || 'proceso de seleccion'
+    const subject = encodeURIComponent(`Recordatorio: evaluaciones pendientes para ${proceso}`)
+    const body = encodeURIComponent(`Hola ${c.nombre},\n\nPuedes continuar con tus evaluaciones ingresando al siguiente enlace:\n${link}\n\nSaludos,\nEquipo de Seleccion`)
+    window.location.href = `mailto:${c.email}?subject=${subject}&body=${body}`
+  }
   const router = useRouter()
 
   async function cargarAuditoriaSesion(sesion: Sesion) {
@@ -699,11 +728,13 @@ export default function PanelEvaluador() {
       if (res.ok) {
         alert(`Recordatorio enviado con éxito a ${c.nombre}.`)
       } else {
+        if (confirm('Server send failed. Open Outlook manually?')) abrirRecordatorioOutlook(c, link)
         alert('Hubo un error al enviar el correo. Verifica tu configuración de Resend.')
         console.error('Error enviando recordatorio:', data.error)
       }
     } catch (error) {
       console.error(error)
+      if (confirm('Mail server unavailable. Open Outlook manually?')) abrirRecordatorioOutlook(c, link)
       alert('Error de conexión al intentar enviar el recordatorio.')
     } finally {
       setEnviandoRecordatorio(null)
@@ -1183,7 +1214,20 @@ export default function PanelEvaluador() {
                         {videosCandidato.map((v, i) => (
                           <div key={i} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
                             <h5 className="text-sm font-bold text-slate-800 mb-3">Pregunta {i + 1}: {v.preguntas_video?.pregunta || 'Presentación y Evaluación Competencial de Entrada'}</h5>
-                            <video src={v.url_video} controls className="w-full aspect-video rounded-xl shadow-sm bg-black mb-3" />
+                            <div className="mb-3">
+                              <video id={`video-entrevista-${i}`} src={v.url_video} controls className="w-full aspect-video rounded-xl shadow-sm bg-black" />
+                              <div className="mt-2 flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1">
+                                <span className="px-2 text-[9px] font-bold uppercase text-slate-400">Speed</span>
+                                {[1, 1.25, 1.5, 2].map((vel) => (
+                                  <button key={vel} onClick={() => { const el = document.getElementById(`video-entrevista-${i}`) as HTMLVideoElement | null; if (el) el.playbackRate = vel; setVelocidadesVideo(prev => ({ ...prev, [i]: vel })) }} className={`rounded px-2 py-0.5 text-[10px] font-bold ${velocidadesVideo[i] === vel || (!velocidadesVideo[i] && vel === 1) ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>{vel}x</button>
+                                ))}
+                              </div>
+                            </div>
+                            {!v.analisis_ia && v.url_video && (
+                              <button onClick={() => procesarVideoConIA(v.id, v.url_video, i)} disabled={procesandoVideos[v.id]} className="mt-2 w-full rounded-lg border border-indigo-200 bg-indigo-50 py-2 text-[10px] font-bold text-indigo-700 disabled:opacity-50">
+                                {procesandoVideos[v.id] ? 'Analizando video...' : 'Analizar video con IA'}
+                              </button>
+                            )}
                             {v.transcripcion && <div className="bg-white p-3 rounded-xl border border-slate-200 text-[11px] text-slate-600 italic">"{v.transcripcion}"</div>}
                             {v.analisis_ia && (
                                <div className="mt-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
