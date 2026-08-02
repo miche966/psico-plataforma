@@ -35,12 +35,24 @@ async function validarContexto(request: Request, body?: any) {
   return { ids, candidato, proceso, db, testId: ids.testId }
 }
 
+const ICAR_ID = 'f6a7b8c9-d0e1-2345-fabc-456789012345'
+
 export async function GET(request: Request) {
   try {
     const contexto = await validarContexto(request)
     if ('error' in contexto) return contexto.error
     const { db, candidato, proceso, testId } = contexto
-    const { data: items, error } = await db.from('items').select('id, orden, contenido, opciones, factor, inverso, respuesta_correcta').eq('test_id', testId).order('orden')
+    let query = db.from('items').select('id, orden, contenido, opciones, factor, inverso, respuesta_correcta, nivel_dificultad, subtipo').eq('test_id', testId)
+    if (testId === ICAR_ID) {
+      const url = new URL(request.url)
+      const nivelMax = Number(url.searchParams.get('nivel_max')) || 3
+      query = query.lte('nivel_dificultad', nivelMax)
+      if (url.searchParams.get('sin_rotacion') === '1') query = query.neq('subtipo', 'rotacion')
+      query = query.order('subtipo').order('nivel_dificultad').order('orden')
+    } else {
+      query = query.order('orden')
+    }
+    const { data: items, error } = await query
     if (error) throw error
     return NextResponse.json({ candidato, proceso, items: items || [] })
   } catch (error) {
@@ -73,11 +85,33 @@ export async function POST(request: Request) {
       if (error) throw error
       return NextResponse.json({ sesion: nueva })
     }
+    if (action === 'start_resumable') {
+      const requestedId = typeof body.sesion_id === 'string' ? body.sesion_id : ''
+      if (requestedId) {
+        const { data: sesion, error } = await db.from('sesiones').select('id, estado, puntaje_bruto').eq('id', requestedId).eq('candidato_id', ids.candidatoId).eq('proceso_id', ids.procesoId).eq('test_id', testId).maybeSingle()
+        if (error) throw error
+        if (!sesion) return NextResponse.json({ error: 'Sesión no válida' }, { status: 404 })
+        if (sesion.estado === 'finalizado') return NextResponse.json({ sesion })
+        const { data: actualizada, error: updateError } = await db.from('sesiones').update({ estado: 'iniciado' }).eq('id', sesion.id).select('id, estado, puntaje_bruto').single()
+        if (updateError) throw updateError
+        return NextResponse.json({ sesion: actualizada })
+      }
+      const { data: existentes, error: findError } = await db.from('sesiones').select('id, estado, puntaje_bruto').eq('candidato_id', ids.candidatoId).eq('proceso_id', ids.procesoId).eq('test_id', testId).neq('estado', 'finalizado').order('iniciada_en', { ascending: false }).limit(1)
+      if (findError) throw findError
+      const previa = existentes?.[0]
+      if (previa) {
+        const { data: actualizada, error } = await db.from('sesiones').update({ estado: 'iniciado' }).eq('id', previa.id).select('id, estado, puntaje_bruto').single()
+        if (error) throw error
+        return NextResponse.json({ sesion: actualizada })
+      }
+      const { data: nueva, error } = await db.from('sesiones').insert({ test_id: testId, candidato_id: ids.candidatoId, proceso_id: ids.procesoId, estado: 'iniciado', iniciada_en: new Date().toISOString() }).select('id, estado, puntaje_bruto').single()
+      if (error) throw error
+      return NextResponse.json({ sesion: nueva })
+    }
     if (action === 'finalize') {
       let sesionId = String(body.sesion_id || '')
       const respuestas = Array.isArray(body.respuestas) ? body.respuestas : []
       const puntaje = body.puntaje_bruto && typeof body.puntaje_bruto === 'object' ? body.puntaje_bruto : {}
-      if (!respuestas.length) return NextResponse.json({ error: 'Faltan respuestas para finalizar la evaluación' }, { status: 400 })
       if (sesionId) {
         const { data: sesion, error } = await db.from('sesiones').select('id, estado').eq('id', sesionId).eq('candidato_id', ids.candidatoId).eq('proceso_id', ids.procesoId).eq('test_id', testId).maybeSingle()
         if (error) throw error
@@ -98,12 +132,14 @@ export async function POST(request: Request) {
       const { data: actualizada, error: updateError } = await db.from('sesiones').update({ estado: 'finalizado', finalizada_en: new Date().toISOString(), puntaje_bruto: puntaje }).eq('id', sesionId).eq('estado', 'iniciado').select('id, estado, puntaje_bruto').maybeSingle()
       if (updateError) throw updateError
       if (!actualizada) return NextResponse.json({ error: 'La sesión cambió de estado; no se duplicaron respuestas' }, { status: 409 })
-      const { data: existentes, error: existingError } = await db.from('respuestas').select('item_id').eq('sesion_id', sesionId)
-      if (existingError) throw existingError
-      if (!existentes?.length) {
-        const filas = respuestas.map((r: any) => ({ sesion_id: sesionId, item_id: String(r.item_id), valor: Number(r.valor), tiempo_respuesta: Number(r.tiempo_respuesta || 0) }))
-        const { error: insertError } = await db.from('respuestas').insert(filas)
-        if (insertError) throw insertError
+      if (respuestas.length) {
+        const { data: existentes, error: existingError } = await db.from('respuestas').select('item_id').eq('sesion_id', sesionId)
+        if (existingError) throw existingError
+        if (!existentes?.length) {
+          const filas = respuestas.map((r: any) => ({ sesion_id: sesionId, item_id: String(r.item_id), valor: Number(r.valor), tiempo_respuesta: Number(r.tiempo_respuesta || 0) }))
+          const { error: insertError } = await db.from('respuestas').insert(filas)
+          if (insertError) throw insertError
+        }
       }
       return NextResponse.json({ sesion: actualizada, alreadyCompleted: false })
     }
