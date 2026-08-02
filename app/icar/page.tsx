@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { useProctoring } from '@/hooks/useProctoring'
+
+const ICAR_ID = 'f6a7b8c9-d0e1-2345-fabc-456789012345'
 
 interface Item {
   id: string
@@ -166,48 +167,23 @@ export default function IcarPage() {
 
   const metricasFraude = useProctoring()
   const [sesionIdActual, setSesionIdActual] = useState<string | null>(null)
-  const ICAR_ID = 'f6a7b8c9-d0e1-2345-fabc-456789012345'
 
   useEffect(() => {
-    async function initSesion() {
-      const idUrl = searchParams.get('sesion')
-      if (idUrl) {
-        setSesionIdActual(idUrl)
-        await supabase.from('sesiones').update({ estado: 'iniciado' }).eq('id', idUrl)
-      } else if (candidatoId && procesoId) {
-        const { data: previa } = await supabase.from('sesiones')
-          .select('id')
-          .eq('candidato_id', candidatoId)
-          .eq('test_id', ICAR_ID)
-          .neq('estado', 'finalizado')
-          .maybeSingle()
-        
-        if (previa) {
-          setSesionIdActual(previa.id)
-          await supabase.from('sesiones').update({ estado: 'iniciado' }).eq('id', previa.id)
-        } else {
-          const { data: nueva } = await supabase.from('sesiones').insert({
-            test_id: ICAR_ID,
-            candidato_id: candidatoId,
-            proceso_id: procesoId,
-            estado: 'iniciado',
-            iniciada_en: new Date().toISOString()
-          }).select().single()
-          if (nueva) setSesionIdActual(nueva.id)
-        }
-      }
+    async function iniciar() {
+      if (!candidatoId || !procesoId) return
+      const token = searchParams.get('token') || ''
+      const idUrl = searchParams.get('sesion') || undefined
+      const response = await fetch('/api/evaluacion/public-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'start_resumable', candidato_id: candidatoId, proceso_id: procesoId, token, test_id: ICAR_ID, sesion_id: idUrl }) })
+      const payload = await response.json().catch(() => ({}))
+      if (response.ok && payload.sesion?.id) setSesionIdActual(payload.sesion.id)
+      const params = new URLSearchParams({ candidato: candidatoId, proceso: procesoId, token, test_id: ICAR_ID, nivel_max: String(nivelMax) })
+      if (sinRotacion) params.set('sin_rotacion', '1')
+      const datos = await fetch(`/api/evaluacion/public-data?${params.toString()}`, { cache: 'no-store' })
+      const info = await datos.json().catch(() => ({}))
+      if (datos.ok) { setItems(info.items || []); if (info.candidato) setNombreCandidato(`${info.candidato.nombre} ${info.candidato.apellido}`); setCargando(false) }
     }
-    initSesion()
-  }, [candidatoId, procesoId, searchParams])
-
-  useEffect(() => {
-    cargarItems()
-    if (candidatoId) {
-      supabase.from('candidatos').select('nombre, apellido')
-        .eq('id', candidatoId).single()
-        .then(({ data }) => { if (data) setNombreCandidato(`${data.nombre} ${data.apellido}`) })
-    }
-  }, [candidatoId])
+    iniciar()
+  }, [candidatoId, procesoId, searchParams, nivelMax, sinRotacion])
 
   const avanzar = useCallback((respuestaActual?: string) => {
     const item = items[itemActual]
@@ -235,20 +211,6 @@ export default function IcarPage() {
     return () => clearInterval(timer)
   }, [items, finalizado, avanzar])
 
-  async function cargarItems() {
-    let query = supabase.from('items').select('*')
-      .eq('test_id', ICAR_ID)
-      .lte('nivel_dificultad', nivelMax)
-      .order('subtipo').order('nivel_dificultad').order('orden')
-
-    if (sinRotacion) query = query.neq('subtipo', 'rotacion')
-
-    const { data, error } = await query
-    if (error) { console.error(error); return }
-    setItems(data || [])
-    setCargando(false)
-  }
-
   async function terminarTest(todasLasRespuestas: Record<string, string>, todosLosItems: Item[]) {
     let correctas = 0
     const porSubtipo: Record<string, { correctas: number, total: number }> = {}
@@ -273,24 +235,14 @@ export default function IcarPage() {
 
     setFinalizado(true)
 
-    if (sesionIdActual) {
-      const { data: sesion, error } = await supabase.from('sesiones').update({
-        estado: 'finalizado',
-        finalizada_en: new Date().toISOString(),
-        puntaje_bruto: resultado
-      }).eq('id', sesionIdActual).select().single()
-
-      if (error || !sesion) return
-
-      await supabase.from('respuestas').insert(
-        todosLosItems.map(item => ({
-          sesion_id: sesion.id,
-          item_id: item.id,
-          valor: todasLasRespuestas[item.id] === item.respuesta_correcta ? 1 : 0,
-          tiempo_respuesta: 0
-        }))
-      )
-    }
+    if (!sesionIdActual || !candidatoId || !procesoId) return
+    const token = searchParams.get('token') || ''
+    const response = await fetch('/api/evaluacion/public-data', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'finalize', candidato_id: candidatoId, proceso_id: procesoId, token, test_id: ICAR_ID, sesion_id: sesionIdActual, puntaje_bruto: resultado, respuestas: todosLosItems.map(item => ({ item_id: item.id, valor: todasLasRespuestas[item.id] === item.respuesta_correcta ? 1 : 0, tiempo_respuesta: 0 })) })
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) console.error('Error al guardar evaluación ICAR:', payload.error)
   }
 
   function responder(opcion: string) {
