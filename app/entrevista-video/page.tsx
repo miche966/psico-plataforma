@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { getAdminHeaders } from '@/lib/evaluacionLink'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
 import { Plus, Video, Calendar, Eye, Trash2, Settings } from 'lucide-react'
@@ -30,23 +31,17 @@ export default function EntrevistasVideoPage() {
 
   async function cargarDatos() {
     setError(null)
-    const { data, error: dbError } = await supabase
-      .from('entrevistas_video')
-      .select('*')
-      .order('creada_en', { ascending: false })
-
-    if (dbError) {
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('entrevistas_video')
-        .select('*')
-      
-      if (fallbackError) {
-        setError(`Error crítico de base de datos: ${fallbackError.message}`)
-      } else {
-        setEntrevistas(fallbackData || [])
-      }
-    } else {
-      setEntrevistas(data || [])
+    try {
+      const response = await fetch('/api/admin/entrevista-video', {
+        method: 'POST',
+        headers: await getAdminHeaders(),
+        body: JSON.stringify({ action: 'listar' })
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'Error crítico de base de datos')
+      setEntrevistas(data.entrevistas || [])
+    } catch (err: any) {
+      setError(`Error crítico de base de datos: ${err.message}`)
     }
     setCargando(false)
   }
@@ -58,14 +53,14 @@ export default function EntrevistasVideoPage() {
 
     setBorrandoId(id)
     try {
-      // 1. Borrar preguntas asociadas (el cascade debería ocuparse, pero lo aseguramos)
-      await supabase.from('preguntas_video').delete().eq('entrevista_id', id)
-      
-      // 2. Borrar la entrevista
-      const { error } = await supabase.from('entrevistas_video').delete().eq('id', id)
-      
-      if (error) throw error
-      
+      const response = await fetch('/api/admin/entrevista-video', {
+        method: 'POST',
+        headers: await getAdminHeaders(),
+        body: JSON.stringify({ action: 'eliminar_entrevista', entrevistaId: id })
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'No se pudo eliminar')
+
       setEntrevistas(entrevistas.filter(e => e.id !== id))
       alert('Librería eliminada con éxito.')
     } catch (err: any) {

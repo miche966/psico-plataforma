@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { getAdminHeaders } from '@/lib/evaluacionLink'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { getBaseUrl } from '@/lib/utils'
 
@@ -49,34 +50,28 @@ export default function CrearPreguntasPage() {
   }, [entrevistaId])
 
   async function cargarDatos() {
-    const { data: entrevistaData } = await supabase
-      .from('entrevistas_video')
-      .select('*')
-      .eq('id', entrevistaId)
-      .single()
-    setEntrevista(entrevistaData)
-    if (entrevistaData) setNombreNuevaEntrevista(entrevistaData.nombre)
-
-    const { data: preguntasData } = await supabase
-      .from('preguntas_video')
-      .select('*')
-      .eq('entrevista_id', entrevistaId)
-      .order('orden')
-    setPreguntas(preguntasData || [])
+    const response = await fetch('/api/admin/entrevista-video?id=' + encodeURIComponent(entrevistaId || ''), {
+      headers: await getAdminHeaders()
+    })
+    const data = await response.json().catch(() => ({}))
+    setEntrevista(data.entrevista || null)
+    if (data.entrevista) setNombreNuevaEntrevista(data.entrevista.nombre)
+    setPreguntas(data.preguntas || [])
     setCargando(false)
   }
 
   async function crearEntrevista() {
     if (!nombreNuevaEntrevista.trim()) return
     setGuardando(true)
-    const { data, error } = await supabase
-      .from('entrevistas_video')
-      .insert({ nombre: nombreNuevaEntrevista.trim() })
-      .select()
-      .single()
-    
-    if (!error && data) {
-      router.push(`/entrevista-video/crear?id=${data.id}`)
+    const response = await fetch('/api/admin/entrevista-video', {
+      method: 'POST',
+      headers: await getAdminHeaders(),
+      body: JSON.stringify({ action: 'crear_entrevista', nombre: nombreNuevaEntrevista.trim() })
+    })
+    const data = await response.json().catch(() => ({}))
+
+    if (response.ok && data.entrevista) {
+      router.push(`/entrevista-video/crear?id=${data.entrevista.id}`)
     }
     setGuardando(false)
   }
@@ -84,10 +79,11 @@ export default function CrearPreguntasPage() {
   async function actualizarNombreEntrevista() {
     if (!entrevistaId || !nombreNuevaEntrevista.trim()) return
     setGuardando(true)
-    await supabase
-      .from('entrevistas_video')
-      .update({ nombre: nombreNuevaEntrevista.trim() })
-      .eq('id', entrevistaId)
+    await fetch('/api/admin/entrevista-video', {
+      method: 'POST',
+      headers: await getAdminHeaders(),
+      body: JSON.stringify({ action: 'renombrar_entrevista', entrevistaId, nombre: nombreNuevaEntrevista.trim() })
+    })
     setEntrevista(prev => prev ? { ...prev, nombre: nombreNuevaEntrevista.trim() } : null)
     setGuardando(false)
     alert('Nombre actualizado')
@@ -97,34 +93,36 @@ export default function CrearPreguntasPage() {
     if (!nuevaPregunta.trim() || !entrevistaId) return
     setGuardando(true)
 
-    let textoFinal = nuevaPregunta.trim()
-    // Limpiar prefijos previos para evitar duplicaciones
-    textoFinal = textoFinal.replace(/^\[CON_EXP\]\s*|^\[SIN_EXP\]\s*|^\[GENERAL\]\s*/i, '')
-
-    if (perfilCandidato === 'con_experiencia') {
-      textoFinal = `[CON_EXP] ${textoFinal}`
-    } else {
-      textoFinal = `[SIN_EXP] ${textoFinal}`
-    }
+    const textoFinal = nuevaPregunta.trim()
 
     if (editandoPreguntaId) {
       // Actualizar existente
-      await supabase.from('preguntas_video')
-        .update({
+      await fetch('/api/admin/entrevista-video', {
+        method: 'POST',
+        headers: await getAdminHeaders(),
+        body: JSON.stringify({
+          action: 'actualizar_pregunta',
+          preguntaId: editandoPreguntaId,
           pregunta: textoFinal,
-          tiempo_preparacion: parseInt(tiempoPrep),
-          tiempo_respuesta: parseInt(tiempoResp)
+          tiempoPreparacion: tiempoPrep,
+          tiempoRespuesta: tiempoResp,
+          perfil: perfilCandidato
         })
-        .eq('id', editandoPreguntaId)
+      })
       setEditandoPreguntaId(null)
     } else {
       // Insertar nueva
-      await supabase.from('preguntas_video').insert({
-        entrevista_id: entrevistaId,
-        orden: preguntas.length + 1,
-        pregunta: textoFinal,
-        tiempo_preparacion: parseInt(tiempoPrep),
-        tiempo_respuesta: parseInt(tiempoResp)
+      await fetch('/api/admin/entrevista-video', {
+        method: 'POST',
+        headers: await getAdminHeaders(),
+        body: JSON.stringify({
+          action: 'crear_pregunta',
+          entrevistaId,
+          pregunta: textoFinal,
+          tiempoPreparacion: tiempoPrep,
+          tiempoRespuesta: tiempoResp,
+          perfil: perfilCandidato
+        })
       })
     }
 
@@ -138,47 +136,43 @@ export default function CrearPreguntasPage() {
 
   async function eliminarPregunta(id: string) {
     if (!confirm('¿Eliminar esta pregunta?')) return
-    await supabase.from('preguntas_video').delete().eq('id', id)
+    await fetch('/api/admin/entrevista-video', {
+      method: 'POST',
+      headers: await getAdminHeaders(),
+      body: JSON.stringify({ action: 'eliminar_pregunta', preguntaId: id })
+    })
     cargarDatos()
   }
 
   async function moverPregunta(p: Pregunta, direccion: 'subir' | 'bajar') {
     const esConExp = p.pregunta.startsWith('[CON_EXP]')
     const prefijo = esConExp ? '[CON_EXP]' : '[SIN_EXP]'
-    
+
     const delMismoPerfil = preguntas
       .filter(x => x.pregunta.startsWith(prefijo))
       .sort((a, b) => a.orden - b.orden)
-      
+
     const idx = delMismoPerfil.findIndex(x => x.id === p.id)
     if (idx === -1) return
-    
+
     let vecino: Pregunta | null = null
     if (direccion === 'subir' && idx > 0) {
       vecino = delMismoPerfil[idx - 1]
     } else if (direccion === 'bajar' && idx < delMismoPerfil.length - 1) {
       vecino = delMismoPerfil[idx + 1]
     }
-    
+
     if (!vecino) return
-    
+
     setGuardando(true)
     try {
-      const ordenActual = p.orden
-      const ordenVecino = vecino.orden
-      
-      const { error: err1 } = await supabase
-        .from('preguntas_video')
-        .update({ orden: ordenVecino })
-        .eq('id', p.id)
-        
-      const { error: err2 } = await supabase
-        .from('preguntas_video')
-        .update({ orden: ordenActual })
-        .eq('id', vecino.id)
-        
-      if (err1 || err2) throw new Error("Error al actualizar orden")
-      
+      const response = await fetch('/api/admin/entrevista-video', {
+        method: 'POST',
+        headers: await getAdminHeaders(),
+        body: JSON.stringify({ action: 'mover_pregunta', id1: p.id, orden1: p.orden, id2: vecino.id, orden2: vecino.orden })
+      })
+      if (!response.ok) throw new Error("Error al actualizar orden")
+
       await cargarDatos()
     } catch (err: any) {
       console.error(err)
