@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { marcarEvaluacionOperativaEnCurso, marcarEvaluacionOperativaCompletada } from '@/lib/progresoOperativo'
 import { 
   Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX, 
   MessageSquare, Loader2, ShieldAlert, ArrowLeft, PlayCircle
@@ -13,6 +14,7 @@ export default function RolePlayPage() {
   const router = useRouter()
   const candidatoId = searchParams.get('candidato')
   const procesoId = searchParams.get('proceso')
+  const token = searchParams.get('token')
   const tipoQuery = searchParams.get('tipo')
   const esAtencion = tipoQuery === 'atencion'
 
@@ -33,6 +35,20 @@ export default function RolePlayPage() {
   const mensajesRef = useRef<Array<{ role: 'user' | 'model', content: string; cooperacion?: number }>>([])
   const [turnoActual, setTurnoActual] = useState(0)
   const maxTurnos = 8
+  const evaluacionKey = esAtencion ? 'roleplay_atencion' : 'roleplay'
+
+  useEffect(() => {
+    if (cargando || !candidatoId || !procesoId || !token) return
+    void marcarEvaluacionOperativaEnCurso({
+      candidatoId,
+      procesoId,
+      token,
+      evaluacionKey,
+      totalPreguntas: maxTurnos,
+      preguntaActual: turnoActual,
+      respuestasCompletadas: mensajes.filter(m => m.role === 'user').length,
+    })
+  }, [cargando, candidatoId, procesoId, token, evaluacionKey, turnoActual, mensajes.length])
 
   // Métricas avanzadas de People Analytics
   const [latencias, setLatencias] = useState<number[]>([])
@@ -287,7 +303,6 @@ export default function RolePlayPage() {
 
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-
       const respuestaIA = data.respuesta || data.reply
       const cooperacionIA = typeof data.cooperacion === 'number' ? data.cooperacion : 50
       
@@ -359,7 +374,7 @@ export default function RolePlayPage() {
       } catch (err) {
         console.error('Error al limpiar sesión breve:', err)
       }
-      router.push(`/evaluacion?candidato=${candidatoId}&proceso=${procesoId}`)
+      router.push(`/evaluacion?candidato=${candidatoId}&proceso=${procesoId}${token ? `&token=${encodeURIComponent(token)}` : ''}`)
       return
     }
 
@@ -380,9 +395,19 @@ export default function RolePlayPage() {
 
       const data = await res.json()
       if (data.error) throw new Error(data.error)
+      if (candidatoId && procesoId && token) {
+        await marcarEvaluacionOperativaCompletada({
+          candidatoId,
+          procesoId,
+          token,
+          evaluacionKey,
+          totalPreguntas: maxTurnos,
+          respuestasCompletadas: totalTurnos,
+        })
+      }
 
       // Redirigir al portal del candidato indicando que completó el test
-      router.push(`/evaluacion?candidato=${candidatoId}&proceso=${procesoId}&completed=1`)
+      router.push(`/evaluacion?candidato=${candidatoId}&proceso=${procesoId}&completed=1${token ? `&token=${encodeURIComponent(token)}` : ''}`)
 
     } catch (err: any) {
       console.error(err)
@@ -407,7 +432,7 @@ export default function RolePlayPage() {
           <h2 className="text-lg font-bold text-white mb-2">Simulación Bloqueada</h2>
           <p className="text-sm text-slate-400 mb-6">{error}</p>
           <button 
-            onClick={() => router.push(`/evaluacion?candidato=${candidatoId}&proceso=${procesoId}`)}
+            onClick={() => router.push(`/evaluacion?candidato=${candidatoId}&proceso=${procesoId}${token ? `&token=${encodeURIComponent(token)}` : ''}`)}
             className="flex items-center justify-center gap-2 mx-auto px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-semibold transition-all"
           >
             <ArrowLeft className="w-4 h-4" /> Volver al portal

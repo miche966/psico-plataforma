@@ -1,10 +1,10 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
-import { marcarEvaluacionOperativaCompletada, marcarEvaluacionOperativaEnCurso, registrarActividadEvaluacion } from '@/lib/progresoOperativo'
+import { marcarEvaluacionOperativaEnCurso, marcarEvaluacionOperativaCompletada } from '@/lib/progresoOperativo'
 
 interface Pregunta {
   id: string
@@ -28,7 +28,7 @@ export default function ResponderPage() {
   const [tieneExperiencia, setTieneExperiencia] = useState<boolean | null>(null)
   const [preguntaActual, setPreguntaActual] = useState(0)
   const [estado, setEstado] = useState<Estado>('bienvenida')
-  const enEvaluacion = useEvaluacionRedirect(estado === 'finalizado', estado !== 'bienvenida')
+  const enEvaluacion = useEvaluacionRedirect(estado === 'finalizado')
   const [cargando, setCargando] = useState(true)
   const [tiempoRestante, setTiempoRestante] = useState(0)
   const [nombreCandidato, setNombreCandidato] = useState('')
@@ -44,7 +44,33 @@ export default function ResponderPage() {
   const candidatoId = searchParams.get('candidato')
   const procesoId = searchParams.get('proceso')
   const token = searchParams.get('token')
-  const evaluacionKey = entrevistaId ? `video:${entrevistaId}` : '';
+  const evaluacionKey = entrevistaId ? `entrevista:${entrevistaId}` : ''
+
+  useEffect(() => {
+    if (!candidatoId || !procesoId || !token || !evaluacionKey || !preguntas.length) return
+    if (estado === 'finalizado') return
+    void marcarEvaluacionOperativaEnCurso({
+      candidatoId,
+      procesoId,
+      token,
+      evaluacionKey,
+      totalPreguntas: preguntas.length,
+      preguntaActual,
+      respuestasCompletadas: preguntaActual,
+    })
+  }, [candidatoId, procesoId, token, evaluacionKey, preguntas.length, preguntaActual, estado])
+
+  useEffect(() => {
+    if (!candidatoId || !procesoId || !token || !evaluacionKey || estado !== 'finalizado') return
+    void marcarEvaluacionOperativaCompletada({
+      candidatoId,
+      procesoId,
+      token,
+      evaluacionKey,
+      totalPreguntas: preguntas.length,
+      respuestasCompletadas: preguntas.length,
+    })
+  }, [candidatoId, procesoId, token, evaluacionKey, estado, preguntas.length])
 
   useEffect(() => {
     if (entrevistaId) cargarDatos()
@@ -91,28 +117,8 @@ export default function ResponderPage() {
     const { data: preguntasData } = await supabase
       .from('preguntas_video').select('*')
       .eq('entrevista_id', entrevistaId).order('orden')
-    const preguntasIniciales = preguntasData || []
-    const { data: respuestasPrevias } = candidatoId
-      ? await supabase.from('respuestas_video').select('pregunta_id, estado, url_video').eq('entrevista_id', entrevistaId).eq('candidato_id', candidatoId).eq('estado', 'completado')
-      : { data: [] as { pregunta_id: string; estado: string; url_video: string | null }[] }
-    const idsCompletados = new Set((respuestasPrevias || []).map(r => r.pregunta_id))
-    const tieneConExperiencia = preguntasIniciales.some(p => p.pregunta?.startsWith('[CON_EXP]') && idsCompletados.has(p.id))
-    const tieneSinExperiencia = preguntasIniciales.some(p => p.pregunta?.startsWith('[SIN_EXP]') && idsCompletados.has(p.id))
-    const experiencia = tieneConExperiencia ? true : tieneSinExperiencia ? false : null
-    const preguntasVisibles = experiencia === null ? preguntasIniciales : preguntasIniciales.filter(p => {
-      const txt = p.pregunta || ''
-      if (txt.startsWith('[CON_EXP]')) return experiencia === true
-      if (txt.startsWith('[SIN_EXP]')) return experiencia === false
-      return true
-    })
-    const primerPendiente = preguntasVisibles.findIndex(p => !idsCompletados.has(p.id))
-    setTieneExperiencia(experiencia)
-    setPreguntas(preguntasVisibles)
-    setTodasLasPreguntas(preguntasIniciales)
-    if (primerPendiente >= 0) setPreguntaActual(primerPendiente)
-    if (candidatoId && procesoId && evaluacionKey && preguntasVisibles.length > 0) {
-      await marcarEvaluacionOperativaEnCurso({ candidatoId, procesoId, evaluacionKey, token, totalPreguntas: preguntasVisibles.length, preguntaActual: Math.max(primerPendiente, 0), respuestasCompletadas: respuestasPrevias?.length || 0 })
-    }
+    setPreguntas(preguntasData || [])
+    setTodasLasPreguntas(preguntasData || [])
     setCargando(false)
   }
 
@@ -340,11 +346,9 @@ export default function ResponderPage() {
     setErrorUpload(false)
 
     if (preguntaActual + 1 >= preguntas.length) {
-      await marcarEvaluacionOperativaCompletada({ candidatoId, procesoId, evaluacionKey, token, totalPreguntas: preguntas.length, respuestasCompletadas: preguntas.length })
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
       setEstado('finalizado')
     } else {
-      await registrarActividadEvaluacion({ candidatoId, procesoId, evaluacionKey, token, preguntaActual: preguntaActual + 1, totalPreguntas: preguntas.length, respuestasCompletadas: preguntaActual + 1 })
       setPreguntaActual(preguntaActual + 1)
       chunksRef.current = []
       setChunks([])
@@ -387,8 +391,8 @@ export default function ResponderPage() {
           El equipo de selección analizará tus respuestas a la brevedad. Si tenés dudas, podés contactarnos:
         </p>
         <div style={s.contactoDetalle}>
-          <p style={s.contactoItem}>seleccion@republicamicrofinanzas.com.uy</p>
-          <p style={s.contactoItem}>WhatsApp: 092 651 770</p>
+          <p style={s.contactoItem}>📧 seleccion@republicamicrofinanzas.com.uy</p>
+          <p style={s.contactoItem}>💬 WhatsApp: 092 651 770</p>
         </div>
       </div>
     </div>
@@ -430,11 +434,11 @@ export default function ResponderPage() {
           {nombreCandidato && <p style={s.nombreCandidato}>Hola, <strong>{nombreCandidato}</strong>.</p>}
           <div style={s.instruccionesBox}>
             <p style={s.instruccionTitulo}>Antes de comenzar</p>
-            <div style={s.instruccionItem}>Asegurate de tener buena iluminación y la cámara a la altura de los ojos</div>
-            <div style={s.instruccionItem}>Verificá que el micrófono funcione y estés en un lugar tranquilo</div>
-            <div style={s.instruccionItem}>Tendrás tiempo de preparación antes de cada pregunta</div>
-            <div style={s.instruccionItem}>Podés repetir cada respuesta si no quedás conforme</div>
-            <div style={s.instruccionItem}>Son {preguntas.length} preguntas en total</div>
+            <div style={s.instruccionItem}>📷 Asegurate de tener buena iluminación y la cámara a la altura de los ojos</div>
+            <div style={s.instruccionItem}>🎤 Verificá que el micrófono funcione y estés en un lugar tranquilo</div>
+            <div style={s.instruccionItem}>⏱ Tendrás tiempo de preparación antes de cada pregunta</div>
+            <div style={s.instruccionItem}>🔄 Podés repetir cada respuesta si no quedás conforme</div>
+            <div style={s.instruccionItem}>📋 Son {preguntas.length} pregunta{preguntas.length !== 1 ? 's' : ''} en total</div>
           </div>
           
           {tienePreguntasCondicionales && tieneExperiencia === null ? (
@@ -448,7 +452,7 @@ export default function ResponderPage() {
                     iniciarCamaraConExperiencia(true)
                   }}
                 >
-                  Tengo experiencia laboral (Formal / Informal)
+                  💼 Tengo experiencia laboral (Formal / Informal)
                 </button>
                 <button 
                   style={{ ...s.botonGrande, background: '#0284c7' }} 
@@ -457,7 +461,7 @@ export default function ResponderPage() {
                     iniciarCamaraConExperiencia(false)
                   }}
                 >
-                  No tengo experiencia laboral previa
+                  🎓 No tengo experiencia laboral previa
                 </button>
               </div>
             </div>
@@ -476,7 +480,7 @@ export default function ResponderPage() {
             <p style={s.preguntaTexto}>{(pregunta.pregunta || '').replace(/^\[CON_EXP\]\s*|^\[SIN_EXP\]\s*|^\[GENERAL\]\s*/i, '')}</p>
             {estado === 'preparacion' && (
               <div style={{ fontSize: '11px', color: '#1d4ed8', fontWeight: 'bold', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                Tiempo máximo de respuesta: {pregunta.tiempo_respuesta} segundos
+                ⏱️ Tiempo máximo de respuesta: {pregunta.tiempo_respuesta} segundos
               </div>
             )}
           </div>
@@ -528,7 +532,7 @@ export default function ResponderPage() {
                 <div style={s.subiendo}>Subiendo respuesta... por favor no cierres esta ventana.</div>
               ) : errorUpload ? (
                 <div style={s.errorUpload}>
-                  <p style={s.errorUploadTitulo}>No se pudo enviar el video</p>
+                  <p style={s.errorUploadTitulo}>⚠️ No se pudo enviar el video</p>
                   <p style={s.errorUploadTexto}>
                     Hubo un problema al subir tu respuesta. Por favor verificá tu conexión a internet e intentá nuevamente.
                   </p>
@@ -608,7 +612,3 @@ const s = {
   contactoItem: { fontSize: '0.875rem', color: '#1e293b', margin: 0 } as React.CSSProperties,
   link: { color: '#2563eb', textDecoration: 'none' } as React.CSSProperties,
 }
-
-
-
-

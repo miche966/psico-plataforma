@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Plus, Check, Link as LinkIcon, Search, FileText, X, Eye, Settings, Clock, CheckCircle2, BellRing, Upload, ClipboardPaste, UserPlus, Download, Video } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
+import { getAdminHeaders, obtenerLinkEvaluacion } from '@/lib/evaluacionLink'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
 
@@ -98,8 +99,9 @@ export default function GestionProcesos() {
   const [procesandoMasivo, setProcesandoMasivo] = useState(false)
   const [tabMasivo, setTabMasivo] = useState<'archivo' | 'texto'>('archivo')
   const [textoMasivo, setTextoMasivo] = useState('')
-  const [filtroEstado, setFiltroEstado] = useState<'todos' | 'completado' | 'incompleto' | 'pendiente'>('todos')
+  const [filtroEstado, setFiltroEstado] = useState<'todos' | 'completada' | 'en curso' | 'pendiente'>('todos')
   const [videoRespuestas, setVideoRespuestas] = useState<any[]>([])
+  const [progresoOperativo, setProgresoOperativo] = useState<any[]>([])
 
   useEffect(() => {
     cargarDatos()
@@ -396,18 +398,20 @@ export default function GestionProcesos() {
     setEnviandoRecordatorio(c.id)
     
     // Calcular pendientes basado en la batería del proceso vs sesiones existentes
-    const link = `${getBaseUrl()}/evaluacion?candidato=${c.id}&proceso=${procesoSeleccionado.id}`
+    const link = await obtenerLinkEvaluacion(c.id, procesoSeleccionado.id)
 
     try {
       const res = await fetch('/api/recordatorio', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAdminHeaders(),
         body: JSON.stringify({ 
           email: c.email, 
           nombre: c.nombre, 
           proceso: procesoSeleccionado.cargo, 
           link, 
-          pendientes: 'los tests restantes', candidato_id: c.id, proceso_id: procesoSeleccionado.id 
+          candidato_id: c.id,
+          proceso_id: procesoSeleccionado.id,
+          pendientes: 'los tests restantes' 
         })
       })
       if (res.ok) alert(`Recordatorio enviado a ${c.nombre}`)
@@ -500,6 +504,8 @@ export default function GestionProcesos() {
       const { data: eData, error: ee } = await supabase.from('entrevistas_video').select('id, nombre').order('creada_en', { ascending: false })
       const { data: sData, error: se } = await supabase.from('sesiones').select('*')
       const { data: vData, error: ve } = await supabase.from('respuestas_video').select('candidato_id, entrevista_id')
+      const progresoResponse = await fetch('/api/progreso-evaluacion', { headers: await getAdminHeaders() })
+      const progresoJson = progresoResponse.ok ? await progresoResponse.json() : { data: [] }
 
       if (pe) console.error('Error Procesos:', pe)
       if (ce) console.error('Error Candidatos:', ce)
@@ -517,6 +523,7 @@ export default function GestionProcesos() {
       if (eData) setEntrevistas(eData)
       if (sData) setSesiones(sData)
       if (vData) setVideoRespuestas(vData)
+      setProgresoOperativo(Array.isArray(progresoJson.data) ? progresoJson.data : [])
     } catch (err) {
       console.error('Falla total:', err)
     } finally {
@@ -791,8 +798,8 @@ export default function GestionProcesos() {
                     <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
                       {[
                         { id: 'todos', label: 'Todos', color: 'text-slate-600' },
-                        { id: 'completado', label: 'Comp.', color: 'text-green-600' },
-                        { id: 'incompleto', label: 'Incomp.', color: 'text-amber-600' },
+                        { id: 'completada', label: 'Comp.', color: 'text-green-600' },
+                        { id: 'en curso', label: 'En curso', color: 'text-amber-600' },
                         { id: 'pendiente', label: 'Pend.', color: 'text-slate-400' },
                       ].map(f => (
                         <button
@@ -836,11 +843,13 @@ export default function GestionProcesos() {
                           const numCompletados = uniqueCompletados.size
                           const totalAsignados = testsAsignadosSlugs.length
                           
-                          let estado: 'completado' | 'incompleto' | 'pendiente' = 'pendiente'
-                          if (numCompletados === 0) estado = 'pendiente'
+                          let estado: 'completada' | 'en curso' | 'pendiente' = 'pendiente'
+                          const progresoCandidato = progresoOperativo.filter(p => p.candidato_id === c.id && p.proceso_id === procesoSeleccionado?.id)
+                           const tieneActividad = progresoCandidato.some(p => ['en_curso', 'pausada'].includes(p.estado))
+                           if (numCompletados === 0 && !tieneActividad) estado = 'pendiente'
                           // Si ha completado el 100% de la batería
-                          else if (numCompletados >= totalAsignados && totalAsignados > 0) estado = 'completado'
-                          else estado = 'incompleto'
+                          else if (numCompletados >= totalAsignados && totalAsignados > 0) estado = 'completada'
+                          else estado = 'en curso'
 
                           return { ...c, progreso_real: { comp: numCompletados, total: totalAsignados, estado } }
                         })
@@ -854,8 +863,8 @@ export default function GestionProcesos() {
                             <div className="flex items-center gap-2 mb-1">
                               <p className="text-sm font-bold text-slate-800 truncate">{c.nombre} {c.apellido}</p>
                               <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
-                                c.progreso_real.estado === 'completado' ? 'bg-green-100 text-green-700' :
-                                c.progreso_real.estado === 'incompleto' ? 'bg-amber-100 text-amber-700' :
+                                c.progreso_real.estado === 'completada' ? 'bg-green-100 text-green-700' :
+                                c.progreso_real.estado === 'en curso' ? 'bg-amber-100 text-amber-700' :
                                 'bg-slate-100 text-slate-500'
                               }`}>
                                 {c.progreso_real.estado}
@@ -867,7 +876,7 @@ export default function GestionProcesos() {
                               <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
                                 <div 
                                   className={`h-full transition-all duration-500 ${
-                                    c.progreso_real.estado === 'completado' ? 'bg-green-500' : 'bg-indigo-500'
+                                    c.progreso_real.estado === 'completada' ? 'bg-green-500' : 'bg-indigo-500'
                                   }`} 
                                   style={{ width: `${(c.progreso_real.comp / c.progreso_real.total) * 100}%` }}
                                 ></div>
@@ -879,8 +888,8 @@ export default function GestionProcesos() {
                           </div>
                           <div className="flex items-center gap-1 shrink-0 ml-4">
                             <button 
-                              onClick={() => {
-                                const link = `${getBaseUrl()}/evaluacion?candidato=${c.id}&proceso=${procesoSeleccionado.id}`
+                              onClick={async () => {
+                                 const link = await obtenerLinkEvaluacion(c.id, procesoSeleccionado.id)
                                 navigator.clipboard.writeText(link)
                                 alert('Link copiado al portapapeles')
                               }}

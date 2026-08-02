@@ -1,10 +1,11 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video, CheckCircle2, Settings2, BarChart2, LayoutDashboard, Sparkles } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
+import { getAdminHeaders } from '@/lib/evaluacionLink'
 import GestionProcesos from '@/components/GestionProcesos'
 import Dashboard from '@/components/Dashboard'
 import AppLayout from '@/components/AppLayout'
@@ -189,6 +190,9 @@ interface CandidatoAgrupado {
   }
   matchScore?: number | null
   resumen_ia?: string | null
+  estado_operativo?: 'pendiente' | 'en curso' | 'completada'
+  progreso_detallado?: Array<{ evaluacion_key: string; estado: string; pregunta_actual?: number; total_preguntas?: number; respuestas_completadas?: number }>
+  ultima_actividad_operativa?: string | null
 }
 
 async function generarResumenIA(candidato: CandidatoAgrupado) {
@@ -434,6 +438,17 @@ export default function PanelEvaluador() {
     const { data: preguntasVideo } = await supabase
       .from('preguntas_video')
       .select('id, entrevista_id')
+    let progresoOperativo: any[] = []
+    try {
+      const progresoResponse = await fetch('/api/progreso-evaluacion', { headers: await getAdminHeaders() })
+      if (progresoResponse.ok) {
+        const progresoJson = await progresoResponse.json()
+        progresoOperativo = Array.isArray(progresoJson.data) ? progresoJson.data : []
+      }
+    } catch (error) {
+      console.warn('No se pudo consultar el progreso operativo:', error)
+    }
+
     const preguntasPorEntrevista: Record<string, number> = {}
     ;(preguntasVideo || []).forEach(p => {
       preguntasPorEntrevista[p.entrevista_id] = (preguntasPorEntrevista[p.entrevista_id] || 0) + 1
@@ -478,6 +493,11 @@ export default function PanelEvaluador() {
       const sesionBigFive = misSesiones.find(s => TEST_IDS[s.test_id] === 'bigfive')
       const matchScore = calcularMatch(sesionBigFive?.puntaje_bruto, competenciasReq)
 
+      const progresoCandidato = progresoOperativo.filter(item => item.candidato_id === c.id && (!procesoId || item.proceso_id === procesoId))
+      const tieneActividad = progresoCandidato.some(item => ['en_curso', 'pausada'].includes(item.estado))
+      const estadoOperativo: 'pendiente' | 'en curso' | 'completada' = progresoCalculado.total > 0 && progresoCalculado.completados >= progresoCalculado.total ? 'completada' : (tieneActividad || progresoCalculado.completados > 0 ? 'en curso' : 'pendiente')
+      const ultimaActividadOperativa = progresoCandidato.map(item => item.ultima_actividad_en).filter(Boolean).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] || null
+
       let ultimaFecha = c.creado_en
       misSesiones.forEach(s => {
         const f = s.finalizada_en || s.creado_en
@@ -509,7 +529,10 @@ export default function PanelEvaluador() {
           total: progresoCalculado.total || progresoCalculado.completados || 1,
           tests_pendientes: progresoCalculado.testsPendientes
         },
-        matchScore
+        matchScore,
+        estado_operativo: estadoOperativo,
+        progreso_detallado: progresoCandidato,
+        ultima_actividad_operativa: ultimaActividadOperativa
       }
     }).filter(c => c.sesiones.length > 0 || c.progreso.completados > 0)
 

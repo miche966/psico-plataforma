@@ -1,4 +1,4 @@
-﻿import { createHmac, timingSafeEqual } from 'node:crypto'
+import { createHmac, timingSafeEqual } from 'node:crypto'
 
 function base64url(value: string | Buffer) {
   return Buffer.from(value).toString('base64url')
