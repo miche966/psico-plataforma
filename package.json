@@ -9,7 +9,9 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types tests/ordenamiento-postulaciones.test.ts",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "validate:repository": "node scripts/validate-repository.cjs",
+    "verify": "npm run validate:repository && npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1045.0",

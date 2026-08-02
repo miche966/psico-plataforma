@@ -44,3 +44,9 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# backups locales
+*.bak
+
+# artefactos de auditoría local
+scratch/
