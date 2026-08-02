@@ -36,3 +36,17 @@ export function marcarEvaluacionOperativaCompletada(args: { candidatoId?: string
   if (!args.candidatoId || !args.procesoId || !args.token) return Promise.resolve(false)
   return guardarProgreso({ candidato_id: args.candidatoId, proceso_id: args.procesoId, evaluacion_key: args.evaluacionKey, token: args.token, estado: 'completada', pregunta_actual: args.totalPreguntas, total_preguntas: args.totalPreguntas, respuestas_completadas: args.respuestasCompletadas, completada_en: new Date().toISOString() })
 }
+
+export function registrarActividadEvaluacion(args: { candidatoId?: string | null; procesoId?: string | null; evaluacionKey: string; token?: string | null; preguntaActual: number; totalPreguntas: number; respuestasCompletadas: number; estado?: EstadoOperativo }) {
+  if (!args.candidatoId || !args.procesoId || !args.token) return Promise.resolve(false)
+  return guardarProgreso({
+    candidato_id: args.candidatoId,
+    proceso_id: args.procesoId,
+    evaluacion_key: args.evaluacionKey,
+    token: args.token,
+    estado: args.estado || 'en_curso',
+    pregunta_actual: args.preguntaActual,
+    total_preguntas: args.totalPreguntas,
+    respuestas_completadas: args.respuestasCompletadas,
+  })
+}

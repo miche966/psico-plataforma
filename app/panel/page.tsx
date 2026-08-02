@@ -200,6 +200,9 @@ interface CandidatoAgrupado {
     completados: number
     tests_pendientes: string[]
   }
+  estado_operativo?: 'pendiente' | 'en curso' | 'completada'
+  ultima_actividad_operativa?: string | null
+  progreso_detallado?: Array<{ evaluacion_key: string; estado: string; pregunta_actual?: number; total_preguntas?: number; respuestas_completadas?: number }>
   matchScore?: number | null
   resumen_ia?: string | null
 }
@@ -539,6 +542,19 @@ export default function PanelEvaluador() {
       .from('respuestas_video')
       .select('candidato_id, entrevista_id, pregunta_id, grabada_en')
 
+    // Se consulta por API porque la tabla operativa tiene RLS sin acceso publico.
+    let progresoOperativo: any[] = []
+    try {
+      const progresoResponse = await fetch('/api/progreso-evaluacion', { headers: await getAdminHeaders() })
+      if (progresoResponse.ok) {
+        const progresoJson = await progresoResponse.json()
+        progresoOperativo = Array.isArray(progresoJson.data) ? progresoJson.data : []
+      } else {
+        console.warn('No se pudo consultar el progreso operativo:', progresoResponse.status)
+      }
+    } catch (error) {
+      console.warn('No se pudo consultar el progreso operativo:', error)
+    }
     // Agrupar todas las sesiones por candidato_id
     const sesionesPorCandidato: Record<string, any[]> = {}
     sesionesData?.forEach(s => {
@@ -580,6 +596,17 @@ export default function PanelEvaluador() {
         ? bateria.filter(tId => idsCompletados.has(tId)).length
         : idsCompletados.size
 
+      const progresoCandidato = progresoOperativo.filter(item =>
+        item.candidato_id === c.id && (!procesoId || item.proceso_id === procesoId)
+      )
+      const tieneActividad = progresoCandidato.some(item => ['en_curso', 'pausada'].includes(item.estado))
+      const estadoOperativo = totalBateria > 0 && finalCompletados >= totalBateria
+        ? 'completada'
+        : (tieneActividad || finalCompletados > 0 ? 'en curso' : 'pendiente')
+      const ultimaActividadOperativa = progresoCandidato
+        .map(item => item.ultima_actividad_en)
+        .filter(Boolean)
+        .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] || null
       const sesionBigFive = misSesiones.find(s => TEST_IDS[s.test_id] === 'bigfive')
       const matchScore = calcularMatch(sesionBigFive?.puntaje_bruto, competenciasReq)
 
@@ -608,6 +635,9 @@ export default function PanelEvaluador() {
         proceso_cargo: procesoCargo,
         competencias_requeridas: competenciasReq,
         bateria_tests: bateria,
+        estado_operativo: estadoOperativo,
+        ultima_actividad_operativa: ultimaActividadOperativa,
+        progreso_detallado: progresoCandidato,
         progreso: {
           completados: finalCompletados,
           total: totalBateria || finalCompletados || 1,
@@ -1011,7 +1041,16 @@ export default function PanelEvaluador() {
 
                   <div className="flex-1 min-w-0 pr-2">
                     <div className="font-bold text-slate-900 leading-tight truncate">{c.nombre} {c.apellido}</div>
-                    <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mt-0.5 truncate">{c.proceso_nombre || 'Proceso independiente'}</div>
+                    <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mt-0.5 truncate">{c.proceso_nombre || 'Proceso independiente'}</div>                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full ${
+                        c.estado_operativo === 'completada' ? 'bg-emerald-100 text-emerald-700' :
+                        c.estado_operativo === 'en curso' ? 'bg-amber-100 text-amber-700' :
+                        'bg-slate-100 text-slate-500'
+                      }`}>
+                        {c.estado_operativo || 'pendiente'}
+                      </span>
+                      {c.ultima_actividad_operativa && <span className="text-[9px] text-slate-400">Actividad reciente</span>}
+                    </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-xs text-slate-500 truncate">{c.email || 'Sin email'}</span>
                     </div>

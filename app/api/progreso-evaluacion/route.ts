@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
+import { requireAdminSession } from '@/lib/server/adminAuth'
 
 const ESTADOS = new Set(['pendiente', 'en_curso', 'pausada', 'completada', 'error', 'vencida'])
 
@@ -50,5 +51,29 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error('Error en progreso-evaluacion:', error)
     return NextResponse.json({ error: 'Error interno al guardar el progreso' }, { status: 500 })
+  }
+}
+
+export async function GET(req: Request) {
+  try {
+    const auth = await requireAdminSession(req)
+    if (auth.response) return auth.response
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!supabaseUrl || !serviceKey) return NextResponse.json({ error: 'Seguimiento operativo no configurado en el servidor' }, { status: 503 })
+
+    const url = new URL(req.url)
+    const query = new URLSearchParams({ select: '*', order: 'ultima_actividad_en.desc.nullslast' })
+    if (url.searchParams.get('candidato_id')) query.set('candidato_id', `eq.${url.searchParams.get('candidato_id')}`)
+    if (url.searchParams.get('proceso_id')) query.set('proceso_id', `eq.${url.searchParams.get('proceso_id')}`)
+    const response = await fetch(`${supabaseUrl}/rest/v1/progreso_evaluaciones?${query.toString()}`, {
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+      cache: 'no-store',
+    })
+    if (!response.ok) return NextResponse.json({ error: 'No se pudo consultar el progreso' }, { status: 502 })
+    return NextResponse.json({ data: await response.json() })
+  } catch (error) {
+    console.error('Error consultando progreso-evaluacion:', error)
+    return NextResponse.json({ error: 'Error interno consultando el progreso' }, { status: 500 })
   }
 }

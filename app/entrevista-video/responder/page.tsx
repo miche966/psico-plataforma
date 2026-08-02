@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
+import { marcarEvaluacionOperativaEnCurso, marcarEvaluacionOperativaCompletada } from '@/lib/progresoOperativo'
 
 interface Pregunta {
   id: string
@@ -41,6 +42,35 @@ export default function ResponderPage() {
   const searchParams = useSearchParams()
   const entrevistaId = searchParams.get('entrevista')
   const candidatoId = searchParams.get('candidato')
+  const procesoId = searchParams.get('proceso')
+  const token = searchParams.get('token')
+  const evaluacionKey = entrevistaId ? `entrevista:${entrevistaId}` : ''
+
+  useEffect(() => {
+    if (!candidatoId || !procesoId || !token || !evaluacionKey || !preguntas.length) return
+    if (estado === 'finalizado') return
+    void marcarEvaluacionOperativaEnCurso({
+      candidatoId,
+      procesoId,
+      token,
+      evaluacionKey,
+      totalPreguntas: preguntas.length,
+      preguntaActual,
+      respuestasCompletadas: preguntaActual,
+    })
+  }, [candidatoId, procesoId, token, evaluacionKey, preguntas.length, preguntaActual, estado])
+
+  useEffect(() => {
+    if (!candidatoId || !procesoId || !token || !evaluacionKey || estado !== 'finalizado') return
+    void marcarEvaluacionOperativaCompletada({
+      candidatoId,
+      procesoId,
+      token,
+      evaluacionKey,
+      totalPreguntas: preguntas.length,
+      respuestasCompletadas: preguntas.length,
+    })
+  }, [candidatoId, procesoId, token, evaluacionKey, estado, preguntas.length])
 
   useEffect(() => {
     if (entrevistaId) cargarDatos()

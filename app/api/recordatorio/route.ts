@@ -80,9 +80,62 @@ export async function POST(req: Request) {
 
     await transporter.sendMail(mailOptions);
 
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const auditResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/recordatorios_evaluacion`, {
+        method: 'POST',
+        headers: {
+          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({
+          candidato_id: candidato_id || null,
+          proceso_id: proceso_id || null,
+          email,
+          estado: 'enviado',
+          pendientes: String(pendientes ?? ''),
+        }),
+      })
+      if (!auditResponse.ok) console.warn('El correo se envio, pero no se pudo registrar la auditoria del recordatorio')
+    }
+
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     console.error('Error enviando email:', err);
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+  }
+}
+
+export async function GET(req: Request) {
+  try {
+    const auth = await requireAdminSession(req)
+    if (auth.response) return auth.response
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ error: 'Configuración de Supabase incompleta' }, { status: 500 })
+    }
+
+    const url = new URL(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/recordatorios_evaluacion`)
+    url.searchParams.set('select', '*')
+    url.searchParams.set('order', 'enviado_en.desc')
+    url.searchParams.set('limit', '100')
+
+    const response = await fetch(url, {
+      headers: {
+        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      cache: 'no-store',
+    })
+
+    if (!response.ok) {
+      return NextResponse.json({ error: 'No se pudo consultar la auditoría de recordatorios' }, { status: 502 })
+    }
+
+    return NextResponse.json({ data: await response.json() })
+  } catch (err: unknown) {
+    console.error('Error consultando auditoría de recordatorios:', err)
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 })
   }
 }
