@@ -232,7 +232,7 @@ export default function ResponderPage() {
         const resPresigned = await fetch('/api/r2-presigned', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fileName, contentType: 'video/webm' })
+          body: JSON.stringify({ fileName, contentType: 'video/webm', candidatoId, procesoId, entrevistaId, token })
         })
         
         if (resPresigned.ok) {
