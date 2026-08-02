@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     const contexto = await validarContexto(request)
     if ('error' in contexto) return contexto.error
     const { db, candidato, proceso, testId } = contexto
-    const { data: items, error } = await db.from('items').select('id, orden, contenido, opciones, factor, inverso').eq('test_id', testId).order('orden')
+    const { data: items, error } = await db.from('items').select('id, orden, contenido, opciones, factor, inverso, respuesta_correcta').eq('test_id', testId).order('orden')
     if (error) throw error
     return NextResponse.json({ candidato, proceso, items: items || [] })
   } catch (error) {
