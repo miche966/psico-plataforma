@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { marcarEvaluacionOperativaEnCurso, marcarEvaluacionOperativaCompletada } from '@/lib/progresoOperativo'
 import { 
   Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX, 
@@ -104,34 +103,16 @@ export default function RolePlayPage() {
 
   async function inicializarTest() {
     try {
-      const { data: cand, error: errCand } = await supabase
-        .from('candidatos')
-        .select('nombre, apellido')
-        .eq('id', candidatoId)
-        .single()
+      const res = await fetch('/api/roleplay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'iniciar', candidatoId, procesoId, token, testId: TEST_ID })
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || 'Candidato no encontrado')
 
-      if (errCand || !cand) {
-        throw new Error('Candidato no encontrado')
-      }
-      setCandidato(cand)
-
-      // Registrar sesión en progreso si no existe
-      const { data: sesionExistente } = await supabase
-        .from('sesiones')
-        .select('id, estado')
-        .eq('candidato_id', candidatoId)
-        .eq('proceso_id', procesoId)
-        .eq('test_id', TEST_ID)
-        .maybeSingle()
-
-      if (!sesionExistente) {
-        await supabase.from('sesiones').insert({
-          candidato_id: candidatoId,
-          proceso_id: procesoId,
-          test_id: TEST_ID,
-          estado: 'en_progreso'
-        })
-      } else if (sesionExistente.estado === 'finalizado') {
+      setCandidato(data.candidato)
+      if (data.alreadyCompleted) {
         setError('Ya has completado esta simulación anteriormente.')
       }
 
@@ -365,12 +346,11 @@ export default function RolePlayPage() {
     if (totalTurnos < MIN_TURNOS_REQUERIDOS) {
       alert(`La llamada fue demasiado breve (llevabas ${totalTurnos} de ${MIN_TURNOS_REQUERIDOS} turnos mínimos requeridos). Para completar esta prueba debes dialogar e interactuar con el cliente.\n\nSerás redirigido al portal para volver a iniciar el test.`);
       try {
-        await supabase
-          .from('sesiones')
-          .delete()
-          .eq('candidato_id', candidatoId)
-          .eq('proceso_id', procesoId)
-          .eq('test_id', TEST_ID)
+        await fetch('/api/roleplay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'descartar', candidatoId, procesoId, token, testId: TEST_ID })
+        })
       } catch (err) {
         console.error('Error al limpiar sesión breve:', err)
       }
