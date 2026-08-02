@@ -178,7 +178,7 @@ export async function POST(req: Request) {
     // ACCIÓN 2: EVALUACIÓN FINAL DE LA TRANSCRIPCIÓN
     if (action === 'evaluar') {
       if (!candidatoId || !procesoId || !token || !validarTokenEvaluacion(String(token), String(candidatoId), String(procesoId))) {
-        return NextResponse.json({ error: 'Token de evaluaciÃ³n invÃ¡lido o vencido' }, { status: 401 })
+        return NextResponse.json({ error: 'Token de evaluación inválido o vencido' }, { status: 401 })
       }
       if (!candidatoId || !procesoId || !testId) {
         return NextResponse.json({ error: 'Faltan parámetros requeridos para guardar la sesión.' }, { status: 400 })

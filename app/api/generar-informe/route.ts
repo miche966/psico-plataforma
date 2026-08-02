@@ -1,13 +1,23 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { estimarMBTIDesdeSesiones } from '@/lib/baremos'
+import { requireAdminSession } from '@/lib/server/adminAuth'
 
 export const maxDuration = 60; // 60 segundos para evitar timeouts en plan Hobby de Vercel
 
 export async function POST(req: Request) {
   try {
+    const auth = await requireAdminSession(req)
+    if (auth.response) return auth.response
+
     const payload = await req.json();
     const { candidato, proceso, sesiones, actual, videos } = payload;
+    if (!payload || JSON.stringify(payload).length > 500000) {
+      return NextResponse.json({ error: 'El informe supera el tamaño permitido' }, { status: 413 });
+    }
+    if (!Array.isArray(sesiones) || sesiones.length > 500 || (videos !== undefined && (!Array.isArray(videos) || videos.length > 200))) {
+      return NextResponse.json({ error: 'La estructura del informe no es válida' }, { status: 400 });
+    }
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: 'Falta llave de API.' }, { status: 500 });

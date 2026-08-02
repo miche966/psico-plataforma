@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
+
+const TEST_ID = 'd0e1f2a3-b4c5-6789-defa-000000000001'
 
 interface Item {
   id: string
@@ -35,13 +36,17 @@ export default function EstresLaboralPage() {
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0)
 
   useEffect(() => {
-    cargarItems()
-    if (candidatoId) {
-      supabase.from('candidatos').select('nombre, apellido')
-        .eq('id', candidatoId).single()
-        .then(({ data }) => { if (data) setNombreCandidato(`${data.nombre} ${data.apellido}`) })
+    const cargarDatos = async () => {
+      const token = searchParams.get('token') || ''
+      const response = await fetch(`/api/evaluacion/public-data?candidato=${encodeURIComponent(candidatoId || '')}&proceso=${encodeURIComponent(procesoId || '')}&token=${encodeURIComponent(token)}&test_id=${encodeURIComponent(TEST_ID)}`, { cache: 'no-store' })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) { console.error(payload.error); return }
+      setItems(payload.items || [])
+      if (payload.candidato) setNombreCandidato(`${payload.candidato.nombre} ${payload.candidato.apellido}`)
+      setCargando(false)
     }
-  }, [candidatoId])
+    cargarDatos()
+  }, [candidatoId, procesoId, searchParams])
 
   useEffect(() => {
     if (finalizado) return
@@ -51,15 +56,6 @@ export default function EstresLaboralPage() {
     return () => clearInterval(timer)
   }, [finalizado, tiempoInicio])
 
-  async function cargarItems() {
-    const { data, error } = await supabase
-      .from('items').select('*')
-      .eq('test_id', 'd0e1f2a3-b4c5-6789-defa-000000000001')
-      .order('orden')
-    if (error) { console.error(error); return }
-    setItems(data || [])
-    setCargando(false)
-  }
 
   function responder(valor: number) {
     const item = items[itemActual]
@@ -97,24 +93,15 @@ export default function EstresLaboralPage() {
     const nivel = promedio_general >= 4 ? 'alto' : promedio_general >= 3 ? 'moderado' : 'bajo'
     const resultado = { ...promedios, promedio_general, nivel_estres: nivel }
 
-    const { data: sesion, error } = await supabase.from('sesiones').insert({
-      test_id: 'd0e1f2a3-b4c5-6789-defa-000000000001',
-      candidato_id: candidatoId || null,
-      proceso_id: procesoId || null,
-      estado: 'finalizado',
-      iniciada_en: new Date().toISOString(),
-      finalizada_en: new Date().toISOString(),
-      puntaje_bruto: resultado
-    }).select().single()
+    if (!candidatoId || !procesoId) return
+    const token = searchParams.get('token') || ''
+    const response = await fetch('/api/evaluacion/public-data', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'finalize', candidato_id: candidatoId, proceso_id: procesoId, token, test_id: TEST_ID, puntaje_bruto: resultado, respuestas: todasLasRespuestas.map(r => ({ ...r, tiempo_respuesta: 0 })) })
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) console.error('Error al guardar Estrés Laboral:', payload.error)
 
-    if (error || !sesion) { console.error(error); return }
-
-    await supabase.from('respuestas').insert(
-      todasLasRespuestas.map(r => ({
-        sesion_id: sesion.id, item_id: r.item_id,
-        valor: r.valor, tiempo_respuesta: 0
-      }))
-    )
   }
 
   if (cargando) return <div style={s.centro}><p>Cargando evaluación...</p></div>

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { useProctoring } from '@/hooks/useProctoring'
@@ -42,46 +41,28 @@ export default function TestPage() {
   const BIG_FIVE_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
 
   useEffect(() => {
-    async function initSesion() {
-      const idUrl = searchParams.get('sesion')
-      if (idUrl) {
-        setSesionIdActual(idUrl)
-        await supabase.from('sesiones').update({ estado: 'iniciado' }).eq('id', idUrl)
-      } else if (candidatoId && procesoId) {
-        // Rescate: Buscar si existe sesión previa no finalizada
-        const { data: previa } = await supabase.from('sesiones')
-          .select('id')
-          .eq('candidato_id', candidatoId)
-          .eq('test_id', BIG_FIVE_ID)
-          .neq('estado', 'finalizado')
-          .maybeSingle()
-        
-        if (previa) {
-          setSesionIdActual(previa.id)
-          await supabase.from('sesiones').update({ estado: 'iniciado' }).eq('id', previa.id)
-        } else {
-          // Crear sesión de control al inicio
-          const { data: nueva } = await supabase.from('sesiones').insert({
-            test_id: BIG_FIVE_ID,
-            candidato_id: candidatoId,
-            proceso_id: procesoId,
-            estado: 'iniciado',
-            iniciada_en: new Date().toISOString()
-          }).select().single()
-          if (nueva) setSesionIdActual(nueva.id)
-        }
-      }
-    }
     initSesion()
+    cargarItems()
   }, [candidatoId, procesoId, searchParams])
 
+  async function initSesion() {
+    if (!candidatoId || !procesoId) return
+    const token = searchParams.get('token') || ''
+    const sesionId = searchParams.get('sesion') || ''
+    const response = await fetch('/api/evaluacion/public-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'start', candidato_id: candidatoId, proceso_id: procesoId, token, sesion_id: sesionId, test_id: BIG_FIVE_ID })
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) { console.error(payload.error); return }
+    if (payload.sesion?.id) setSesionIdActual(payload.sesion.id)
+    if (payload.alreadyCompleted) setFinalizado(true)
+  }
+
   useEffect(() => {
-    cargarItems()
-    if (candidatoId) {
-      supabase.from('candidatos').select('nombre, apellido').eq('id', candidatoId).single()
-        .then(({ data }) => { if (data) setNombreCandidato(`${data.nombre} ${data.apellido}`) })
-    }
-  }, [candidatoId])
+    // La carga se realiza junto con la validación server-side del enlace.
+  }, [])
 
   useEffect(() => {
     if (finalizado) return
@@ -92,12 +73,13 @@ export default function TestPage() {
   }, [finalizado, tiempoInicio])
 
   async function cargarItems() {
-    const { data, error } = await supabase.from('items')
-      .select('*')
-      .eq('test_id', BIG_FIVE_ID)
-      .order('orden')
-    if (error) { console.error(error); return }
-    setItems(data || [])
+    if (!candidatoId || !procesoId) return
+    const token = searchParams.get('token') || ''
+    const response = await fetch(`/api/evaluacion/public-data?candidato=${encodeURIComponent(candidatoId)}&proceso=${encodeURIComponent(procesoId)}&token=${encodeURIComponent(token)}&test_id=${encodeURIComponent(BIG_FIVE_ID)}`, { cache: 'no-store' })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) { console.error(payload.error); return }
+    setItems(payload.items || [])
+    if (payload.candidato) setNombreCandidato(`${payload.candidato.nombre} ${payload.candidato.apellido}`)
     setCargando(false)
   }
 
@@ -137,29 +119,23 @@ export default function TestPage() {
 
     setResultado(promedios)
 
-    if (sesionIdActual) {
-      const { data: sesion, error: errorSesion } = await supabase.from('sesiones').update({
-        estado: 'finalizado',
-        finalizada_en: new Date().toISOString(),
-        puntaje_bruto: {
-          ...promedios,
-          metricas_fraude: metricasFraude
-        }
-      }).eq('id', sesionIdActual).select().single()
-
-      if (errorSesion || !sesion) {
-        console.error("Error al guardar sesión:", errorSesion)
-        return
+    if (sesionIdActual && candidatoId && procesoId) {
+      const token = searchParams.get('token') || ''
+      const response = await fetch('/api/evaluacion/public-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'finalize', candidato_id: candidatoId, proceso_id: procesoId,
+          token, test_id: BIG_FIVE_ID, sesion_id: sesionIdActual,
+          puntaje_bruto: { ...promedios, metricas_fraude: metricasFraude },
+          respuestas: todasLasRespuestas.map(r => ({ ...r, tiempo_respuesta: 0 }))
+        })
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        console.error('Error al guardar sesión:', payload.error)
+        setFinalizado(false)
       }
-
-      const respuestasParaGuardar = todasLasRespuestas.map(r => ({
-        sesion_id: sesion.id,
-        item_id: r.item_id,
-        valor: r.valor,
-        tiempo_respuesta: 0
-      }))
-
-      await supabase.from('respuestas').insert(respuestasParaGuardar)
     }
   }
 

@@ -9,11 +9,11 @@ export async function POST(request: Request) {
     const { fileName, contentType, candidatoId, procesoId, entrevistaId, token } = await request.json()
 
     if (!fileName || !contentType || !candidatoId || !procesoId || !entrevistaId || !token) {
-      return NextResponse.json({ error: 'Faltan parÃ¡metros de evaluaciÃ³n' }, { status: 400 })
+      return NextResponse.json({ error: 'Faltan parámetros de evaluación' }, { status: 400 })
     }
 
     if (!validarTokenEvaluacion(String(token), String(candidatoId), String(procesoId))) {
-      return NextResponse.json({ error: 'Token de evaluaciÃ³n invÃ¡lido o vencido' }, { status: 401 })
+      return NextResponse.json({ error: 'Token de evaluación inválido o vencido' }, { status: 401 })
     }
 
     const expectedPrefix = `${entrevistaId}/${candidatoId}/`

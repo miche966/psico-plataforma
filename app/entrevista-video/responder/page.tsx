@@ -338,7 +338,7 @@ export default function ResponderPage() {
       fetch('/api/analizar-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url_video: urlVideo, respuesta_id: insertData.id })
+        body: JSON.stringify({ url_video: urlVideo, respuesta_id: insertData.id, candidato_id: candidatoId, proceso_id: procesoId, token })
       }).catch(err => console.error('Error disparando IA:', err))
     }
 

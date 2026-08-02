@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { useProctoring } from '@/hooks/useProctoring'
@@ -39,12 +38,18 @@ export default function Dass21Page() {
   const enEvaluacion = useEvaluacionRedirect(finalizado)
 
   useEffect(() => {
-    cargarItems()
-    if (candidatoId) {
-      supabase.from('candidatos').select('nombre, apellido').eq('id', candidatoId).single()
-        .then(({ data }) => { if (data) setNombreCandidato(`${data.nombre} ${data.apellido}`) })
+    async function cargarDatos() {
+      if (!candidatoId || !procesoId) return
+      const token = searchParams.get('token') || ''
+      const response = await fetch(`/api/evaluacion/public-data?candidato=${encodeURIComponent(candidatoId)}&proceso=${encodeURIComponent(procesoId)}&token=${encodeURIComponent(token)}&test_id=${encodeURIComponent(DASS21_TEST_ID)}`, { cache: 'no-store' })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) { console.error(payload.error); return }
+      setItems(payload.items || [])
+      if (payload.candidato) setNombreCandidato(`${payload.candidato.nombre} ${payload.candidato.apellido}`)
+      setCargando(false)
     }
-  }, [candidatoId])
+    cargarDatos()
+  }, [candidatoId, procesoId, searchParams])
 
   useEffect(() => {
     if (finalizado) return
@@ -53,17 +58,6 @@ export default function Dass21Page() {
     }, 1000)
     return () => clearInterval(timer)
   }, [finalizado, tiempoInicio])
-
-  async function cargarItems() {
-    const { data, error } = await supabase.from('items')
-      .select('*')
-      .eq('test_id', DASS21_TEST_ID)
-      .order('orden')
-    
-    if (error) { console.error(error); return }
-    setItems(data || [])
-    setCargando(false)
-  }
 
   function responder(valor: number) {
     const item = items[itemActual]
@@ -96,29 +90,14 @@ export default function Dass21Page() {
 
     setFinalizado(true)
 
-    const { data: sesion, error: errorSesion } = await supabase.from('sesiones').insert({
-      test_id: DASS21_TEST_ID,
-      candidato_id: candidatoId || null,
-      proceso_id: procesoId || null,
-      estado: 'finalizado',
-      iniciada_en: new Date(tiempoInicio).toISOString(),
-      finalizada_en: new Date().toISOString(),
-      puntaje_bruto: {
-        ...resultadoFinal,
-        metricas_fraude: metricasFraude
-      }
-    }).select().single()
-
-    if (errorSesion || !sesion) return
-
-    const respuestasParaGuardar = todasLasRespuestas.map(r => ({
-      sesion_id: sesion.id,
-      item_id: r.item_id,
-      valor: r.valor,
-      tiempo_respuesta: 0
-    }))
-
-    await supabase.from('respuestas').insert(respuestasParaGuardar)
+    if (!candidatoId || !procesoId) return
+    const token = searchParams.get('token') || ''
+    const response = await fetch('/api/evaluacion/public-data', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'finalize', candidato_id: candidatoId, proceso_id: procesoId, token, test_id: DASS21_TEST_ID, puntaje_bruto: { ...resultadoFinal, metricas_fraude: metricasFraude }, respuestas: todasLasRespuestas.map(r => ({ ...r, tiempo_respuesta: 0 })) })
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) console.error('Error al guardar DASS-21:', payload.error)
   }
 
   if (cargando) return <div style={s.centro}><p>Cargando Screening de Salud Mental...</p></div>

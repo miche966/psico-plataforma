@@ -77,26 +77,19 @@ export default function EstadisticasPage() {
 
   async function cargarDatos() {
     try {
-      // 1. Obtener procesos
-      const { data: pData } = await supabase.from('procesos').select('*').order('creado_en', { ascending: false })
-      if (pData) setProcesos(pData)
-
-      // 2. Obtener vínculos
-      const { data: cpData } = await supabase.from('candidatos_procesos').select('candidato_id, proceso_id')
-      if (cpData) setVinculos(cpData)
-
-      // 3. Obtener respuestas de video
-      const { data: vData } = await supabase.from('respuestas_video').select('candidato_id, id')
-      if (vData) setRespuestasVideo(vData)
-
-      // 4. Obtener candidatos
-      const { data: cData } = await supabase.from('candidatos').select('id, nombre, apellido, email')
-      if (cData) setCandidatos(cData)
-
-      // 5. Obtener sesiones con puntaje
-      const { data: sData } = await supabase.from('sesiones').select('*')
-      if (sData) setSesiones(sData)
-
+      const auth = await supabase.auth.getSession()
+      const token = auth.data.session?.access_token
+      const response = await fetch('/api/admin/estadisticas-data', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        cache: 'no-store'
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.error || 'No se pudieron cargar las estadísticas')
+      setProcesos(payload.procesos || [])
+      setVinculos(payload.vinculos || [])
+      setRespuestasVideo(payload.respuestasVideo || [])
+      setCandidatos(payload.candidatos || [])
+      setSesiones(payload.sesiones || [])
     } catch (err) {
       console.error('Error cargando ranking de candidatos:', err)
     } finally {

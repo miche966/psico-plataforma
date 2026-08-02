@@ -1,14 +1,21 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { requireAdminSession } from '@/lib/server/adminAuth'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
 export async function POST(req: Request) {
   try {
+    const auth = await requireAdminSession(req)
+    if (auth.response) return auth.response
+
     const { prompt } = await req.json()
 
-    if (!prompt) {
-      return NextResponse.json({ error: 'Faltan datos' }, { status: 400 })
+    if (typeof prompt !== 'string' || !prompt.trim()) {
+      return NextResponse.json({ error: 'El contenido del resumen es obligatorio' }, { status: 400 })
+    }
+    if (prompt.length > 12000) {
+      return NextResponse.json({ error: 'El contenido del resumen supera el límite permitido' }, { status: 413 })
     }
 
     let result = null

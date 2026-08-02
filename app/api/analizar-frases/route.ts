@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { requireAdminSession } from '@/lib/server/adminAuth'
 
 const FRASES_ESTIMULO: Record<number, string> = {
   1: 'Siempre me gustó',
@@ -28,8 +29,15 @@ const FRASES_ESTIMULO: Record<number, string> = {
 
 export async function POST(req: Request) {
   try {
+    const auth = await requireAdminSession(req)
+    if (auth.response) return auth.response
+
     const payload = await req.json()
     const { candidato, proceso, respuestas } = payload
+    const respuestasEntries = Object.entries(respuestas || {})
+    if (!respuestas || typeof respuestas !== 'object' || respuestasEntries.length > 50 || respuestasEntries.some(([, value]) => String(value ?? '').length > 3000)) {
+      return NextResponse.json({ error: 'Las respuestas no tienen un formato o tamaño válido' }, { status: 400 })
+    }
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: 'Falta la llave de API de Gemini.' }, { status: 500 })

@@ -226,8 +226,8 @@ export const InformePDF = ({ data }: any) => {
                   {typeof f === 'object' ? (
                     <>
                       <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#14532d' }}>• {f.tendencia || f.competencia || f.titulo || f.nombre || f.fortaleza || 'Fortaleza'}</Text>
-                      <Text style={{ fontSize: 6, color: '#166534', marginLeft: 6 }}>QuÃ© se observa: {f.mecanismo || f.descripcion || f.queSeObserva || f.observacion || 'No especificado'}</Text>
-                      <Text style={{ fontSize: 6, color: '#166534', marginLeft: 6 }}>QuÃ© puede aportar: {f.impacto_organizacional || f.impacto || f.valor || f.consecuencia || f.quePuedeAportar || 'No especificado'}</Text>
+                      <Text style={{ fontSize: 6, color: '#166534', marginLeft: 6 }}>Qué se observa: {f.mecanismo || f.descripcion || f.queSeObserva || f.observacion || 'No especificado'}</Text>
+                      <Text style={{ fontSize: 6, color: '#166534', marginLeft: 6 }}>Qué puede aportar: {f.impacto_organizacional || f.impacto || f.valor || f.consecuencia || f.quePuedeAportar || 'No especificado'}</Text>
                     </>
                   ) : (
                     <Text style={{ fontSize: 7, color: '#14532d' }}>• {f}</Text>
@@ -242,8 +242,8 @@ export const InformePDF = ({ data }: any) => {
                   {typeof f === 'object' ? (
                     <>
                       <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#7c2d12' }}>• {f.tendencia || f.competencia || 'Área de mejora'}</Text>
-                      <Text style={{ fontSize: 6, color: '#9a3412', marginLeft: 6 }}>QuÃ© se observa: {f.mecanismo || f.descripcion || f.queSeObserva || f.observacion || 'No especificado'}</Text>
-                      <Text style={{ fontSize: 6, color: '#9a3412', marginLeft: 6 }}>QuÃ© puede aportar: {f.impacto_organizacional || f.impacto || f.valor || f.consecuencia || f.quePuedeAportar || 'No especificado'}</Text>
+                      <Text style={{ fontSize: 6, color: '#9a3412', marginLeft: 6 }}>Qué se observa: {f.mecanismo || f.descripcion || f.queSeObserva || f.observacion || 'No especificado'}</Text>
+                      <Text style={{ fontSize: 6, color: '#9a3412', marginLeft: 6 }}>Qué puede aportar: {f.impacto_organizacional || f.impacto || f.valor || f.consecuencia || f.quePuedeAportar || 'No especificado'}</Text>
                     </>
                   ) : (
                     <Text style={{ fontSize: 7, color: '#7c2d12' }}>• {f}</Text>

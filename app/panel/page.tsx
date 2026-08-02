@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -216,7 +216,7 @@ async function generarResumenIA(candidato: CandidatoAgrupado) {
 
     const response = await fetch('/api/ia-summary', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAdminHeaders(),
       body: JSON.stringify({ prompt })
     })
     const data = await response.json()
@@ -253,7 +253,7 @@ export default function PanelEvaluador() {
     if (procesandoVideos[respuestaId]) return
     setProcesandoVideos(prev => ({ ...prev, [respuestaId]: true }))
     try {
-      const res = await fetch('/api/analizar-video', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url_video: urlVideo, respuesta_id: respuestaId }) })
+      const res = await fetch('/api/analizar-video', { method: 'POST', headers: await getAdminHeaders(), body: JSON.stringify({ url_video: urlVideo, respuesta_id: respuestaId, candidato_id: agrupadoSeleccionado?.id, proceso_id: agrupadoSeleccionado?.proceso_id }) })
       const data = await res.json()
       if (!res.ok || !data.analisis) throw new Error(data.error || 'No se pudo analizar el video')
       setVideosCandidato(prev => prev.map((video, i) => i === idx ? { ...video, transcripcion: data.analisis.transcripcion, analisis_ia: data.analisis } : video))
@@ -345,111 +345,31 @@ export default function PanelEvaluador() {
   }
 
   async function cargarProcesos() {
-    const { data } = await supabase.from('procesos').select('*')
-    if (data) setProcesos(data)
+    const response = await fetch('/api/admin/procesos', {
+      headers: await getAdminHeaders(),
+      cache: 'no-store'
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(payload.error || 'No se pudieron cargar los procesos')
+    if (Array.isArray(payload.data)) setProcesos(payload.data)
   }
 
   async function cargarCandidatos() {
-    console.log("&&a [FRONTEND DIAGNOSTIC] Cargando candidatos con paginación tripartita...")
-    // 1. Obtener la totalidad de candidatos registrados (Paginado completo para superar l?mite de PostgREST API)
-    let candidatosTodos: any[] = []
-    let candPage = 0
-    const candPageSize = 1000
-    let candHasMore = true
+    console.log('[FRONTEND] Cargando datos administrativos mediante endpoint protegido...')
+    const response = await fetch('/api/admin/panel-data', {
+      headers: await getAdminHeaders(),
+      cache: 'no-store'
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(payload.error || 'No se pudieron cargar los datos administrativos')
 
-    while (candHasMore) {
-      const from = candPage * candPageSize
-      const to = from + candPageSize - 1
-      const { data: pageCandData, error: errCandPage } = await supabase
-        .from('candidatos')
-        .select('*')
-        .order('creado_en', { ascending: false })
-        .range(from, to)
-
-      if (errCandPage || !pageCandData || pageCandData.length === 0) {
-        candHasMore = false
-      } else {
-        candidatosTodos = [...candidatosTodos, ...pageCandData]
-        if (pageCandData.length < candPageSize) {
-          candHasMore = false
-        } else {
-          candPage++
-        }
-      }
-    }
-
-    // 2. Obtener los v  anculos activos con procesos en la tabla sesiones (Paginado completo para superar el l?mite de 1000 filas de PostgREST API)
-    let sesionesData: any[] = []
-    let page = 0
-    const pageSize = 1000
-    let hasMore = true
-
-    while (hasMore) {
-      const from = page * pageSize
-      const to = from + pageSize - 1
-      const { data: pageData, error: errSesPage } = await supabase
-        .from('sesiones')
-        .select(`
-          *,
-          procesos (id, nombre, cargo, competencias_requeridas, bateria_tests)
-        `)
-        .order('finalizada_en', { ascending: false })
-        .range(from, to)
-
-      if (errSesPage || !pageData || pageData.length === 0) {
-        hasMore = false
-      } else {
-        sesionesData = [...sesionesData, ...pageData]
-        if (pageData.length < pageSize) {
-          hasMore = false
-        } else {
-          page++
-        }
-      }
-    }
+    const candidatosTodos: any[] = payload.candidatos || []
+    const sesionesData: any[] = payload.sesiones || []
+    const respuestasVideo: any[] = payload.respuestasVideo || []
+    const preguntasVideo: any[] = payload.preguntasVideo || []
+    const progresoOperativo: any[] = payload.progresoOperativo || []
 
     if (sesionesData.length > 0) setSesionesGlobales(sesionesData)
-
-    // 3. Obtener la totalidad de respuestas de video (Paginado completo para superar l?mite de PostgREST API)
-    let respuestasVideo: any[] = []
-    let vidPage = 0
-    const vidPageSize = 1000
-    let vidHasMore = true
-
-    while (vidHasMore) {
-      const from = vidPage * vidPageSize
-      const to = from + vidPageSize - 1
-      const { data: pageVidData } = await supabase
-        .from('respuestas_video')
-        .select('candidato_id, entrevista_id, pregunta_id, grabada_en')
-        .range(from, to)
-
-      if (!pageVidData || pageVidData.length === 0) {
-        vidHasMore = false
-      } else {
-        respuestasVideo = [...respuestasVideo, ...pageVidData]
-        if (pageVidData.length < vidPageSize) {
-          vidHasMore = false
-        } else {
-          vidPage++
-        }
-      }
-    }
-
-    const { data: preguntasVideo } = await supabase
-      .from('preguntas_video')
-      .select('id, entrevista_id')
-    let progresoOperativo: any[] = []
-    try {
-      const progresoResponse = await fetch('/api/progreso-evaluacion', { headers: await getAdminHeaders() })
-      if (progresoResponse.ok) {
-        const progresoJson = await progresoResponse.json()
-        progresoOperativo = Array.isArray(progresoJson.data) ? progresoJson.data : []
-      }
-    } catch (error) {
-      console.warn('No se pudo consultar el progreso operativo:', error)
-    }
-
     const preguntasPorEntrevista: Record<string, number> = {}
     ;(preguntasVideo || []).forEach(p => {
       preguntasPorEntrevista[p.entrevista_id] = (preguntasPorEntrevista[p.entrevista_id] || 0) + 1

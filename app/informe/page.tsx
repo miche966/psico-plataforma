@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { normalizarPuntaje, colorPuntaje, PUNTAJES_VERSION, interpretacionVigente } from '@/lib/puntajes'
 import { supabase } from '@/lib/supabase'
+import { getAdminHeaders } from '@/lib/evaluacionLink'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { InformePDF } from '@/components/InformePDF'
 import Link from 'next/link'
@@ -298,50 +299,24 @@ function InformePageContent() {
 
   async function fetchAll() {
     try {
-      const { data: cand } = await supabase.from('candidatos').select('*').eq('id', id).single()
+      const response = await fetch('/api/admin/informe-data?candidato_id=' + encodeURIComponent(id || ''), {
+        headers: await getAdminHeaders(),
+        cache: 'no-store'
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.error || 'No se pudieron cargar los datos del informe')
+
+      const cand = payload.candidato
       if (!cand) return
       setCandidato(cand)
 
-      let pid = cand.proceso_id
-      const { data: sess } = await supabase.from('sesiones').select('*').eq('candidato_id', id).order('finalizada_en', { ascending: false })
-      const lista = sess || []
+      const lista: any[] = Array.isArray(payload.sesiones) ? payload.sesiones : []
       setSesiones(lista)
+      const procData = payload.proceso || null
+      setProceso(procData)
 
-      if (!pid && lista.length > 0) {
-        pid = lista.find(s => s.proceso_id)?.proceso_id
-      }
-
-      let procData = null
-      if (pid) {
-        const { data: proc } = await supabase.from('procesos').select('*').eq('id', pid).single()
-        procData = proc
-        setProceso(proc)
-      }
-
-      const { data: vids } = await supabase.from('respuestas_video').select('*').eq('candidato_id', id).eq('estado', 'completado')
-       
-       let mappedVids: any[] = []
-       if (vids && vids.length > 0) {
-         const preguntaIds = vids.map(v => v.pregunta_id).filter(Boolean)
-         let preguntas: any[] = []
-         if (preguntaIds.length > 0) {
-           const { data: pData } = await supabase
-             .from('preguntas_video')
-             .select('id, pregunta')
-             .in('id', preguntaIds)
-           if (pData) preguntas = pData
-         }
-         mappedVids = vids.map(v => {
-           const q = preguntas.find(p => p.id === v.pregunta_id)
-           return {
-             ...v,
-             preguntas_video: q ? { pregunta: q.pregunta } : null
-           }
-         })
-       }
-       setVideos(mappedVids)
-
-      // Cálculos de Auditoría y Potencial
+      const mappedVids = Array.isArray(payload.videos) ? payload.videos : []
+      setVideos(mappedVids)
       let aTab = 0, aCopia = 0, tDur = 0, sTime = 0
       
       lista.forEach(s => {
@@ -585,7 +560,7 @@ function InformePageContent() {
       const mbtiCalculado = inf.mbtiType || estimarMBTIDesdeSesiones(sesiones)
       const res = await fetch('/api/generar-informe', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAdminHeaders(),
         body: JSON.stringify({ candidato, proceso, sesiones, videos, actual: { ...inf, mbtiType: mbtiCalculado } })
       })
 
@@ -745,12 +720,14 @@ function InformePageContent() {
   async function guardar() {
     setSaving(true)
     try {
-      const { error } = await supabase.from('informes_psicometricos').upsert({
-        candidato_id: id,
-        contenido: inf,
-        actualizado_en: new Date().toISOString()
-      }, { onConflict: 'candidato_id' })
-      if (!error) alert('Informe guardado correctamente')
+      const response = await fetch('/api/admin/informe-data', {
+        method: 'POST',
+        headers: await getAdminHeaders(),
+        body: JSON.stringify({ candidato_id: id, contenido: inf })
+      })
+      const data = await response.json().catch(() => ({}))
+      if (response.ok) alert('Informe guardado correctamente')
+      else alert(data.error || 'No se pudo guardar el informe')
     } catch (e) {
       console.error(e)
     } finally {

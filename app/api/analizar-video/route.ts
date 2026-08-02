@@ -1,19 +1,47 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { requireAdminSession } from '@/lib/server/adminAuth'
+import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
 export async function POST(req: Request) {
   try {
-    const { url_video, respuesta_id } = await req.json()
+    const { url_video, respuesta_id, candidato_id, proceso_id, token } = await req.json()
 
-    if (!url_video || !respuesta_id) {
+    if (!respuesta_id || !candidato_id || !proceso_id) {
       return NextResponse.json({ error: 'Faltan datos' }, { status: 400 })
     }
+    if (String(respuesta_id).length > 100 || String(candidato_id).length > 100 || String(proceso_id).length > 100 || String(url_video || '').length > 4096) {
+      return NextResponse.json({ error: 'Los datos del video superan el límite permitido' }, { status: 400 })
+    }
 
+    const tokenValido = Boolean(token) && validarTokenEvaluacion(String(token), String(candidato_id), String(proceso_id))
+    if (!tokenValido) {
+      const auth = await requireAdminSession(req)
+      if (auth.response) return auth.response
+    }
+
+    const db = createSupabaseAdmin()
+    const { data: respuesta, error: respuestaError } = await db
+      .from('respuestas_video')
+      .select('id, candidato_id, url_video, entrevista_id')
+      .eq('id', respuesta_id)
+      .single()
+    if (respuestaError || !respuesta) return NextResponse.json({ error: 'Respuesta de video no encontrada' }, { status: 404 })
+    if (String(respuesta.candidato_id) !== String(candidato_id)) return NextResponse.json({ error: 'La respuesta no pertenece al candidato indicado' }, { status: 403 })
+
+    if (tokenValido) {
+      const { data: relation } = await db.from('candidatos_procesos').select('candidato_id').eq('candidato_id', candidato_id).eq('proceso_id', proceso_id).maybeSingle()
+      const { data: candidate } = await db.from('candidatos').select('proceso_id').eq('id', candidato_id).maybeSingle()
+      if (!relation && String(candidate?.proceso_id || '') !== String(proceso_id)) return NextResponse.json({ error: 'El candidato no pertenece al proceso indicado' }, { status: 403 })
+    }
+
+    const sourceUrl = String(respuesta.url_video || url_video || '')
+    if (!sourceUrl) return NextResponse.json({ error: 'La respuesta no tiene un video disponible' }, { status: 400 })
     // 1. Descargar el video desde la URL (o via Supabase SDK)
-    const response = await fetch(url_video)
+    const response = await fetch(sourceUrl)
     const videoBuffer = await response.arrayBuffer()
 
     const prompt = `
@@ -108,7 +136,7 @@ export async function POST(req: Request) {
     console.log(`[INFO] [ANALIZAR VIDEO] Análisis completado exitosamente en ${totalDuration}s para respuesta_id: ${respuesta_id}`)
 
     // 3. Actualizar la base de datos
-    const { error: updateError } = await supabase
+    const { error: updateError } = await db
       .from('respuestas_video')
       .update({
         transcripcion: analisis.transcripcion,

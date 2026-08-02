@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 
@@ -31,17 +30,24 @@ export default function ComercialPage() {
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
   const procesoId = searchParams.get('proceso')
+  const TEST_ID = 'a1b2c3d4-e5f6-7890-abcd-111111111111'
+  const [sesionIdActual, setSesionIdActual] = useState<string | null>(null)
   const [tiempoInicio] = useState(() => Date.now())
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0)
 
   useEffect(() => {
-    cargarItems()
-    if (candidatoId) {
-      supabase.from('candidatos').select('nombre, apellido')
-        .eq('id', candidatoId).single()
-        .then(({ data }) => { if (data) setNombreCandidato(`${data.nombre} ${data.apellido}`) })
+    async function iniciar() {
+      if (!candidatoId || !procesoId) return
+      const token = searchParams.get('token') || ''
+      const response = await fetch('/api/evaluacion/public-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'start', candidato_id: candidatoId, proceso_id: procesoId, token, test_id: TEST_ID }) })
+      const payload = await response.json().catch(() => ({}))
+      if (response.ok && payload.sesion?.id) { setSesionIdActual(payload.sesion.id); if (payload.alreadyCompleted) setFinalizado(true) }
+      const datos = await fetch(`/api/evaluacion/public-data?candidato=${encodeURIComponent(candidatoId)}&proceso=${encodeURIComponent(procesoId)}&token=${encodeURIComponent(token)}&test_id=${encodeURIComponent(TEST_ID)}`, { cache: 'no-store' })
+      const info = await datos.json().catch(() => ({}))
+      if (datos.ok) { setItems(info.items || []); if (info.candidato) setNombreCandidato(`${info.candidato.nombre} ${info.candidato.apellido}`); setCargando(false) }
     }
-  }, [candidatoId])
+    iniciar()
+  }, [candidatoId, procesoId, searchParams])
 
   useEffect(() => {
     if (finalizado) return
@@ -51,15 +57,7 @@ export default function ComercialPage() {
     return () => clearInterval(timer)
   }, [finalizado, tiempoInicio])
 
-  async function cargarItems() {
-    const { data, error } = await supabase
-      .from('items').select('*')
-      .eq('test_id', 'a1b2c3d4-e5f6-7890-abcd-111111111111')
-      .order('orden')
-    if (error) { console.error(error); return }
-    setItems(data || [])
-    setCargando(false)
-  }
+  // Los items y el candidato se cargan junto con la validación server-side del enlace.
 
   function responder(valor: number) {
     const item = items[itemActual]
@@ -90,24 +88,14 @@ export default function ComercialPage() {
       promedios[factor] = Math.round((suma / valores.length) * 10) / 10
     })
 
-    const { data: sesion, error } = await supabase.from('sesiones').insert({
-      test_id: 'a1b2c3d4-e5f6-7890-abcd-111111111111',
-      candidato_id: candidatoId || null,
-      proceso_id: procesoId || null,
-      estado: 'finalizado',
-      iniciada_en: new Date().toISOString(),
-      finalizada_en: new Date().toISOString(),
-      puntaje_bruto: promedios
-    }).select().single()
-
-    if (error || !sesion) { console.error(error); return }
-
-    await supabase.from('respuestas').insert(
-      todasLasRespuestas.map(r => ({
-        sesion_id: sesion.id, item_id: r.item_id,
-        valor: r.valor, tiempo_respuesta: 0
-      }))
-    )
+    if (!sesionIdActual || !candidatoId || !procesoId) return
+    const token = searchParams.get('token') || ''
+    const response = await fetch('/api/evaluacion/public-data', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'finalize', candidato_id: candidatoId, proceso_id: procesoId, token, test_id: TEST_ID, sesion_id: sesionIdActual, puntaje_bruto: promedios, respuestas: todasLasRespuestas.map(r => ({ ...r, tiempo_respuesta: 0 })) })
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) console.error('Error al guardar evaluación comercial:', payload.error)
   }
 
   if (cargando) return <div style={s.centro}><p>Cargando test...</p></div>

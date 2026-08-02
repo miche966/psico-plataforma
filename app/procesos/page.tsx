@@ -112,33 +112,18 @@ export default function ProcesosPage() {
   }, [])
 
   async function cargarDatos() {
-    const { data: procesosData } = await supabase
-      .from('procesos')
-      .select('*')
-      .order('creado_en', { ascending: false })
-
-    const { data: candidatosData } = await supabase
-      .from('candidatos')
-      .select('id, nombre, apellido, email')
-      .order('creado_en', { ascending: false })
-
-    // Intento con ordenamiento
-    let { data: entrevistasData, error: entError } = await supabase
-      .from('entrevistas_video')
-      .select('*')
-      .order('creada_en', { ascending: false })
-
-    // Fallback si falla el ordenamiento
-    if (entError) {
-      console.warn('Fallo ordenamiento de entrevistas, reintentando simple...');
-      const { data: simpleData } = await supabase.from('entrevistas_video').select('*')
-      entrevistasData = simpleData
+    try {
+      const response = await fetch('/api/admin/procesos', { headers: await getAdminHeaders(), cache: 'no-store' })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.error || 'No se pudieron cargar los procesos')
+      setProcesos(payload.data || [])
+      setCandidatos(payload.candidatos || [])
+      setEntrevistas(payload.entrevistas || [])
+    } catch (error) {
+      console.error('Error cargando procesos:', error)
+    } finally {
+      setCargando(false)
     }
-
-    setProcesos(procesosData || [])
-    setCandidatos(candidatosData || [])
-    setEntrevistas(entrevistasData || [])
-    setCargando(false)
   }
 
   async function guardarProceso() {
@@ -211,55 +196,44 @@ export default function ProcesosPage() {
   async function verCandidatosProceso(proceso: Proceso) {
     setProcesoSeleccionado(proceso)
 
-    // 1. Obtener todas las sesiones vinculadas a este proceso
-    const { data: sesiones } = await supabase
-      .from('sesiones')
-      .select('candidato_id, test_id, estado')
-      .eq('proceso_id', proceso.id)
-      .not('candidato_id', 'is', null)
-
-    const ids = Array.from(new Set(sesiones?.map(s => s.candidato_id) || []))
+    const response = await fetch(`/api/admin/procesos?proceso_id=${encodeURIComponent(proceso.id)}`, {
+      headers: await getAdminHeaders(),
+      cache: 'no-store'
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      alert(payload.error || 'No se pudo cargar el progreso del proceso')
+      setCandidatosProceso([])
+      return
+    }
+    const sesiones: any[] = payload.sesiones || []
+    const ids = Array.from(new Set(sesiones.map((s: any) => s.candidato_id).filter(Boolean)))
+    const candData: any[] = (payload.candidatos || []).filter((c: any) => ids.includes(c.id))
+    const respVideo: any[] = (payload.respuestasVideo || []).filter((v: any) => ids.includes(v.candidato_id))
+    const todasPreguntas: any[] = payload.preguntasVideo || []
 
     if (ids.length > 0) {
-      // 2. Obtener datos de los candidatos
-      const { data: candData } = await supabase
-        .from('candidatos')
-        .select('id, nombre, apellido, email')
-        .in('id', ids)
-      
-      // 3. Obtener respuestas de video para estos candidatos
-      const { data: respVideo } = await supabase
-        .from('respuestas_video')
-        .select('candidato_id, entrevista_id, pregunta_id')
-        .in('candidato_id', ids)
-        .eq('estado', 'completado')
-
-      // 3.5 Obtener todas las preguntas de video para saber la cantidad de preguntas por entrevista
-      const { data: todasPreguntas } = await supabase
-        .from('preguntas_video')
-        .select('id, entrevista_id')
-
       const preguntasPorEntrevista: Record<string, number> = {}
-      todasPreguntas?.forEach(p => {
+      todasPreguntas?.forEach((p: any) => {
         preguntasPorEntrevista[p.entrevista_id] = (preguntasPorEntrevista[p.entrevista_id] || 0) + 1
       })
 
       const bateria = proceso.bateria_tests || []
       
-      const candidatosConProgreso = (candData || []).map(c => {
-        const misSesiones = sesiones?.filter(s => s.candidato_id === c.id) || []
-        const misVideos = respVideo?.filter(rv => rv.candidato_id === c.id) || []
+      const candidatosConProgreso = (candData || []).map((c: any) => {
+        const misSesiones = sesiones?.filter((s: any) => s.candidato_id === c.id) || []
+        const misVideos = respVideo?.filter((rv: any) => rv.candidato_id === c.id) || []
         
         // Agrupar videos únicos por pregunta_id
         const videosUnicosMap = new Map<string, any>()
-        misVideos.forEach(v => {
+        misVideos.forEach((v: any) => {
           const k = `${v.entrevista_id}:${v.pregunta_id}`
           videosUnicosMap.set(k, v)
         })
 
         const completadosLocal: string[] = []
         
-        misSesiones.forEach(s => {
+        misSesiones.forEach((s: any) => {
           const key = TEST_IDS[s.test_id]
           if (key && bateria.includes(key)) completadosLocal.push(key)
         })
@@ -377,14 +351,20 @@ export default function ProcesosPage() {
 
   async function verPreviewEntrevista(id: string, nombre: string) {
     setCargandoPreview(true)
-    const { data } = await supabase
-      .from('preguntas_video')
-      .select('*')
-      .eq('entrevista_id', id)
-      .order('orden')
-    
-    setPreviewEntrevista({ nombre, preguntas: data || [] })
-    setCargandoPreview(false)
+    try {
+      const response = await fetch(`/api/admin/entrevista-video?id=${encodeURIComponent(id)}`, {
+        headers: await getAdminHeaders(),
+        cache: 'no-store'
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.error || 'No se pudieron cargar las preguntas')
+      setPreviewEntrevista({ nombre, preguntas: payload.preguntas || [] })
+    } catch (error) {
+      console.error('Error cargando vista previa:', error)
+      alert(error instanceof Error ? error.message : 'No se pudo cargar la vista previa')
+    } finally {
+      setCargandoPreview(false)
+    }
   }
 
   function formatearFecha(fecha: string) {

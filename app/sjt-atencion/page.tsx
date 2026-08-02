@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
+
+const TEST_ID = 'f6a7b8c9-d0e1-2345-fabc-666666666666'
 
 interface Item {
   id: string
@@ -29,14 +30,17 @@ export default function SjtAtencionPage() {
   const procesoId = searchParams.get('proceso')
 
   useEffect(() => {
-    cargarItems()
-    if (candidatoId) {
-      supabase.from('candidatos').select('nombre, apellido')
-        .eq('id', candidatoId).single()
-        .then(({ data }) => { if (data) setNombreCandidato(`${data.nombre} ${data.apellido}`) })
+    const cargarDatos = async () => {
+      const token = searchParams.get('token') || ''
+      const response = await fetch(`/api/evaluacion/public-data?candidato=${encodeURIComponent(candidatoId || '')}&proceso=${encodeURIComponent(procesoId || '')}&token=${encodeURIComponent(token)}&test_id=${encodeURIComponent(TEST_ID)}`, { cache: 'no-store' })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) { console.error(payload.error); return }
+      setItems(payload.items || [])
+      if (payload.candidato) setNombreCandidato(`${payload.candidato.nombre} ${payload.candidato.apellido}`)
+      setCargando(false)
     }
-  }, [candidatoId])
-
+    cargarDatos()
+  }, [candidatoId, procesoId, searchParams])
   const avanzar = useCallback((respuestaActual?: string) => {
     const item = items[itemActual]
     if (!item) return
@@ -63,16 +67,6 @@ export default function SjtAtencionPage() {
     return () => clearInterval(timer)
   }, [items, finalizado, avanzar])
 
-  async function cargarItems() {
-    const { data, error } = await supabase
-      .from('items').select('*')
-      .eq('test_id', 'f6a7b8c9-d0e1-2345-fabc-666666666666')
-      .order('orden')
-    if (error) { console.error(error); return }
-    setItems(data || [])
-    setCargando(false)
-  }
-
   async function terminarTest(todasLasRespuestas: Record<string, string>, todosLosItems: Item[]) {
     let correctas = 0
     const porFactor: Record<string, { correctas: number, total: number }> = {}
@@ -86,24 +80,14 @@ export default function SjtAtencionPage() {
     })
     const resultado = { correctas, total: todosLosItems.length, porcentaje: Math.round((correctas / todosLosItems.length) * 100), por_factor: porFactor }
     setFinalizado(true)
-    const { data: sesion, error } = await supabase.from('sesiones').insert({
-      test_id: 'f6a7b8c9-d0e1-2345-fabc-666666666666',
-      candidato_id: candidatoId || null,
-      proceso_id: procesoId || null,
-      estado: 'finalizado',
-      iniciada_en: new Date().toISOString(),
-      finalizada_en: new Date().toISOString(),
-      puntaje_bruto: resultado
-    }).select().single()
-    if (error || !sesion) return
-    await supabase.from('respuestas').insert(
-      todosLosItems.map(item => ({
-        sesion_id: sesion.id, item_id: item.id,
-        valor: todasLasRespuestas[item.id] === item.respuesta_correcta ? 1 : 0,
-        tiempo_respuesta: 0
-      }))
-    )
-  }
+    if (!candidatoId || !procesoId) return
+    const token = searchParams.get('token') || ''
+    const response = await fetch('/api/evaluacion/public-data', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'finalize', candidato_id: candidatoId, proceso_id: procesoId, token, test_id: TEST_ID, puntaje_bruto: resultado, respuestas: todosLosItems.map(item => ({ item_id: item.id, valor: todasLasRespuestas[item.id] === item.respuesta_correcta ? 1 : 0, tiempo_respuesta: 0 })) })
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) console.error('Error al guardar la evaluación SJT:', payload.error)  }
 
   function responder(opcion: string) {
     setSeleccionada(opcion)

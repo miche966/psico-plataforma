@@ -47,38 +47,22 @@ export default function RevisarPage() {
   }, [entrevistaId])
 
   async function cargarDatos() {
-    const { data: entrevistaData } = await supabase
-      .from('entrevistas_video').select('*').eq('id', entrevistaId).single()
-    setEntrevista(entrevistaData)
-
-    const { data: preguntasData } = await supabase
-      .from('preguntas_video').select('*')
-      .eq('entrevista_id', entrevistaId).order('orden')
-    setPreguntas(preguntasData || [])
-
-    const { data: respuestasData } = await supabase
-      .from('respuestas_video').select('*')
-      .eq('entrevista_id', entrevistaId)
-      .eq('estado', 'completado')
-      .order('grabada_en', { ascending: false })
-
-    const candidatoIds = respuestasData?.filter(r => r.candidato_id).map(r => r.candidato_id) || []
-    let candidatos: { id: string, nombre: string, apellido: string, email: string }[] = []
-    if (candidatoIds.length > 0) {
-      const { data } = await supabase.from('candidatos')
-        .select('id, nombre, apellido, email').in('id', candidatoIds)
-      candidatos = data || []
+    const auth = await supabase.auth.getSession()
+    const token = auth.data.session?.access_token
+    const response = await fetch(`/api/admin/entrevista-video?id=${encodeURIComponent(entrevistaId || '')}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      cache: 'no-store'
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      console.error('Error cargando entrevista:', payload.error)
+      setCargando(false)
+      return
     }
-
-    const respuestasConCandidato = respuestasData?.map(r => ({
-      ...r,
-      candidato: candidatos.find(c => c.id === r.candidato_id)
-    })) || []
-
-    setRespuestas(respuestasConCandidato)
-    if (preguntasData && preguntasData.length > 0) {
-      setPreguntaSeleccionada(preguntasData[0].id)
-    }
+    setEntrevista(payload.entrevista || null)
+    setPreguntas(payload.preguntas || [])
+    setRespuestas(payload.respuestas || [])
+    if (payload.preguntas?.length > 0) setPreguntaSeleccionada(payload.preguntas[0].id)
     setCargando(false)
   }
 
