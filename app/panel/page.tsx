@@ -149,23 +149,23 @@ const TEST_IDS: Record<string, string> = {
 const TEST_NAMES: Record<string, string> = {
   'a1b2c3d4-e5f6-7890-abcd-ef1234567890': 'Big Five (Personalidad)',
   'f6a7b8c9-d0e1-2345-fabc-456789012345': 'ICAR (Capacidad Cognitiva)',
-  'd0e1f2a3-b4c5-6789-defa-000000000001': 'Estrés Laboral',
+  'd0e1f2a3-b4c5-6789-defa-000000000001': 'Estr\u00e9s Laboral',
   'e1f2a3b4-c5d6-7890-efab-111222333444': 'Creatividad',
   'e5f6a7b8-c9d0-1234-efab-345678901234': 'Integridad',
   'b2c3d4e5-f6a7-8901-bcde-f12345678901': 'HEXACO',
-  'c3d4e5f6-a7b8-9012-cdef-123456789012': 'Razonamiento Numérico',
+  'c3d4e5f6-a7b8-9012-cdef-123456789012': 'Razonamiento Num\u00e9rico',
   'd4e5f6a7-b8c9-0123-defa-234567890123': 'Razonamiento Verbal',
   'a7b8c9d0-e1f2-3456-abcd-777777777777': 'SJT Ventas',
   'e5f6a7b8-c9d0-1234-efab-555555555555': 'SJT Cobranzas',
-  'f2a3b4c5-d6e7-8901-fabc-222333444555': 'SJT Resolución de Problemas',
+  'f2a3b4c5-d6e7-8901-fabc-222333444555': 'SJT Resoluci\u00f3n de Problemas',
   'c9d0e1f2-a3b4-5678-cdef-999999999999': 'SJT Legal',
   'b2c3d4e5-f6a7-8901-bcde-222222222222': 'SJT Comercial',
   'a1b2c3d4-e5f6-7890-abcd-111111111111': 'Perfil Comercial',
-  'b8c9d0e1-f2a3-4567-bcde-888888888888': 'Atención al Detalle',
-  'f6a7b8c9-d0e1-2345-fabc-666666666666': 'SJT Atención al Cliente',
+  'b8c9d0e1-f2a3-4567-bcde-888888888888': 'Atenci\u00f3n al Detalle',
+  'f6a7b8c9-d0e1-2345-fabc-666666666666': 'SJT Atenci\u00f3n al Cliente',
   '7a8b9c0d-e1f2-4356-abcd-999999999999': 'DASS-21 (Salud Mental)',
-  'c3d4e5f6-a7b8-9012-cdef-999999999999': 'Simulación de Roleplay IA',
-  'roleplay': 'Simulación de Roleplay IA',
+  'c3d4e5f6-a7b8-9012-cdef-999999999999': 'Simulaci\u00f3n de Roleplay IA',
+  'roleplay': 'Simulaci\u00f3n de Roleplay IA',
 }
 
 const colores: Record<string, string> = {
@@ -1223,9 +1223,9 @@ export default function PanelEvaluador() {
                                 ))}
                               </div>
                             </div>
-                            {!v.analisis_ia && v.url_video && (
+                            {(!v.transcripcion || !v.analisis_ia) && v.url_video && (
                               <button onClick={() => procesarVideoConIA(v.id, v.url_video, i)} disabled={procesandoVideos[v.id]} className="mt-2 w-full rounded-lg border border-indigo-200 bg-indigo-50 py-2 text-[10px] font-bold text-indigo-700 disabled:opacity-50">
-                                {procesandoVideos[v.id] ? 'Analizando video...' : 'Analizar video con IA'}
+                                {procesandoVideos[v.id] ? 'Generando transcripción...' : 'Generar transcripción y análisis'}
                               </button>
                             )}
                             {v.transcripcion && <div className="bg-white p-3 rounded-xl border border-slate-200 text-[11px] text-slate-600 italic">"{v.transcripcion}"</div>}
