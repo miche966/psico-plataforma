@@ -30,21 +30,21 @@ const RUTAS: Record<string, string> = {
 const NOMBRES_TESTS: Record<string, { nombre: string, duracion: string }> = {
   bigfive: { nombre: 'Test de Personalidad (Big Five)', duracion: '15-20 min' },
   hexaco: { nombre: 'Perfil de Personalidad (HEXACO)', duracion: '20 min' },
-  numerico: { nombre: 'Razonamiento NumÃ©rico', duracion: '15 min' },
+  numerico: { nombre: 'Razonamiento Numérico', duracion: '15 min' },
   verbal: { nombre: 'Razonamiento Verbal', duracion: '15 min' },
   integridad: { nombre: 'Test de Integridad Laboral', duracion: '10 min' },
   icar: { nombre: 'Razonamiento Cognitivo Abstracto (ICAR)', duracion: '15 min' },
   comercial: { nombre: 'Perfil Comercial', duracion: '15 min' },
-  'sjt-comercial': { nombre: 'Casos PrÃ¡cticos: Comercial', duracion: '20 min' },
-  'tolerancia-frustracion': { nombre: 'Tolerancia a la FrustraciÃ³n', duracion: '10 min' },
-  'sjt-cobranzas': { nombre: 'Casos PrÃ¡cticos: Cobranzas', duracion: '20 min' },
-  'sjt-atencion': { nombre: 'Casos PrÃ¡cticos: AtenciÃ³n al Cliente', duracion: '15 min' },
-  'sjt-ventas': { nombre: 'Casos PrÃ¡cticos: Ventas', duracion: '20 min' },
-  'atencion-detalle': { nombre: 'AtenciÃ³n al Detalle', duracion: '10 min' },
-  'sjt-legal': { nombre: 'Casos PrÃ¡cticos: Legal', duracion: '20 min' },
-  'estres-laboral': { nombre: 'Afrontamiento del EstrÃ©s', duracion: '15 min' },
-  creatividad: { nombre: 'Creatividad e InnovaciÃ³n', duracion: '15 min' },
-  'sjt-problemas': { nombre: 'ResoluciÃ³n de Problemas', duracion: '20 min' },
+  'sjt-comercial': { nombre: 'Casos Prácticos: Comercial', duracion: '20 min' },
+  'tolerancia-frustracion': { nombre: 'Tolerancia a la Frustración', duracion: '10 min' },
+  'sjt-cobranzas': { nombre: 'Casos Prácticos: Cobranzas', duracion: '20 min' },
+  'sjt-atencion': { nombre: 'Casos Prácticos: Atención al Cliente', duracion: '15 min' },
+  'sjt-ventas': { nombre: 'Casos Prácticos: Ventas', duracion: '20 min' },
+  'atencion-detalle': { nombre: 'Atención al Detalle', duracion: '10 min' },
+  'sjt-legal': { nombre: 'Casos Prácticos: Legal', duracion: '20 min' },
+  'estres-laboral': { nombre: 'Afrontamiento del Estrés', duracion: '15 min' },
+  creatividad: { nombre: 'Creatividad e Innovación', duracion: '15 min' },
+  'sjt-problemas': { nombre: 'Resolución de Problemas', duracion: '20 min' },
 }
 
 // Mapeo de IDs de base de datos a llaves de test
@@ -87,7 +87,7 @@ export default function PortalCandidatoPage() {
 
   useEffect(() => {
     if (!candidatoId || !procesoId) {
-      setError('Link invÃ¡lido. Por favor, contacta al equipo de selecciÃ³n.')
+      setError('Link inválido. Por favor, contacta al equipo de selección.')
       setCargando(false)
       return
     }
@@ -100,8 +100,8 @@ export default function PortalCandidatoPage() {
       const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       setStream(s)
     } catch (err) {
-      console.error("Error al activar cÃ¡mara:", err)
-      alert("No pudimos acceder a tu cÃ¡mara o micrÃ³fono. Por favor, asegÃºrate de dar los permisos necesarios en tu navegador.")
+      console.error("Error al activar cámara:", err)
+      alert("No pudimos acceder a tu cámara o micrófono. Por favor, asegúrate de dar los permisos necesarios en tu navegador.")
     }
   }
 
@@ -124,7 +124,7 @@ export default function PortalCandidatoPage() {
       if (errProc) console.error("Error al cargar proceso:", errProc)
 
       if (!cand) throw new Error(`Candidato no encontrado en la base de datos (ID: ${candidatoId})`)
-      if (!proc) throw new Error(`Proceso de selecciÃ³n no encontrado (ID: ${procesoId})`)
+      if (!proc) throw new Error(`Proceso de selección no encontrado (ID: ${procesoId})`)
 
       setCandidato(cand)
       setProceso(proc)
@@ -235,28 +235,28 @@ export default function PortalCandidatoPage() {
       <div className="min-h-screen bg-slate-50 py-12 px-4 flex items-center justify-center">
         <div className="max-w-2xl w-full bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
           <div className="bg-indigo-600 p-8 text-white text-center">
-            <h1 className="text-2xl font-bold mb-2">Â¡Hola, {candidato?.nombre}!</h1>
-            <p className="text-indigo-100 opacity-90">Antes de comenzar, aseguremonos que tu equipo estÃ© listo.</p>
+            <h1 className="text-2xl font-bold mb-2">¡Hola, {candidato?.nombre}!</h1>
+            <p className="text-indigo-100 opacity-90">Antes de comenzar, aseguremonos que tu equipo esté listo.</p>
           </div>
           
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
               <div>
                 <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                  <Camera className="w-5 h-5 text-indigo-600" /> Prueba de CÃ¡mara
+                  <Camera className="w-5 h-5 text-indigo-600" /> Prueba de Cámara
                 </h3>
                 <p className="text-sm text-slate-500 mb-6 leading-relaxed">
-                  Para las video-entrevistas, es importante que tu rostro estÃ© bien iluminado y centrado en la pantalla.
+                  Para las video-entrevistas, es importante que tu rostro esté bien iluminado y centrado en la pantalla.
                 </p>
                 
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
                     <Mic className="w-4 h-4 text-slate-400" />
-                    <span className="text-xs font-medium text-slate-600">MicrÃ³fono detectado</span>
+                    <span className="text-xs font-medium text-slate-600">Micrófono detectado</span>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
                     <Video className="w-4 h-4 text-slate-400" />
-                    <span className="text-xs font-medium text-slate-600">CÃ¡mara lista</span>
+                    <span className="text-xs font-medium text-slate-600">Cámara lista</span>
                   </div>
                 </div>
               </div>
@@ -284,7 +284,7 @@ export default function PortalCandidatoPage() {
                     onClick={activarCamara}
                     className="absolute inset-0 w-full h-full bg-indigo-600/10 hover:bg-indigo-600/20 transition-colors rounded-2xl flex items-center justify-center"
                   >
-                    <span className="bg-white text-indigo-600 px-4 py-2 rounded-full text-xs font-bold shadow-md">Activar CÃ¡mara</span>
+                    <span className="bg-white text-indigo-600 px-4 py-2 rounded-full text-xs font-bold shadow-md">Activar Cámara</span>
                   </button>
                 )}
               </div>
@@ -292,7 +292,7 @@ export default function PortalCandidatoPage() {
 
             <div className="mt-10 pt-8 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
               <p className="text-xs text-slate-400 max-w-sm text-center md:text-left">
-                Al continuar, confirmas que tu equipo funciona correctamente y estÃ¡s en un lugar tranquilo para realizar las pruebas.
+                Al continuar, confirmas que tu equipo funciona correctamente y estás en un lugar tranquilo para realizar las pruebas.
               </p>
               <button
                 onClick={() => {
@@ -301,7 +301,7 @@ export default function PortalCandidatoPage() {
                 }}
                 className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-100 transition-all hover:-translate-y-0.5"
               >
-                Todo funciona bien, Â¡empecemos!
+                Todo funciona bien, ¡empecemos!
               </button>
             </div>
           </div>
@@ -334,16 +334,16 @@ export default function PortalCandidatoPage() {
           <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
             <CheckCircle className="w-10 h-10" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-4">Â¡EvaluaciÃ³n Completada!</h1>
+          <h1 className="text-3xl font-bold text-slate-900 mb-4">¡Evaluación Completada!</h1>
           <p className="text-slate-600 mb-8 leading-relaxed">
             Gracias por tu tiempo, <span className="font-semibold text-slate-900">{candidato?.nombre}</span>. 
-            Has finalizado exitosamente todas las pruebas para la posiciÃ³n de <span className="font-semibold text-slate-900">{proceso?.cargo}</span>.
+            Has finalizado exitosamente todas las pruebas para la posición de <span className="font-semibold text-slate-900">{proceso?.cargo}</span>.
           </p>
           
           <div className="bg-slate-50 rounded-2xl p-6 text-left border border-slate-100">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">PrÃ³ximos pasos</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Próximos pasos</p>
             <p className="text-sm text-slate-600 mb-4 leading-relaxed">
-              Tus resultados han sido enviados al equipo de selecciÃ³n para su anÃ¡lisis. Nos pondremos en contacto contigo a la brevedad.
+              Tus resultados han sido enviados al equipo de selección para su análisis. Nos pondremos en contacto contigo a la brevedad.
             </p>
             <div className="space-y-3 pt-2 border-t border-slate-200">
               <p className="text-sm text-slate-700 flex items-center gap-3">
@@ -361,10 +361,10 @@ export default function PortalCandidatoPage() {
     )
   }
 
-  // Vista de TransiciÃ³n (Flujo Lineal)
+  // Vista de Transición (Flujo Lineal)
   if (recienCompletado && proximoTest) {
     const esEntrevista = proximoTest.startsWith('entrevista:')
-    const testInfo = NOMBRES_TESTS[proximoTest] || { nombre: esEntrevista ? 'Entrevista en Video' : proximoTest, duracion: esEntrevista ? 'VarÃ­a' : '15 min' }
+    const testInfo = NOMBRES_TESTS[proximoTest] || { nombre: esEntrevista ? 'Entrevista en Video' : proximoTest, duracion: esEntrevista ? 'Varía' : '15 min' }
     
     return (
       <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 flex items-center justify-center">
@@ -374,25 +374,25 @@ export default function PortalCandidatoPage() {
               <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
                 <CheckCircle2 className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-xl font-bold">Â¡Buen trabajo!</h2>
+              <h2 className="text-xl font-bold">¡Buen trabajo!</h2>
               <p className="text-green-100 text-sm mt-1">Has completado el ejercicio anterior</p>
             </div>
             
             <div className="p-8 text-center">
               <div className="mb-6">
                 <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full uppercase tracking-wider border border-indigo-100">
-                  PrÃ³ximo paso
+                  Próximo paso
                 </span>
                 <h3 className="text-2xl font-bold text-slate-900 mt-3 mb-2">{testInfo.nombre}</h3>
                 <div className="flex items-center justify-center gap-2 text-sm text-slate-500 font-medium">
                   <Clock className="w-4 h-4" />
-                  DuraciÃ³n estimada: {testInfo.duracion}
+                  Duración estimada: {testInfo.duracion}
                 </div>
               </div>
 
               <div className="bg-slate-50 rounded-2xl p-5 mb-8 text-left border border-slate-100">
                 <p className="text-xs text-slate-500 leading-relaxed italic">
-                  "Recuerda que no puedes dejar la evaluaciÃ³n inconclusa. Este es el siguiente paso necesario para completar tu postulaciÃ³n para <strong>{proceso?.cargo}</strong>."
+                  "Recuerda que no puedes dejar la evaluación inconclusa. Este es el siguiente paso necesario para completar tu postulación para <strong>{proceso?.cargo}</strong>."
                 </p>
               </div>
 
@@ -438,7 +438,7 @@ export default function PortalCandidatoPage() {
             Hola, {candidato?.nombre}
           </h1>
           <p className="text-slate-600 text-lg">
-            EstÃ¡s participando en el proceso para <span className="font-semibold text-slate-900">{proceso?.cargo}</span>
+            Estás participando en el proceso para <span className="font-semibold text-slate-900">{proceso?.cargo}</span>
           </p>
         </div>
 
@@ -446,7 +446,7 @@ export default function PortalCandidatoPage() {
           <div className="p-6 md:p-8 border-b border-slate-100 bg-slate-50/50">
             <h2 className="text-lg font-bold text-slate-900 mb-2">Tus Pruebas Asignadas</h2>
             <p className="text-sm text-slate-500">
-              Por favor, completa todas las pruebas a continuaciÃ³n para finalizar tu postulaciÃ³n.
+              Por favor, completa todas las pruebas a continuación para finalizar tu postulación.
             </p>
             
             <div className="mt-6 flex items-center gap-3">
@@ -465,7 +465,7 @@ export default function PortalCandidatoPage() {
           <div className="divide-y divide-slate-100 p-2">
             {bateria.map((testKey, index) => {
               const esEntrevista = testKey.startsWith('entrevista:')
-              const testInfo = NOMBRES_TESTS[testKey] || { nombre: esEntrevista ? 'Entrevista en Video' : testKey, duracion: esEntrevista ? 'VarÃ­a' : '15 min' }
+              const testInfo = NOMBRES_TESTS[testKey] || { nombre: esEntrevista ? 'Entrevista en Video' : testKey, duracion: esEntrevista ? 'Varía' : '15 min' }
               const completado = testsCompletados.includes(testKey)
               const esSiguiente = !completado && (index === 0 || testsCompletados.includes(bateria[index-1]))
 
@@ -483,7 +483,7 @@ export default function PortalCandidatoPage() {
                       </h3>
                       <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
                         <Clock className="w-3.5 h-3.5" />
-                        DuraciÃ³n est.: {testInfo.duracion}
+                        Duración est.: {testInfo.duracion}
                       </div>
                     </div>
                   </div>
