@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { UserPlus, ChevronRight, CheckCircle2, AlertCircle, Building2 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
@@ -10,27 +9,6 @@ interface Proceso {
   id: string
   nombre: string
   cargo: string
-}
-
-const SLUG_TO_ID: Record<string, string> = {
-  'bigfive': 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-  'icar': 'f6a7b8c9-d0e1-2345-fabc-456789012345',
-  'estres-laboral': 'd0e1f2a3-b4c5-6789-defa-000000000001',
-  'creatividad': 'e1f2a3b4-c5d6-7890-efab-111222333444',
-  'integridad': 'e5f6a7b8-c9d0-1234-efab-345678901234',
-  'hexaco': 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
-  'numerico': 'c3d4e5f6-a7b8-9012-cdef-123456789012',
-  'verbal': 'd4e5f6a7-b8c9-0123-defa-234567890123',
-  'sjt-ventas': 'a7b8c9d0-e1f2-3456-abcd-777777777777',
-  'tolerancia-frustracion': 'e5f6a7b8-c9d0-1234-efab-555555555555',
-  'sjt-problemas': 'f2a3b4c5-d6e7-8901-fabc-222333444555',
-  'sjt-legal': 'c9d0e1f2-a3b4-5678-cdef-999999999999',
-  'sjt-comercial': 'b2c3d4e5-f6a7-8901-bcde-222222222222',
-  'comercial': 'a1b2c3d4-e5f6-7890-abcd-111111111111',
-  'atencion-detalle': 'b8c9d0e1-f2a3-4567-bcde-888888888888',
-  'sjt-atencion': 'f6a7b8c9-d0e1-2345-fabc-666666666666',
-  'sjt-cobranzas': 'e9b2c3d4-f5a6-7890-bcde-999999999999',
-  'dass21': '7a8b9c0d-e1f2-4356-abcd-999999999999',
 }
 
 export default function UnirsePage() {
@@ -63,14 +41,10 @@ export default function UnirsePage() {
 
   async function cargarProcesos() {
     try {
-      const { data, error } = await supabase
-        .from('procesos')
-        .select('id, nombre, cargo')
-        .eq('activo', true)
-        .order('creado_en', { ascending: false })
-
-      if (error) throw error
-      setProcesos(data || [])
+      const response = await fetch('/api/unirse', { cache: 'no-store' })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'Error cargando procesos')
+      setProcesos(data.procesos || [])
     } catch (err) {
       console.error('Error cargando procesos:', err)
       setError('No pudimos cargar las búsquedas activas. Por favor, intenta más tarde.')
@@ -90,93 +64,30 @@ export default function UnirsePage() {
     setError(null)
 
     try {
-      // 1. Verificar si el candidato ya existe (por email o documento)
-      let { data: candidato, error: candError } = await supabase
-        .from('candidatos')
-        .select('*')
-        .or(`email.eq.${form.email},documento.eq.${form.documento}`)
-        .maybeSingle()
-
-      if (!candidato) {
-        // Crear el candidato si no existe
-        const { data: nuevoCandidato, error: createError } = await supabase
-          .from('candidatos')
-          .insert({
-            nombre: form.nombres,
-            apellido: form.apellidos,
-            email: form.email,
-            documento: form.documento,
-            edad: parseInt(form.edad),
-            sexo: form.sexo,
-            formacion: form.formacion,
-            profesion: form.profesion
-          })
-          .select()
-          .single()
-        
-        if (createError) throw createError
-        candidato = nuevoCandidato
-      } else {
-        // Si el candidato existe, actualizar sus datos por si cambiaron (opcional, pero profesional)
-        await supabase.from('candidatos').update({
-          nombre: form.nombres,
-          apellido: form.apellidos,
-          edad: parseInt(form.edad),
+      const response = await fetch('/api/unirse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombres: form.nombres,
+          apellidos: form.apellidos,
+          email: form.email,
+          documento: form.documento,
+          edad: form.edad,
           sexo: form.sexo,
           formacion: form.formacion,
-          profesion: form.profesion
-        }).eq('id', candidato.id)
-      }
+          profesion: form.profesion,
+          procesoId: form.procesoId
+        })
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'Hubo un problema al procesar tu registro. Por favor, intenta de nuevo.')
 
-      if (candError) throw candError
+      // Redirigir a la evaluación con el enlace firmado
+      router.push(`/evaluacion?candidato=${data.candidato_id}&proceso=${data.proceso_id}&token=${encodeURIComponent(data.token)}`)
 
-      // 2. Verificar si ya tiene el vínculo con el proceso y sesiones creadas
-      const { data: sesionesExistentes } = await supabase
-        .from('sesiones')
-        .select('id')
-        .eq('candidato_id', candidato.id)
-        .eq('proceso_id', form.procesoId)
-        .limit(1)
-
-      // 3. Solo crear el vínculo inicial si NO tiene sesiones previas
-      if (!sesionesExistentes || sesionesExistentes.length === 0) {
-        const { data: procData } = await supabase
-          .from('procesos')
-          .select('bateria_tests')
-          .eq('id', form.procesoId)
-          .single()
-
-        if (procData) {
-          const slugPrimerTest = procData.bateria_tests?.[0] || 'bigfive'
-          let testIdFinal = slugPrimerTest
-          if (slugPrimerTest.startsWith('entrevista:')) testIdFinal = slugPrimerTest.split(':')[1]
-          else if (SLUG_TO_ID[slugPrimerTest]) testIdFinal = SLUG_TO_ID[slugPrimerTest]
-
-          await supabase.from('sesiones').insert({
-            candidato_id: candidato.id,
-            proceso_id: form.procesoId,
-            test_id: testIdFinal,
-            estado: 'pendiente'
-          })
-          
-          // Asegurar vínculo en tabla relacional para el panel
-          await supabase.from('candidatos_procesos').upsert({
-            candidato_id: candidato.id,
-            proceso_id: form.procesoId
-          })
-        }
-      }
-
-      // 4. Redirigir a la evaluación (Perfil recuperado o nuevo)
-      router.push(`/evaluacion?candidato=${candidato.id}&proceso=${form.procesoId}`)
-      
     } catch (err: any) {
       console.error('Error en registro:', err)
-      if (err.code === '23505') {
-        setError('Este correo electrónico o documento ya está registrado para una evaluación.')
-      } else {
-        setError('Hubo un problema al procesar tu registro. Por favor, intenta de nuevo.')
-      }
+      setError(err.message || 'Hubo un problema al procesar tu registro. Por favor, intenta de nuevo.')
       setEnviando(false)
     }
   }
