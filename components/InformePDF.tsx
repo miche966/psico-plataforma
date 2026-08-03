@@ -306,18 +306,26 @@ export const InformePDF = ({ data }: any) => {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>III. Habilidades para el trabajo</Text>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <View style={{ flex: 1, backgroundColor: '#f5f3ff', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #ddd6fe' }}>
-              <Text style={{ fontSize: 7, color: '#7c3aed', fontWeight: 'bold', marginBottom: 4 }}>{labelLiderazgo}</Text>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#7c3aed' }}>{inf.liderazgo || 0}</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1, backgroundColor: '#f5f3ff', padding: 8, borderRadius: 6, alignItems: 'center', border: '1px solid #ddd6fe' }}>
+              <Text style={{ fontSize: 6, color: '#7c3aed', fontWeight: 'bold', marginBottom: 4 }}>{labelLiderazgo}</Text>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#7c3aed' }}>{inf.liderazgo || 0}</Text>
             </View>
-            <View style={{ flex: 1, backgroundColor: '#fff7ed', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #ffedd5' }}>
-              <Text style={{ fontSize: 7, color: '#ea580c', fontWeight: 'bold', marginBottom: 4 }}>ADAPTABILIDAD</Text>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#ea580c' }}>{inf.adaptabilidad || 0}</Text>
+            <View style={{ flex: 1, backgroundColor: '#fff7ed', padding: 8, borderRadius: 6, alignItems: 'center', border: '1px solid #ffedd5' }}>
+              <Text style={{ fontSize: 6, color: '#ea580c', fontWeight: 'bold', marginBottom: 4 }}>ADAPTABILIDAD</Text>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#ea580c' }}>{inf.adaptabilidad || 0}</Text>
             </View>
-            <View style={{ flex: 1, backgroundColor: '#fef2f2', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #fee2e2' }}>
-              <Text style={{ fontSize: 7, color: '#dc2626', fontWeight: 'bold', marginBottom: 4 }}>RESILIENCIA</Text>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#dc2626' }}>{inf.resiliencia || 0}</Text>
+            <View style={{ flex: 1, backgroundColor: '#fef2f2', padding: 8, borderRadius: 6, alignItems: 'center', border: '1px solid #fee2e2' }}>
+              <Text style={{ fontSize: 6, color: '#dc2626', fontWeight: 'bold', marginBottom: 4 }}>RESILIENCIA</Text>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#dc2626' }}>{inf.resiliencia || 0}</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: '#ecfdf5', padding: 8, borderRadius: 6, alignItems: 'center', border: '1px solid #d1fae5' }}>
+              <Text style={{ fontSize: 6, color: '#059669', fontWeight: 'bold', marginBottom: 4 }}>COLABORACIÓN</Text>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#059669' }}>{inf.colaboracion || 0}</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: '#f0f9ff', padding: 8, borderRadius: 6, alignItems: 'center', border: '1px solid #e0f2fe' }}>
+              <Text style={{ fontSize: 6, color: '#0284c7', fontWeight: 'bold', marginBottom: 4 }}>COMUNICACIÓN</Text>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#0284c7' }}>{inf.comunicacion || 0}</Text>
             </View>
           </View>
         </View>
