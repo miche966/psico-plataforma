@@ -1021,60 +1021,9 @@ export default function PanelEvaluador() {
                   setSesionSeleccionada(sInicial)
                   if (sInicial) cargarAuditoriaSesion(sInicial)
                   
-                  let vids: any[] | null = null
-                  const { data: vidsDirect } = await supabase
-                    .from('respuestas_video')
-                    .select('*')
-                    .eq('candidato_id', c.id)
-                    .order('grabada_en', { ascending: true })
-
-                  if (vidsDirect && vidsDirect.length > 0) {
-                    vids = vidsDirect
-                  } else if (c.email) {
-                    // Fallback de resiliencia: si los UUIDs fueron regenerados pero las respuestas_video quedaron asociadas a un UUID previo del mismo correo
-                    const { data: candsMismoEmail } = await supabase
-                      .from('candidatos')
-                      .select('id')
-                      .eq('email', c.email)
-                    
-                    const idsEmail = (candsMismoEmail || []).map(x => x.id)
-                    if (idsEmail.length > 0) {
-                      const { data: vidsByEmail } = await supabase
-                        .from('respuestas_video')
-                        .select('*')
-                        .in('candidato_id', idsEmail)
-                        .order('grabada_en', { ascending: true })
-                      vids = vidsByEmail
-                    }
-                  }
-
-                  if (vids && vids.length > 0) {
-                    const pregIds = Array.from(new Set(vids.map(x => x.pregunta_id).filter(Boolean)))
-                    if (pregIds.length > 0) {
-                      const { data: pregsData } = await supabase
-                        .from('preguntas_video')
-                        .select('id, pregunta')
-                        .in('id', pregIds)
-                      
-                      const pregMap = new Map((pregsData || []).map(p => [p.id, p.pregunta]))
-                      vids.forEach(v => {
-                        if (!v.preguntas_video && v.pregunta_id) {
-                          v.preguntas_video = { pregunta: pregMap.get(v.pregunta_id) }
-                        }
-                      })
-                    }
-                  }
-                  
-                  const vMap = new Map<string, any>()
-                  vids?.forEach(v => {
-                    const k = `${v.entrevista_id}:${v.pregunta_id}`
-                    const ex = vMap.get(k)
-                    if (!ex || new Date(v.grabada_en) > new Date(ex.grabada_en)) {
-                      vMap.set(k, v)
-                    }
-                  })
-                  
-                  setVideosCandidato(Array.from(vMap.values()))
+                  const videosRes = await fetch(`/api/admin/videos-candidato?candidato_id=${encodeURIComponent(c.id)}`, { headers: await getAdminHeaders() })
+                  const videosPayload = await videosRes.json().catch(() => ({}))
+                  setVideosCandidato(videosRes.ok ? (videosPayload.videos || []) : [])
                 }}
                 className={`p-4 rounded-xl border bg-white cursor-pointer transition-all duration-200 hover:shadow-md ${
                   agrupadoSeleccionado?.id === c.id 
