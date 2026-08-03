@@ -1429,14 +1429,14 @@ PsicoPlataforma - Gestión Inteligente de Talento
                     bajo: 'Experimenta cierta ambigüedad respecto a las expectativas de su posición. Se recomienda una definición de perfil más rigurosa para evitar vacilaciones e inseguridades en su ejecución diaria.'
                   },
                   nivel_estres: {
-                    alto: 'Manifiesta un estado de calma operativa y alta resiliencia. Su percepción de las demandas externas es de control, lo que le permite mantener una ejecución técnica fluida y sin ruidos emocionales.',
-                    medio: 'Gestiona la tensión operativa de forma profesional en la mayoría de las situaciones. Mantiene el control bajo demanda moderada, requiriendo pausas de recuperación ante picos extraordinarios de presión.',
-                    bajo: 'Presenta indicadores de tensión que sugieren una fase de alerta elevada. Se beneficia de entornos estructurados y previsibles que le permitan recuperar su objetividad en la toma de decisiones.'
+                    alto: 'Se maneja con tranquilidad frente a la presión del día a día. Las demandas externas no le generan sobresaltos y mantiene un ritmo de trabajo estable.',
+                    medio: 'Maneja bien la tensión habitual del trabajo, aunque en momentos de mayor exigencia agradece poder tomarse una pausa para reordenarse.',
+                    bajo: 'Actualmente muestra señales de tensión por encima de lo habitual. Le conviene un entorno con rutinas claras y previsibles para poder pensar con más calma.'
                   },
                   carga_laboral: {
-                    alto: 'Considera que el volumen de trabajo actual le permite un desempeño holgado y detallista. Posee capacidad remanente para asumir nuevos desafíos o liderar iniciativas especiales con rigor técnico.',
-                    medio: 'Logra procesar el volumen de trabajo asignado de forma eficiente, ajustando su ritmo a las prioridades del área sin comprometer la calidad de los resultados finales.',
-                    bajo: 'Percibe un volumen de tareas que desafía su capacidad de organización. Requiere soporte en la jerarquización estratégica de prioridades para evitar la saturación y asegurar el cumplimiento de hitos.'
+                    alto: 'Siente que el volumen de trabajo actual le queda cómodo y tiene margen para sumar tareas o desafíos nuevos.',
+                    medio: 'Organiza bien la carga de trabajo que le toca, ajustando prioridades sin que esto afecte la calidad de lo que entrega.',
+                    bajo: 'Siente que el volumen de tareas le está costando organizar. Le vendría bien ayuda para priorizar y no sentirse desbordado.'
                   },
                   autonomia: {
                     alto: 'Manifiesta una sólida facultad para gestionar sus procesos y tiempos con independencia. Su proactividad le permite tomar decisiones lúcidas y proponer mejoras sustanciales en su esfera de influencia.',

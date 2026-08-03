@@ -467,14 +467,14 @@ function obtenerInterpretacionLocal(factor: string, valor: number): string {
       bajo: 'Siente confusión o falta de claridad respecto a las expectativas de su puesto. Se beneficia de una guía estructurada.'
     },
     nivel_estres: {
-      alto: 'Bajo nivel de tensión psicológica percibido. Afronta de forma serena el entorno laboral.',
-      moderado: 'Nivel de tensión estándar del puesto. Manejo adaptativo en el día a día.',
-      bajo: 'Alta tensión psicológica percibida. Afronta altos niveles de estrés que pueden condicionar su desempeño.'
+      alto: 'Se maneja con tranquilidad frente a la presión del día a día. Las demandas externas no le generan sobresaltos y mantiene un ritmo de trabajo estable.',
+      moderado: 'Maneja bien la tensión habitual del trabajo, aunque en momentos de mayor exigencia agradece poder tomarse una pausa para reordenarse.',
+      bajo: 'Actualmente muestra señales de tensión por encima de lo habitual. Le conviene un entorno con rutinas claras y previsibles para poder pensar con más calma.'
     },
     carga_laboral: {
-      alto: 'Manejo eficiente de las cargas de trabajo. Percibe las demandas como razonables.',
-      moderado: 'Afronta las cargas habituales con normalidad, pudiendo requerir apoyos puntuales.',
-      bajo: 'Percibe una alta sobrecarga en las demandas de su puesto. Requiere revisión de procesos.'
+      alto: 'Siente que el volumen de trabajo actual le queda cómodo y tiene margen para sumar tareas o desafíos nuevos.',
+      moderado: 'Organiza bien la carga de trabajo que le toca, ajustando prioridades sin que esto afecte la calidad de lo que entrega.',
+      bajo: 'Siente que el volumen de tareas le está costando organizar. Le vendría bien ayuda para priorizar y no sentirse desbordado.'
     }
   };
 

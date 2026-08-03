@@ -2765,15 +2765,15 @@ function interpretacionHumana(factor: string, valor: number, testIdContexto?: st
     // Salud Mental / Riesgos / Estrés (Duplicados removidos)
     carga_laboral: {
       alto: {
-        desc: 'Percibe un volumen de tareas que excede su capacidad de procesamiento óptimo. Esta sobrecarga puede derivar en una sensación de asfixia operativa que requiere una revisión urgente de la priorización estratégica.',
+        desc: 'Siente que el volumen de tareas le está costando organizar. Le vendría bien ayuda para priorizar y no sentirse desbordado.',
         q: 'Si pudiera rediseñar su flujo de trabajo, ¿qué tareas eliminaría o delegaría para recuperar su eficacia?'
       },
       moderado: {
-        desc: 'La carga percibida es desafiante pero manejable. Existe un equilibrio entre las demandas externas y los recursos internos disponibles, permitiendo una ejecución constante sin caer en estados de saturación crítica.',
+        desc: 'Organiza bien la carga de trabajo que le toca, ajustando prioridades sin que esto afecte la calidad de lo que entrega.',
         q: '¿Cómo decide qué tareas "pueden esperar" cuando la carga del día se vuelve más pesada de lo habitual?'
       },
       bajo: {
-        desc: 'Considera que el volumen de trabajo actual le permite un desempeño holgado y detallista. Posee capacidad remanente para asumir nuevos desafíos sin comprometer sus responsabilidades base.',
+        desc: 'Siente que el volumen de trabajo actual le queda cómodo y tiene margen para sumar tareas o desafíos nuevos.',
         q: '¿En qué áreas de la empresa le gustaría aportar más ahora que tiene su carga de trabajo bajo control total?'
       }
     },
