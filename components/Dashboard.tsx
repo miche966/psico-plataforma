@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { supabase } from '@/lib/supabase'
-import { 
+import { getAdminHeaders } from '@/lib/evaluacionLink'
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   LineChart, Line, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts'
@@ -33,40 +33,22 @@ export default function Dashboard() {
 
   async function cargarEstadisticas() {
     try {
-      const [
-        { data: candidatos, error: ce },
-        { data: procesos, error: pe }
-      ] = await Promise.all([
-        supabase.from('candidatos').select('id, nombre, apellido, creado_en'),
-        supabase.from('procesos').select('id, nombre, cargo, bateria_tests')
-      ])
+      const response = await fetch('/api/admin/estadisticas-data', {
+        headers: await getAdminHeaders(),
+        cache: 'no-store'
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) return
 
-      if (ce || pe || !candidatos || !procesos) return
+      const candidatos: any[] = payload.candidatos || []
+      const procesos: any[] = payload.procesos || []
+      if (!candidatos.length || !procesos.length) return
 
-      // Chunk candidate IDs to avoid the 1000-row PostgREST select limit in Supabase
-      const candidateIds = candidatos.map((c: any) => c.id)
-      const chunkSize = 50
-      const chunks = []
-      for (let i = 0; i < candidateIds.length; i += chunkSize) {
-        chunks.push(candidateIds.slice(i, i + chunkSize))
-      }
-
-      let sesiones: any[] = []
-      try {
-        const results = await Promise.all(
-          chunks.map(chunk =>
-            supabase
-              .from('sesiones')
-              .select('*, candidatos(id), procesos(id, nombre, bateria_tests)')
-              .in('candidato_id', chunk)
-          )
-        )
-        results.forEach(res => {
-          if (res.data) sesiones = sesiones.concat(res.data)
-        })
-      } catch (err) {
-        console.error('Error chunking dashboard sessions load:', err)
-      }
+      const procesosPorId = new Map(procesos.map((p: any) => [p.id, p]))
+      const sesiones: any[] = (payload.sesiones || []).map((s: any) => ({
+        ...s,
+        procesos: procesosPorId.get(s.proceso_id)
+      }))
 
       // Agrupación de progreso real por candidato para estadísticas fidedignas
       const TEST_IDS_MAP: Record<string, string> = {
