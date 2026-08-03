@@ -144,7 +144,8 @@ const TEST_NAMES: Record<string, string> = {
   'c3d4e5f6-a7b8-9012-cdef-123456789012': 'Razonamiento Numérico',
   'd4e5f6a7-b8c9-0123-defa-234567890123': 'Razonamiento Verbal',
   'a7b8c9d0-e1f2-3456-abcd-777777777777': 'SJT Ventas',
-  'e5f6a7b8-c9d0-1234-efab-555555555555': 'SJT Cobranzas',
+  'e5f6a7b8-c9d0-1234-efab-555555555555': 'Tolerancia a la Frustración',
+  'e9b2c3d4-f5a6-7890-bcde-999999999999': 'SJT Situacional: Cobranzas',
   'f2a3b4c5-d6e7-8901-fabc-222333444555': 'SJT Resolución de Problemas',
   'c9d0e1f2-a3b4-5678-cdef-999999999999': 'SJT Legal',
   'b2c3d4e5-f6a7-8901-bcde-222222222222': 'SJT Comercial',
@@ -153,7 +154,10 @@ const TEST_NAMES: Record<string, string> = {
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'SJT Atención al Cliente',
   '7a8b9c0d-e1f2-4356-abcd-999999999999': 'DASS-21 (Salud Mental)',
   '0b6ade42-0c8f-4084-a4a5-9ff7869d73b6': 'Iniciativa y Dinamismo',
+  'd4e5f6a7-b8c9-0123-defa-444444444444': 'Resiliencia',
+  'f7a8b9c0-d1e2-4356-abcd-888888888888': 'Frases Incompletas',
   'c3d4e5f6-a7b8-9012-cdef-999999999999': 'Simulación de Roleplay IA',
+  'd8e9f0a1-b2c3-4567-defa-888888888888': 'Simulación de Roleplay IA',
   'roleplay': 'Simulación de Roleplay IA',
 }
 
@@ -1208,9 +1212,8 @@ export default function PanelEvaluador() {
                             let label = (s as any).test_id ? TEST_NAMES[(s as any).test_id] : null
                             if (!label || label === 'Evaluación') {
                               const pbStr = JSON.stringify(pb || {}).toLowerCase()
-                              if (s.test_id === 'e5f6a7b8-c9d0-1234-efab-555555555555') label = 'Simulación Situacional: Cobranzas'
-                              else if (pbStr.includes('escucha_activa') || pbStr.includes('manejo_conflicto')) label = 'SJT Atención al Cliente'
-                              else if (pbStr.includes('negociacion') || pbStr.includes('etica')) label = 'Simulación Situacional: Cobranzas'
+                              if (pbStr.includes('escucha_activa') || pbStr.includes('manejo_conflicto')) label = 'SJT Atención al Cliente'
+                              else if (pbStr.includes('negociacion') || pbStr.includes('etica')) label = 'SJT Situacional: Cobranzas'
                               else if (pbStr.includes('roleplay') || pbStr.includes('simulacion') || pbStr.includes('mensajes') || pbStr.includes('transcripcion')) label = 'Simulación de Roleplay IA'
                               else if (esBigFive(pb)) label = 'Psicográfico (Big Five)'
                               else if (esCognitivo(pb)) label = 'Capacidad Cognitiva'
