@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}))
     const nombres = String(body.nombres || '').trim()
     const apellidos = String(body.apellidos || '').trim()
-    const email = String(body.email || '').trim()
+    const email = String(body.email || '').trim().toLowerCase()
     const documento = String(body.documento || '').trim()
     const edad = body.edad
     const sexo = String(body.sexo || '').trim()
@@ -58,11 +58,11 @@ export async function POST(request: Request) {
 
     const db = createSupabaseAdmin()
 
-    // 1. Verificar si el candidato ya existe (por email o documento)
+    // 1. Verificar si el candidato ya existe (por email, sin distinguir mayúsculas, o por documento)
     let { data: candidato, error: candError } = await db
       .from('candidatos')
       .select('*')
-      .or(`email.eq.${email},documento.eq.${documento}`)
+      .or(`email.ilike.${email},documento.eq.${documento}`)
       .maybeSingle()
 
     if (candError) throw candError

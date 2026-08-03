@@ -13,6 +13,7 @@ import { AuditoriaRespuestasDetallada } from '@/components/AuditoriaRespuestasDe
 import { mapperAuditoriaUniversal } from '@/lib/auditoriaMapper'
 import { formatearFecha, ordenarPorPostulacionDescendente, ordenarPorPostulacionAscendente } from '@/lib/postulaciones/ordenamiento'
 import { TEST_IDS, calcularProgresoEvaluacion } from '@/lib/progresoEvaluacion'
+import SaludOperativa from '@/components/SaludOperativa'
 
 
 const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
@@ -230,7 +231,7 @@ async function generarResumenIA(candidato: CandidatoAgrupado) {
 
 
 export default function PanelEvaluador() {
-  const [tab, setTab] = useState<'evaluaciones' | 'gestion' | 'dashboard' | 'historial' | 'diagnostico'>('evaluaciones')
+  const [tab, setTab] = useState<'evaluaciones' | 'gestion' | 'dashboard' | 'historial' | 'diagnostico' | 'salud'>('evaluaciones')
   const [candidatos, setCandidatos] = useState<CandidatoAgrupado[]>([])
   const [procesos, setProcesos] = useState<any[]>([])
   const [procesoSeleccionadoId, setProcesoSeleccionadoId] = useState<string>('todos')
@@ -770,6 +771,17 @@ export default function PanelEvaluador() {
             <Settings2 className="w-4 h-4" />
             GESTIÓN PROCESOS
           </button>
+          <button
+            onClick={() => setTab('salud')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              tab === 'salud'
+                ? 'bg-white text-indigo-600 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <AlertTriangle className="w-4 h-4" />
+            SALUD OPERATIVA
+          </button>
         </div>
       </div>
 
@@ -777,6 +789,8 @@ export default function PanelEvaluador() {
         <Dashboard />
       ) : tab === 'gestion' ? (
         <GestionProcesos />
+      ) : tab === 'salud' ? (
+        <SaludOperativa />
       ) : tab === 'diagnostico' ? (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm animate-in fade-in duration-300">
           <div className="mb-6">

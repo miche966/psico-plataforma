@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     const db = createSupabaseAdmin()
     const [{ data: candidato, error: errCand }, { data: proceso, error: errProc }, { data: sesiones, error: errSes }] = await Promise.all([
       db.from('candidatos').select('nombre, apellido').eq('id', candidatoId).maybeSingle(),
-      db.from('procesos').select('nombre, cargo, bateria_tests').eq('id', procesoId).maybeSingle(),
+      db.from('procesos').select('nombre, cargo, bateria_tests, activo').eq('id', procesoId).maybeSingle(),
       db.from('sesiones').select('test_id, estado').eq('candidato_id', candidatoId).eq('proceso_id', procesoId),
     ])
     if (errCand) console.error('Error al cargar candidato:', errCand)

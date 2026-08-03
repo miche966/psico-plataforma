@@ -101,6 +101,7 @@ export default function GestionProcesos() {
   const [videoRespuestas, setVideoRespuestas] = useState<any[]>([])
   const [progresoOperativo, setProgresoOperativo] = useState<any[]>([])
   const [exportandoLinks, setExportandoLinks] = useState(false)
+  const [recordatorios, setRecordatorios] = useState<any[]>([])
 
   useEffect(() => {
     cargarDatos()
@@ -428,6 +429,9 @@ export default function GestionProcesos() {
       const progresoResponse = await fetch('/api/progreso-evaluacion', { headers: await getAdminHeaders() })
       const progresoJson = progresoResponse.ok ? await progresoResponse.json() : { data: [] }
 
+      const recordatoriosResponse = await fetch('/api/recordatorio', { headers: await getAdminHeaders() })
+      const recordatoriosJson = recordatoriosResponse.ok ? await recordatoriosResponse.json() : { data: [] }
+
       console.log('RECUENTO:', {
         p: payload.data?.length || 0,
         c: payload.candidatos?.length || 0,
@@ -440,6 +444,7 @@ export default function GestionProcesos() {
       if (payload.sesiones) setSesiones(payload.sesiones)
       if (payload.respuestasVideo) setVideoRespuestas(payload.respuestasVideo)
       setProgresoOperativo(Array.isArray(progresoJson.data) ? progresoJson.data : [])
+      setRecordatorios(Array.isArray(recordatoriosJson.data) ? recordatoriosJson.data : [])
     } catch (err) {
       console.error('Falla total:', err)
     } finally {
@@ -799,7 +804,20 @@ export default function GestionProcesos() {
                               </span>
                             </div>
                             <p className="text-[10px] text-slate-500 truncate mb-2">{c.email}</p>
-                            
+                            {(() => {
+                              const ultimoRecordatorio = recordatorios
+                                .filter(r => r.candidato_id === c.id && r.proceso_id === procesoSeleccionado?.id)
+                                .sort((a, b) => new Date(b.enviado_en).getTime() - new Date(a.enviado_en).getTime())[0]
+                              if (!ultimoRecordatorio) return null
+                              const fecha = new Date(ultimoRecordatorio.enviado_en).toLocaleString('es-UY', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+                              return (
+                                <p className={`text-[10px] mb-2 flex items-center gap-1 ${ultimoRecordatorio.estado === 'error' ? 'text-red-500' : 'text-slate-400'}`}>
+                                  <BellRing className="w-3 h-3" />
+                                  {ultimoRecordatorio.estado === 'error' ? 'Recordatorio falló' : 'Último recordatorio'}: {fecha}
+                                </p>
+                              )
+                            })()}
+
                             <div className="flex items-center gap-2">
                               <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
                                 <div 

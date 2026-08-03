@@ -315,6 +315,38 @@ export default function PortalCandidatoPage() {
     )
   }
 
+  if (proceso?.activo === false) {
+    return (
+      <div className="min-h-screen bg-slate-50 py-12 px-4 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-10 text-center border border-slate-100">
+          <div className="w-20 h-20 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center mx-auto mb-8">
+            <Clock className="w-10 h-10" />
+          </div>
+          <h1 className="text-3xl font-bold text-slate-900 mb-4">Proceso finalizado</h1>
+          <p className="text-slate-600 mb-8 leading-relaxed">
+            Hola <span className="font-semibold text-slate-900">{candidato?.nombre}</span>, el proceso de selección para <span className="font-semibold text-slate-900">{proceso?.cargo}</span> ya fue cerrado, por lo que este enlace ya no está disponible para continuar la evaluación.
+          </p>
+
+          <div className="bg-slate-50 rounded-2xl p-6 text-left border border-slate-100">
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Gracias por tu interés y por el tiempo dedicado. Si surge una nueva búsqueda para la que tu perfil sea afín, nos pondremos en contacto contigo.
+            </p>
+            <div className="space-y-3 pt-4 mt-4 border-t border-slate-200">
+              <p className="text-sm text-slate-700 flex items-center gap-3">
+                <span className="text-lg">Correo:</span>
+                <a href="mailto:seleccion@republicamicrofinanzas.com.uy" className="hover:text-indigo-600 transition-colors">seleccion@republicamicrofinanzas.com.uy</a>
+              </p>
+              <p className="text-sm text-slate-700 flex items-center gap-3">
+                <span className="text-lg">WhatsApp:</span>
+                <a href="https://wa.me/598092651770" className="hover:text-indigo-600 transition-colors">092 651 770</a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Vista de Transición (Flujo Lineal)
   if (recienCompletado && proximoTest) {
     const esEntrevista = proximoTest.startsWith('entrevista:')

@@ -63,12 +63,21 @@ export async function POST(request: Request) {
     }
 
     if (action === 'crear_candidato') {
-      const nombres = String(body.nombres || '')
-      const apellidos = String(body.apellidos || '')
-      const email = String(body.email || '')
-      const documento = String(body.documento || '')
+      const nombres = String(body.nombres || '').trim()
+      const apellidos = String(body.apellidos || '').trim()
+      const email = String(body.email || '').trim().toLowerCase()
+      const documento = String(body.documento || '').trim()
       if (!nombres || !apellidos || !email || !documento) {
         return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 })
+      }
+      const { data: existente, error: dupError } = await db
+        .from('candidatos')
+        .select('id, nombre, apellido, email')
+        .or(`email.ilike.${email},documento.eq.${documento}`)
+        .maybeSingle()
+      if (dupError) throw dupError
+      if (existente) {
+        return NextResponse.json({ error: `Ya existe un candidato con ese email o documento: ${existente.nombre} ${existente.apellido} (${existente.email})` }, { status: 409 })
       }
       const { error } = await db.from('candidatos').insert({
         nombre: nombres,
@@ -82,6 +91,41 @@ export async function POST(request: Request) {
       })
       if (error) throw error
       return NextResponse.json({ success: true })
+    }
+
+    if (action === 'detectar_duplicados') {
+      const candidatosRows: Array<{ id: string, nombre: string, apellido: string, email: string, documento: string }> = []
+      const pageSize = 1000
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await db
+          .from('candidatos')
+          .select('id, nombre, apellido, email, documento')
+          .range(offset, offset + pageSize - 1)
+        if (error) throw error
+        if (!data || data.length === 0) break
+        candidatosRows.push(...data)
+        if (data.length < pageSize) break
+      }
+
+      const porEmail = new Map<string, typeof candidatosRows>()
+      const porDocumento = new Map<string, typeof candidatosRows>()
+      candidatosRows.forEach(c => {
+        const emailKey = (c.email || '').trim().toLowerCase()
+        const docKey = (c.documento || '').trim()
+        if (emailKey) {
+          if (!porEmail.has(emailKey)) porEmail.set(emailKey, [])
+          porEmail.get(emailKey)!.push(c)
+        }
+        if (docKey) {
+          if (!porDocumento.has(docKey)) porDocumento.set(docKey, [])
+          porDocumento.get(docKey)!.push(c)
+        }
+      })
+
+      const gruposEmail = Array.from(porEmail.entries()).filter(([, rows]) => rows.length > 1).map(([email, rows]) => ({ email, candidatos: rows }))
+      const gruposDocumento = Array.from(porDocumento.entries()).filter(([, rows]) => rows.length > 1).map(([documento, rows]) => ({ documento, candidatos: rows }))
+
+      return NextResponse.json({ gruposEmail, gruposDocumento })
     }
 
     return NextResponse.json({ error: 'Acción no soportada' }, { status: 400 })
