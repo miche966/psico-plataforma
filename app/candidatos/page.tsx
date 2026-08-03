@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
+import { getAdminHeaders } from '@/lib/evaluacionLink'
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as ChartTooltip, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
 import AppLayout from '@/components/AppLayout'
 import { Plus, Check, Copy, FileText, Search, UserPlus, RotateCcw, BarChart3, Users, Sparkles, BellRing, AlertCircle, Info, LayoutDashboard, Award, Briefcase, X, Target, PieChart, ShieldAlert } from 'lucide-react'
@@ -21,6 +23,7 @@ interface Candidato {
 }
 
 export default function CandidatosPage() {
+  const router = useRouter()
   const [candidatos, setCandidatos] = useState<Candidato[]>([])
   const [cargando, setCargando] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -50,56 +53,39 @@ export default function CandidatosPage() {
   const [rotacionIcar, setRotacionIcar] = useState('si')
 
   useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) router.push('/login')
+    })
     cargarCandidatos()
   }, [])
 
   async function cargarCandidatos() {
-    const { data, error } = await supabase
-      .from('candidatos')
-      .select('*')
-      .order('creado_en', { ascending: false })
-
-    if (error) {
-      console.error(error)
-      return
-    }
-
-    // Chunk candidate IDs to avoid the 1000-row PostgREST select limit in Supabase
-    const candidateIds = data ? data.map((c: any) => c.id) : []
-    const chunkSize = 50
-    const chunks = []
-    for (let i = 0; i < candidateIds.length; i += chunkSize) {
-      chunks.push(candidateIds.slice(i, i + chunkSize))
-    }
-
-    let sData: any[] = []
     try {
-      const results = await Promise.all(
-        chunks.map(chunk =>
-          supabase
-            .from('sesiones')
-            .select('id, test_id, candidato_id, proceso_id, estado, finalizada_en, puntaje_bruto')
-            .in('candidato_id', chunk)
-        )
-      )
-      results.forEach(res => {
-        if (res.data) sData = sData.concat(res.data)
+      const response = await fetch('/api/admin/candidatos', {
+        headers: await getAdminHeaders(),
+        cache: 'no-store'
       })
-    } catch (err) {
-      console.error('Error chunking sessions load:', err)
-    }
-    
-    const counts: Record<string, number> = {}
-    sData.forEach(s => {
-      if (s.puntaje_bruto || s.puntajes || s.resultados) {
-        counts[s.candidato_id] = (counts[s.candidato_id] || 0) + 1
-      }
-    })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.error || 'No se pudieron cargar los candidatos')
 
-    setSesionesData(sData)
-    setSesionesCount(counts)
-    setCandidatos(data || [])
-    setCargando(false)
+      const data = payload.candidatos || []
+      const sData = payload.sesiones || []
+
+      const counts: Record<string, number> = {}
+      sData.forEach((s: any) => {
+        if (s.puntaje_bruto || s.puntajes || s.resultados) {
+          counts[s.candidato_id] = (counts[s.candidato_id] || 0) + 1
+        }
+      })
+
+      setSesionesData(sData)
+      setSesionesCount(counts)
+      setCandidatos(data)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setCargando(false)
+    }
   }
 
   async function resetearSesiones(candidatoId: string, nombre: string) {
@@ -109,15 +95,14 @@ export default function CandidatosPage() {
 
     setReseteando(candidatoId)
     try {
-      const { error } = await supabase
-        .from('sesiones')
-        .update({ 
-          estado: 'en_progreso',
-          finalizada_en: null
-        })
-        .eq('candidato_id', candidatoId)
-      
-      if (error) throw error
+      const response = await fetch('/api/admin/candidatos', {
+        method: 'POST',
+        headers: await getAdminHeaders(),
+        body: JSON.stringify({ action: 'resetear_sesiones', candidatoId })
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.error || 'No se pudo resetear')
+
       alert(`Sesiones de ${nombre} habilitadas con éxito. Ya puede volver a entrar al link.`)
     } catch (err: any) {
       alert('Error al resetear: ' + err.message)
@@ -131,21 +116,26 @@ export default function CandidatosPage() {
 
     setGuardando(true)
 
-    const { error } = await supabase
-      .from('candidatos')
-      .insert({
-        nombre: form.nombres,
-        apellido: form.apellidos,
-        email: form.email,
-        documento: form.documento,
-        edad: parseInt(form.edad) || null,
-        sexo: form.sexo,
-        formacion: form.formacion,
-        profesion: form.profesion
+    try {
+      const response = await fetch('/api/admin/candidatos', {
+        method: 'POST',
+        headers: await getAdminHeaders(),
+        body: JSON.stringify({
+          action: 'crear_candidato',
+          nombres: form.nombres,
+          apellidos: form.apellidos,
+          email: form.email,
+          documento: form.documento,
+          edad: form.edad,
+          sexo: form.sexo,
+          formacion: form.formacion,
+          profesion: form.profesion
+        })
       })
-
-    if (error) {
-      console.error(error)
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.error || 'No se pudo guardar el candidato')
+    } catch (err) {
+      console.error(err)
       setGuardando(false)
       return
     }
