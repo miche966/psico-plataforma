@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { CheckCircle2, PlayCircle, Clock, CheckCircle, Video, Camera, Mic } from 'lucide-react'
 
 
@@ -113,36 +112,25 @@ export default function PortalCandidatoPage() {
     setMostrarSetup(false)
   }
 
-  async function validarAccesoFirmado() {
-    const token = searchParams.get('token')
-    if (!token) return
-    const response = await fetch('/api/evaluacion-access', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ candidato_id: candidatoId, proceso_id: procesoId, token }),
-    })
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}))
-      throw new Error(data.error || 'El enlace de evaluacion no es valido')
-    }
-  }
   async function cargarDatosPortal() {
     try {
-      await validarAccesoFirmado()
-      const [{ data: cand, error: errCand }, { data: proc, error: errProc }] = await Promise.all([
-        supabase.from('candidatos').select('nombre, apellido').eq('id', candidatoId).maybeSingle(),
-        supabase.from('procesos').select('nombre, cargo, bateria_tests').eq('id', procesoId).maybeSingle(),
-      ])
+      const token = searchParams.get('token') || ''
+      const response = await fetch('/api/evaluacion-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidato_id: candidatoId, proceso_id: procesoId, token }),
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.error || 'El enlace de evaluacion no es valido')
 
-      if (errCand) console.error("Error al cargar candidato:", errCand)
-      if (errProc) console.error("Error al cargar proceso:", errProc)
-
-      if (!cand) throw new Error(`Candidato no encontrado en la base de datos (ID: ${candidatoId})`)
-      if (!proc) throw new Error(`Proceso de selección no encontrado (ID: ${procesoId})`)
+      const cand = payload.candidato
+      const proc = payload.proceso
+      const sesiones: Array<{ test_id: string, estado: string }> = payload.sesiones || []
+      const respuestasVideo: Array<{ entrevista_id: string }> = payload.respuestasVideo || []
 
       setCandidato(cand)
       setProceso(proc)
-      
+
       const bat = proc.bateria_tests || []
       setBateria(bat)
 
@@ -154,23 +142,6 @@ export default function PortalCandidatoPage() {
 
       // 1. Cargar desde LocalStorage
       const completadosLocal: string[] = []
-      
-      // 2. Cargar desde DB (Sesiones de Tests) - Filtered by process to avoid cross-contamination
-      const { data: sesiones, error: errSes } = await supabase
-        .from('sesiones')
-        .select('test_id, estado')
-        .eq('candidato_id', candidatoId)
-        .eq('proceso_id', procesoId)
-      
-      if (errSes) console.error('Error DB Sesiones:', errSes)
-
-      // 3. Cargar desde DB (Respuestas de Videoentrevistas)
-      const { data: respuestasVideo, error: errVid } = await supabase
-        .from('respuestas_video')
-        .select('entrevista_id')
-        .eq('candidato_id', candidatoId)
-      
-      if (errVid) console.error('Error DB Videos:', errVid)
 
       const completadosDB: string[] = []
       const debugData: any = { raw_sessions: sesiones, raw_videos: respuestasVideo }
