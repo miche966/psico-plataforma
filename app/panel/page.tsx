@@ -480,7 +480,7 @@ export default function PanelEvaluador() {
     try {
       const res = await fetch('/api/recordatorio', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAdminHeaders(),
         body: JSON.stringify({
           email: c.email,
           nombre: c.nombre,
