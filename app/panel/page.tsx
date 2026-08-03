@@ -488,14 +488,14 @@ export default function PanelEvaluador() {
       const data = await res.json()
       
       if (res.ok) {
-        alert(`Recordatorio enviado con   axito a ${c.nombre}.`)
+        alert(`Recordatorio enviado con éxito a ${c.nombre}.`)
       } else {
-        alert(data.error || 'Hubo un error al enviar el correo. Verifique la configuraci  an del servidor SMTP de Zimbra (EMAIL_HOST, EMAIL_USER, EMAIL_PASS) en el servidor.')
+        alert(data.error || 'Hubo un error al enviar el correo. Verifique la configuración del servidor SMTP de Zimbra (EMAIL_HOST, EMAIL_USER, EMAIL_PASS) en el servidor.')
         console.error('Error enviando recordatorio:', data.error)
       }
     } catch (error) {
       console.error(error)
-      alert('Error de conexi  an al intentar enviar el recordatorio.')
+      alert('Error de conexión al intentar enviar el recordatorio.')
     } finally {
       setEnviandoRecordatorio(null)
     }
