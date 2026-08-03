@@ -403,6 +403,12 @@ export default function PanelEvaluador() {
       const competenciasReq = primerSesionProceso?.procesos?.competencias_requeridas || []
       const bateria = primerSesionProceso?.procesos?.bateria_tests || []
 
+      // Un candidato puede estar vinculado a mas de un proceso: el progreso y el
+      // match score deben calcularse solo con las sesiones de ESTE proceso, no
+      // con todas las del candidato (evita contaminacion cruzada entre procesos,
+      // mismo tipo de bug ya corregido en el portal del candidato).
+      const sesionesDeEsteProceso = misSesiones.filter(s => (s.proceso_id || undefined) === procesoId)
+
       const misVideos = respuestasVideo?.filter(rv => rv.candidato_id === c.id) || []
       const videosUnicosMap = new Map<string, any>()
       misVideos.forEach(v => {
@@ -415,12 +421,12 @@ export default function PanelEvaluador() {
 
       const progresoCalculado = calcularProgresoEvaluacion(
         bateria,
-        misSesiones,
+        sesionesDeEsteProceso,
         Array.from(videosUnicosMap.values()),
         preguntasPorEntrevista
       )
 
-      const sesionBigFive = misSesiones.find(s => TEST_IDS[s.test_id] === 'bigfive')
+      const sesionBigFive = sesionesDeEsteProceso.find(s => TEST_IDS[s.test_id] === 'bigfive')
       const matchScore = calcularMatch(sesionBigFive?.puntaje_bruto, competenciasReq)
 
       const progresoCandidato = progresoOperativo.filter(item => item.candidato_id === c.id && (!procesoId || item.proceso_id === procesoId))
