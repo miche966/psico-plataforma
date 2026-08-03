@@ -210,6 +210,14 @@ interface CandidatoAgrupado {
   ultima_actividad_operativa?: string | null
 }
 
+// Un mismo candidato puede tener varias tarjetas (una por cada proceso vinculado),
+// todas compartiendo el mismo c.id. Esta clave compuesta evita colisiones de "key"
+// en React y de estado de UI (tarjeta seleccionada, recordatorio enviandose, etc.)
+// entre las distintas tarjetas de una misma persona.
+function claveFila(c: CandidatoAgrupado): string {
+  return `${c.id}-${c.proceso_id || 'independiente'}`
+}
+
 async function generarResumenIA(candidato: CandidatoAgrupado) {
   try {
     const prompt = `
@@ -393,21 +401,37 @@ export default function PanelEvaluador() {
       sesionesPorCandidato[s.candidato_id].push(s)
     })
 
-    const resultado: CandidatoAgrupado[] = (candidatosTodos || []).map((c: any) => {
+    // Un candidato puede estar vinculado a mas de un proceso (sesiones con distintos
+    // proceso_id). Antes se elegia un unico proceso "representante" por candidato de
+    // forma arbitraria (el primero en el orden de finalizada_en), lo que ocultaba por
+    // completo el progreso de sus otros procesos vinculados (bug real detectado:
+    // Santiago Peraza tenia 13/14 completados en "Yo Estudio y Trabajo" pero el panel
+    // solo mostraba su tarjeta de "Cobranzas" con 0/14). Ahora se genera UNA tarjeta
+    // por cada proceso vinculado, cada una con sus propias sesiones aisladas.
+    const resultado: CandidatoAgrupado[] = (candidatosTodos || []).flatMap((c: any) => {
       const misSesiones = sesionesPorCandidato[c.id] || []
-      const primerSesionProceso = misSesiones.find(s => s.procesos)
-      
+      const procesoIdsVinculados = Array.from(new Set(
+        misSesiones.map((s: any) => s.proceso_id).filter(Boolean)
+      )) as string[]
+
+      const sesionesRepresentativas = procesoIdsVinculados.length > 0
+        ? procesoIdsVinculados.map(procId => misSesiones.find((s: any) => s.proceso_id === procId))
+        : [misSesiones[0]]
+
+      return sesionesRepresentativas.map((primerSesionProceso: any) => {
       const procesoNombre = primerSesionProceso?.procesos?.nombre || 'Evaluación Independiente'
       const procesoCargo = primerSesionProceso?.procesos?.cargo || 'Sin cargo asignado'
       const procesoId = primerSesionProceso?.proceso_id || undefined
       const competenciasReq = primerSesionProceso?.procesos?.competencias_requeridas || []
       const bateria = primerSesionProceso?.procesos?.bateria_tests || []
 
-      // Un candidato puede estar vinculado a mas de un proceso: el progreso y el
-      // match score deben calcularse solo con las sesiones de ESTE proceso, no
-      // con todas las del candidato (evita contaminacion cruzada entre procesos,
-      // mismo tipo de bug ya corregido en el portal del candidato).
-      const sesionesDeEsteProceso = misSesiones.filter(s => (s.proceso_id || undefined) === procesoId)
+      // El progreso, match score y la lista de "sesiones" de la tarjeta deben
+      // calcularse solo con las sesiones de ESTE proceso, no con todas las del
+      // candidato (evita contaminacion cruzada entre procesos, mismo tipo de bug
+      // ya corregido en el portal del candidato).
+      const sesionesDeEsteProceso = procesoId
+        ? misSesiones.filter((s: any) => (s.proceso_id || undefined) === procesoId)
+        : misSesiones
 
       const misVideos = respuestasVideo?.filter(rv => rv.candidato_id === c.id) || []
       const videosUnicosMap = new Map<string, any>()
@@ -435,7 +459,7 @@ export default function PanelEvaluador() {
       const ultimaActividadOperativa = progresoCandidato.map(item => item.ultima_actividad_en).filter(Boolean).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] || null
 
       let ultimaFecha = c.creado_en
-      misSesiones.forEach(s => {
+      sesionesDeEsteProceso.forEach((s: any) => {
         const f = s.finalizada_en || s.creado_en
         if (f && new Date(f) > new Date(ultimaFecha)) {
           ultimaFecha = f
@@ -452,7 +476,7 @@ export default function PanelEvaluador() {
         sexo: c.sexo || '',
         formacion: c.formacion || '',
         profesion: c.profesion || '',
-        sesiones: misSesiones,
+        sesiones: sesionesDeEsteProceso,
         fecha_postulacion: c.creado_en || '',
         ultima_fecha: ultimaFecha,
         proceso_id: procesoId,
@@ -470,6 +494,7 @@ export default function PanelEvaluador() {
         progreso_detallado: progresoCandidato,
         ultima_actividad_operativa: ultimaActividadOperativa
       }
+      })
     }).filter(c => c.sesiones.length > 0 || c.progreso.completados > 0)
 
     setCandidatos(resultado)
@@ -478,8 +503,8 @@ export default function PanelEvaluador() {
   async function enviarRecordatorio(c: CandidatoAgrupado) {
     if (!c.progreso || c.progreso.completados === c.progreso.total) return
     if (!c.proceso_id) return
-    
-    setEnviandoRecordatorio(c.id)
+
+    setEnviandoRecordatorio(claveFila(c))
     
     const link = `${getBaseUrl()}/evaluacion?candidato=${c.id}&proceso=${c.proceso_id}`
 
@@ -848,7 +873,7 @@ export default function PanelEvaluador() {
                   const testsCompletados = uniqueTestIds.map(tid => TEST_NAMES[tid] || tid)
                   
                   return (
-                    <tr key={c.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <tr key={claveFila(c)} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="py-3 px-4 text-xs text-slate-500 whitespace-nowrap">
                         {formatearFecha(c.ultima_fecha)}
                       </td>
@@ -1020,20 +1045,27 @@ export default function PanelEvaluador() {
           <div className="flex flex-col gap-3 h-[calc(100vh-220px)] overflow-y-auto pr-2 custom-scrollbar-visible">
             {candidatosFiltrados.map(c => (
               <div
-                key={c.id}
+                key={claveFila(c)}
                 onClick={async () => {
                   setAgrupadoSeleccionado(c)
                   const sInicial = c.sesiones[0]
                   setSesionSeleccionada(sInicial)
                   if (sInicial) cargarAuditoriaSesion(sInicial)
-                  
+
                   const videosRes = await fetch(`/api/admin/videos-candidato?candidato_id=${encodeURIComponent(c.id)}`, { headers: await getAdminHeaders() })
                   const videosPayload = await videosRes.json().catch(() => ({}))
-                  setVideosCandidato(videosRes.ok ? (videosPayload.videos || []) : [])
+                  const todosLosVideos: any[] = videosRes.ok ? (videosPayload.videos || []) : []
+                  // La entrevista de video es especifica de cada proceso (bateria_tests
+                  // incluye "entrevista:<id>"): sin este filtro, una tarjeta de un proceso
+                  // sin interacción mostraba la video-entrevista respondida en OTRO proceso
+                  // vinculado al mismo candidato.
+                  const entrevistaKey = (c.bateria_tests || []).find(k => k.startsWith('entrevista:'))
+                  const entrevistaId = entrevistaKey ? entrevistaKey.replace('entrevista:', '') : null
+                  setVideosCandidato(entrevistaId ? todosLosVideos.filter(v => v.entrevista_id === entrevistaId) : [])
                 }}
                 className={`p-4 rounded-xl border bg-white cursor-pointer transition-all duration-200 hover:shadow-md ${
-                  agrupadoSeleccionado?.id === c.id 
-                    ? 'border-indigo-500 ring-1 ring-indigo-500/20 shadow-sm' 
+                  agrupadoSeleccionado && claveFila(agrupadoSeleccionado) === claveFila(c)
+                    ? 'border-indigo-500 ring-1 ring-indigo-500/20 shadow-sm'
                     : 'border-slate-200 hover:border-slate-300'
                 }`}
               >
@@ -1088,7 +1120,7 @@ export default function PanelEvaluador() {
                       {c.progreso && c.progreso.completados < c.progreso.total && (
                         <button
                           onClick={(e) => { e.stopPropagation(); enviarRecordatorio(c); }}
-                          disabled={enviandoRecordatorio === c.id}
+                          disabled={enviandoRecordatorio === claveFila(c)}
                           className="p-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg transition-all border border-amber-100"
                         >
                           <BellRing className="w-3.5 h-3.5" />
