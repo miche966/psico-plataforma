@@ -1,5 +1,5 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
+import { Page, Text as PDFText, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
 import { normalizarPuntaje, colorPuntaje, interpretacionVigente } from '@/lib/puntajes';
 
 // Registro de fuentes para un look premium
@@ -10,6 +10,37 @@ Font.register({
     { src: 'https://fonts.gstatic.com/s/roboto/v20/KFOlCnqEu92Fr1MmWUlfBBc9.ttf', fontWeight: 700 },
   ],
 });
+
+// Bug conocido de @react-pdf/renderer + Roboto: la ligadura tipográfica "fi"/"fl" pierde
+// la segunda letra al renderizar (https://github.com/diegomura/react-pdf/issues/2762).
+// Insertar un caracter invisible (ZWNJ) no funciona: esta fuente lo trata como glifo
+// faltante y deja un hueco visible. La solucion sin efectos visuales es partir el texto
+// justo entre "f" e "i"/"l" en Text hijos independientes: cada uno se mide por separado,
+// asi el shaper nunca ve la secuencia "fi"/"fl" contigua y no arma la ligadura.
+// Se desactiva ademas el guionado automatico para que el salto de linea no elija justo
+// ese punto de corte (evita fragmentos de una sola letra como "f-" al final de renglon).
+Font.registerHyphenationCallback(word => [word]);
+
+function partirLigaduras(texto: string): string[] {
+  const partes: string[] = []
+  let lastIndex = 0
+  const re = /f(?=[il])/gi
+  let m: RegExpExecArray | null
+  while ((m = re.exec(texto))) {
+    partes.push(texto.slice(lastIndex, m.index + 1))
+    lastIndex = m.index + 1
+  }
+  partes.push(texto.slice(lastIndex))
+  return partes.filter(p => p.length > 0)
+}
+function evitarLigaduras(valor: React.ReactNode): React.ReactNode {
+  if (typeof valor === 'string') return partirLigaduras(valor).map((parte, i) => <PDFText key={i}>{parte}</PDFText>)
+  if (Array.isArray(valor)) return valor.map(evitarLigaduras)
+  return valor
+}
+function Text({ children, ...props }: any) {
+  return <PDFText {...props}>{evitarLigaduras(children)}</PDFText>
+}
 
 function obtenerTextoAnalisis(analisis: any): string {
   if (!analisis) return ''
@@ -379,7 +410,7 @@ export const InformePDF = ({ data }: any) => {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Psico-Plataforma 2.0 - Confidencial</Text>
-          <Text style={styles.footerText} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} fixed />
+          <Text style={styles.footerText} render={({ pageNumber, totalPages }: { pageNumber: number, totalPages: number }) => `Página ${pageNumber} de ${totalPages}`} fixed />
         </View>
       </Page>
     </Document>
@@ -475,6 +506,76 @@ function obtenerInterpretacionLocal(factor: string, valor: number): string {
       alto: 'Siente que el volumen de trabajo actual le queda cómodo y tiene margen para sumar tareas o desafíos nuevos.',
       moderado: 'Organiza bien la carga de trabajo que le toca, ajustando prioridades sin que esto afecte la calidad de lo que entrega.',
       bajo: 'Percibe que el volumen de tareas actual supera su capacidad de organización, lo que puede derivar en demoras o en la sensación de estar siempre "atrás". Definir prioridades junto a su líder directo lo ayudaría a ordenar la carga y recuperar margen de acción.'
+    },
+    documentos: {
+      alto: 'Destaca por un manejo prolijo y ordenado de los activos documentales y registros administrativos. Su capacidad para organizar volúmenes de datos asegura que la información sea tratada con rigor, facilitando un entorno operativo fluido y fortaleciendo la calidad de la gestión administrativa interna.',
+      moderado: 'Muestra un cuidado profesional adecuado en la organización y revisión de documentos. Mantiene un estándar de orden constante, logrando procesar la información con claridad y criterio, lo que asegura que las tareas de soporte avancen sin contratiempos.',
+      bajo: 'En tareas que exigen un rigor sistemático extremo en la gestión de archivos, se beneficiará del apoyo de listas de verificación. Su enfoque tiende a ser más ágil que detallista, por lo que una revisión de cierre asegurará la integridad total de los registros.'
+    },
+    comparacion: {
+      alto: 'Manifiesta una notable agilidad en el procesamiento y reconocimiento de patrones. Logra contrastar información y detectar discrepancias con una fluidez que optimiza los tiempos de respuesta, aportando una alta efectividad en tareas que demandan validación constante.',
+      moderado: 'Demuestra un ritmo de ejecución equilibrado que le permite abordar tareas habituales con una fluidez adecuada. Es capaz de contrastar información de manera efectiva, manteniendo una cadencia estable que asegura la calidad del resultado final.',
+      bajo: 'Tiende a procesar la comparación de datos de forma más pausada para asegurar la exactitud. Su desempeño mejora en entornos que no dependan de una respuesta inmediata, permitiéndole realizar una revisión más deliberada de la información.'
+    },
+    concentracion: {
+      alto: 'Posee una capacidad de enfoque sostenido y constante, incluso en entornos con múltiples estímulos. Su atención se mantiene estable durante periodos prolongados, lo que le permite completar tareas complejas manteniendo un estándar de calidad homogéneo.',
+      moderado: 'Mantiene un nivel de atención funcional durante la jornada. Logra enfocarse en sus objetivos a pesar de las distracciones comunes, asegurando una ejecución estable en sus responsabilidades diarias de manera profesional.',
+      bajo: 'Muestra un estilo de atención que puede fluctuar ante entornos de alta estimulación. Se beneficia de espacios de trabajo organizados que favorezcan la inmersión en la tarea, minimizando así el impacto de las distracciones en su desempeño.'
+    },
+    errores_texto: {
+      alto: 'Se identifica una notable minuciosidad en el procesamiento de información escrita y registros de texto. Su habilidad para identificar inconsistencias garantiza que la comunicación institucional sea presentada con un estándar de calidad constante, protegiendo la integridad de los reportes.',
+      moderado: 'Es capaz de producir y revisar documentos con un nivel de corrección profesional claro. Detecta los errores comunes y mantiene una coherencia narrativa lógica, asegurando que las comunicaciones cumplan con los parámetros de claridad esperados.',
+      bajo: 'Su enfoque se centra principalmente en la agilidad de la comunicación. Para asegurar la precisión absoluta en la redacción de informes críticos, se recomienda una revisión final o el uso de herramientas de soporte que garanticen la consistencia de los textos.'
+    },
+    errores_numeros: {
+      alto: 'Demuestra un manejo seguro y criterioso de la información cuantitativa. Su enfoque en el cálculo y la transcripción de datos numéricos asegura una consistencia sólida en los reportes de gestión, aportando fiabilidad a los procesos de alta exactitud.',
+      moderado: 'Maneja la información cuantitativa con seguridad y criterio profesional. Realiza cálculos y transcripciones con una baja incidencia de errores en condiciones normales, contribuyendo a la estabilidad y orden de los reportes del área.',
+      bajo: 'Ante volúmenes moderados de datos numéricos, su precisión mejora con una validación secundaria. Se beneficia de metodologías de trabajo pautadas que le permitan mantener el rigor en tareas que impliquen indicadores críticos de gestión.'
+    },
+    comunicacion: {
+      alto: 'Transmite información de manera clara y estructurada, facilitando el intercambio de datos entre áreas con fluidez. Su discurso se adapta a los requerimientos del entorno, lo que asegura que los objetivos sean comprendidos con precisión y sin ambigüedades.',
+      moderado: 'Logra transmitir información de manera efectiva y profesional, asegurando que los mensajes clave lleguen a su destino con claridad. Posee habilidades de escucha activa que le permiten interactuar de forma constructiva con su entorno laboral.',
+      bajo: 'Se recomienda fortalecer la estructura de sus mensajes para asegurar la total claridad en la transmisión de datos. El uso de canales de comunicación pautados garantizaría que sus interacciones mantengan la efectividad en procesos dinámicos.'
+    },
+    liderazgo: {
+      alto: 'Muestra una sólida facultad para coordinar procesos y guiar la ejecución de tareas bajo estándares de calidad. Su enfoque se centra en el cumplimiento de objetivos organizando el flujo de trabajo de manera que se optimicen los recursos y el tiempo del equipo.',
+      moderado: 'Actúa como un referente operativo que facilita la ejecución de tareas y apoya la estabilidad del grupo. Posee un estilo de influencia funcional que permite mantener la cohesión y el avance de las metas diarias bajo directrices claras.',
+      bajo: 'Manifiesta una marcada preferencia por roles de ejecución individual y autónoma. Se beneficiará de un acompañamiento que le permita desarrollar progresivamente habilidades de gestión de equipos y toma de decisiones compartidas.'
+    },
+    trabajo_equipo: {
+      alto: 'Se integra a la dinámica grupal de forma proactiva, favoreciendo un clima de confianza y soporte mutuo. Su enfoque fomenta la sinergia organizacional, asegurando que el cumplimiento de los objetivos colectivos se realice con una productividad estable.',
+      moderado: 'Participa de forma colaborativa en el equipo, cumpliendo con sus responsabilidades técnicas y manteniendo una interacción profesional cordial. Facilita que los proyectos compartidos avancen con fluidez, respetando siempre los acuerdos del grupo.',
+      bajo: 'Tiende a priorizar el trabajo autónomo sobre la interdependencia. Se recomienda su integración en proyectos colaborativos que le permitan fortalecer su sentido de pertenencia y desarrollar una mayor agilidad en el intercambio con pares.'
+    },
+    adaptabilidad: {
+      alto: 'Posee una notable facultad para ajustar su ritmo de trabajo ante cambios en las prioridades del área. Su flexibilidad le permite transitar modificaciones operativas manteniendo la calidad de su ejecución técnica y asegurando la continuidad de los resultados.',
+      moderado: 'Logra asimilar cambios en procesos y estructuras organizacionales de manera profesional, mostrando una apertura constructiva hacia las nuevas metodologías necesarias para la evolución del negocio.',
+      bajo: 'Muestra una preferencia por rutinas operativas estables y predecibles. Se beneficia de una gestión del cambio estructurada y comunicada con antelación, lo que le permite adaptarse con mayor seguridad a las nuevas demandas del entorno.'
+    },
+    resolucion_problemas: {
+      alto: 'Utiliza criterios lógicos y un enfoque práctico para identificar la raíz de desafíos operativos. Su análisis facilita soluciones que no solo resuelven la urgencia, sino que aportan mejoras al proceso para prevenir recurrencias de manera efectiva.',
+      moderado: 'Es capaz de resolver inconvenientes operativos de manera autónoma utilizando su experiencia y criterio profesional. Muestra iniciativa para destrabar situaciones que impiden el avance de sus tareas diarias con seguridad.',
+      bajo: 'Tiende a requerir guías claras para abordar situaciones que se alejan de su rutina habitual. Se recomienda el desarrollo de metodologías de análisis de problemas para ganar mayor autonomía y agilidad resolutiva ante imprevistos.'
+    },
+    etica: {
+      alto: 'Demuestra un compromiso sólido con la integridad y el manejo responsable de la información. Su estilo de trabajo se alinea con los estándares institucionales, mitigando riesgos operativos mediante un apego consistente a los protocolos del área.',
+      moderado: 'Mantiene un comportamiento profesional alineado con las normas y la cultura organizacional. Su criterio permite tomar decisiones equilibradas que aseguran la transparencia y la confianza en la ejecución de sus responsabilidades diarias.',
+      bajo: 'Se recomienda reforzar el conocimiento de los protocolos específicos de integridad del cargo. Una guía cercana le permitirá alinear sus acciones con los estándares de transparencia requeridos por la organización de manera más sólida.'
+    },
+    negociacion: {
+      alto: 'Utiliza argumentos fundamentados para alcanzar acuerdos que aseguren la fluidez operativa. Su enfoque facilita la resolución de diferencias mediante criterios prácticos, preservando siempre la calidad de los vínculos profesionales y el objetivo común.',
+      moderado: 'Posee habilidades de comunicación que le permiten llegar a consensos en la operativa diaria. Logra representar los intereses del área de forma profesional, mostrando la flexibilidad necesaria cuando el éxito del proyecto así lo requiere.',
+      bajo: 'Muestra preferencia por defender posturas técnicas fijas en situaciones de desacuerdo. Se beneficiaría de fortalecer sus habilidades de comunicación asertiva para facilitar el alcance de acuerdos constructivos en el día a día.'
+    },
+    manejo_emocional: {
+      alto: 'Gestiona sus reacciones ante desafíos o conflictos laborales con profesionalismo y calma. Su estabilidad actúa como un factor de equilibrio que favorece la toma de decisiones objetivas y mantiene el foco en la tarea bajo situaciones de demanda.',
+      moderado: 'Maneja el impacto de las demandas laborales de manera estable, asegurando que las variables externas no afecten su desempeño técnico. Es capaz de mantener un trato profesional y cordial incluso ante periodos de actividad intensa.',
+      bajo: 'Ante situaciones de alta presión, su estilo de respuesta puede verse influenciado por la tensión del momento. Se beneficia de entornos predecibles y de una estructura de apoyo que le permita recuperar su objetividad de forma rápida.'
+    },
+    tolerancia_frustracion: {
+      alto: 'Mantiene el ritmo de ejecución previsto ante el aumento en el volumen de tareas o demoras en los resultados esperados. Su respuesta profesional se mantiene estable, capitalizando los obstáculos como una oportunidad para el ajuste de procesos y la mejora continua.',
+      moderado: 'Muestra una capacidad adecuada para recuperarse ante fallos operativos, manteniendo su compromiso con las metas pendientes. Logra retomar sus funciones con profesionalismo una vez superado el inconveniente detectado.',
+      bajo: 'La gestión de los reveses operativos es un área que se beneficia de un acompañamiento cercano. Mantiene su compromiso, aunque requiere pautas claras para recuperar la fluidez en sus funciones tras resultados imprevistos.'
     }
   };
 
