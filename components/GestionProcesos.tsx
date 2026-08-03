@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { Plus, Check, Link as LinkIcon, Search, FileText, X, Eye, Settings, Clock, CheckCircle2, BellRing, Upload, ClipboardPaste, UserPlus, Download, Video } from 'lucide-react'
-import { getBaseUrl } from '@/lib/utils'
 import { getAdminHeaders, obtenerLinkEvaluacion } from '@/lib/evaluacionLink'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
@@ -101,6 +100,7 @@ export default function GestionProcesos() {
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'completada' | 'en curso' | 'pendiente'>('todos')
   const [videoRespuestas, setVideoRespuestas] = useState<any[]>([])
   const [progresoOperativo, setProgresoOperativo] = useState<any[]>([])
+  const [exportandoLinks, setExportandoLinks] = useState(false)
 
   useEffect(() => {
     cargarDatos()
@@ -295,8 +295,12 @@ export default function GestionProcesos() {
 
     await cargarDatos()
 
-    const link = `${getBaseUrl()}/evaluacion?candidato=${candidatoId}&proceso=${procesoSeleccionado.id}`
-    navigator.clipboard.writeText(link)
+    try {
+      const link = await obtenerLinkEvaluacion(candidatoId, procesoSeleccionado.id)
+      navigator.clipboard.writeText(link)
+    } catch (err: any) {
+      console.error('Error al generar el link firmado:', err.message)
+    }
     setTimeout(() => setAgregando(''), 1500)
   }
 
@@ -645,34 +649,46 @@ export default function GestionProcesos() {
                     <Settings className="w-4 h-4" />
                     CONFIGURAR PROCESO
                   </button>
-                  <button 
-                    onClick={() => {
-                      const csvData = candidatosProceso.map(c => {
-                        // Encontrar la sesión para este proceso y obtener su estado/fecha
-                        const sesion = sesiones.find(s => s.candidato_id === c.id && s.proceso_id === procesoSeleccionado.id)
-                        return {
-                          Nombre: c.nombre,
-                          Apellido: c.apellido,
-                          Email: c.email,
-                          Estado: sesion?.estado || 'Sin iniciar',
-                          Fecha_Asignacion: sesion?.creado_en ? new Date(sesion.creado_en).toLocaleDateString() : 'N/A',
-                          Link_Evaluacion: `${getBaseUrl()}/evaluacion?candidato=${c.id}&proceso=${procesoSeleccionado.id}`
-                        }
-                      })
-                      const csv = Papa.unparse(csvData)
-                      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-                      const link = document.createElement('a')
-                      link.href = URL.createObjectURL(blob)
-                      link.setAttribute('download', `Links_${procesoSeleccionado.cargo.replace(/\s+/g, '_')}.csv`)
-                      document.body.appendChild(link)
-                      link.click()
-                      document.body.removeChild(link)
+                  <button
+                    disabled={exportandoLinks}
+                    onClick={async () => {
+                      setExportandoLinks(true)
+                      try {
+                        const csvData = await Promise.all(candidatosProceso.map(async c => {
+                          // Encontrar la sesión para este proceso y obtener su estado/fecha
+                          const sesion = sesiones.find(s => s.candidato_id === c.id && s.proceso_id === procesoSeleccionado.id)
+                          let linkEvaluacion = ''
+                          try {
+                            linkEvaluacion = await obtenerLinkEvaluacion(c.id, procesoSeleccionado.id)
+                          } catch (err: any) {
+                            console.error(`Error al generar link firmado para ${c.email}:`, err.message)
+                          }
+                          return {
+                            Nombre: c.nombre,
+                            Apellido: c.apellido,
+                            Email: c.email,
+                            Estado: sesion?.estado || 'Sin iniciar',
+                            Fecha_Asignacion: sesion?.creado_en ? new Date(sesion.creado_en).toLocaleDateString() : 'N/A',
+                            Link_Evaluacion: linkEvaluacion
+                          }
+                        }))
+                        const csv = Papa.unparse(csvData)
+                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+                        const link = document.createElement('a')
+                        link.href = URL.createObjectURL(blob)
+                        link.setAttribute('download', `Links_${procesoSeleccionado.cargo.replace(/\s+/g, '_')}.csv`)
+                        document.body.appendChild(link)
+                        link.click()
+                        document.body.removeChild(link)
+                      } finally {
+                        setExportandoLinks(false)
+                      }
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl text-[10px] font-bold transition-all border border-slate-200"
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl text-[10px] font-bold transition-all border border-slate-200 disabled:opacity-50"
                     title="Exportar lista con links para Gmail"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    EXPORTAR LINKS
+                    {exportandoLinks ? 'GENERANDO...' : 'EXPORTAR LINKS'}
                   </button>
                 </div>
               </div>
