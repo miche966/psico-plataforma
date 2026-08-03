@@ -24,6 +24,8 @@ const RUTAS: Record<string, string> = {
   'estres-laboral': '/estres-laboral',
   creatividad: '/creatividad',
   'sjt-problemas': '/sjt-problemas',
+  roleplay: '/roleplay',
+  'frases-incompletas': '/frases-incompletas',
 }
 
 const NOMBRES_TESTS: Record<string, { nombre: string, duracion: string }> = {
@@ -44,26 +46,6 @@ const NOMBRES_TESTS: Record<string, { nombre: string, duracion: string }> = {
   'estres-laboral': { nombre: 'Afrontamiento del Estrés', duracion: '15 min' },
   creatividad: { nombre: 'Creatividad e Innovación', duracion: '15 min' },
   'sjt-problemas': { nombre: 'Resolución de Problemas', duracion: '20 min' },
-}
-
-// Mapeo de IDs de base de datos a llaves de test
-const TEST_IDS: Record<string, string> = {
-  'a1b2c3d4-e5f6-7890-abcd-ef1234567890': 'bigfive',
-  'f6a7b8c9-d0e1-2345-fabc-456789012345': 'icar',
-  'd0e1f2a3-b4c5-6789-defa-000000000001': 'estres-laboral',
-  'e1f2a3b4-c5d6-7890-efab-111222333444': 'creatividad',
-  'e5f6a7b8-c9d0-1234-efab-345678901234': 'integridad',
-  'b2c3d4e5-f6a7-8901-bcde-f12345678901': 'hexaco',
-  'c3d4e5f6-a7b8-9012-cdef-123456789012': 'numerico',
-  'd4e5f6a7-b8c9-0123-defa-234567890123': 'verbal',
-  'a7b8c9d0-e1f2-3456-abcd-777777777777': 'sjt-ventas',
-  'e5f6a7b8-c9d0-1234-efab-555555555555': 'tolerancia-frustracion',
-  'f2a3b4c5-d6e7-8901-fabc-222333444555': 'sjt-problemas',
-  'c9d0e1f2-a3b4-5678-cdef-999999999999': 'sjt-legal',
-  'b2c3d4e5-f6a7-8901-bcde-222222222222': 'sjt-comercial',
-  'a1b2c3d4-e5f6-7890-abcd-111111111111': 'comercial',
-  'b8c9d0e1-f2a3-4567-bcde-888888888888': 'atencion-detalle',
-  'f6a7b8c9-d0e1-2345-fabc-666666666666': 'sjt-atencion',
 }
 
 export default function PortalCandidatoPage() {
@@ -127,6 +109,7 @@ export default function PortalCandidatoPage() {
       const proc = payload.proceso
       const sesiones: Array<{ test_id: string, estado: string }> = payload.sesiones || []
       const respuestasVideo: Array<{ entrevista_id: string }> = payload.respuestasVideo || []
+      const completadosDB: string[] = payload.progreso?.testsCompletados || []
 
       setCandidato(cand)
       setProceso(proc)
@@ -143,22 +126,7 @@ export default function PortalCandidatoPage() {
       // 1. Cargar desde LocalStorage
       const completadosLocal: string[] = []
 
-      const completadosDB: string[] = []
       const debugData: any = { raw_sessions: sesiones, raw_videos: respuestasVideo }
-      
-      if (sesiones) {
-        sesiones.forEach(s => {
-          const key = TEST_IDS[s.test_id]
-          if (key && ['finalizado', 'completado', 'completada'].includes(s.estado)) completadosDB.push(key)
-        })
-      }
-
-      if (respuestasVideo) {
-        const idsUnicos = Array.from(new Set(respuestasVideo.map(rv => rv.entrevista_id)))
-        idsUnicos.forEach(id => {
-          completadosDB.push(`entrevista:${id}`)
-        })
-      }
 
       const merge = Array.from(new Set([...completadosLocal, ...completadosDB]))
       setTestsCompletados(merge)
