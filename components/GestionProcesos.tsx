@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { Plus, Check, Link as LinkIcon, Search, FileText, X, Eye, Settings, Clock, CheckCircle2, BellRing, Upload, ClipboardPaste, UserPlus, Download, Video } from 'lucide-react'
 import { getBaseUrl } from '@/lib/utils'
 import { getAdminHeaders, obtenerLinkEvaluacion } from '@/lib/evaluacionLink'
@@ -131,63 +130,21 @@ export default function GestionProcesos() {
         throw new Error('No se encontraron columnas de "Nombre" o "Email". Asegúrate de que tu archivo tenga estos títulos en la primera fila.')
       }
 
-      // 2. Obtener candidatos existentes (perfil completo)
-      const emails = candidatosParaCargar.map(c => c.email)
-      const { data: existentes } = await supabase
-        .from('candidatos')
-        .select('*')
-        .in('email', emails)
-
-      const emailsExistentes = new Set(existentes?.map(e => e.email) || [])
-      const nuevosParaInsertar = candidatosParaCargar.filter(c => !emailsExistentes.has(c.email))
-
-      let todosLosCandidatos = existentes || []
-
-      // Insertar los nuevos
-      if (nuevosParaInsertar.length > 0) {
-        const { data: insertados, error: errorI } = await supabase
-          .from('candidatos')
-          .insert(nuevosParaInsertar)
-          .select()
-        
-        if (errorI) throw errorI
-        if (insertados) todosLosCandidatos = [...todosLosCandidatos, ...insertados]
-      }
-
-      // 3. Vincular al proceso seleccionado
-      if (procesoSeleccionado && todosLosCandidatos.length > 0) {
-        const slugPrimerTest = procesoSeleccionado.bateria_tests?.[0] || 'control'
-        let testIdFinal = slugPrimerTest
-        if (slugPrimerTest.startsWith('entrevista:')) testIdFinal = slugPrimerTest.split(':')[1]
-        else if (SLUG_TO_ID[slugPrimerTest]) testIdFinal = SLUG_TO_ID[slugPrimerTest]
-
-        const { data: sesionesActuales } = await supabase
-          .from('sesiones')
-          .select('candidato_id')
-          .eq('proceso_id', procesoSeleccionado.id)
-        
-        const idsConSesion = new Set(sesionesActuales?.map(s => s.candidato_id) || [])
-        
-        const sesionesNuevas = todosLosCandidatos
-          .filter(c => !idsConSesion.has(c.id))
-          .map(c => ({
-            candidato_id: c.id,
-            proceso_id: procesoSeleccionado.id,
-            test_id: testIdFinal,
-            estado: 'pendiente'
-          }))
-
-        if (sesionesNuevas.length > 0) {
-          const { error: errorS } = await supabase
-            .from('sesiones')
-            .insert(sesionesNuevas)
-          
-          if (errorS) throw errorS
-        }
-      }
+      const response = await fetch('/api/admin/procesos', {
+        method: 'POST',
+        headers: await getAdminHeaders(),
+        body: JSON.stringify({
+          action: 'carga_masiva',
+          candidatos: candidatosParaCargar,
+          procesoId: procesoSeleccionado?.id || '',
+          slugPrimerTest: procesoSeleccionado?.bateria_tests?.[0] || 'control'
+        })
+      })
+      const resultado = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(resultado.error || 'Error en la carga masiva')
 
       await cargarDatos()
-      alert(`Carga completada: ${todosLosCandidatos.length} candidatos procesados correctamente.`)
+      alert(`Carga completada: ${resultado.total ?? candidatosParaCargar.length} candidatos procesados correctamente.`)
       setMostrarCargaMasiva(false)
       setTextoMasivo('')
     } catch (error: any) {
@@ -241,48 +198,36 @@ export default function GestionProcesos() {
     setGuardando(true)
 
     if (modoEdicion && procesoSeleccionado) {
-      const { error } = await supabase
-        .from('procesos')
-        .update({
-          nombre: form.nombre,
-          cargo: form.cargo,
-          descripcion: form.descripcion,
-          descripcion_cargo: form.descripcion_cargo,
-          competencias_requeridas: form.competencias_requeridas,
-          bateria_tests: form.bateria_tests
-        })
-        .eq('id', procesoSeleccionado.id)
+      const response = await fetch('/api/admin/procesos', {
+        method: 'POST',
+        headers: await getAdminHeaders(),
+        body: JSON.stringify({ action: 'actualizar_proceso', procesoId: procesoSeleccionado.id, ...form })
+      })
 
-      if (!error) {
+      if (response.ok) {
         setProcesoSeleccionado({ ...procesoSeleccionado, ...form })
         setProcesos(procesos.map(p => p.id === procesoSeleccionado.id ? { ...p, ...form } : p))
         setMostrarForm(false)
         setModoEdicion(false)
         alert('Proceso actualizado con éxito.')
       } else {
-        console.error('Error al actualizar:', error)
+        const payload = await response.json().catch(() => ({}))
+        console.error('Error al actualizar:', payload.error)
         alert('Hubo un error al actualizar el proceso.')
       }
     } else {
-      const { data, error } = await supabase
-        .from('procesos')
-        .insert({
-          nombre: form.nombre,
-          cargo: form.cargo,
-          descripcion: form.descripcion,
-          descripcion_cargo: form.descripcion_cargo,
-          competencias_requeridas: form.competencias_requeridas,
-          activo: true,
-          bateria_tests: form.bateria_tests
-        })
-        .select()
-        .single()
+      const response = await fetch('/api/admin/procesos', {
+        method: 'POST',
+        headers: await getAdminHeaders(),
+        body: JSON.stringify({ action: 'crear_proceso', ...form })
+      })
+      const payload = await response.json().catch(() => ({}))
 
-      if (!error) {
+      if (response.ok) {
         setForm({ nombre: '', cargo: '', descripcion: '', descripcion_cargo: '', bateria_tests: [], competencias_requeridas: [] })
         setMostrarForm(false)
         cargarDatos()
-        if (data) setProcesoSeleccionado(data)
+        if (payload.proceso) setProcesoSeleccionado(payload.proceso)
       }
     }
     setGuardando(false)
@@ -291,29 +236,31 @@ export default function GestionProcesos() {
   async function eliminarProceso(id: string, e: React.MouseEvent) {
     e.stopPropagation()
     if (!confirm('¿Estás seguro de eliminar este proceso? Los candidatos se desvincularán de esta vacante, pero sus resultados históricos se mantendrán en la base de datos.')) return
-    
-    // 1. Desvincular sesiones
-    await supabase.from('sesiones').update({ proceso_id: null }).eq('proceso_id', id)
-    
-    // 2. Eliminar el proceso
-    const { error } = await supabase.from('procesos').delete().eq('id', id)
-    
-    if (!error) {
+
+    const response = await fetch('/api/admin/procesos', {
+      method: 'POST',
+      headers: await getAdminHeaders(),
+      body: JSON.stringify({ action: 'eliminar_proceso', procesoId: id })
+    })
+
+    if (response.ok) {
       if (procesoSeleccionado?.id === id) setProcesoSeleccionado(null)
       cargarDatos()
     } else {
-      alert('Error al eliminar: ' + error.message)
+      const payload = await response.json().catch(() => ({}))
+      alert('Error al eliminar: ' + (payload.error || 'desconocido'))
     }
   }
 
   async function toggleEstado(p: Proceso, e: React.MouseEvent) {
     e.stopPropagation()
-    const { error } = await supabase
-      .from('procesos')
-      .update({ activo: !p.activo })
-      .eq('id', p.id)
-    
-    if (!error) cargarDatos()
+    const response = await fetch('/api/admin/procesos', {
+      method: 'POST',
+      headers: await getAdminHeaders(),
+      body: JSON.stringify({ action: 'toggle_estado', procesoId: p.id, activo: !p.activo })
+    })
+
+    if (response.ok) cargarDatos()
   }
 
   function iniciarEdicion() {
@@ -333,39 +280,17 @@ export default function GestionProcesos() {
   async function asignarCandidato(candidatoId: string) {
     if (!procesoSeleccionado) return
     setAgregando(candidatoId)
-    
+
     const slugPrimerTest = procesoSeleccionado.bateria_tests?.[0] || 'control'
-    let testIdFinal = slugPrimerTest
 
-    // Traducir slug a UUID si existe en el mapa
-    if (slugPrimerTest.startsWith('entrevista:')) {
-      testIdFinal = slugPrimerTest.split(':')[1]
-    } else if (SLUG_TO_ID[slugPrimerTest]) {
-      testIdFinal = SLUG_TO_ID[slugPrimerTest]
-    }
-    
-    // 1. Verificar si ya existe el vínculo (sesión)
-    const { data: existe } = await supabase
-      .from('sesiones')
-      .select('id')
-      .eq('candidato_id', candidatoId)
-      .eq('proceso_id', procesoSeleccionado.id)
-      .limit(1)
-
-    // 2. Si no existe, crear la sesión inicial con el ID real (UUID)
-    if (!existe || existe.length === 0) {
-      const { error } = await supabase
-        .from('sesiones')
-        .insert({
-          candidato_id: candidatoId,
-          proceso_id: procesoSeleccionado.id,
-          test_id: testIdFinal,
-          estado: 'pendiente'
-        })
-      
-      if (error) {
-        console.error('Error al crear vínculo:', error.message)
-      }
+    const response = await fetch('/api/admin/procesos', {
+      method: 'POST',
+      headers: await getAdminHeaders(),
+      body: JSON.stringify({ action: 'asignar_candidato', candidatoId, procesoId: procesoSeleccionado.id, slugPrimerTest })
+    })
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}))
+      console.error('Error al crear vínculo:', payload.error)
     }
 
     await cargarDatos()
@@ -378,18 +303,18 @@ export default function GestionProcesos() {
   async function desvincularCandidato(candidatoId: string) {
     if (!procesoSeleccionado) return
     if (!confirm('¿Estás seguro de desvincular a este candidato de este proceso? Dejará de figurar en esta vacante.')) return
-    
-    // En lugar de borrar (que daría error 409 si hay resultados), desvinculamos el proceso
-    const { error } = await supabase
-      .from('sesiones')
-      .update({ proceso_id: null })
-      .eq('candidato_id', candidatoId)
-      .eq('proceso_id', procesoSeleccionado.id)
 
-    if (!error) {
+    const response = await fetch('/api/admin/procesos', {
+      method: 'POST',
+      headers: await getAdminHeaders(),
+      body: JSON.stringify({ action: 'desvincular_candidato', candidatoId, procesoId: procesoSeleccionado.id })
+    })
+
+    if (response.ok) {
       cargarDatos()
     } else {
-      console.error('Error al desvincular:', error.message)
+      const payload = await response.json().catch(() => ({}))
+      console.error('Error al desvincular:', payload.error)
     }
   }
 
@@ -468,24 +393,15 @@ export default function GestionProcesos() {
     setProcesandoMasivo(true)
     try {
       const slugPrimerTest = procesoSeleccionado.bateria_tests?.[0] || 'control'
-      let testIdFinal = slugPrimerTest
-      if (slugPrimerTest.startsWith('entrevista:')) testIdFinal = slugPrimerTest.split(':')[1]
-      else if (SLUG_TO_ID[slugPrimerTest]) testIdFinal = SLUG_TO_ID[slugPrimerTest]
 
-      // Vincular a TODOS los candidatos que no tengan proceso_id o que estén huérfanos
-      const sesionesNuevas = candidatos.map(c => ({
-        candidato_id: c.id,
-        proceso_id: procesoSeleccionado.id,
-        test_id: testIdFinal,
-        estado: 'pendiente'
-      }))
+      const response = await fetch('/api/admin/procesos', {
+        method: 'POST',
+        headers: await getAdminHeaders(),
+        body: JSON.stringify({ action: 'reparar_vinculos', procesoId: procesoSeleccionado.id, slugPrimerTest })
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.error || 'Error al reparar')
 
-      const { error } = await supabase
-        .from('sesiones')
-        .upsert(sesionesNuevas, { onConflict: 'candidato_id,proceso_id' })
-      
-      if (error) throw error
-      
       await cargarDatos()
       alert('¡Vínculos restaurados con éxito!')
     } catch (err: any) {
@@ -498,31 +414,27 @@ export default function GestionProcesos() {
   async function cargarDatos() {
     setCargando(true)
     try {
-      // Cargamos por separado para que si uno falla no bloquee al resto
-      const { data: pData, error: pe } = await supabase.from('procesos').select('*').order('creado_en', { ascending: false })
-      const { data: cData, error: ce } = await supabase.from('candidatos').select('id, nombre, apellido, email').order('creado_en', { ascending: false })
-      const { data: eData, error: ee } = await supabase.from('entrevistas_video').select('id, nombre').order('creada_en', { ascending: false })
-      const { data: sData, error: se } = await supabase.from('sesiones').select('*')
-      const { data: vData, error: ve } = await supabase.from('respuestas_video').select('candidato_id, entrevista_id')
+      const response = await fetch('/api/admin/procesos', {
+        headers: await getAdminHeaders(),
+        cache: 'no-store'
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.error || 'No se pudieron cargar los procesos')
+
       const progresoResponse = await fetch('/api/progreso-evaluacion', { headers: await getAdminHeaders() })
       const progresoJson = progresoResponse.ok ? await progresoResponse.json() : { data: [] }
 
-      if (pe) console.error('Error Procesos:', pe)
-      if (ce) console.error('Error Candidatos:', ce)
-      if (se) console.error('Error Sesiones:', se)
-      if (ve) console.error('Error Video:', ve)
-
       console.log('RECUENTO:', {
-        p: pData?.length || 0,
-        c: cData?.length || 0,
-        s: sData?.length || 0
+        p: payload.data?.length || 0,
+        c: payload.candidatos?.length || 0,
+        s: payload.sesiones?.length || 0
       })
 
-      if (pData) setProcesos(pData)
-      if (cData) setCandidatos(cData)
-      if (eData) setEntrevistas(eData)
-      if (sData) setSesiones(sData)
-      if (vData) setVideoRespuestas(vData)
+      if (payload.data) setProcesos(payload.data)
+      if (payload.candidatos) setCandidatos(payload.candidatos)
+      if (payload.entrevistas) setEntrevistas(payload.entrevistas)
+      if (payload.sesiones) setSesiones(payload.sesiones)
+      if (payload.respuestasVideo) setVideoRespuestas(payload.respuestasVideo)
       setProgresoOperativo(Array.isArray(progresoJson.data) ? progresoJson.data : [])
     } catch (err) {
       console.error('Falla total:', err)
