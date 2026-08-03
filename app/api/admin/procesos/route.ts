@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/server/adminAuth'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { readAll } from '@/lib/server/readAll'
 
 export async function GET(req: Request) {
   try {
@@ -18,15 +19,15 @@ export async function GET(req: Request) {
       if (sesionesError || candidatosError || videosError || preguntasError) throw sesionesError || candidatosError || videosError || preguntasError
       return NextResponse.json({ sesiones: sesiones || [], candidatos: candidatos || [], respuestasVideo: respuestasVideo || [], preguntasVideo: preguntasVideo || [] })
     }
-    const [{ data, error }, { data: candidatos, error: candidatosError }, { data: entrevistas, error: entrevistasError }, { data: sesiones, error: sesionesError }, { data: respuestasVideo, error: videosError }] = await Promise.all([
+    const [{ data, error }, { data: candidatos, error: candidatosError }, { data: entrevistas, error: entrevistasError }, sesiones, respuestasVideo] = await Promise.all([
       db.from('procesos').select('*').order('creado_en', { ascending: false }),
       db.from('candidatos').select('id, nombre, apellido, email').order('creado_en', { ascending: false }),
       db.from('entrevistas_video').select('*').order('creada_en', { ascending: false }),
-      db.from('sesiones').select('*'),
-      db.from('respuestas_video').select('candidato_id, entrevista_id')
+      readAll(db, 'sesiones', '*'),
+      readAll(db, 'respuestas_video', 'candidato_id, entrevista_id')
     ])
-    if (error || candidatosError || entrevistasError || sesionesError || videosError) throw error || candidatosError || entrevistasError || sesionesError || videosError
-    return NextResponse.json({ data: data || [], candidatos: candidatos || [], entrevistas: entrevistas || [], sesiones: sesiones || [], respuestasVideo: respuestasVideo || [] })
+    if (error || candidatosError || entrevistasError) throw error || candidatosError || entrevistasError
+    return NextResponse.json({ data: data || [], candidatos: candidatos || [], entrevistas: entrevistas || [], sesiones, respuestasVideo })
   } catch (error) {
     console.error('Error cargando procesos administrativos:', error)
     return NextResponse.json({ error: 'No se pudieron cargar los procesos' }, { status: 500 })

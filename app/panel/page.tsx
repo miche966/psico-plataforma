@@ -17,19 +17,19 @@ import SaludOperativa from '@/components/SaludOperativa'
 
 
 const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
-  'Orientaci  an al cliente': { amabilidad: 4.5, responsabilidad: 4 },
-  'Orientaci  an a resultados': { responsabilidad: 5, extraversion: 4 },
+  'Orientación al cliente': { amabilidad: 4.5, responsabilidad: 4 },
+  'Orientación a resultados': { responsabilidad: 5, extraversion: 4 },
   'Trabajo en equipo': { amabilidad: 5, extraversion: 4 },
   'Adaptabilidad al cambio': { apertura: 5, neuroticismo: 1.5 },
   'Integridad': { responsabilidad: 5, amabilidad: 4 },
   'Iniciativa': { extraversion: 4.5, apertura: 4, responsabilidad: 4 },
   'Liderazgo': { extraversion: 5, responsabilidad: 4.5, neuroticismo: 1.5 },
-  'Comunicaci?n': { extraversion: 5, amabilidad: 4 },
-  'Negociaci?n': { extraversion: 4.5, amabilidad: 3.5, responsabilidad: 4 },
-  'Planificaci  an y organizaci  an': { responsabilidad: 5, apertura: 3.5 },
-  'Tolerancia a la presi  an': { neuroticismo: 1, responsabilidad: 4.5 },
-  'Pensamiento anal  atico': { apertura: 4.5, responsabilidad: 4 },
-  'Creatividad e innovaci  an': { apertura: 5, extraversion: 4 },
+  'Comunicación': { extraversion: 5, amabilidad: 4 },
+  'Negociación': { extraversion: 4.5, amabilidad: 3.5, responsabilidad: 4 },
+  'Planificación y organización': { responsabilidad: 5, apertura: 3.5 },
+  'Tolerancia a la presión': { neuroticismo: 1, responsabilidad: 4.5 },
+  'Pensamiento analítico': { apertura: 4.5, responsabilidad: 4 },
+  'Creatividad e innovación': { apertura: 5, extraversion: 4 },
   'Autocontrol': { neuroticismo: 1, amabilidad: 4 },
   'Responsabilidad': { responsabilidad: 5 }
 }
@@ -120,7 +120,7 @@ function datosCognitivos(pb: Record<string, unknown> | null) {
 }
 
 const etiquetas: Record<string, string> = {
-  extraversion: 'Extraversi  an',
+  extraversion: 'Extraversión',
   amabilidad: 'Amabilidad',
   responsabilidad: 'Responsabilidad',
   neuroticismo: 'Neuroticismo',
@@ -138,7 +138,7 @@ const TEST_NAMES: Record<string, string> = {
   'd4e5f6a7-b8c9-0123-defa-234567890123': 'Razonamiento Verbal',
   'a7b8c9d0-e1f2-3456-abcd-777777777777': 'SJT Ventas',
   'e5f6a7b8-c9d0-1234-efab-555555555555': 'SJT Cobranzas',
-  'f2a3b4c5-d6e7-8901-fabc-222333444555': 'SJT Resoluci?n de Problemas',
+  'f2a3b4c5-d6e7-8901-fabc-222333444555': 'SJT Resolución de Problemas',
   'c9d0e1f2-a3b4-5678-cdef-999999999999': 'SJT Legal',
   'b2c3d4e5-f6a7-8901-bcde-222222222222': 'SJT Comercial',
   'a1b2c3d4-e5f6-7890-abcd-111111111111': 'Perfil Comercial',
@@ -199,20 +199,20 @@ interface CandidatoAgrupado {
 async function generarResumenIA(candidato: CandidatoAgrupado) {
   try {
     const prompt = `
-      Analiza los resultados de este candidato para un proceso de selecci  an.
+      Analiza los resultados de este candidato para un proceso de selección.
       Datos del candidato: ${candidato.nombre} ${candidato.apellido}
       Cargo: ${candidato.proceso_cargo}
-      
-      Resultados psicom  atricos (Big Five): ${JSON.stringify(candidato.sesiones.find(s => s.test_id.includes('bigfive'))?.puntaje_bruto || {})}
+
+      Resultados psicométricos (Big Five): ${JSON.stringify(candidato.sesiones.find(s => s.test_id.includes('bigfive'))?.puntaje_bruto || {})}
       Resultados de video (Transcripciones): ${JSON.stringify(candidato.sesiones.map(s => (s as any).transcripcion).filter(Boolean))}
       Match Score calculado: ${candidato.matchScore}%
-      
-      REQUERIMIENTO ESPECIAL: Realiza un ANÁLISIS DEL DISCURSO del candidato basándote en las transcripciones. 
-      Eval?a su coherencia, riqueza de vocabulario, seguridad al expresarse y capacidad de estructurar ideas complejas.
-      
-      Redacta un resumen ejecutivo profesional de 2 p  arrafos. 
-      Integra este an  alisis del discurso con sus rasgos de personalidad y su adecuaci  an al cargo.
-      Usa un tono corporativo, sobrio y anal  atico. No uses markdown, solo texto plano.
+
+      REQUERIMIENTO ESPECIAL: Realiza un ANÁLISIS DEL DISCURSO del candidato basándote en las transcripciones.
+      Evalúa su coherencia, riqueza de vocabulario, seguridad al expresarse y capacidad de estructurar ideas complejas.
+
+      Redacta un resumen ejecutivo profesional de 2 párrafos.
+      Integra este análisis del discurso con sus rasgos de personalidad y su adecuación al cargo.
+      Usa un tono corporativo, sobrio y analítico. No uses markdown, solo texto plano.
     `
 
     const response = await fetch('/api/ia-summary', {
@@ -298,9 +298,9 @@ export default function PanelEvaluador() {
             id: `sintetico-${idx}`,
             numItem: idx + 1,
             categoria: fact.toUpperCase(),
-            pregunta: `Evaluaci?n de competencia situacional y desempe  ao en factor: ${fact}`,
+            pregunta: `Evaluación de competencia situacional y desempeño en factor: ${fact}`,
             opcionSeleccionada: `Rendimiento obtenido: ${obj.correctas || 0} de ${obj.total || 0} (${Math.round(((obj.correctas || 0) / (obj.total || 1)) * 100)}%)`,
-            opcionCorrecta: `Desempe  ao esperado: Nivel M  aximo (${obj.total || 0}/${obj.total || 0})`,
+            opcionCorrecta: `Desempeño esperado: Nivel Máximo (${obj.total || 0}/${obj.total || 0})`,
             esTextoAbierto: false,
             esCorrecto: (obj.correctas || 0) === (obj.total || 0)
           }))
@@ -309,8 +309,8 @@ export default function PanelEvaluador() {
             {
               id: 'sintetico-1',
               numItem: 1,
-              categoria: 'EVALUACI  a&SN GLOBAL',
-              pregunta: 'Registro de Desempe  ao General del Candidato',
+              categoria: 'EVALUACIÓN GLOBAL',
+              pregunta: 'Registro de Desempeño General del Candidato',
               opcionSeleccionada: `Puntaje Acreditado: ${pb.porcentaje || pb.promedio_general || 100}%`,
               opcionCorrecta: 'Puntaje Conforme Acreditado',
               esTextoAbierto: false,
@@ -322,7 +322,7 @@ export default function PanelEvaluador() {
         }
       }
     } catch (e) {
-      console.error('Error cargando auditor  aa de sesi  an:', e)
+      console.error('Error cargando auditoría de sesión:', e)
       setItemsAuditoria([])
     } finally {
       setCargandoAuditoria(false)
@@ -389,7 +389,7 @@ export default function PanelEvaluador() {
       const misSesiones = sesionesPorCandidato[c.id] || []
       const primerSesionProceso = misSesiones.find(s => s.procesos)
       
-      const procesoNombre = primerSesionProceso?.procesos?.nombre || 'Evaluaci?n Independiente'
+      const procesoNombre = primerSesionProceso?.procesos?.nombre || 'Evaluación Independiente'
       const procesoCargo = primerSesionProceso?.procesos?.cargo || 'Sin cargo asignado'
       const procesoId = primerSesionProceso?.proceso_id || undefined
       const competenciasReq = primerSesionProceso?.procesos?.competencias_requeridas || []
@@ -458,10 +458,6 @@ export default function PanelEvaluador() {
       }
     }).filter(c => c.sesiones.length > 0 || c.progreso.completados > 0)
 
-    console.log(`&a&S& [FRONTEND RESULT] Total candidatos calculados: ${resultado.length}`)
-    const camilaFinal = resultado.find(x => x.email === 'camilamartinezz2801@gmail.com')
-    console.log("&aa [FRONTEND CAMILA DAHIANA]:", camilaFinal ? `ENCONTRADA CON ${camilaFinal.sesiones.length} SESIONES` : "a& NO ENCONTRADA")
-
     setCandidatos(resultado)
   }
 
@@ -508,7 +504,7 @@ export default function PanelEvaluador() {
       if (c.proceso_id !== procesoSeleccionadoId) return false
     }
 
-    // 2. Filtro por b  asqueda de texto resiliente a acentos (normaliza tildes)
+    // 2. Filtro por búsqueda de texto resiliente a acentos (normaliza tildes)
     const norm = (str: string) => (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     const searchStr = norm(`${c.nombre} ${c.apellido} ${c.email} ${c.proceso_nombre}`)
     return searchStr.includes(norm(filtro))
@@ -529,10 +525,10 @@ export default function PanelEvaluador() {
     const headers = [
       "Nombre", "Apellido", "Email", "Documento", "Edad", "Sexo", "Formacion", "Profesion",
       "Proceso", "Cargo", "Avance (Completados/Totales)", "Progreso %", "Match Score (Ajuste) %",
-      "Alertas Proctoring (Fraude)", " ?ndice de Probidad (Integridad) (1-5)", "Sinceridad Laboral (1-5)",
+      "Alertas Proctoring (Fraude)", "Índice de Probidad (Integridad) (1-5)", "Sinceridad Laboral (1-5)",
       "Perfil de Personalidad (Big Five)", "Tipo de Personalidad (MBTI)", "Aptitud Cognitiva % (Efectividad)",
-      "Competencia: Comunicaci?n %", "Competencia: Negociaci?n %", "Competencia: Tolerancia Presi?n %",
-      "Riesgo de Agotamiento (Burnout) (1-5)", "Equilibrio Vida-Trabajo (1-5)", "Fecha de Evaluaci?n (  &ltima Actividad)",
+      "Competencia: Comunicación %", "Competencia: Negociación %", "Competencia: Tolerancia Presión %",
+      "Riesgo de Agotamiento (Burnout) (1-5)", "Equilibrio Vida-Trabajo (1-5)", "Fecha de Evaluación (Última Actividad)",
       "Dictamen Final"
     ]
 
@@ -644,10 +640,10 @@ export default function PanelEvaluador() {
     }
 
     const headers = [
-      "Proceso", "Cargo", "Total Inscritos", "Tasa de Finalizaci  an %", "Match Score Promedio",
+      "Proceso", "Cargo", "Total Inscritos", "Tasa de Finalización %", "Match Score Promedio",
       "Recomendados %", "Recomendados con Reservas %", "No Recomendados %", "Alertas Proctoring Totales",
-      "Promedio Alertas por Candidato", "Candidatos Cero Alertas %", "Alertas Cr  aticas % (>15)",
-      "Tiempo Medio", "Deserci  an por Examen", "Burnout Promedio (1-5)", "Equilibrio Promedio (1-5)"
+      "Promedio Alertas por Candidato", "Candidatos Cero Alertas %", "Alertas Críticas % (>15)",
+      "Tiempo Medio", "Deserción por Examen", "Burnout Promedio (1-5)", "Equilibrio Promedio (1-5)"
     ]
 
     const procesosMap = new Map<string, any[]>()
@@ -670,7 +666,7 @@ export default function PanelEvaluador() {
       const matchPromedio = countMatch > 0 ? `${Math.round(sumMatch / countMatch)}%` : "-"
 
       rows.push([
-        primer.proceso_nombre || "Proceso de Selecci  an",
+        primer.proceso_nombre || "Proceso de Selección",
         primer.proceso_cargo || "S/C",
         totalInscritos,
         `${tasaFinalizacion}%`,
@@ -794,13 +790,13 @@ export default function PanelEvaluador() {
       ) : tab === 'diagnostico' ? (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm animate-in fade-in duration-300">
           <div className="mb-6">
-            <h2 className="text-lg font-bold text-slate-900">Diagn  ?stico Cualitativo e IA</h2>
-            <p className="text-xs text-slate-500">Evaluaci?n consolidada de discurso, perfil MBTI y ajuste competencial</p>
+            <h2 className="text-lg font-bold text-slate-900">Diagnóstico Cualitativo e IA</h2>
+            <p className="text-xs text-slate-500">Evaluación consolidada de discurso, perfil MBTI y ajuste competencial</p>
           </div>
           {agrupadoSeleccionado ? (
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
               <h3 className="font-bold text-slate-900 text-sm mb-2">{agrupadoSeleccionado.nombre} {agrupadoSeleccionado.apellido}</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">{agrupadoSeleccionado.resumen_ia || "Generando s  antesis de diagnóstico..."}</p>
+              <p className="text-xs text-slate-600 leading-relaxed">{agrupadoSeleccionado.resumen_ia || "Generando síntesis de diagnóstico..."}</p>
             </div>
           ) : (
             <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
@@ -824,7 +820,7 @@ export default function PanelEvaluador() {
                   <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha</th>
                   <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Candidato</th>
                   <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Proceso</th>
-                  <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Evaluaci?n</th>
+                  <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Evaluación</th>
                   <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Puntaje</th>
                   <th className="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Acciones</th>
                 </tr>
@@ -859,7 +855,7 @@ export default function PanelEvaluador() {
                           ))}
                           {testsCompletados.length > 2 && (
                             <span className="text-[9px] font-bold px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded">
-                              +{testsCompletados.length - 2} m  as
+                              +{testsCompletados.length - 2} más
                             </span>
                           )}
                           {testsCompletados.length === 0 && <span className="text-[9px] text-slate-300 italic">Sin tests</span>}
@@ -868,7 +864,7 @@ export default function PanelEvaluador() {
                       <td className="py-3 px-4 text-center">
                         <div className="flex flex-col items-center">
                           <span className={`text-[10px] font-bold ${c.matchScore && c.matchScore >= 70 ? 'text-emerald-600' : 'text-slate-600'}`}>
-                            {c.matchScore ? `${c.matchScore}% Match` : 'aa'}
+                            {c.matchScore ? `${c.matchScore}% Match` : 'N/D'}
                           </span>
                           <span className="text-[9px] text-slate-400">
                             {c.progreso?.completados}/{c.progreso?.total} tests
@@ -883,7 +879,7 @@ export default function PanelEvaluador() {
                               setTab('evaluaciones')
                             }}
                             className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"
-                            title="Ir al an  alisis"
+                            title="Ir al análisis"
                           >
                             <Search className="w-4 h-4" />
                           </button>
@@ -904,7 +900,7 @@ export default function PanelEvaluador() {
             </table>
             {sesionesGlobales.length === 0 && (
               <div className="py-12 text-center text-slate-400 text-sm italic">
-                No hay registros en la bit  acora a  an.
+                No hay registros en la bitácora aún.
               </div>
             )}
           </div>
@@ -1206,15 +1202,15 @@ export default function PanelEvaluador() {
                           .map((s, sIdx) => {
                             const pb = s.puntaje_bruto
                             let label = (s as any).test_id ? TEST_NAMES[(s as any).test_id] : null
-                            if (!label || label === 'Evaluaci?n') {
+                            if (!label || label === 'Evaluación') {
                               const pbStr = JSON.stringify(pb || {}).toLowerCase()
                               if (s.test_id === 'e5f6a7b8-c9d0-1234-efab-555555555555') label = 'Simulación Situacional: Cobranzas'
                               else if (pbStr.includes('escucha_activa') || pbStr.includes('manejo_conflicto')) label = 'SJT Atención al Cliente'
                               else if (pbStr.includes('negociacion') || pbStr.includes('etica')) label = 'Simulación Situacional: Cobranzas'
                               else if (pbStr.includes('roleplay') || pbStr.includes('simulacion') || pbStr.includes('mensajes') || pbStr.includes('transcripcion')) label = 'Simulación de Roleplay IA'
-                              else if (esBigFive(pb)) label = 'Psicogr?fico (Big Five)'
+                              else if (esBigFive(pb)) label = 'Psicográfico (Big Five)'
                               else if (esCognitivo(pb)) label = 'Capacidad Cognitiva'
-                              else label = `Evaluaci?n #${sIdx + 1}`
+                              else label = `Evaluación #${sIdx + 1}`
                             }
                             const isActive = sesionSeleccionada?.id === s.id
                             return (
@@ -1250,7 +1246,7 @@ export default function PanelEvaluador() {
                       <div className="space-y-4">
                         {videosCandidato.map((v, i) => (
                           <div key={i} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                            <h5 className="text-sm font-bold text-slate-800 mb-3">Pregunta {i + 1}: {v.preguntas_video?.pregunta || 'Presentaci  an y Evaluaci?n Competencial de Entrada'}</h5>
+                            <h5 className="text-sm font-bold text-slate-800 mb-3">Pregunta {i + 1}: {v.preguntas_video?.pregunta || 'Presentación y Evaluación Competencial de Entrada'}</h5>
                             <video 
                               id={`video-entrevista-${i}`}
                               src={v.url_video} 
@@ -1309,7 +1305,7 @@ export default function PanelEvaluador() {
                     <div className="mt-8 pt-8 border-t border-slate-100 animate-in fade-in duration-500">
                       <div className="flex items-center justify-between mb-6">
                         <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Resultados del Test</h4>
-                        <a href={`/informe?candidato=${agrupadoSeleccionado.id}`} target="_blank" className="text-[10px] font-bold text-indigo-600 hover:underline">Ver Informe Completo aa~</a>
+                        <a href={`/informe?candidato=${agrupadoSeleccionado.id}`} target="_blank" className="text-[10px] font-bold text-indigo-600 hover:underline">Ver Informe Completo →</a>
                       </div>
 
                       {sesionSeleccionada.puntaje_bruto && (() => {
@@ -1317,7 +1313,7 @@ export default function PanelEvaluador() {
                         const metricas = pb.metricas_fraude
                         return (
                           <div className="space-y-6">
-                            {/* M  aTRICAS DE FRAUDE */}
+                            {/* MÉTRICAS DE FRAUDE */}
                             {metricas && (
                               <div className="grid grid-cols-2 gap-3 mb-6">
                                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -1331,7 +1327,7 @@ export default function PanelEvaluador() {
                               </div>
                             )}
 
-                            {/* GR  aFICOS BIG FIVE */}
+                            {/* GRÁFICOS BIG FIVE */}
                             {esBigFive(pb) ? valoresNumericos(pb).map(([factor, valor]) => (
                               <div key={factor}>
                                 <div className="flex justify-between mb-1">
@@ -1348,7 +1344,7 @@ export default function PanelEvaluador() {
                               </div>
                             )}
 
-                            {/* RENDERIZADO ESPECIAL DE ROLEPLAY IA (TRANSCRIPCI  a&SN CHAT EN VIVO) */}
+                            {/* RENDERIZADO ESPECIAL DE ROLEPLAY IA (TRANSCRIPCIÓN CHAT EN VIVO) */}
                             {(() => {
                               const pbRoleplay = sesionSeleccionada.puntaje_bruto as any
                               const transcripcion = pbRoleplay?.transcripcion || pbRoleplay?.mensajes || pbRoleplay?.historial
@@ -1366,16 +1362,16 @@ export default function PanelEvaluador() {
                                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
                                           pbRoleplay.acuerdo_alcanzado ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
                                         }`}>
-                                          {pbRoleplay.acuerdo_alcanzado ? '&a&S Acuerdo Alcanzado' : '&a Sin Acuerdo'}
+                                          {pbRoleplay.acuerdo_alcanzado ? '✅ Acuerdo Alcanzado' : '❌ Sin Acuerdo'}
                                         </span>
                                       )}
                                     </div>
 
-                                    {/* Retroalimentaci  an de la IA con texto oscuro hiperlegible */}
+                                    {/* Retroalimentación de la IA con texto oscuro hiperlegible */}
                                     {pbRoleplay.retroalimentacion && (
                                        <div className="p-4 bg-slate-100 rounded-xl border border-slate-300 text-xs text-slate-900 leading-relaxed shadow-sm font-medium">
                                          <span className="font-extrabold text-indigo-700 block mb-1.5 uppercase tracking-wider text-[11px]">
-                                           An  alisis Cualitativo de IA:
+                                           Análisis Cualitativo de IA:
                                          </span>
                                          <p className="text-slate-900 font-medium">
                                            {pbRoleplay.retroalimentacion}
@@ -1383,11 +1379,11 @@ export default function PanelEvaluador() {
                                        </div>
                                      )}
 
-                                    {/* Burbujas del Di  alogo Estilizadas de Alto Contraste */}
+                                    {/* Burbujas del Diálogo Estilizadas de Alto Contraste */}
                                     <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar-visible p-3 bg-slate-950 rounded-xl border border-slate-800">
                                       {transcripcion.map((msg: any, mIdx: number) => {
                                         const r = String(msg.rol || msg.role || msg.sender || '').toLowerCase()
-                                        // Discriminaci  an estricta de roles: user/candidato vs assistant/model/bot
+                                        // Discriminación estricta de roles: user/candidato vs assistant/model/bot
                                         const esCandidato = r === 'user' || r === 'candidato' || r === 'analista' || r === 'evaluado'
 
                                         // Obtener texto limpio
@@ -1400,7 +1396,7 @@ export default function PanelEvaluador() {
                                           >
                                             <div className="flex items-center gap-1.5 px-1">
                                               <span className={`text-[11px] font-extrabold tracking-wide ${esCandidato ? 'text-indigo-400' : 'text-amber-400'}`}>
-                                                {esCandidato ? `Evaluado (${agrupadoSeleccionado.nombre} ${agrupadoSeleccionado.apellido})` : 'Cliente Moroso (Carlos G  amez - IA)'}
+                                                {esCandidato ? `Evaluado (${agrupadoSeleccionado.nombre} ${agrupadoSeleccionado.apellido})` : 'Cliente Moroso (Carlos Gómez - IA)'}
                                               </span>
                                             </div>
 
@@ -1426,16 +1422,16 @@ export default function PanelEvaluador() {
                         )
                       })()}
 
-                      {/* INTEGRACI  a&SN DE AUDITOR  aA DETALLADA DE RESPUESTAS */}
+                      {/* INTEGRACIÓN DE AUDITORÍA DETALLADA DE RESPUESTAS */}
                       {sesionSeleccionada && (
                         <div className="mt-6">
                           {cargandoAuditoria ? (
                             <div className="py-8 text-center text-xs text-slate-400">
-                              Cargando auditor  aa de respuestas...
+                              Cargando auditoría de respuestas...
                             </div>
                           ) : (
                             <AuditoriaRespuestasDetallada 
-                              tituloTest={`Auditor  aa de Respuestas: ${TEST_NAMES[sesionSeleccionada.test_id] || 'Evaluaci?n'}`}
+                              tituloTest={`Auditoría de Respuestas: ${TEST_NAMES[sesionSeleccionada.test_id] || 'Evaluación'}`}
                               respuestas={itemsAuditoria} 
                             />
                           )}
@@ -1467,7 +1463,7 @@ export default function PanelEvaluador() {
 async function generarPDF(sesion: Sesion) {
   const nombre = sesion.candidato
     ? `${sesion.candidato.nombre} ${sesion.candidato.apellido}`
-    : 'Evaluaci?n an  anima'
+    : 'Evaluación anónima'
   const fecha = new Date(sesion.finalizada_en).toLocaleDateString('es-AR', {
     day: '2-digit', month: '2-digit', year: 'numeric'
   })
@@ -1481,7 +1477,7 @@ async function generarPDF(sesion: Sesion) {
   }
 
   const etiquetasPDF: Record<string, string> = {
-    extraversion: 'Extraversi  an',
+    extraversion: 'Extraversión',
     amabilidad: 'Amabilidad',
     responsabilidad: 'Responsabilidad',
     neuroticismo: 'Neuroticismo',
@@ -1519,29 +1515,29 @@ function interpretacion(factor: string, valor: number): string {
   const nivel = valor >= 4 ? 'alto' : valor >= 3 ? 'moderado' : 'bajo'
   const textos: Record<string, Record<string, string>> = {
     extraversion: {
-      alto: 'Persona sociable, en  argica y orientada hacia el mundo externo. Disfruta del trabajo en equipo y los entornos dinámicos.',
+      alto: 'Persona sociable, enérgica y orientada hacia el mundo externo. Disfruta del trabajo en equipo y los entornos dinámicos.',
       moderado: 'Equilibrio entre sociabilidad y reserva. Se adapta tanto a trabajos en equipo como a tareas individuales.',
       bajo: 'Persona reservada y reflexiva. Prefiere entornos tranquilos y el trabajo independiente.'
     },
     amabilidad: {
-      alto: 'Alta orientaci  an hacia los dem  as, cooperativa y emp  atica. Facilita el trabajo en equipo y las relaciones interpersonales.',
-      moderado: 'Equilibrio entre cooperaci  an y asertividad. Puede trabajar bien con otros sin perder independencia de criterio.',
-      bajo: 'Persona directa y orientada a resultados. Puede ser m  as competitiva que colaborativa.'
+      alto: 'Alta orientación hacia los demás, cooperativa y empática. Facilita el trabajo en equipo y las relaciones interpersonales.',
+      moderado: 'Equilibrio entre cooperación y asertividad. Puede trabajar bien con otros sin perder independencia de criterio.',
+      bajo: 'Persona directa y orientada a resultados. Puede ser más competitiva que colaborativa.'
     },
     responsabilidad: {
-      alto: 'Alta organizaci  an, disciplina y orientaci  an al logro. Cumple compromisos y mantiene altos est  andares de trabajo.',
-      moderado: 'Nivel adecuado de organizaci  an y compromiso. Puede adaptarse a distintos niveles de estructura.',
-      bajo: 'Estilo flexible y espont  aneo. Puede tener dificultades con tareas que requieren alta planificaci  an.'
+      alto: 'Alta organización, disciplina y orientación al logro. Cumple compromisos y mantiene altos estándares de trabajo.',
+      moderado: 'Nivel adecuado de organización y compromiso. Puede adaptarse a distintos niveles de estructura.',
+      bajo: 'Estilo flexible y espontáneo. Puede tener dificultades con tareas que requieren alta planificación.'
     },
     neuroticismo: {
-      alto: 'Mayor sensibilidad emocional y tendencia a experimentar estr  as. Puede requerir entornos de trabajo estables.',
-      moderado: 'Respuesta emocional equilibrada ante el estr  as. Maneja bien la mayor  aa de las situaciones laborales.',
-      bajo: 'Alta estabilidad emocional y resiliencia. Maneja bien la presi  an y los entornos de alta demanda.'
+      alto: 'Mayor sensibilidad emocional y tendencia a experimentar estrés. Puede requerir entornos de trabajo estables.',
+      moderado: 'Respuesta emocional equilibrada ante el estrés. Maneja bien la mayoría de las situaciones laborales.',
+      bajo: 'Alta estabilidad emocional y resiliencia. Maneja bien la presión y los entornos de alta demanda.'
     },
     apertura: {
-      alto: 'Alta curiosidad intelectual, creatividad y apertura al cambio. Destaca en roles que requieren innovaci  an.',
+      alto: 'Alta curiosidad intelectual, creatividad y apertura al cambio. Destaca en roles que requieren innovación.',
       moderado: 'Equilibrio entre creatividad y pragmatismo. Se adapta tanto a entornos estructurados como creativos.',
-      bajo: 'Preferencia por m  atodos conocidos y entornos predecibles. Destaca en roles con procesos claros y definidos.'
+      bajo: 'Preferencia por métodos conocidos y entornos predecibles. Destaca en roles con procesos claros y definidos.'
     }
   }
   return textos[factor]?.[nivel] || ''
