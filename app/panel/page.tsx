@@ -271,18 +271,12 @@ export default function PanelEvaluador() {
     if (!sesion) return
     setCargandoAuditoria(true)
     try {
-      // 1. Obtener preguntas registradas para este test
-      const { data: itemsDB } = await supabase
-        .from('items')
-        .select('*')
-        .eq('test_id', sesion.test_id)
-        .order('orden')
-
-      // 2. Obtener las respuestas registradas en la tabla respuestas
-      const { data: respuestasDB } = await supabase
-        .from('respuestas')
-        .select('*')
-        .eq('sesion_id', sesion.id)
+      // 1. Obtener preguntas y respuestas registradas para esta sesión (endpoint seguro, no anon key)
+      const auditResponse = await fetch(`/api/admin/auditoria-sesion?test_id=${encodeURIComponent(sesion.test_id || '')}&sesion_id=${encodeURIComponent(sesion.id)}`, { headers: await getAdminHeaders() })
+      const auditPayload = await auditResponse.json().catch(() => ({}))
+      if (!auditResponse.ok) throw new Error(auditPayload.error || 'No se pudo cargar la auditoría')
+      const itemsDB = auditPayload.items || []
+      const respuestasDB = auditPayload.respuestas || []
 
       if (itemsDB && itemsDB.length > 0) {
         const mapeados = mapperAuditoriaUniversal(itemsDB, respuestasDB || [], sesion.test_id || '')
@@ -1338,9 +1332,17 @@ export default function PanelEvaluador() {
                                   <div className={`h-full ${colores[factor] || 'bg-indigo-500'}`} style={{ width: `${(valor / 5) * 100}%` }} />
                                 </div>
                               </div>
-                            )) : (
+                            )) : esCognitivo(pb) ? (
                               <div className="bg-slate-50 p-4 rounded-xl text-center">
-                                <p className="text-xs text-slate-500">Puntaje General: <span className="font-bold text-slate-800">{promedioPuntaje(pb)} / 5</span></p>
+                                <p className="text-xs text-slate-500">
+                                  Puntaje General: <span className="font-bold text-slate-800">{datosCognitivos(pb).correctas} / {datosCognitivos(pb).total} correctas ({datosCognitivos(pb).pct}%)</span>
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="bg-slate-50 p-4 rounded-xl text-center">
+                                <p className="text-xs text-slate-500">
+                                  Puntaje General: <span className="font-bold text-slate-800">{(pb as any)?.porcentaje != null ? `${(pb as any).porcentaje}%` : `${promedioPuntaje(pb)} / 5`}</span>
+                                </p>
                               </div>
                             )}
 
