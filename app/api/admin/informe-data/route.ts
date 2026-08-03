@@ -25,10 +25,19 @@ export async function GET(req: Request) {
       proceso = data
     }
 
-    const { data: videos, error: videosError } = await db.from('respuestas_video').select('*, preguntas_video(id, pregunta)').eq('candidato_id', id).eq('estado', 'completado')
+    const { data: videos, error: videosError } = await db.from('respuestas_video').select('*').eq('candidato_id', id).eq('estado', 'completado')
     if (videosError) throw videosError
 
-    return NextResponse.json({ candidato, sesiones: lista, proceso, videos: videos || [] })
+    const listaVideos = videos || []
+    const pregIds = Array.from(new Set(listaVideos.map(v => v.pregunta_id).filter(Boolean)))
+    if (pregIds.length > 0) {
+      const { data: pregsData, error: pregsError } = await db.from('preguntas_video').select('id, pregunta').in('id', pregIds)
+      if (pregsError) throw pregsError
+      const pregMap = new Map((pregsData || []).map(p => [p.id, p.pregunta]))
+      listaVideos.forEach(v => { v.preguntas_video = { pregunta: pregMap.get(v.pregunta_id) } })
+    }
+
+    return NextResponse.json({ candidato, sesiones: lista, proceso, videos: listaVideos })
   } catch (error) {
     console.error('Error cargando datos administrativos del informe:', error)
     return NextResponse.json({ error: 'No se pudieron cargar los datos del informe' }, { status: 500 })

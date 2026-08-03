@@ -134,11 +134,19 @@ export async function POST(req: Request) {
     }
 
     // 5. Traer las respuestas de videoentrevistas
-    const { data: videos } = await supabaseAdmin
+    const { data: videosRaw } = await supabaseAdmin
       .from('respuestas_video')
-      .select('*, preguntas_video(*)')
+      .select('*')
       .eq('candidato_id', candidatoId)
       .eq('proceso_id', procesoId)
+
+    const videos = videosRaw || []
+    const pregIdsVideo = Array.from(new Set(videos.map((v: any) => v.pregunta_id).filter(Boolean)))
+    if (pregIdsVideo.length > 0) {
+      const { data: pregsVideoData } = await supabaseAdmin.from('preguntas_video').select('id, pregunta').in('id', pregIdsVideo)
+      const pregVideoMap = new Map((pregsVideoData || []).map((p: any) => [p.id, p.pregunta]))
+      videos.forEach((v: any) => { v.preguntas_video = { pregunta: pregVideoMap.get(v.pregunta_id) } })
+    }
 
     // 6. Calcular el ajuste en base a los pesos del proceso
     let matchScore = 0
