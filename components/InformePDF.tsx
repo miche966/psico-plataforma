@@ -469,12 +469,12 @@ function obtenerInterpretacionLocal(factor: string, valor: number): string {
     nivel_estres: {
       alto: 'Se maneja con tranquilidad frente a la presión del día a día. Las demandas externas no le generan sobresaltos y mantiene un ritmo de trabajo estable.',
       moderado: 'Maneja bien la tensión habitual del trabajo, aunque en momentos de mayor exigencia agradece poder tomarse una pausa para reordenarse.',
-      bajo: 'Actualmente muestra señales de tensión por encima de lo habitual. Le conviene un entorno con rutinas claras y previsibles para poder pensar con más calma.'
+      bajo: 'Actualmente convive con un nivel de tensión más alto de lo deseable, lo que puede afectar su claridad para tomar decisiones en el día a día. Un entorno con rutinas previsibles y objetivos bien delimitados lo ayudaría a recuperar el equilibrio y sostener su rendimiento habitual.'
     },
     carga_laboral: {
       alto: 'Siente que el volumen de trabajo actual le queda cómodo y tiene margen para sumar tareas o desafíos nuevos.',
       moderado: 'Organiza bien la carga de trabajo que le toca, ajustando prioridades sin que esto afecte la calidad de lo que entrega.',
-      bajo: 'Siente que el volumen de tareas le está costando organizar. Le vendría bien ayuda para priorizar y no sentirse desbordado.'
+      bajo: 'Percibe que el volumen de tareas actual supera su capacidad de organización, lo que puede derivar en demoras o en la sensación de estar siempre "atrás". Definir prioridades junto a su líder directo lo ayudaría a ordenar la carga y recuperar margen de acción.'
     }
   };
 

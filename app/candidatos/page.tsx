@@ -2765,7 +2765,7 @@ function interpretacionHumana(factor: string, valor: number, testIdContexto?: st
     // Salud Mental / Riesgos / Estrés (Duplicados removidos)
     carga_laboral: {
       alto: {
-        desc: 'Siente que el volumen de tareas le está costando organizar. Le vendría bien ayuda para priorizar y no sentirse desbordado.',
+        desc: 'Percibe que el volumen de tareas actual supera su capacidad de organización, lo que puede derivar en demoras o en la sensación de estar siempre "atrás". Definir prioridades junto a su líder directo lo ayudaría a ordenar la carga y recuperar margen de acción.',
         q: 'Si pudiera rediseñar su flujo de trabajo, ¿qué tareas eliminaría o delegaría para recuperar su eficacia?'
       },
       moderado: {
