@@ -26,6 +26,7 @@ const RUTAS: Record<string, string> = {
   'sjt-problemas': '/sjt-problemas',
   roleplay: '/roleplay',
   'frases-incompletas': '/frases-incompletas',
+  'iniciativa-dinamismo': '/iniciativa-dinamismo',
 }
 
 const NOMBRES_TESTS: Record<string, { nombre: string, duracion: string }> = {
@@ -46,6 +47,7 @@ const NOMBRES_TESTS: Record<string, { nombre: string, duracion: string }> = {
   'estres-laboral': { nombre: 'Afrontamiento del Estrés', duracion: '15 min' },
   creatividad: { nombre: 'Creatividad e Innovación', duracion: '15 min' },
   'sjt-problemas': { nombre: 'Resolución de Problemas', duracion: '20 min' },
+  'iniciativa-dinamismo': { nombre: 'Iniciativa y Dinamismo', duracion: '10 min' },
 }
 
 export default function PortalCandidatoPage() {

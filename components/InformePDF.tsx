@@ -87,7 +87,7 @@ import { ETQ } from '@/lib/labels';
 
 
 const DOMINIOS = {
-  PERSONALIDAD: ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura', 'honestidad_humildad', 'honestidad', 'normas', 'promedio_general'],
+  PERSONALIDAD: ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura', 'honestidad_humildad', 'honestidad', 'normas', 'promedio_general', 'logro', 'dinamismo'],
   COGNITIVO: ['correctas', 'percentil', 'score', 'documentos', 'comparacion', 'concentracion', 'errores_texto', 'errores_numeros', 'metricas_fraude'],
   COMPETENCIAS: ['etica', 'negociacion', 'manejo_emocional', 'tolerancia_frustracion', 'comunicacion', 'liderazgo', 'trabajo_equipo', 'adaptabilidad', 'resolucion_problemas'],
   BIENESTAR: ['burnout', 'equilibrio', 'relaciones', 'claridad_rol', 'nivel_estres', 'carga_laboral', 'resiliencia', 'manejo_estres', 'autoestima', 'inteligencia_emocional']
@@ -430,6 +430,16 @@ function obtenerInterpretacionLocal(factor: string, valor: number): string {
       alto: 'Demuestra una sólida base ética general y alta consistencia en sus valores profesionales.',
       moderado: 'Muestra un desempeño ético y funcional acorde a los requerimientos estándar del puesto.',
       bajo: 'Se aprecian desvíos o inconsistencias en los indicadores generales de probidad. Se sugeriría validar detalladamente.'
+    },
+    logro: {
+      alto: 'Fuerte orientación al logro. Se fija metas exigentes, se entrega a las tareas y busca activamente superar lo esperado.',
+      moderado: 'Nivel adecuado de orientación al logro. Cumple con lo que se le pide y responde bien ante exigencias puntuales.',
+      bajo: 'Menor motivación de logro autoreportada. Puede requerir objetivos y seguimiento más explícitos para sostener el esfuerzo.'
+    },
+    dinamismo: {
+      alto: 'Alto nivel de energía y actividad. Se mantiene ocupado, reacciona rápido y puede sostener varios frentes a la vez.',
+      moderado: 'Ritmo de trabajo equilibrado. Se adapta tanto a tareas que exigen rapidez como a otras más pausadas.',
+      bajo: 'Estilo más pausado y reflexivo. Prefiere avanzar a un ritmo propio antes que bajo presión constante.'
     },
     metricas_fraude: {
       alto: 'El perfil de respuestas muestra un nivel normal y honesto de autorreporte, libre de fingimiento.',

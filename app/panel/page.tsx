@@ -99,6 +99,11 @@ function esCognitivo(pb: Record<string, unknown> | null): boolean {
   return 'correctas' in pb && 'total' in pb
 }
 
+function esIniciativaDinamismo(pb: Record<string, unknown> | null): boolean {
+  if (!pb) return false
+  return 'logro' in pb || 'dinamismo' in pb
+}
+
 function valoresNumericos(pb: Record<string, unknown> | null): [string, number][] {
   if (!pb) return []
   return Object.entries(pb).filter((e): e is [string, number] => typeof e[1] === 'number')
@@ -124,7 +129,9 @@ const etiquetas: Record<string, string> = {
   amabilidad: 'Amabilidad',
   responsabilidad: 'Responsabilidad',
   neuroticismo: 'Neuroticismo',
-  apertura: 'Apertura'
+  apertura: 'Apertura',
+  logro: 'Orientación al Logro',
+  dinamismo: 'Dinamismo'
 }
 
 const TEST_NAMES: Record<string, string> = {
@@ -145,6 +152,7 @@ const TEST_NAMES: Record<string, string> = {
   'b8c9d0e1-f2a3-4567-bcde-888888888888': 'Atención al Detalle',
   'f6a7b8c9-d0e1-2345-fabc-666666666666': 'SJT Atención al Cliente',
   '7a8b9c0d-e1f2-4356-abcd-999999999999': 'DASS-21 (Salud Mental)',
+  '0b6ade42-0c8f-4084-a4a5-9ff7869d73b6': 'Iniciativa y Dinamismo',
   'c3d4e5f6-a7b8-9012-cdef-999999999999': 'Simulación de Roleplay IA',
   'roleplay': 'Simulación de Roleplay IA',
 }
@@ -154,7 +162,9 @@ const colores: Record<string, string> = {
   amabilidad: 'bg-green-600',
   responsabilidad: 'bg-purple-600',
   neuroticismo: 'bg-red-600',
-  apertura: 'bg-orange-600'
+  apertura: 'bg-orange-600',
+  logro: 'bg-violet-600',
+  dinamismo: 'bg-fuchsia-600'
 }
 
 const textColores: Record<string, string> = {
@@ -1332,6 +1342,16 @@ export default function PanelEvaluador() {
                                   <div className={`h-full ${colores[factor] || 'bg-indigo-500'}`} style={{ width: `${(valor / 5) * 100}%` }} />
                                 </div>
                               </div>
+                            )) : esIniciativaDinamismo(pb) ? valoresNumericos(pb).map(([factor, valor]) => (
+                              <div key={factor}>
+                                <div className="flex justify-between mb-1">
+                                  <span className="text-xs font-bold text-slate-700">{etiquetas[factor] || factor}</span>
+                                  <span className="text-xs font-bold text-indigo-600">{valor} / 5</span>
+                                </div>
+                                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                  <div className={`h-full ${colores[factor] || 'bg-indigo-500'}`} style={{ width: `${(valor / 5) * 100}%` }} />
+                                </div>
+                              </div>
                             )) : esCognitivo(pb) ? (
                               <div className="bg-slate-50 p-4 rounded-xl text-center">
                                 <p className="text-xs text-slate-500">
@@ -1540,6 +1560,16 @@ function interpretacion(factor: string, valor: number): string {
       alto: 'Alta curiosidad intelectual, creatividad y apertura al cambio. Destaca en roles que requieren innovación.',
       moderado: 'Equilibrio entre creatividad y pragmatismo. Se adapta tanto a entornos estructurados como creativos.',
       bajo: 'Preferencia por métodos conocidos y entornos predecibles. Destaca en roles con procesos claros y definidos.'
+    },
+    logro: {
+      alto: 'Fuerte orientación al logro. Se fija metas exigentes, se entrega a las tareas y busca activamente superar lo esperado.',
+      moderado: 'Nivel adecuado de orientación al logro. Cumple con lo que se le pide y responde bien ante exigencias puntuales.',
+      bajo: 'Menor motivación de logro autoreportada. Puede requerir objetivos y seguimiento más explícitos para sostener el esfuerzo.'
+    },
+    dinamismo: {
+      alto: 'Alto nivel de energía y actividad. Se mantiene ocupado/a, reacciona rápido y puede sostener varios frentes a la vez.',
+      moderado: 'Ritmo de trabajo equilibrado. Se adapta tanto a tareas que exigen rapidez como a otras más pausadas.',
+      bajo: 'Estilo más pausado y reflexivo. Prefiere avanzar a un ritmo propio antes que bajo presión constante.'
     }
   }
   return textos[factor]?.[nivel] || ''

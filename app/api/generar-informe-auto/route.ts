@@ -17,7 +17,9 @@ const ETQ: Record<string, string> = {
   honestidad: 'Sinceridad y Franqueza',
   normas: 'Apego a Normas y Ética',
   promedio_general: 'Índice de Integridad Personal',
-  
+  logro: 'Orientación al Logro',
+  dinamismo: 'Nivel de Energía y Ritmo de Trabajo',
+
   // Cognitivo y Atención
   correctas: 'Efectividad Cognitiva',
   percentil: 'Rango Comparativo (Percentil)',
@@ -323,6 +325,10 @@ GUÍA DE INTERPRETACIÓN DE FACTORES (MUY IMPORTANTE PARA EVITAR CONTRADICCIONES
   * "nivel_estres" / "estres" (Tensión operativa): 5.0 indica calma y buen manejo de la presión. Puntajes bajos indican mayor tensión y agobio ante la demanda.
   * "carga_laboral" (Saturación de tareas): 5.0 indica una carga de trabajo manejable. Puntajes bajos indican percepción de sobrecarga o dificultad para organizar la demanda.
 
+- Factores Estándar (Mayor puntaje es directamente favorable, sin necesidad de inversión de escala):
+  * "logro" (Orientación al logro): 5.0 indica alta motivación para fijarse y cumplir metas exigentes. Puntajes bajos (ej: 1.0 - 2.0) indican menor motivación de logro, se beneficia de objetivos concretos y seguimiento cercano.
+  * "dinamismo" (Nivel de energía y ritmo de trabajo): 5.0 indica alta energía, capacidad de sostener varios frentes a la vez y reacción rápida. Puntajes bajos indican un estilo más pausado y reflexivo, que rinde mejor con tiempo para planificar.
+
 ${discursoVideos ? `TRANSCRIPCIONES Y DISCURSO DE LA VIDEO-ENTREVISTA CONDUCTUAL:\n${discursoVideos}` : ''}
 
 INSTRUCCIÓN ESPECIAL PARA ENTREVISTA LABORAL INTEGRADA:
@@ -345,7 +351,9 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
      "amabilidad": "Calidez y trato...",
      "responsabilidad": "Compromiso y orden...",
      "estabilidad_emocional": "Estabilidad ante la presión...",
-     "apertura": "Disposición al cambio..."
+     "apertura": "Disposición al cambio...",
+     "logro": "Orientación al logro y motivación de éxito (solo si hay datos disponibles)...",
+     "dinamismo": "Nivel de energía y ritmo de trabajo (solo si hay datos disponibles)..."
   },
   "recomendacion": "...",
   "metaCompetencias": { 
@@ -383,7 +391,7 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
         const model = genAI.getGenerativeModel({ 
           model: 'gemini-2.5-flash',
           generationConfig: {
-            maxOutputTokens: 2500,
+            maxOutputTokens: 8000,
             responseMimeType: 'application/json'
           }
         })

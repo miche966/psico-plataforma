@@ -13,7 +13,7 @@ const TEST_IDS = new Set([
   'b8c9d0e1-f2a3-4567-bcde-888888888888', 'f6a7b8c9-d0e1-2345-fabc-666666666666',
   'e9b2c3d4-f5a6-7890-bcde-999999999999', '7a8b9c0d-e1f2-4356-abcd-999999999999',
   'f7a8b9c0-d1e2-4356-abcd-888888888888', 'd8e9f0a1-b2c3-4567-defa-888888888888',
-  'd8e9f0a1-b2c3-4567-defa-777777777777'
+  'd8e9f0a1-b2c3-4567-defa-777777777777', '0b6ade42-0c8f-4084-a4a5-9ff7869d73b6'
 ])
 
 function idsFrom(request: Request, body?: any) {

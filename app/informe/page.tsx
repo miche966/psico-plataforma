@@ -77,7 +77,7 @@ import { estimarMBTI, estimarMBTIDesdeSesiones } from '@/lib/baremos'
 
 
 const DOMINIOS = {
-  PERSONALIDAD: ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura', 'honestidad_humildad', 'honestidad', 'normas', 'promedio_general'],
+  PERSONALIDAD: ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura', 'honestidad_humildad', 'honestidad', 'normas', 'promedio_general', 'logro', 'dinamismo'],
   COGNITIVO: ['correctas', 'percentil', 'score', 'documentos', 'comparacion', 'concentracion', 'errores_texto', 'errores_numeros', 'metricas_fraude'],
   COMPETENCIAS: ['etica', 'negociacion', 'manejo_emocional', 'tolerancia_frustracion', 'comunicacion', 'liderazgo', 'trabajo_equipo', 'adaptabilidad', 'resolucion_problemas'],
   BIENESTAR: ['burnout', 'equilibrio', 'relaciones', 'claridad_rol', 'nivel_estres', 'carga_laboral', 'autonomia', 'expectativas', 'resiliencia', 'manejo_estres', 'autoestima', 'inteligencia_emocional']
@@ -1138,6 +1138,16 @@ PsicoPlataforma - Gestión Inteligente de Talento
                     alto: 'El perfil proyecta una coherencia profesional destacada en su conducta. Sus valores personales se manifiestan en un compromiso sólido con la integridad, favoreciendo una alineación confiable con la cultura y principios de la empresa.',
                     medio: 'Posee un nivel de integridad acorde a las expectativas corporativas. Su comportamiento es predecible dentro de los marcos éticos estándar, mostrando un juicio profesional funcional, prudente y equilibrado.',
                     bajo: 'Se observa un estilo de toma de decisiones que prioriza la resolución pragmática y el criterio individual. Se beneficiará de una cultura organizacional con marcos de cumplimiento claros y un acompañamiento que alinee su autonomía con los protocolos institucionales.'
+                  },
+                  logro: {
+                    alto: 'Manifiesta una fuerte orientación al logro, fijándose metas exigentes y sosteniendo el esfuerzo hasta superar lo esperado. Su enfoque favorece el cumplimiento de objetivos desafiantes con un mínimo de seguimiento externo.',
+                    medio: 'Presenta un nivel adecuado de motivación al logro, respondiendo de forma consistente ante exigencias puntuales. Cumple con lo solicitado y puede escalar su esfuerzo cuando la situación lo requiere.',
+                    bajo: 'Reporta una menor motivación de logro autopercibida, pudiendo requerir objetivos concretos y un seguimiento más explícito para sostener el esfuerzo en el tiempo.'
+                  },
+                  dinamismo: {
+                    alto: 'Se caracteriza por un alto nivel de energía y actividad, manteniéndose ocupado y respondiendo con rapidez ante múltiples demandas simultáneas. Se adapta con soltura a ritmos de trabajo exigentes.',
+                    medio: 'Sostiene un ritmo de trabajo equilibrado, adaptándose tanto a tareas que exigen celeridad como a otras de ejecución más pausada, sin comprometer la calidad de su desempeño.',
+                    bajo: 'Presenta un estilo más pausado y reflexivo, prefiriendo avanzar a un ritmo propio antes que bajo presión constante. Puede rendir mejor en entornos que permitan planificar con anticipación.'
                   }
                 };
 

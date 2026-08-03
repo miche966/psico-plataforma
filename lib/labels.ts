@@ -20,6 +20,8 @@ export const ETQ: Record<string, string> = {
   honestidad: 'Sinceridad y Franqueza',
   normas: 'Apego a Normas y Ética',
   promedio_general: 'Índice de Integridad Personal',
+  logro: 'Orientación al Logro',
+  dinamismo: 'Dinamismo y Nivel de Energía',
   
   // Cognitivo y Atención
   correctas: 'Efectividad Cognitiva',

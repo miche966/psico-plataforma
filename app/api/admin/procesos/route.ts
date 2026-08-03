@@ -53,6 +53,7 @@ const SLUG_TO_ID: Record<string, string> = {
   'sjt-atencion': 'f6a7b8c9-d0e1-2345-fabc-666666666666',
   'sjt-cobranzas': 'e9b2c3d4-f5a6-7890-bcde-999999999999',
   'dass21': '7a8b9c0d-e1f2-4356-abcd-999999999999',
+  'iniciativa-dinamismo': '0b6ade42-0c8f-4084-a4a5-9ff7869d73b6',
 }
 
 function testIdDesdeSlug(slug: string) {
