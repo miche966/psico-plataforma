@@ -72,28 +72,28 @@ export const NARRATIVAS_FACTOR: NarrativasFactor = {
 
   // ── Cognitivo / Aptitud ──────────────────────────────────────────────────
   documentos: {
-    alto: 'Organiza y revisa su trabajo con orden y prolijidad. Maneja bien grandes cantidades de información, lo que ayuda a que las tareas administrativas avancen sin errores ni demoras.',
-    medio: 'Mantiene sus documentos y registros con un orden adecuado. Revisa la información con cuidado, lo que permite que las tareas de soporte avancen sin problemas.',
+    alto: 'Organiza y revisa su trabajo con orden y prolijidad. Maneja bien grandes cantidades de información, lo que ayuda a que las tareas administrativas avancen sin errores ni demoras. Esto facilita mantener registros confiables incluso cuando el volumen de casos aumenta.',
+    medio: 'Mantiene sus documentos y registros con un orden adecuado. Revisa la información con cuidado, lo que permite que las tareas de soporte avancen sin problemas. En volúmenes más altos de trabajo, puede beneficiarse de rutinas de organización más estructuradas.',
     bajo: 'Tiende a priorizar la rapidez por sobre el detalle en el manejo de documentos. Le conviene apoyarse en listas de chequeo o una revisión final antes de cerrar una tarea, para no dejar nada pendiente.'
   },
   comparacion: {
-    alto: 'Detecta diferencias y compara información con rapidez y precisión, lo que le permite responder con agilidad en tareas que requieren revisar datos una y otra vez.',
-    medio: 'Compara y revisa información a un ritmo parejo, manteniendo un buen nivel de calidad en el resultado final.',
-    bajo: 'Prefiere tomarse su tiempo al comparar datos para no cometer errores. Rinde mejor en tareas que no dependen de una respuesta inmediata, donde puede revisar con calma.'
+    alto: 'Detecta diferencias y compara información con rapidez y precisión, lo que le permite responder con agilidad en tareas que requieren revisar datos una y otra vez, algo valorable en el control de información antes de cerrarla o enviarla.',
+    medio: 'Compara y revisa información a un ritmo parejo, manteniendo un buen nivel de calidad en el resultado final. Puede sostener este ritmo en tareas de volumen moderado sin que la velocidad afecte la precisión.',
+    bajo: 'Prefiere tomarse su tiempo al comparar datos para no cometer errores. Rinde mejor en tareas que no dependen de una respuesta inmediata, donde puede revisar con calma antes de dar una respuesta definitiva.'
   },
   concentracion: {
-    alto: 'Mantiene el foco de forma constante, incluso en ambientes con muchas interrupciones. Puede sostener tareas complejas durante períodos largos sin perder calidad.',
-    medio: 'Mantiene un nivel de atención adecuado durante la jornada. Logra concentrarse en sus tareas a pesar de las distracciones habituales.',
+    alto: 'Mantiene el foco de forma constante, incluso en ambientes con muchas interrupciones. Puede sostener tareas complejas durante períodos largos sin perder calidad, lo que es valorable en jornadas con varios frentes abiertos a la vez.',
+    medio: 'Mantiene un nivel de atención adecuado durante la jornada. Logra concentrarse en sus tareas a pesar de las distracciones habituales, sosteniendo un ritmo de trabajo estable a lo largo del día.',
     bajo: 'Su atención puede verse afectada en ambientes con muchos estímulos. Rinde mejor en espacios de trabajo tranquilos y ordenados, que le ayuden a mantener el foco.'
   },
   errores_texto: {
-    alto: 'Es muy cuidadosa al escribir y revisar textos, y detecta errores con facilidad. Esto ayuda a que las comunicaciones de la empresa mantengan siempre un buen nivel de calidad.',
-    medio: 'Escribe y revisa textos con un nivel de corrección adecuado. Detecta los errores más comunes y mantiene sus comunicaciones claras y ordenadas.',
+    alto: 'Es muy cuidadosa al escribir y revisar textos, y detecta errores con facilidad. Esto ayuda a que las comunicaciones de la empresa mantengan siempre un buen nivel de calidad, algo valorable en comunicaciones escritas dirigidas a clientes.',
+    medio: 'Escribe y revisa textos con un nivel de corrección adecuado. Detecta los errores más comunes y mantiene sus comunicaciones claras y ordenadas, aunque en textos extensos puede beneficiarse de una segunda revisión.',
     bajo: 'Prioriza la rapidez al escribir por sobre el detalle. Le conviene darle una última revisión a los textos importantes, o pedir una segunda mirada, antes de enviarlos.'
   },
   errores_numeros: {
-    alto: 'Maneja números y cálculos con seguridad y cuidado, lo que da confianza en la exactitud de sus reportes.',
-    medio: 'Maneja bien los números en el día a día, con pocos errores en condiciones normales de trabajo.',
+    alto: 'Maneja números y cálculos con seguridad y cuidado, lo que da confianza en la exactitud de sus reportes. Esto reduce la necesidad de verificaciones adicionales y agiliza tareas que dependen de cifras exactas, como el cierre de planillas o el control de montos.',
+    medio: 'Maneja bien los números en el día a día, con pocos errores en condiciones normales de trabajo. En situaciones de mayor volumen o presión de tiempo, puede beneficiarse de una revisión adicional.',
     bajo: 'Con volúmenes de datos numéricos más grandes, le conviene revisar sus cálculos una segunda vez. Rinde mejor cuando puede seguir pasos claros y ordenados para esas tareas.'
   },
   metricas_fraude: {
