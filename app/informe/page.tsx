@@ -666,7 +666,11 @@ function InformePageContent() {
             'proclive': 'tiende a',
             'deficitario': 'con áreas de mejora',
             'óptimo': 'adecuado',
-            'máximo': 'alto'
+            'máximo': 'alto',
+            'esenciales': 'importantes',
+            'esencial': 'importante',
+            'cruciales': 'relevantes',
+            'crucial': 'relevante'
           }
 
           Object.entries(prohibidas).forEach(([mal, bien]) => {
