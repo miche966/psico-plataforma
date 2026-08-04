@@ -2,8 +2,83 @@ import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { estimarMBTIDesdeSesiones } from '@/lib/baremos'
 import { requireAdminSession } from '@/lib/server/adminAuth'
+import { calcularMetaCompetencias } from '@/lib/metaCompetencias'
+import { detectarRedundanciaNarrativa, detectarFrasesTematicamenteRedundantes } from '@/lib/informeConsistencia'
 
-export const maxDuration = 60; // 60 segundos para evitar timeouts en plan Hobby de Vercel
+// Con Fluid Compute (activo por defecto en el proyecto, confirmado en el dashboard: Function Max
+// Duration = 300s) el plan Hobby ya no está limitado a 60s reales — ese límite quedó obsoleto y
+// era el propio código el que se lo autoimponía. Se deja margen (280 de 300) por si la latencia
+// de red/plataforma agrega unos segundos por fuera de las 3 llamadas a Gemini.
+export const maxDuration = 280;
+
+// Llama a Gemini con reintentos ante error de red/API (backoff exponencial, hasta 3 intentos) y,
+// una vez obtenida una respuesta, reintenta una vez más si el JSON viene incompleto o inválido.
+// Extraído para poder correr dos secciones del informe en paralelo (ver Llamada 1A/1B en POST)
+// sin duplicar esta lógica de reintentos dos veces.
+async function generarSeccionConReintentos(
+  genAI: GoogleGenerativeAI,
+  prompt: string,
+  maxOutputTokens: number,
+  etiqueta: string
+): Promise<any> {
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    generationConfig: { maxOutputTokens, responseMimeType: 'application/json' }
+  });
+
+  let result: any = null;
+  let attempts = 0;
+  const maxAttempts = 3;
+  while (attempts < maxAttempts) {
+    try {
+      attempts++;
+      console.log(`[INFO] [GENERAR INFORME] ${etiqueta}: llamando a Gemini (intento ${attempts}/${maxAttempts})...`);
+      const callStart = Date.now();
+      result = await model.generateContent(prompt);
+      const callDuration = ((Date.now() - callStart) / 1000).toFixed(2);
+      console.log(`[INFO] [GENERAR INFORME] ${etiqueta}: intento ${attempts} exitoso en ${callDuration}s.`);
+      break;
+    } catch (err: any) {
+      console.error(`[WARNING] [GENERAR INFORME] ${etiqueta}: error en intento ${attempts}:`, err.message || err);
+      if (attempts >= maxAttempts) throw err;
+      const delay = Math.pow(2, attempts) * 1000;
+      console.log(`[INFO] [GENERAR INFORME] ${etiqueta}: reintentando en ${delay}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  if (!result) {
+    throw new Error(`${etiqueta}: fallo la llamada a la API de Gemini tras superar los reintentos máximos.`);
+  }
+
+  let resultado: any;
+  let ultimoError: Error | null = null;
+  for (let parseAttempt = 1; parseAttempt <= 2; parseAttempt++) {
+    const response = await result.response;
+    const finishReason = response.candidates?.[0]?.finishReason;
+    const text = response.text();
+    try {
+      if (finishReason === 'MAX_TOKENS') {
+        throw new Error('La respuesta del modelo fue truncada por alcanzar el límite de salida.');
+      }
+      const firstBrace = text.indexOf('{');
+      const lastBrace = text.lastIndexOf('}');
+      const rawJson = firstBrace >= 0 && lastBrace > firstBrace ? text.slice(firstBrace, lastBrace + 1) : text.trim();
+      resultado = JSON.parse(rawJson);
+      break;
+    } catch (parseError: any) {
+      ultimoError = parseError instanceof Error ? parseError : new Error(String(parseError));
+      console.warn(`[WARNING] [GENERAR INFORME] ${etiqueta}: JSON inválido (intento ${parseAttempt}/2):`, ultimoError.message);
+      if (parseAttempt === 2) break;
+      result = await model.generateContent(`${prompt}
+
+REINTENTO OBLIGATORIO: la respuesta anterior no fue un JSON completo. Devuelve nuevamente el objeto completo, válido y cerrado. No uses Markdown, no agregues explicaciones y no cortes ninguna cadena.`);
+    }
+  }
+  if (!resultado) {
+    throw new Error(`${etiqueta}: estructura JSON inválida devuelta por el modelo: ${ultimoError?.message || 'respuesta vacía'}`);
+  }
+  return resultado;
+}
 
 export async function POST(req: Request) {
   try {
@@ -28,7 +103,7 @@ export async function POST(req: Request) {
     // 1. SINCRONIZACIÓN DE SCORE Y MBTI
     let scoreFinal = actual?.ajusteCargo?.score || 0;
     const mbtiType = actual?.mbtiType || estimarMBTIDesdeSesiones(sesiones) || 'N/A';
-    
+
     // 2. NORMALIZACIÓN Y EXTRACCIÓN DE FACTORES (EL "BUZÓN" UNIFICADO)
     const factoresCrudos: Record<string, number> = {};
     const NORMALIZACION_MAP: Record<string, string> = {
@@ -102,10 +177,10 @@ ANÁLISIS CUALITATIVO DE LA TÉCNICA DE FRASES INCOMPLETAS (SACKS/ROTTER):
 
     // 3.7 COMPILACIÓN DE DATOS DE SIMULACIÓN Y ROLE PLAY (COBRANZAS / ATENCIÓN)
     let analisisRolePlay = '';
-    const sesionesRolePlay = sesiones.filter((s: any) => 
+    const sesionesRolePlay = sesiones.filter((s: any) =>
       s.puntaje_bruto && (
-        s.puntaje_bruto.transcripcion || 
-        s.puntaje_bruto.retroalimentacion || 
+        s.puntaje_bruto.transcripcion ||
+        s.puntaje_bruto.retroalimentacion ||
         s.puntaje_bruto.acuerdo_alcanzado !== undefined ||
         s.test_id === 'd8e9f0a1-b2c3-4567-defa-777777777777' ||
         s.test_id === 'c9d8e7f0-a1b2-3456-7890-123456789012'
@@ -118,7 +193,7 @@ ANÁLISIS CUALITATIVO DE LA TÉCNICA DE FRASES INCOMPLETAS (SACKS/ROTTER):
         const pb = s.puntaje_bruto;
         const retro = pb.retroalimentacion || 'N/A';
         const acuerdo = pb.acuerdo_alcanzado !== undefined ? (pb.acuerdo_alcanzado ? 'Acuerdo Viable Alcanzado' : 'No se cerró acuerdo') : 'N/A';
-        
+
         let transcripTexto = '';
         if (Array.isArray(pb.transcripcion)) {
           transcripTexto = pb.transcripcion.map((m: any) => `${m.role === 'user' ? 'Candidato' : 'Interlocutor/Cliente'}: ${m.content}`).join('\n');
@@ -134,49 +209,9 @@ ANÁLISIS CUALITATIVO DE LA TÉCNICA DE FRASES INCOMPLETAS (SACKS/ROTTER):
       });
     }
 
-    const prompt = `
-Eres un Consultor Senior en Desarrollo Humano y Psicólogo Organizacional. Tu misión es redactar un informe ejecutivo de alta gama que sea profundamente humano, sumamente asertivo y strictly profesional.
-
-REGLAS DE ORO DE REDACCIÓN (OBLIGATORIAS E INFLEXIBLES):
-1. TONO: Cercano, empático, equilibrado y corporativo. Habla de comportamientos y situaciones, NO de puntajes ni números.
-2. SIN TECNICISMOS NI JERGAS: Está strictly prohibido usar nombres de rasgos técnicos de personalidad (tales como "Extraversión", "Consciencia", "Amabilidad", "Neuroticismo", "Apertura"), siglas de pruebas ("Big Five", "DASS-21", "Sacks", "SJT"), o términos acartonados (como "resiliencia", "asertividad", "coherencia y fluidez", "riqueza de vocabulario", "seguridad al expresarse", "estructurar ideas complejas", "brechas cognitivas", "alineamiento operativo"). Traduce todo a un lenguaje cotidiano, fluido e inteligente (ej: en lugar de "Consciencia" di "capacidad para organizar el trabajo y hacer seguimiento"; en lugar de "Extraversión" di "facilidad para entablar diálogos y relacionarse"; en lugar de "Neuroticismo" di "estabilidad ante situaciones de presión"; en lugar de "seguridad al expresarse" di "estilo comunicativo directo y pausado").
-3. SIN MAXIMALISMOS: Prohibido usar adjetivos absolutos o grandilocuentes como "idealmente", "meticulosamente", "crucial", "esencial", "vital", "clave", "excelente", "soberbia", "perfectamente", "clara", "genuina", "total", "óptima", "necesaria" o "crítica". Utiliza una redacción atenuada, equilibrada y profesional (ej: "tiende a", "muestra propensión a", "encuentra facilidad en", "es valorable su disposición para", "se siente más cómodo en").
-4. ANONIMATO ABSOLUTO: No utilices el nombre del candidato en ninguna parte del análisis (tampoco en títulos como "Análisis de Candidato: [Nombre]"). Refiérete a él/ella únicamente como "el perfil", "la persona evaluada", "el postulante" o mediante estructuras impersonales.
-5. COHERENCIA CON EL DICTAMEN: La "fundamentacion" debe ser honesta respecto al ajuste (${scoreFinal}%). Si el puntaje es bajo, explica de forma humana por qué el estilo del candidato difiere de las demandas del puesto (ej: ritmos, necesidades de guía, autonomía), sin usar etiquetas negativas ni juicios de valor.
-6. ESTRUCTURA DE ANÁLISIS: Cada punto debe explicar qué se observa, cómo actúa la persona y qué impacto tiene esto en el trabajo diario.
-7. SIN META-LENGUAJE NI EXCUSAS DE DATOS FALTANTES: No escribas "Basado en los datos...", "El informe indica...". Tampoco redactes advertencias sobre que la información está "incompleta", "ausente", "insuficiente", o que haces "inferencias de cómo se abordarían si estuvieran disponibles". Si ciertos tests o datos no están presentes (ej: si no hay Big Five o transcripciones), simplemente redacta el informe analizando los datos disponibles (como el porcentaje de coincidencia o las simulaciones completadas) con fluidez natural, sin hacer ninguna mención o disculpa por lo que falta.
-8. INTEGRACIÓN DE FRASES INCOMPLETAS (SI APLICA): Si se provee la sección de datos de Frases Incompletas Sacks abajo, debes integrar y fusionar dichos hallazgos cualitativos (por ejemplo, su temor al error en autoconcepto, el respeto o inhibición ante la autoridad, y su tendencia a la cordialidad para evitar la confrontación interpersonal) de forma sumamente orgánica y atenuada dentro del Resumen Ejecutivo, las Fortalezas, las Oportunidades de Mejora y las Recomendaciones de gestión. No utilices jergas psicológicas ni menciones el test por su nombre.
-9. SIN REFERENCIAS AL SOPORTE TECNOLÓGICO: Está estrictamente prohibido usar palabras como "video", "cámara", "grabación", "audio", "plataforma", "videoentrevista" o cualquier término que mencione la interfaz de software en los textos generados. Cuando analices las respuestas o el comportamiento observado en la entrevista, debes describirlo de forma implícita e integrada como "interacción directa", "comunicación discursiva", "estilo verbal", "comportamiento no verbal" o "presencia interactiva".
-10. INTEGRACIÓN INVISIBLE DE APORTES CUALITATIVOS Y SIMULACIONES (SI APLICA): Si se proveen datos de simulación, role play o transcripciones abajo, utiliza dicha información EXCLUSIVAMENTE para enriquecer y matizar las conclusiones del perfil (su estilo de persuasión, tolerancia ante la presión, búsqueda de consensos, escucha activa o manejo de objeciones). Queda ESTRICTAMENTE PROHIBIDO mencionar en el texto que se realizó o se observó una prueba, simulación, ejercicio o interacción, así como usar frases meta-referenciales (tales como "como se observó en...", "durante una interacción directa...", "en el diálogo con...", "tal como se evidenció...", "en el caso del comerciante..."). El informe debe describir las tendencias conductuales y competencias de la persona de forma 100% directa, integrada y declarativa (ej: en lugar de "como se observó en la negociación con el comerciante, logró un acuerdo" di simplemente "demuestra la habilidad de transformar objeciones iniciales en acuerdos viables a través de un diálogo sereno y estructurado"), redactando el resultado como una conclusión analítica consolidada.
-11. CERO REDUNDANCIA ENTRE CAMPOS (REGLA CRÍTICA): "ajusteCargo.analisis", "fortalezas", "oportunidadesMejora", "resumenEjecutivo" y "fundamentacion" parten de los mismos datos, pero cada uno cumple un rol distinto y NO debe repetir lo que ya dice otro campo. Antes de escribir cada uno, revisa mentalmente qué ya dijiste en los anteriores y evita reformular la misma idea con otras palabras. Roles:
-   - "ajusteCargo.analisis": 2-3 frases, ÚNICAMENTE sobre el encaje entre el perfil y las demandas concretas del puesto (${proceso?.cargo || 'N/A'}). No listes fortalezas ni menciones el bienestar.
-   - "fortalezas" / "oportunidadesMejora": cada ítem debe combinar DOS O MÁS factores de "interpretacionPorFactor" en una sola observación de comportamiento (ej: responsabilidad alta + energía baja → "sostiene el cumplimiento incluso cuando el desgaste podría hacerle bajar el ritmo"). Prohibido tomar un solo factor y reformular con otras palabras lo mismo que ya vas a decir en "interpretacionPorFactor" para ese factor.
-   - "resumenEjecutivo": sintetiza CÓMO INTERACTÚAN entre sí las fortalezas y las áreas de desarrollo ya identificadas (ej: cómo una fortaleza podría compensar o verse afectada por un área de desarrollo), en vez de volver a describirlas una por una. No repitas frases ya usadas en "ajusteCargo.analisis" ni en los ítems de fortalezas/oportunidadesMejora.
-   - "fundamentacion": el argumento puntual del dictamen final (por qué recomendado / con reservas / no recomendado), en 2-4 frases. No es un resumen del perfil completo, es la justificación de la decisión.
-   Ejemplo de redundancia PROHIBIDA: si "fortalezas" ya dice "muestra facilidad para entablar diálogos y relacionarse", "resumenEjecutivo" NO puede repetir "encuentra facilidad para relacionarse con otros" — debe aportar un ángulo nuevo (ej. cómo esa facilidad conecta con su orientación a resultados) o directamente no volver a mencionar ese rasgo.
-
-ESTILO DE REDACCIÓN OBLIGATORIO:
-- Utiliza un lenguaje claro, directo y profesional, pensado para responsables de selección y supervisores que no tienen formación en psicología.
-- Escribe frases naturales y relativamente breves. Evita palabras rebuscadas, explicaciones académicas y expresiones propias de informes técnicos.
-- Describe conductas concretas y su posible efecto en el trabajo. No presentes los resultados como diagnósticos ni como verdades absolutas.
-- Prefiere expresiones como “puede ayudar”, “tiende a”, “sería conveniente acompañar” y “podría beneficiarse de”.
-- Evita, salvo que sean imprescindibles, términos como “alineación conductual”, “adherencia”, “autogestión”, “autoconcepto”, “resiliencia”, “inteligencia emocional”, “metacognición”, “brechas”, “idoneidad”, “proctoring”, “percentil” y “psicométrico”. Reemplázalos por expresiones cotidianas.
-- En fortalezas y oportunidades, utiliza este enfoque: título breve; qué se observa; qué puede significar en el trabajo.
-- No repitas la misma idea en distintas secciones. No exageres las cualidades ni presentes las oportunidades de mejora como defectos permanentes.
-- Ejemplo de tono correcto: “Puede mantener la calma frente a reclamos y buscar una solución sin aumentar la tensión de la conversación.”
-- Ejemplo de tono a evitar: “Presenta una elevada competencia de regulación emocional y una sólida alineación conductual con el rol.”
-- El resultado debe sonar humano, equilibrado y útil para tomar una decisión laboral.
-CONTEXTO DEL PUESTO: ${proceso?.cargo || 'N/A'}
-AJUSTE ESTIMADO: ${scoreFinal}%
-PERFIL CONDUCTUAL (MBTI): ${mbtiType}
-
-DATOS PARA ANÁLISIS (FACTORES PSICOMÉTRICOS):
-${JSON.stringify(factoresCrudos)}
-
-${analisisFrasesIncompletas ? `DATOS CUALITATIVOS ADICIONALES (TEST DE FRASES INCOMPLETAS SACKS):\n${analisisFrasesIncompletas}\n` : ''}
-${analisisRolePlay ? `DATOS DE LA DINÁMICA DE ROLE PLAY Y SIMULACIÓN EN VIVO:\n${analisisRolePlay}\n` : ''}
-
-GUÍA DE INTERPRETACIÓN DE FACTORES (MUY IMPORTANTE PARA EVITAR CONTRADICCIONES):
+    // GUÍA DE INTERPRETACIÓN DE FACTORES: compartida por ambas llamadas (1A y 1B) porque las dos
+    // necesitan saber, para cada factor, si un puntaje bajo es la señal de alerta o si lo es uno alto.
+    const guiaInterpretacion = `GUÍA DE INTERPRETACIÓN DE FACTORES (MUY IMPORTANTE PARA EVITAR CONTRADICCIONES):
 - Factores de Protección (Mayor puntaje es SALUDABLE/ÓPTIMO, menor puntaje [ej: < 2.5] es CRÍTICO/DESFAVORABLE):
   * "equilibrio" (Balance Vida-Trabajo): 5.0 es balance excelente. Puntajes bajos (ej: 1.0 - 2.0) representan un desbalance severo e invasión de la vida personal por lo laboral. Redacta un análisis de conflicto/agobio.
   * "relaciones" (Relaciones Interpersonales): 5.0 es clima de gran confianza y sociabilidad. Puntajes bajos (ej: 1.0 - 2.0) representan aislamiento, dificultades relacionales o tensión en el clima. Redacta un análisis de aislamiento/distancia.
@@ -194,21 +229,89 @@ GUÍA DE INTERPRETACIÓN DE FACTORES (MUY IMPORTANTE PARA EVITAR CONTRADICCIONES
 
 - Factores Estándar (Mayor puntaje es directamente favorable, sin necesidad de inversión de escala):
   * "logro" (Orientación al logro): 5.0 indica alta motivación para fijarse y cumplir metas exigentes. Puntajes bajos (ej: 1.0 - 2.0) indican menor motivación de logro, se beneficia de objetivos concretos y seguimiento cercano.
-  * "dinamismo" (Nivel de energía y ritmo de trabajo): 5.0 indica alta energía, capacidad de sostener varios frentes a la vez y reacción rápida. Puntajes bajos indican un estilo más pausado y reflexivo, que rinde mejor con tiempo para planificar.
+  * "dinamismo" (Nivel de energía y ritmo de trabajo): 5.0 indica alta energía, capacidad de sostener varios frentes a la vez y reacción rápida. Puntajes bajos indican un estilo más pausado y reflexivo, que rinde mejor con tiempo para planificar.`;
+
+    const datosFactores = `DATOS PARA ANÁLISIS (FACTORES PSICOMÉTRICOS):\n${JSON.stringify(factoresCrudos)}`;
+
+    // LLAMADA 1A: fortalezas / oportunidadesMejora / ajusteCargo / recomendacion — la parte que combina
+    // varios factores en observaciones de comportamiento integradas.
+    const promptA = `
+Eres un Consultor Senior en Desarrollo Humano y Psicólogo Organizacional. Tu misión es redactar la sección de fortalezas, áreas de desarrollo y ajuste al puesto de un informe ejecutivo de alta gama que sea profundamente humano, sumamente asertivo y strictly profesional.
+
+REGLAS DE ORO DE REDACCIÓN (OBLIGATORIAS E INFLEXIBLES):
+1. TONO: Cercano, empático, equilibrado y corporativo. Habla de comportamientos y situaciones, NO de puntajes ni números.
+2. SIN TECNICISMOS NI JERGAS: Está strictly prohibido usar nombres de rasgos técnicos de personalidad (tales como "Extraversión", "Consciencia", "Amabilidad", "Neuroticismo", "Apertura"), siglas de pruebas ("Big Five", "DASS-21", "Sacks", "SJT"), o términos acartonados (como "resiliencia", "asertividad", "coherencia y fluidez", "riqueza de vocabulario", "seguridad al expresarse", "estructurar ideas complejas", "brechas cognitivas", "alineamiento operativo"). Traduce todo a un lenguaje cotidiano, fluido e inteligente (ej: en lugar de "Consciencia" di "capacidad para organizar el trabajo y hacer seguimiento"; en lugar de "Extraversión" di "facilidad para entablar diálogos y relacionarse"; en lugar de "Neuroticismo" di "estabilidad ante situaciones de presión"; en lugar de "seguridad al expresarse" di "estilo comunicativo directo y pausado").
+3. SIN MAXIMALISMOS: Prohibido usar adjetivos absolutos o grandilocuentes como "idealmente", "meticulosamente", "crucial", "esencial", "vital", "clave", "excelente", "soberbia", "perfectamente", "clara", "genuina", "total", "óptima", "necesaria" o "crítica". Utiliza una redacción atenuada, equilibrada y profesional (ej: "tiende a", "muestra propensión a", "encuentra facilidad en", "es valorable su disposición para", "se siente más cómodo en").
+4. ANONIMATO ABSOLUTO: No utilices el nombre del candidato en ninguna parte del análisis. Refiérete a él/ella únicamente como "el perfil", "la persona evaluada", "el postulante" o mediante estructuras impersonales.
+5. ESTRUCTURA DE ANÁLISIS: Cada punto debe explicar qué se observa, cómo actúa la persona y qué impacto tiene esto en el trabajo diario.
+6. SIN META-LENGUAJE NI EXCUSAS DE DATOS FALTANTES: No escribas "Basado en los datos...", "El informe indica...". Tampoco redactes advertencias sobre que la información está "incompleta", "ausente", "insuficiente". Si ciertos datos no están presentes, simplemente redacta analizando los disponibles, sin mención ni disculpa por lo que falta.
+7. INTEGRACIÓN DE FRASES INCOMPLETAS (SI APLICA): Si se provee la sección de datos de Frases Incompletas Sacks abajo, integra y fusiona dichos hallazgos cualitativos (temor al error en autoconcepto, respeto o inhibición ante la autoridad, tendencia a la cordialidad para evitar la confrontación interpersonal) de forma sumamente orgánica y atenuada dentro de las Fortalezas y las Oportunidades de Mejora. No utilices jergas psicológicas ni menciones el test por su nombre.
+8. SIN REFERENCIAS AL SOPORTE TECNOLÓGICO: Está estrictamente prohibido usar palabras como "video", "cámara", "grabación", "audio", "plataforma", "videoentrevista". Describe lo observado como "interacción directa", "comunicación discursiva", "estilo verbal", "comportamiento no verbal" o "presencia interactiva".
+9. INTEGRACIÓN INVISIBLE DE APORTES CUALITATIVOS Y SIMULACIONES (SI APLICA): Si se proveen datos de simulación, role play o transcripciones abajo, utilízalos EXCLUSIVAMENTE para enriquecer y matizar las conclusiones del perfil (estilo de persuasión, tolerancia ante la presión, búsqueda de consensos, escucha activa, manejo de objeciones). Queda ESTRICTAMENTE PROHIBIDO mencionar que se realizó o se observó una prueba, simulación o interacción, ni usar frases meta-referenciales ("como se observó en...", "durante una interacción directa...", "en el diálogo con..."). Redacta como una conclusión analítica consolidada y directa.
+10. CERO REDUNDANCIA ENTRE CAMPOS (REGLA CRÍTICA): "ajusteCargo.analisis", "fortalezas" y "oportunidadesMejora" parten de los mismos datos, pero cada uno cumple un rol distinto y NO debe repetir lo que ya dice otro campo. Antes de escribir cada uno, revisa mentalmente qué ya dijiste en los anteriores y evita reformular la misma idea con otras palabras. Roles:
+   - "ajusteCargo.analisis": 2-3 frases, ÚNICAMENTE sobre el encaje entre el perfil y las demandas concretas del puesto (${proceso?.cargo || 'N/A'}). No listes fortalezas ni menciones el bienestar.
+   - "fortalezas" / "oportunidadesMejora": cada ítem debe combinar DOS O MÁS factores de los DATOS PARA ANÁLISIS de abajo (según la guía de interpretación) en una sola observación de comportamiento integrada (ej: responsabilidad alta + energía baja → "sostiene el cumplimiento incluso cuando el desgaste podría hacerle bajar el ritmo"). Prohibido describir un solo factor de forma aislada.
+
+ESTILO DE REDACCIÓN OBLIGATORIO:
+- Utiliza un lenguaje claro, directo y profesional, pensado para responsables de selección y supervisores que no tienen formación en psicología.
+- Escribe frases naturales y relativamente breves. Evita palabras rebuscadas, explicaciones académicas y expresiones propias de informes técnicos.
+- Describe conductas concretas y su posible efecto en el trabajo. No presentes los resultados como diagnósticos ni como verdades absolutas.
+- Prefiere expresiones como "puede ayudar", "tiende a", "sería conveniente acompañar" y "podría beneficiarse de".
+- Evita, salvo que sean imprescindibles, términos como "alineación conductual", "adherencia", "autogestión", "autoconcepto", "resiliencia", "inteligencia emocional", "metacognición", "brechas", "idoneidad", "proctoring", "percentil" y "psicológico". Reemplázalos por expresiones cotidianas.
+- En fortalezas y oportunidades, utiliza este enfoque: título breve; qué se observa; qué puede significar en el trabajo.
+- No repitas la misma idea en distintas secciones. No exageres las cualidades ni presentes las oportunidades de mejora como defectos permanentes.
+- Ejemplo de tono correcto: "Puede mantener la calma frente a reclamos y buscar una solución sin aumentar la tensión de la conversación."
+- Ejemplo de tono a evitar: "Presenta una elevada competencia de regulación emocional y una sólida alineación conductual con el rol."
+- El resultado debe sonar humano, equilibrado y útil para tomar una decisión laboral.
+
+CONTEXTO DEL PUESTO: ${proceso?.cargo || 'N/A'}
+AJUSTE ESTIMADO: ${scoreFinal}%
+
+${datosFactores}
+
+${analisisFrasesIncompletas ? `DATOS CUALITATIVOS ADICIONALES (TEST DE FRASES INCOMPLETAS SACKS):\n${analisisFrasesIncompletas}\n` : ''}
+${analisisRolePlay ? `DATOS DE LA DINÁMICA DE ROLE PLAY Y SIMULACIÓN EN VIVO:\n${analisisRolePlay}\n` : ''}
+
+${guiaInterpretacion}
+
+Devuelve UNICAMENTE un objeto JSON con esta estructura:
+{
+  "fortalezas": [{"tendencia": "Comportamiento observado combinando 2+ factores, no uno aislado", "mecanismo": "Forma de actuar", "impacto_organizacional": "Valor para la empresa"}],
+  "oportunidadesMejora": [{"tendencia": "Punto de atención combinando 2+ factores, no uno aislado", "mecanismo": "Situación de riesgo", "impacto_organizacional": "Consecuencia operativa"}],
+  "ajusteCargo": { "score": ${scoreFinal}, "analisis": "2-3 frases, solo sobre el encaje con las demandas concretas del puesto (${proceso?.cargo || 'N/A'}). No listes fortalezas ni menciones el bienestar." },
+  "recomendacion": "..."
+}
+`;
+
+    // LLAMADA 1B: interpretacionPorFactor / ajusteMbti / analisisEntrevista — la parte descriptiva
+    // por factor y el análisis tipológico/de entrevista, independiente de 1A.
+    const promptB = `
+Eres el mismo Consultor Senior en Desarrollo Humano y Psicólogo Organizacional, redactando ahora la sección descriptiva por factor y el análisis tipológico/de entrevista del mismo informe ejecutivo.
+
+REGLAS DE ORO DE REDACCIÓN (OBLIGATORIAS E INFLEXIBLES):
+1. TONO: Cercano, empático, equilibrado y corporativo. Habla de comportamientos y situaciones, NO de puntajes ni números.
+2. SIN TECNICISMOS NI JERGAS: Está strictly prohibido usar nombres de rasgos técnicos de personalidad (tales como "Extraversión", "Consciencia", "Amabilidad", "Neuroticismo", "Apertura"), siglas de pruebas ("Big Five", "DASS-21", "Sacks", "SJT"), o términos acartonados. Traduce todo a un lenguaje cotidiano, fluido e inteligente (ej: en lugar de "Consciencia" di "capacidad para organizar el trabajo y hacer seguimiento"; en lugar de "Extraversión" di "facilidad para entablar diálogos y relacionarse"; en lugar de "Neuroticismo" di "estabilidad ante situaciones de presión").
+3. SIN MAXIMALISMOS: Prohibido usar adjetivos absolutos o grandilocuentes como "idealmente", "meticulosamente", "crucial", "esencial", "vital", "clave", "excelente", "perfectamente", "clara", "genuina", "total", "óptima", "necesaria" o "crítica". Utiliza una redacción atenuada (ej: "tiende a", "muestra propensión a", "encuentra facilidad en").
+4. ANONIMATO ABSOLUTO: No utilices el nombre del candidato en ninguna parte del análisis. Refiérete a él/ella únicamente como "el perfil", "la persona evaluada", "el postulante" o mediante estructuras impersonales.
+5. SIN META-LENGUAJE NI EXCUSAS DE DATOS FALTANTES: No escribas "Basado en los datos...", "El informe indica...". Si ciertos datos no están presentes, simplemente redacta analizando los disponibles, sin mención ni disculpa por lo que falta.
+6. SIN REFERENCIAS AL SOPORTE TECNOLÓGICO: Está estrictamente prohibido usar palabras como "video", "cámara", "grabación", "audio", "plataforma", "videoentrevista". Describe lo observado como "interacción directa", "comunicación discursiva", "estilo verbal", "comportamiento no verbal" o "presencia interactiva".
+7. Cada descripción de factor debe usar la GUÍA DE INTERPRETACIÓN de abajo para saber si, PARA ESE FACTOR PUNTUAL, un puntaje bajo es la señal de alerta o lo es uno alto — no asumas que "puntaje bajo" siempre significa algo negativo ni que siempre significa algo positivo, depende de cada factor.
+
+CONTEXTO DEL PUESTO: ${proceso?.cargo || 'N/A'}
+PERFIL CONDUCTUAL (MBTI): ${mbtiType}
+
+${datosFactores}
+
+${guiaInterpretacion}
 
 ${discursoVideos ? `TRANSCRIPCIONES Y DISCURSO DE LA VIDEO-ENTREVISTA CONDUCTUAL:\n${discursoVideos}` : ''}
 
 INSTRUCCIÓN ESPECIAL PARA ENTREVISTA LABORAL INTEGRADA:
-Si las transcripciones de la entrevista están provistas arriba, realiza un análisis clínico integrado y redacta 5 párrafos cualitativos detallados que formarán el "Perfil de Entrevista Laboral Integrada", mapeando el comportamiento del candidato en las 5 dimensiones clave. Respeta estrictamente la Regla de Oro número 9: no menciones en ningún momento el medio de grabación (video, cámara, micrófono, etc.). Si no hay transcripciones provistas, devuelve null en esa propiedad.
+Si las transcripciones de la entrevista están provistas arriba, realiza un análisis clínico integrado y redacta 5 párrafos cualitativos detallados que formarán el "Perfil de Entrevista Laboral Integrada", mapeando el comportamiento del candidato en las 5 dimensiones clave. Respeta estrictamente la Regla de Oro número 6: no menciones en ningún momento el medio de grabación. Si no hay transcripciones provistas, devuelve null en esa propiedad.
 
 Devuelve UNICAMENTE un objeto JSON con esta estructura:
 {
-  "resumenEjecutivo": "Cómo interactúan entre sí las fortalezas y áreas de desarrollo ya identificadas (no las vuelvas a describir una por una; cruza al menos dos de ellas en un relato nuevo). Mínimo 3 párrafos, sin repetir frases de ajusteCargo.analisis ni de fortalezas/oportunidadesMejora.",
-  "fortalezas": [{"tendencia": "Comportamiento observado combinando 2+ factores de interpretacionPorFactor, no un factor aislado", "mecanismo": "Forma de actuar", "impacto_organizacional": "Valor para la empresa"}],
-  "oportunidadesMejora": [{"tendencia": "Punto de atención combinando 2+ factores de interpretacionPorFactor, no un factor aislado", "mecanismo": "Situación de riesgo", "impacto_organizacional": "Consecuencia operativa"}],
-  "ajusteCargo": { "score": ${scoreFinal}, "analisis": "2-3 frases, solo sobre el encaje con las demandas concretas del puesto (${proceso?.cargo || 'N/A'}). No listes fortalezas ni menciones el bienestar." },
   "ajusteMbti": "Análisis descriptivo y humano de cómo el perfil ${mbtiType} se adapta específicamente a las tareas y desafíos de la posición de ${proceso?.cargo || 'N/A'}.",
-  "fundamentacion": "Argumento puntual del dictamen (2-4 frases): por qué recomendado/con reservas/no recomendado. No es un resumen del perfil, es la justificación de la decisión.",
   "interpretacionPorFactor": {
      "relaciones": "Cómo se vincula con los demás...",
      "claridad_rol": "Cómo entiende sus tareas...",
@@ -222,14 +325,6 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
      "logro": "Orientación al logro y motivación de éxito (solo si hay datos disponibles)...",
      "dinamismo": "Nivel de energía y ritmo de trabajo (solo si hay datos disponibles)..."
   },
-  "recomendacion": "...",
-  "metaCompetencias": { 
-    "liderazgo": 0, 
-    "adaptabilidad": 0, 
-    "resiliencia": 0, 
-    "colaboracion": 0, 
-    "comunicacion": 0 
-  },
   "analisisEntrevista": ${tieneVideos ? `{
     "trayectoriaMotivacion": "Un párrafo sobre trayectoria, estabilidad y motivación laboral del perfil.",
     "estiloTrabajoAutoridad": "Un párrafo sobre estilo de trabajo y relación de subordinación con la autoridad.",
@@ -238,82 +333,166 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
     "autoconceptoMetas": "Un párrafo sobre su autoconcepto, madurez y proyección profesional de cara al puesto."
   }` : 'null'}
 }
-*Nota: En metaCompetencias, sustituye los 0 por números enteros del 1 al 100 estimados según el perfil.*
 `;
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        maxOutputTokens: 12000,
-        responseMimeType: 'application/json'
-      }
-    });
-
-    let result = null;
-    let attempts = 0;
-    const maxAttempts = 3;
     const apiCallStartTime = Date.now();
-
     console.log(`[INFO] [GENERAR INFORME] Iniciando generación de informe para candidato: ${candidato?.nombre || 'N/A'} ${candidato?.apellido || ''}`);
 
-    while (attempts < maxAttempts) {
-      try {
-        attempts++;
-        console.log(`[INFO] [GENERAR INFORME] Llamando a Gemini (Intento ${attempts}/${maxAttempts})...`);
-        const callStart = Date.now();
-        result = await model.generateContent(prompt);
-        const callDuration = ((Date.now() - callStart) / 1000).toFixed(2);
-        
-        console.log(`[INFO] [GENERAR INFORME] Intento ${attempts} exitoso en ${callDuration}s.`);
-        break;
-      } catch (err: any) {
-        console.error(`[WARNING] [GENERAR INFORME] Error en intento ${attempts}:`, err.message || err);
-        if (attempts >= maxAttempts) {
-          throw err;
-        }
-        const delay = Math.pow(2, attempts) * 1000;
-        console.log(`[INFO] [GENERAR INFORME] Reintentando en ${delay}ms...`);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
-    }
+    // Llamada 1A y 1B corren en paralelo (antes eran una sola llamada secuencial que tardaba 36-50s
+    // por sí sola): el tiempo de esta etapa pasa a ser el de la más lenta de las dos, no la suma.
+    const [resultadoA, resultadoB] = await Promise.all([
+      generarSeccionConReintentos(genAI, promptA, 8000, 'Llamada 1A (fortalezas/ajuste)'),
+      generarSeccionConReintentos(genAI, promptB, 8000, 'Llamada 1B (factores/mbti/entrevista)'),
+    ]);
 
-    if (!result) {
-      throw new Error('Fallo la llamada a la API de Gemini tras superar los reintentos máximos.');
-    }
-    let resultado: any;
-    let ultimoError: Error | null = null;
-
-    for (let parseAttempt = 1; parseAttempt <= 2; parseAttempt++) {
-      const response = await result.response;
-      const finishReason = response.candidates?.[0]?.finishReason;
-      const text = response.text();
-
-      try {
-        if (finishReason === 'MAX_TOKENS') {
-          throw new Error('La respuesta del modelo fue truncada por alcanzar el límite de salida.');
-        }
-        const firstBrace = text.indexOf('{');
-        const lastBrace = text.lastIndexOf('}');
-        const rawJson = firstBrace >= 0 && lastBrace > firstBrace
-          ? text.slice(firstBrace, lastBrace + 1)
-          : text.trim();
-        resultado = JSON.parse(rawJson);
-        break;
-      } catch (parseError: any) {
-        ultimoError = parseError instanceof Error ? parseError : new Error(String(parseError));
-        console.warn(`[WARNING] [GENERAR INFORME] JSON inválido (intento ${parseAttempt}/2):`, ultimoError.message);
-        if (parseAttempt === 2) break;
-        result = await model.generateContent(`${prompt}
-
-REINTENTO OBLIGATORIO: la respuesta anterior no fue un JSON completo. Devuelve nuevamente el objeto completo, válido y cerrado. No uses Markdown, no agregues explicaciones y no cortes ninguna cadena.`);
-      }
-    }
-
-    if (!resultado) {
-      throw new Error(`Estructura JSON inválida devuelta por el modelo: ${ultimoError?.message || 'respuesta vacía'}`);
-    }
+    const resultado: any = { ...resultadoA, ...resultadoB };
 
     resultado.ajusteCargo.score = scoreFinal;
+
+    // "Habilidades para el Trabajo" (metaCompetencias) ya NO se le pide a la IA que las estime libremente:
+    // se calculan acá mismo a partir de los mismos factores psicométricos crudos que ya usa el resto del
+    // informe, para que esta sección no pueda contradecir a las demás (ver lib/metaCompetencias.ts).
+    resultado.metaCompetencias = calcularMetaCompetencias(factoresCrudos);
+
+    // SEGUNDA LLAMADA (proactiva, no reactiva): el resumenEjecutivo y la fundamentación ya NO se piden
+    // en la misma llamada que fortalezas/oportunidadesMejora. Se generan acá, DESPUÉS, dándole a la IA
+    // el texto ya escrito como contexto fijo y prohibiéndole repetirlo. Esto reemplaza al mecanismo
+    // anterior (detectar redundancia y recién ahí reintentar) por uno que evita la redundancia desde el
+    // origen, en vez de corregirla después de que ya ocurrió.
+    const fallbackResumen = 'Los hallazgos de fortalezas y áreas de desarrollo detallados en este informe describen de forma completa el perfil evaluado para el puesto.';
+    const fallbackFundamentacion = `El ajuste estimado de ${scoreFinal}% respecto a las demandas del puesto de ${proceso?.cargo || 'la posición evaluada'} sostiene esta recomendación.`;
+    resultado.resumenEjecutivo = fallbackResumen;
+    resultado.fundamentacion = fallbackFundamentacion;
+
+    // Con maxDuration en 280s (ver arriba), hay mucho más margen real que antes — estos umbrales ya
+    // no necesitan ser distintos entre Vercel y `next dev` local, pero se deja la distinción por si
+    // algún entorno de Vercel llegara a correr sin Fluid Compute (quedaría igual de protegido).
+    const enVercel = !!process.env.VERCEL;
+    const limiteSintesisMs = enVercel ? 200000 : 120000;
+    const tiempoTranscurridoMs = Date.now() - apiCallStartTime;
+    const hayMargenParaSintesis = tiempoTranscurridoMs < limiteSintesisMs;
+
+    if (!hayMargenParaSintesis) {
+      console.warn(`[WARNING] [GENERAR INFORME] Sin margen de tiempo para la síntesis final (${Math.round(tiempoTranscurridoMs / 1000)}s transcurridos); se entrega con el texto de respaldo.`);
+    } else {
+      try {
+        const promptSintesis = `Eres el mismo consultor que ya redactó las secciones de abajo para este informe. NO se van a modificar — tu única tarea es escribir DOS campos nuevos que se leerán DESPUÉS de estas, conectándolas sin repetirlas.
+
+REGLAS DE ESTILO (las mismas que ya se usaron abajo, síguelas igual):
+- Tono cercano, empático, atenuado y profesional. Sin tecnicismos de personalidad ni siglas de pruebas. Sin nombrar al candidato (usa "el perfil" o "la persona evaluada"). Sin adjetivos absolutos ("crucial", "excelente", "perfecta", "esencial", etc.).
+- No menciones videos, cámaras, plataformas ni ningún soporte tecnológico.
+
+TEXTOS YA ESCRITOS PARA ESTE INFORME (no los repitas, no los reformules con sinónimos, no vuelvas a describir lo mismo):
+- Encaje con el puesto: "${resultado.ajusteCargo?.analisis || ''}"
+- Fortalezas: ${JSON.stringify((resultado.fortalezas || []).map((f: any) => ({ tendencia: f?.tendencia, mecanismo: f?.mecanismo })))}
+- Áreas de desarrollo: ${JSON.stringify((resultado.oportunidadesMejora || []).map((f: any) => ({ tendencia: f?.tendencia, mecanismo: f?.mecanismo })))}
+${resultado.analisisEntrevista ? `- Análisis de entrevista ya escrito: ${JSON.stringify(resultado.analisisEntrevista)}` : ''}
+
+CONTEXTO: puesto "${proceso?.cargo || 'N/A'}", ajuste estimado ${scoreFinal}%.
+
+Escribe:
+1. "resumenEjecutivo": mínimo 3 párrafos que CONECTEN al menos dos de los puntos ya escritos entre sí (ej. cómo una fortaleza compensa o se ve tensionada por un área de desarrollo), aportando una lectura nueva sobre cómo interactúan — no una lista ni un resumen de lo ya dicho arriba.
+2. "fundamentacion": 2-4 frases que justifiquen puntualmente el dictamen según el ${scoreFinal}% de ajuste (por qué recomendado / con reservas / no recomendado). No es un resumen del perfil, es el argumento de la decisión.
+
+Ninguno de los dos campos puede reutilizar frases textuales de los textos ya escritos arriba.
+
+Devuelve ÚNICAMENTE este JSON: { "resumenEjecutivo": "...", "fundamentacion": "..." }`;
+
+        const modelSintesis = genAI.getGenerativeModel({
+          model: 'gemini-2.5-flash',
+          // 1500 no alcanzaba: la respuesta se cortaba a mitad de una cadena JSON
+          // ("Unterminated string in JSON") antes de terminar los 3+ párrafos pedidos.
+          generationConfig: { maxOutputTokens: 4000, responseMimeType: 'application/json' }
+        });
+
+        let resultadoSintesis: any = null;
+        let intentosSintesis = 0;
+        const maxIntentosSintesis = 2;
+        while (intentosSintesis < maxIntentosSintesis) {
+          intentosSintesis++;
+          try {
+            const respuestaSintesis = await modelSintesis.generateContent(promptSintesis);
+            const textoSintesis = respuestaSintesis.response.text();
+            const primerLlave = textoSintesis.indexOf('{');
+            const ultimaLlave = textoSintesis.lastIndexOf('}');
+            const jsonSintesis = primerLlave >= 0 && ultimaLlave > primerLlave ? textoSintesis.slice(primerLlave, ultimaLlave + 1) : textoSintesis.trim();
+            resultadoSintesis = JSON.parse(jsonSintesis);
+            break;
+          } catch (errorIntento: any) {
+            console.warn(`[WARNING] [GENERAR INFORME] Síntesis final, intento ${intentosSintesis}/${maxIntentosSintesis} falló:`, errorIntento?.message || errorIntento);
+          }
+        }
+
+        if (resultadoSintesis?.resumenEjecutivo) resultado.resumenEjecutivo = resultadoSintesis.resumenEjecutivo;
+        if (resultadoSintesis?.fundamentacion) resultado.fundamentacion = resultadoSintesis.fundamentacion;
+
+        // Verificación en dos capas: la literal (palabras repetidas) ya existía; la temática detecta
+        // el mismo tema aunque esté parafraseado con sinónimos (ej. "afinidad notable" vs "alineación
+        // profunda"), que es el patrón que seguía pasando incluso con la síntesis en dos llamadas.
+        const textosPrevios = [
+          resultado.ajusteCargo?.analisis || '',
+          ...(resultado.fortalezas || []).map((f: any) => [f?.tendencia, f?.mecanismo].filter(Boolean).join('. ')),
+          ...(resultado.oportunidadesMejora || []).map((f: any) => [f?.tendencia, f?.mecanismo].filter(Boolean).join('. ')),
+        ].filter(Boolean);
+
+        const paresLiterales = detectarRedundanciaNarrativa(resultado);
+        const frasesResumen = detectarFrasesTematicamenteRedundantes(resultado.resumenEjecutivo, textosPrevios);
+        const frasesFundamentacion = detectarFrasesTematicamenteRedundantes(resultado.fundamentacion, textosPrevios);
+        const hayRedundancia = paresLiterales.length > 0 || frasesResumen.length > 0 || frasesFundamentacion.length > 0;
+
+        if (hayRedundancia) {
+          console.warn(`[WARNING] [GENERAR INFORME] Redundancia detectada tras la síntesis (literal: ${paresLiterales.length}, temática resumen: ${frasesResumen.length}, temática fundamentación: ${frasesFundamentacion.length}).`);
+        }
+
+        const limitePulidoMs = enVercel ? 240000 : 130000;
+        const tiempoTranscurridoMs2 = Date.now() - apiCallStartTime;
+        const hayMargenParaPulido = tiempoTranscurridoMs2 < limitePulidoMs;
+
+        if (hayRedundancia && hayMargenParaPulido) {
+          try {
+            const detalleFrases = [
+              ...frasesResumen.map(f => `- En el resumen ejecutivo: "${f.frase}" (repite, sin aportar nada nuevo, el mismo tema [${f.temas}] de un texto ya escrito arriba)`),
+              ...frasesFundamentacion.map(f => `- En la fundamentación: "${f.frase}" (repite, sin aportar nada nuevo, el mismo tema [${f.temas}] de un texto ya escrito arriba)`),
+            ].join('\n');
+
+            const promptPulido = `Revisa este resumen ejecutivo y esta fundamentación que ya escribiste:
+- resumenEjecutivo: "${resultado.resumenEjecutivo}"
+- fundamentacion: "${resultado.fundamentacion}"
+
+${detalleFrases ? `Se detectaron frases puntuales que repiten, sin aportar nada nuevo, un tema ya cubierto en otra parte del informe:\n${detalleFrases}\n` : ''}${paresLiterales.length > 0 ? `También hay frases casi idénticas a otro campo del informe (similitud literal alta).\n` : ''}
+Reescribe SOLO las frases problemáticas (podés dejar el resto igual si ya está bien): o bien elimínalas, o bien dales un ángulo que conecte ese tema con otro distinto en vez de solo restablecerlo. Mantené el resto del contenido y el tono ya usado (cercano, atenuado, sin nombrar al candidato, sin tecnicismos).
+
+Devuelve ÚNICAMENTE este JSON: { "resumenEjecutivo": "...", "fundamentacion": "..." }`;
+
+            const modelPulido = genAI.getGenerativeModel({
+              model: 'gemini-2.5-flash',
+              generationConfig: { maxOutputTokens: 8000, responseMimeType: 'application/json' }
+            });
+            const respuestaPulido = await modelPulido.generateContent(promptPulido);
+            const textoPulido = respuestaPulido.response.text();
+            const primerLlavePulido = textoPulido.indexOf('{');
+            const ultimaLlavePulido = textoPulido.lastIndexOf('}');
+            const jsonPulido = primerLlavePulido >= 0 && ultimaLlavePulido > primerLlavePulido ? textoPulido.slice(primerLlavePulido, ultimaLlavePulido + 1) : textoPulido.trim();
+            const resultadoPulido = JSON.parse(jsonPulido);
+
+            if (resultadoPulido?.resumenEjecutivo) resultado.resumenEjecutivo = resultadoPulido.resumenEjecutivo;
+            if (resultadoPulido?.fundamentacion) resultado.fundamentacion = resultadoPulido.fundamentacion;
+            console.log(`[INFO] [GENERAR INFORME] Pulido por redundancia aplicado.`);
+          } catch (errorPulido: any) {
+            // Best-effort: si el pulido falla, se conserva el texto de la síntesis original (ya válido,
+            // solo con la redundancia detectada) en vez de bloquear la generación por este paso extra.
+            console.warn(`[WARNING] [GENERAR INFORME] No se pudo aplicar el pulido por redundancia, se conserva el texto de la síntesis:`, errorPulido?.message || errorPulido);
+          }
+        } else if (hayRedundancia && !hayMargenParaPulido) {
+          console.warn(`[WARNING] [GENERAR INFORME] Redundancia detectada pero sin margen de tiempo para pulir (${Math.round(tiempoTranscurridoMs2 / 1000)}s transcurridos); se entrega tal cual.`);
+        }
+      } catch (errorSintesis: any) {
+        // Best-effort: si la síntesis final falla por completo, se entrega el informe con el
+        // texto de respaldo en vez de bloquear toda la generación por este paso adicional.
+        console.warn(`[WARNING] [GENERAR INFORME] No se pudo generar la síntesis final, se usa texto de respaldo:`, errorSintesis?.message || errorSintesis);
+      }
+    }
+
     const totalDuration = ((Date.now() - apiCallStartTime) / 1000).toFixed(2);
     console.log(`[INFO] [GENERAR INFORME] Informe generado exitosamente en ${totalDuration}s.`);
     return NextResponse.json(resultado);

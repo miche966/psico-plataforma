@@ -46,7 +46,7 @@ function Text({ children, ...props }: any) {
 function obtenerTextoAnalisis(analisis: any): string {
   if (!analisis) return ''
   if (typeof analisis === 'string') return analisis
-  
+
   if (typeof analisis === 'object') {
     if (analisis.actitud) {
       if (typeof analisis.actitud === 'string') return analisis.actitud
@@ -78,31 +78,31 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#0f172a' },
   headerSubtitle: { fontSize: 9, color: '#64748b', marginTop: 2 },
   headerDate: { fontSize: 8, color: '#64748b' },
-  
+
   section: { marginBottom: 20 },
-  sectionTitle: { 
-    fontSize: 11, 
-    fontWeight: 'bold', 
-    color: '#0f172a', 
-    backgroundColor: '#f8fafc', 
-    padding: 6, 
-    borderLeftWidth: 3, 
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#0f172a',
+    backgroundColor: '#f8fafc',
+    padding: 6,
+    borderLeftWidth: 3,
     borderLeftColor: '#2563eb',
     marginBottom: 10,
     textTransform: 'uppercase'
   },
-  
+
   infoGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 15 },
   infoItem: { width: '33.33%', marginBottom: 10 },
   infoLabel: { fontSize: 7, color: '#64748b', textTransform: 'uppercase', marginBottom: 2, fontWeight: 'bold' },
   infoValue: { fontSize: 9, color: '#1e293b', fontWeight: 'bold' },
-  
+
   card: { backgroundColor: '#f8fafc', padding: 10, borderRadius: 6, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 10 },
   cardTitle: { fontSize: 9, fontWeight: 'bold', color: '#1e293b', marginBottom: 5 },
   cardText: { fontSize: 8, color: '#475569', lineHeight: 1.4 },
-  
+
   badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, fontSize: 7, fontWeight: 'bold' },
-  
+
   factorBlock: { marginBottom: 8 },
   factorHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 },
   factorName: { fontSize: 9, fontWeight: 'bold', color: '#334155' },
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   barBg: { height: 4, backgroundColor: '#e2e8f0', borderRadius: 2, marginBottom: 3 },
   barFill: { height: 4, borderRadius: 2 },
   factorDesc: { fontSize: 8, color: '#475569', lineHeight: 1.3 },
-  
+
   footer: { position: 'absolute', bottom: 30, left: 40, right: 40, borderTopWidth: 1, borderTopColor: '#e2e8f0', paddingTop: 10, flexDirection: 'row', justifyContent: 'space-between' },
   footerText: { fontSize: 7, color: '#94a3b8' }
 });
@@ -120,7 +120,10 @@ import { ETQ } from '@/lib/labels';
 
 const DOMINIOS = {
   PERSONALIDAD: ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura', 'honestidad_humildad', 'honestidad', 'normas', 'promedio_general', 'logro', 'dinamismo'],
-  COGNITIVO: ['correctas', 'percentil', 'score', 'documentos', 'comparacion', 'concentracion', 'errores_texto', 'errores_numeros', 'metricas_fraude'],
+  // 'metricas_fraude' NO va aquí: ya se muestra como "Índice de Confianza" en la sección
+  // "Controles del Proceso" (ver inf.confianza). Incluirlo también acá lo duplicaba como
+  // "Índice de Sinceridad Laboral" bajo un rótulo ajeno a lo que mide (validez, no atención/tareas).
+  COGNITIVO: ['correctas', 'percentil', 'score', 'documentos', 'comparacion', 'concentracion', 'errores_texto', 'errores_numeros'],
   COMPETENCIAS: ['etica', 'negociacion', 'manejo_emocional', 'tolerancia_frustracion', 'comunicacion', 'liderazgo', 'trabajo_equipo', 'adaptabilidad', 'resolucion_problemas'],
   BIENESTAR: ['burnout', 'equilibrio', 'relaciones', 'claridad_rol', 'nivel_estres', 'carga_laboral', 'resiliencia', 'manejo_estres', 'autoestima', 'inteligencia_emocional']
 }
@@ -185,7 +188,7 @@ export const InformePDF = ({ data }: any) => {
   const sesionFrases = sesiones.find((s: any) => s.test_id === 'f7a8b9c0-d1e2-4356-abcd-888888888888');
   const analisisFrases = sesionFrases?.puntaje_bruto?.analisis_ia;
 
-  const renderFactores = (dominio: string[], sesionesFilt: any[]) => {
+  const renderFactores = (dominio: string[], sesionesFilt: any[], anotaciones?: Record<string, string>) => {
     const mapa = new Map<string, any>();
     [...sesionesFilt].sort((a, b) => new Date(b.finalizada_en || 0).getTime() - new Date(a.finalizada_en || 0).getTime()).forEach(s => {
       const scan = (obj: any) => {
@@ -210,6 +213,7 @@ export const InformePDF = ({ data }: any) => {
       const desc = interpretacionVigente(inf)
         ? (inf.interpretacionPorFactor?.[fk] || inf.interpretacionPorFactor?.[factor.toLowerCase()] || obtenerInterpretacionLocal(factor, vNorm))
         : obtenerInterpretacionLocal(factor, vNorm);
+      const anotacion = anotaciones?.[factor];
 
       return (
         <View key={factor} style={styles.factorBlock}>
@@ -219,9 +223,21 @@ export const InformePDF = ({ data }: any) => {
           </View>
           <View style={styles.barBg}><View style={[styles.barFill, { width: `${(vNorm/5)*100}%`, backgroundColor: clr }]} /></View>
           <Text style={styles.factorDesc}>{desc}</Text>
+          {anotacion && <Text style={[styles.factorDesc, { color: '#7c3aed', marginTop: 2 }]}>→ {anotacion}</Text>}
         </View>
       );
     });
+  };
+
+  // "Habilidades para el Trabajo" ya no se muestran como bloque aparte (Sección III anterior):
+  // se anotan junto al factor de Personalidad del que se derivan (ver lib/metaCompetencias.ts),
+  // para no repetir el mismo dato dos veces bajo nombres distintos.
+  const anotacionesPersonalidad: Record<string, string> = {
+    extraversion: `Comunicación funcional estimada: ${inf.comunicacion ?? 0}/100`,
+    amabilidad: `Colaboración funcional estimada: ${inf.colaboracion ?? 0}/100`,
+    apertura: `Adaptabilidad funcional estimada: ${inf.adaptabilidad ?? 0}/100`,
+    responsabilidad: `${labelLiderazgo === 'LIDERAZGO' ? 'Liderazgo' : 'Autogestión'} funcional estimada: ${inf.liderazgo ?? 0}/100`,
+    neuroticismo: `Resiliencia funcional estimada: ${inf.resiliencia ?? 0}/100`,
   };
 
   return (
@@ -239,7 +255,117 @@ export const InformePDF = ({ data }: any) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>I. Evaluacion General y Ajuste al Puesto</Text>
+          <Text style={styles.sectionTitle}>I. Controles del proceso</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #e2e8f0' }}>
+              <Text style={{ fontSize: 6, color: '#64748b', fontWeight: 'bold', marginBottom: 4 }}>ÍNDICE DE CONFIANZA</Text>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: inf.confianza > 80 ? '#059669' : '#dc2626' }}>{inf.confianza || 0}%</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #e2e8f0' }}>
+              <Text style={{ fontSize: 6, color: '#64748b', fontWeight: 'bold', marginBottom: 4 }}>ALERTAS PROCTORING</Text>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#334155' }}>{(inf.alertasTab || 0) + (inf.alertasCopia || 0)}</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #e2e8f0' }}>
+              <Text style={{ fontSize: 6, color: '#64748b', fontWeight: 'bold', marginBottom: 4 }}>TIEMPO PROMEDIO</Text>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#334155' }}>{inf.tiempoPromedio || 0} min</Text>
+            </View>
+          </View>
+          <Text style={{ fontSize: 7, color: '#64748b', marginTop: 8 }}>
+            Estos controles validan la confiabilidad del proceso de evaluación antes de interpretar cualquier resultado.
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>II. Resultados de la Evaluación</Text>
+
+          {hasP && (
+            <View style={{ marginBottom: 14 }}>
+              <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 6 }}>II.A — Personalidad</Text>
+              {renderFactores(DOMINIOS.PERSONALIDAD.filter(f => !['normas', 'promedio_general'].includes(f)), sesBF, anotacionesPersonalidad)}
+            </View>
+          )}
+
+          {hasC && (
+            <View style={{ marginBottom: 14 }}>
+              <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 6 }}>II.B — Atención y Tareas</Text>
+              {sesCog.length > 0 && (() => {
+                let sumaCorrectas = 0
+                let sumaTotal = 0
+                let sumaPercentil = 0
+
+                sesCog.forEach((s: any) => {
+                  const pb = s.puntaje_bruto || {};
+                  const corr = Number(pb.correctas || 0);
+                  const tot = Number(pb.total || 1);
+                  let perc = Number(pb.percentil);
+                  if (isNaN(perc) || !pb.hasOwnProperty('percentil')) {
+                    perc = Math.round((corr / tot) * 100);
+                  }
+                  sumaCorrectas += corr;
+                  sumaTotal += tot;
+                  sumaPercentil += perc;
+                });
+
+                const normVal = sumaTotal > 0 ? Math.round((sumaCorrectas / sumaTotal) * 5 * 10) / 10 : 0;
+                const perc = Math.round(sumaPercentil / sesCog.length);
+
+                return (
+                  <View>
+                    <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
+                      <View style={{ flex: 1, backgroundColor: '#f0f9ff', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #bae6fd' }}>
+                        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#0369a1' }}>{normVal}/5</Text>
+                        <Text style={{ fontSize: 6, color: '#0369a1', fontWeight: 'bold', textTransform: 'uppercase' }}>Efectividad Cognitiva</Text>
+                      </View>
+                      <View style={{ flex: 1, backgroundColor: '#f0f9ff', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #bae6fd' }}>
+                        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#0369a1' }}>P{perc}</Text>
+                        <Text style={{ fontSize: 6, color: '#0369a1', fontWeight: 'bold', textTransform: 'uppercase' }}>Rango Percentil</Text>
+                      </View>
+                    </View>
+                    {renderFactores(DOMINIOS.COGNITIVO.filter(f => !['correctas', 'total', 'score', 'percentil'].includes(f)), sesCog)}
+                  </View>
+                );
+              })()}
+            </View>
+          )}
+
+          {(hasP || hasK) && (
+            <View style={{ marginBottom: 14 }}>
+              <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 4 }}>II.C — Integridad y Ética</Text>
+              <Text style={{ fontSize: 7, color: '#64748b', marginBottom: 6, lineHeight: 1.3 }}>
+                Estas métricas miden ángulos distintos del mismo concepto (autopercepción vs. conducta situacional) — se agrupan para leerse juntas, no son el mismo dato repetido.
+              </Text>
+              {renderFactores(['normas', 'promedio_general'], sesBF)}
+              {renderFactores(['etica'], sesComp)}
+            </View>
+          )}
+
+          {hasK && (
+            <View style={{ marginBottom: 14 }}>
+              <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 4 }}>II.D — Competencias (Situacionales / SJT)</Text>
+              <Text style={{ fontSize: 7, color: '#b45309', marginBottom: 6, lineHeight: 1.3 }}>
+                ⚠ Estos valores provienen de pruebas situacionales con efecto techo documentado (la mayoría de los perfiles puntúa cerca del máximo) — interpretar con cautela.
+              </Text>
+              {renderFactores(DOMINIOS.COMPETENCIAS.filter(f => f !== 'etica'), sesComp)}
+            </View>
+          )}
+
+          {hasV && (
+            <View>
+              <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 6 }}>II.E — Bienestar</Text>
+              {renderFactores(DOMINIOS.BIENESTAR, sesBien)}
+              {hasK && (
+                <Text style={{ fontSize: 7, color: '#b45309', marginTop: 4, lineHeight: 1.3 }}>
+                  ⚠ Si estos valores contrastan fuertemente con los de Competencias (II.D), es esperable mientras esa sección siga afectada por el efecto techo mencionado arriba.
+                </Text>
+              )}
+            </View>
+          )}
+        </View>
+
+        <View break />
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>III. Evaluación General y Ajuste al Puesto</Text>
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
             <View style={{ width: '25%', backgroundColor: '#f0f9ff', padding: 10, borderRadius: 6, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 20, fontWeight: 'bold', color: clrOf((inf.ajusteCargo?.score || 0)/20) }}>{inf.ajusteCargo?.score || 0}%</Text>
@@ -249,7 +375,7 @@ export const InformePDF = ({ data }: any) => {
               <Text style={styles.cardText}>{inf.ajusteCargo?.analisis || 'Análisis pendiente...'}</Text>
             </View>
           </View>
-          
+
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 5 }}>
             <View style={{ flex: 1, backgroundColor: '#f0fdf4', padding: 8, borderRadius: 6, border: '1px solid #bbf7d0' }}>
               <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#16a34a', marginBottom: 4 }}>FORTALEZAS PRINCIPALES</Text>
@@ -286,132 +412,16 @@ export const InformePDF = ({ data }: any) => {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>II. Controles del proceso</Text>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #e2e8f0' }}>
-              <Text style={{ fontSize: 6, color: '#64748b', fontWeight: 'bold', marginBottom: 4 }}>ÍNDICE DE CONFIANZA</Text>
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: inf.confianza > 80 ? '#059669' : '#dc2626' }}>{inf.confianza || 0}%</Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #e2e8f0' }}>
-              <Text style={{ fontSize: 6, color: '#64748b', fontWeight: 'bold', marginBottom: 4 }}>ALERTAS PROCTORING</Text>
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#334155' }}>{(inf.alertasTab || 0) + (inf.alertasCopia || 0)}</Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #e2e8f0' }}>
-              <Text style={{ fontSize: 6, color: '#64748b', fontWeight: 'bold', marginBottom: 4 }}>TIEMPO PROMEDIO</Text>
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#334155' }}>{inf.tiempoPromedio || 0} min</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>III. Habilidades para el trabajo</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <View style={{ flex: 1, backgroundColor: '#f5f3ff', padding: 8, borderRadius: 6, alignItems: 'center', border: '1px solid #ddd6fe' }}>
-              <Text style={{ fontSize: 6, color: '#7c3aed', fontWeight: 'bold', marginBottom: 4 }}>{labelLiderazgo}</Text>
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#7c3aed' }}>{inf.liderazgo || 0}</Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: '#fff7ed', padding: 8, borderRadius: 6, alignItems: 'center', border: '1px solid #ffedd5' }}>
-              <Text style={{ fontSize: 6, color: '#ea580c', fontWeight: 'bold', marginBottom: 4 }}>ADAPTABILIDAD</Text>
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#ea580c' }}>{inf.adaptabilidad || 0}</Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: '#fef2f2', padding: 8, borderRadius: 6, alignItems: 'center', border: '1px solid #fee2e2' }}>
-              <Text style={{ fontSize: 6, color: '#dc2626', fontWeight: 'bold', marginBottom: 4 }}>RESILIENCIA</Text>
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#dc2626' }}>{inf.resiliencia || 0}</Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: '#ecfdf5', padding: 8, borderRadius: 6, alignItems: 'center', border: '1px solid #d1fae5' }}>
-              <Text style={{ fontSize: 6, color: '#059669', fontWeight: 'bold', marginBottom: 4 }}>COLABORACIÓN</Text>
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#059669' }}>{inf.colaboracion || 0}</Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: '#f0f9ff', padding: 8, borderRadius: 6, alignItems: 'center', border: '1px solid #e0f2fe' }}>
-              <Text style={{ fontSize: 6, color: '#0284c7', fontWeight: 'bold', marginBottom: 4 }}>COMUNICACIÓN</Text>
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#0284c7' }}>{inf.comunicacion || 0}</Text>
-            </View>
-          </View>
-        </View>
-
         {inf.resumenEjecutivo && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Resumen Ejecutivo e Integrativo</Text>
+            <Text style={styles.sectionTitle}>IV. Perfil Integrado</Text>
             <Text style={[styles.cardText, { lineHeight: 1.5 }]}>{inf.resumenEjecutivo}</Text>
           </View>
         )}
 
-        {hasP && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>IV. Resultados de la evaluacion (Personalidad)</Text>
-            {renderFactores(DOMINIOS.PERSONALIDAD, sesBF)}
-          </View>
-        )}
-
-        {hasC && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>V. Resultados de la evaluacion (Atencion y tareas)</Text>
-            {sesCog.length > 0 && (() => {
-              let sumaCorrectas = 0
-              let sumaTotal = 0
-              let sumaPercentil = 0
-              
-              sesCog.forEach((s: any) => {
-                const pb = s.puntaje_bruto || {};
-                const corr = Number(pb.correctas || 0);
-                const tot = Number(pb.total || 1);
-                let perc = Number(pb.percentil);
-                if (isNaN(perc) || !pb.hasOwnProperty('percentil')) {
-                  perc = Math.round((corr / tot) * 100);
-                }
-                sumaCorrectas += corr;
-                sumaTotal += tot;
-                sumaPercentil += perc;
-              });
-
-              const normVal = sumaTotal > 0 ? Math.round((sumaCorrectas / sumaTotal) * 5 * 10) / 10 : 0;
-              const perc = Math.round(sumaPercentil / sesCog.length);
-              
-              return (
-                <View>
-                  <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
-                    <View style={{ flex: 1, backgroundColor: '#f0f9ff', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #bae6fd' }}>
-                      <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#0369a1' }}>{normVal}/5</Text>
-                      <Text style={{ fontSize: 6, color: '#0369a1', fontWeight: 'bold', textTransform: 'uppercase' }}>Efectividad Cognitiva</Text>
-                    </View>
-                    <View style={{ flex: 1, backgroundColor: '#f0f9ff', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #bae6fd' }}>
-                      <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#0369a1' }}>P{perc}</Text>
-                      <Text style={{ fontSize: 6, color: '#0369a1', fontWeight: 'bold', textTransform: 'uppercase' }}>Rango Percentil</Text>
-                    </View>
-                  </View>
-                  {renderFactores(DOMINIOS.COGNITIVO.filter(f => !['correctas', 'total', 'score', 'percentil'].includes(f)), sesCog)}
-                </View>
-              );
-            })()}
-          </View>
-        )}
-
-        <View break />
-
-        {hasK && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>VI. Resultados de la evaluacion (Competencias)</Text>
-            {renderFactores(DOMINIOS.COMPETENCIAS, sesComp)}
-          </View>
-        )}
-
-        {hasV && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>VII. Resultados de la evaluacion (Bienestar)</Text>
-            {renderFactores(DOMINIOS.BIENESTAR, sesBien)}
-          </View>
-        )}
-
-
-
-
-
-
-
         <View style={{ marginTop: 20, padding: 15, borderTop: 1, borderTopColor: '#e2e8f0' }}>
           <Text style={{ fontSize: 10, fontWeight: 'bold', color: clrOf(inf.recomendacion === 'recomendado' ? 5 : inf.recomendacion === 'con_reservas' ? 3 : 1) }}>
-            DICTAMEN FINAL: {inf.recomendacion?.replace('_', ' ').toUpperCase()}
+            V. DICTAMEN FINAL: {inf.recomendacion?.replace('_', ' ').toUpperCase()}
           </Text>
           <Text style={[styles.cardText, { marginTop: 5 }]}>{inf.fundamentacion || 'Sin fundamentación técnica registrada.'}</Text>
           <Text style={{ fontSize: 8, color: '#64748b', marginTop: 15 }}>Evaluador: {inf.nombreEvaluador || 'Equipo de Consultoría'}</Text>

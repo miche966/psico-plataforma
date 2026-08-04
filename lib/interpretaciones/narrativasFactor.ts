@@ -72,29 +72,29 @@ export const NARRATIVAS_FACTOR: NarrativasFactor = {
 
   // ── Cognitivo / Aptitud ──────────────────────────────────────────────────
   documentos: {
-    alto: 'Destaca por un manejo prolijo y ordenado de los activos documentales y registros administrativos. Su capacidad para organizar volúmenes de datos asegura que la información sea tratada con rigor, facilitando un entorno operativo fluido y fortaleciendo la calidad de la gestión administrativa interna.',
-    medio: 'Muestra un cuidado profesional adecuado en la organización y revisión de documentos. Mantiene un estándar de orden constante, logrando procesar la información con claridad y criterio, lo que asegura que las tareas de soporte avancen sin contratiempos.',
-    bajo: 'En tareas que exigen un rigor sistemático extremo en la gestión de archivos, se beneficiará del apoyo de listas de verificación. Su enfoque tiende a ser más ágil que detallista, por lo que una revisión de cierre asegurará la integridad total de los registros.'
+    alto: 'Organiza y revisa su trabajo con orden y prolijidad. Maneja bien grandes cantidades de información, lo que ayuda a que las tareas administrativas avancen sin errores ni demoras.',
+    medio: 'Mantiene sus documentos y registros con un orden adecuado. Revisa la información con cuidado, lo que permite que las tareas de soporte avancen sin problemas.',
+    bajo: 'Tiende a priorizar la rapidez por sobre el detalle en el manejo de documentos. Le conviene apoyarse en listas de chequeo o una revisión final antes de cerrar una tarea, para no dejar nada pendiente.'
   },
   comparacion: {
-    alto: 'Manifiesta una notable agilidad en el procesamiento y reconocimiento de patrones. Logra contrastar información y detectar discrepancias con una fluidez que optimiza los tiempos de respuesta, aportando una alta efectividad en tareas que demandan validación constante.',
-    medio: 'Demuestra un ritmo de ejecución equilibrado que le permite abordar tareas habituales con una fluidez adecuada. Es capaz de contrastar información de manera efectiva, manteniendo una cadencia estable que asegura la calidad del resultado final.',
-    bajo: 'Tiende a procesar la comparación de datos de forma más pausada para asegurar la exactitud. Su desempeño mejora en entornos que no dependan de una respuesta inmediata, permitiéndole realizar una revisión más deliberada de la información.'
+    alto: 'Detecta diferencias y compara información con rapidez y precisión, lo que le permite responder con agilidad en tareas que requieren revisar datos una y otra vez.',
+    medio: 'Compara y revisa información a un ritmo parejo, manteniendo un buen nivel de calidad en el resultado final.',
+    bajo: 'Prefiere tomarse su tiempo al comparar datos para no cometer errores. Rinde mejor en tareas que no dependen de una respuesta inmediata, donde puede revisar con calma.'
   },
   concentracion: {
-    alto: 'Posee una capacidad de enfoque sostenido y constante, incluso en entornos con múltiples estímulos. Su atención se mantiene estable durante periodos prolongados, lo que le permite completar tareas complejas manteniendo un estándar de calidad homogéneo.',
-    medio: 'Mantiene un nivel de atención funcional durante la jornada. Logra enfocarse en sus objetivos a pesar de las distracciones comunes, asegurando una ejecución estable en sus responsabilidades diarias de manera profesional.',
-    bajo: 'Muestra un estilo de atención que puede fluctuar ante entornos de alta estimulación. Se beneficia de espacios de trabajo organizados que favorezcan la inmersión en la tarea, minimizando así el impacto de las distracciones en su desempeño.'
+    alto: 'Mantiene el foco de forma constante, incluso en ambientes con muchas interrupciones. Puede sostener tareas complejas durante períodos largos sin perder calidad.',
+    medio: 'Mantiene un nivel de atención adecuado durante la jornada. Logra concentrarse en sus tareas a pesar de las distracciones habituales.',
+    bajo: 'Su atención puede verse afectada en ambientes con muchos estímulos. Rinde mejor en espacios de trabajo tranquilos y ordenados, que le ayuden a mantener el foco.'
   },
   errores_texto: {
-    alto: 'Se identifica una notable minuciosidad en el procesamiento de información escrita y registros de texto. Su habilidad para identificar inconsistencias garantiza que la comunicación institucional sea presentada con un estándar de calidad constante, protegiendo la integridad de los reportes.',
-    medio: 'Es capaz de producir y revisar documentos con un nivel de corrección profesional claro. Detecta los errores comunes y mantiene una coherencia narrativa lógica, asegurando que las comunicaciones cumplan con los parámetros de claridad esperados.',
-    bajo: 'Su enfoque se centra principalmente en la agilidad de la comunicación. Para asegurar la precisión absoluta en la redacción de informes críticos, se recomienda una revisión final o el uso de herramientas de soporte que garanticen la consistencia de los textos.'
+    alto: 'Es muy cuidadosa al escribir y revisar textos, y detecta errores con facilidad. Esto ayuda a que las comunicaciones de la empresa mantengan siempre un buen nivel de calidad.',
+    medio: 'Escribe y revisa textos con un nivel de corrección adecuado. Detecta los errores más comunes y mantiene sus comunicaciones claras y ordenadas.',
+    bajo: 'Prioriza la rapidez al escribir por sobre el detalle. Le conviene darle una última revisión a los textos importantes, o pedir una segunda mirada, antes de enviarlos.'
   },
   errores_numeros: {
-    alto: 'Demuestra un manejo seguro y criterioso de la información cuantitativa. Su enfoque en el cálculo y la transcripción de datos numéricos asegura una consistencia sólida en los reportes de gestión, aportando fiabilidad a los procesos de alta exactitud.',
-    medio: 'Maneja la información cuantitativa con seguridad y criterio profesional. Realiza cálculos y transcripciones con una baja incidencia de errores en condiciones normales, contribuyendo a la estabilidad y orden de los reportes del área.',
-    bajo: 'Ante volúmenes moderados de datos numéricos, su precisión mejora con una validación secundaria. Se beneficia de metodologías de trabajo pautadas que le permitan mantener el rigor en tareas que impliquen indicadores críticos de gestión.'
+    alto: 'Maneja números y cálculos con seguridad y cuidado, lo que da confianza en la exactitud de sus reportes.',
+    medio: 'Maneja bien los números en el día a día, con pocos errores en condiciones normales de trabajo.',
+    bajo: 'Con volúmenes de datos numéricos más grandes, le conviene revisar sus cálculos una segunda vez. Rinde mejor cuando puede seguir pasos claros y ordenados para esas tareas.'
   },
   metricas_fraude: {
     alto: 'Se observa una disposición genuina hacia la transparencia y la honestidad en su autopercepción profesional. Su estilo de respuesta sugiere una mirada objetiva sobre sus propias capacidades, lo que brinda una base de confianza sólida para la interpretación de los resultados.',

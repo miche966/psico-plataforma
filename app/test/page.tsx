@@ -34,6 +34,8 @@ export default function TestPage() {
   const [itemActual, setItemActual] = useState(0)
   const [respuestas, setRespuestas] = useState<Respuesta[]>([])
   const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [intentoCarga, setIntentoCarga] = useState(0)
   const [finalizado, setFinalizado] = useState(false)
   const enEvaluacion = useEvaluacionRedirect(finalizado)
   const [sesionIdActual, setSesionIdActual] = useState<string | null>(null)
@@ -41,23 +43,30 @@ export default function TestPage() {
   const BIG_FIVE_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
 
   useEffect(() => {
+    setCargando(true)
+    setError(null)
     initSesion()
     cargarItems()
-  }, [candidatoId, procesoId, searchParams])
+  }, [candidatoId, procesoId, searchParams, intentoCarga])
 
   async function initSesion() {
     if (!candidatoId || !procesoId) return
     const token = searchParams.get('token') || ''
     const sesionId = searchParams.get('sesion') || ''
-    const response = await fetch('/api/evaluacion/public-data', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'start', candidato_id: candidatoId, proceso_id: procesoId, token, sesion_id: sesionId, test_id: BIG_FIVE_ID })
-    })
-    const payload = await response.json().catch(() => ({}))
-    if (!response.ok) { console.error(payload.error); return }
-    if (payload.sesion?.id) setSesionIdActual(payload.sesion.id)
-    if (payload.alreadyCompleted) setFinalizado(true)
+    try {
+      const response = await fetch('/api/evaluacion/public-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'start', candidato_id: candidatoId, proceso_id: procesoId, token, sesion_id: sesionId, test_id: BIG_FIVE_ID })
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) { setError(payload.error || 'No se pudo iniciar el test.'); setCargando(false); return }
+      if (payload.sesion?.id) setSesionIdActual(payload.sesion.id)
+      if (payload.alreadyCompleted) setFinalizado(true)
+    } catch {
+      setError('No se pudo conectar con el servidor.')
+      setCargando(false)
+    }
   }
 
   useEffect(() => {
@@ -75,12 +84,17 @@ export default function TestPage() {
   async function cargarItems() {
     if (!candidatoId || !procesoId) return
     const token = searchParams.get('token') || ''
-    const response = await fetch(`/api/evaluacion/public-data?candidato=${encodeURIComponent(candidatoId)}&proceso=${encodeURIComponent(procesoId)}&token=${encodeURIComponent(token)}&test_id=${encodeURIComponent(BIG_FIVE_ID)}`, { cache: 'no-store' })
-    const payload = await response.json().catch(() => ({}))
-    if (!response.ok) { console.error(payload.error); return }
-    setItems(payload.items || [])
-    if (payload.candidato) setNombreCandidato(`${payload.candidato.nombre} ${payload.candidato.apellido}`)
-    setCargando(false)
+    try {
+      const response = await fetch(`/api/evaluacion/public-data?candidato=${encodeURIComponent(candidatoId)}&proceso=${encodeURIComponent(procesoId)}&token=${encodeURIComponent(token)}&test_id=${encodeURIComponent(BIG_FIVE_ID)}`, { cache: 'no-store' })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) { setError(payload.error || 'No se pudo cargar el test.'); setCargando(false); return }
+      setItems(payload.items || [])
+      if (payload.candidato) setNombreCandidato(`${payload.candidato.nombre} ${payload.candidato.apellido}`)
+      setCargando(false)
+    } catch {
+      setError('No se pudo conectar con el servidor.')
+      setCargando(false)
+    }
   }
 
   function responder(valor: number) {
@@ -141,6 +155,14 @@ export default function TestPage() {
 
 
   if (cargando) return <div style={estilos.centro}><p>Cargando test...</p></div>
+  if (error) return (
+    <div style={estilos.centro}>
+      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
+        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{error}</p>
+        <button onClick={() => { setError(null); setIntentoCarga(i => i + 1) }} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
+      </div>
+    </div>
+  )
   if (finalizado && enEvaluacion) return <div style={estilos.centro}><p>Guardando resultados...</p></div>
 
   if (finalizado) {

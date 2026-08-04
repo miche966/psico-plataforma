@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 
-const TEST_ID = 'a1b2c3d4-e5f6-7890-abcd-111111111111'
+const TEST_ID = 'c9d0e1f2-a3b4-5678-cdef-999999999999'
 
 interface Item {
   id: string
@@ -20,6 +20,8 @@ export default function SjtLegalPage() {
   const [itemActual, setItemActual] = useState(0)
   const [respuestas, setRespuestas] = useState<Record<string, string>>({})
   const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [intentoCarga, setIntentoCarga] = useState(0)
   const [finalizado, setFinalizado] = useState(false)
   const enEvaluacion = useEvaluacionRedirect(finalizado)
   const [nombreCandidato, setNombreCandidato] = useState('')
@@ -31,16 +33,23 @@ export default function SjtLegalPage() {
 
   useEffect(() => {
     const cargarDatos = async () => {
+      setError(null)
       const token = searchParams.get('token') || ''
-      const response = await fetch(`/api/evaluacion/public-data?candidato=${encodeURIComponent(candidatoId || '')}&proceso=${encodeURIComponent(procesoId || '')}&token=${encodeURIComponent(token)}&test_id=${encodeURIComponent(TEST_ID)}`, { cache: 'no-store' })
-      const payload = await response.json().catch(() => ({}))
-      if (!response.ok) { console.error(payload.error); return }
-      setItems(payload.items || [])
-      if (payload.candidato) setNombreCandidato(`${payload.candidato.nombre} ${payload.candidato.apellido}`)
-      setCargando(false)
+      try {
+        const response = await fetch(`/api/evaluacion/public-data?candidato=${encodeURIComponent(candidatoId || '')}&proceso=${encodeURIComponent(procesoId || '')}&token=${encodeURIComponent(token)}&test_id=${encodeURIComponent(TEST_ID)}`, { cache: 'no-store' })
+        const payload = await response.json().catch(() => ({}))
+        if (!response.ok) { setError(payload.error || 'No se pudo cargar el test.'); setCargando(false); return }
+        setItems(payload.items || [])
+        if (payload.candidato) setNombreCandidato(`${payload.candidato.nombre} ${payload.candidato.apellido}`)
+        setCargando(false)
+      } catch {
+        setError('No se pudo conectar con el servidor.')
+        setCargando(false)
+      }
     }
+    setCargando(true)
     cargarDatos()
-  }, [candidatoId, procesoId, searchParams])
+  }, [candidatoId, procesoId, searchParams, intentoCarga])
   const avanzar = useCallback((respuestaActual?: string) => {
     const item = items[itemActual]
     if (!item) return
@@ -99,6 +108,14 @@ export default function SjtLegalPage() {
   }
 
   if (cargando) return <div style={s.centro}><p>Cargando test...</p></div>
+  if (error) return (
+    <div style={s.centro}>
+      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
+        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{error}</p>
+        <button onClick={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
+      </div>
+    </div>
+  )
 
   if (finalizado && enEvaluacion) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}><p>Cargando siguiente evaluación...</p></div>
   if (finalizado) return (

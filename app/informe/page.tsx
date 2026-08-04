@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { normalizarPuntaje, colorPuntaje, PUNTAJES_VERSION, interpretacionVigente } from '@/lib/puntajes'
+import { detectarInconsistenciasNumericas } from '@/lib/informeConsistencia'
 import { supabase } from '@/lib/supabase'
 import { getAdminHeaders } from '@/lib/evaluacionLink'
 import { PDFDownloadLink } from '@react-pdf/renderer'
@@ -79,7 +80,10 @@ import { obtenerNarrativaFactor } from '@/lib/interpretaciones/narrativasFactor'
 
 const DOMINIOS = {
   PERSONALIDAD: ['extraversion', 'amabilidad', 'responsabilidad', 'neuroticismo', 'apertura', 'honestidad_humildad', 'honestidad', 'normas', 'promedio_general', 'logro', 'dinamismo'],
-  COGNITIVO: ['correctas', 'percentil', 'score', 'documentos', 'comparacion', 'concentracion', 'errores_texto', 'errores_numeros', 'metricas_fraude'],
+  // 'metricas_fraude' NO va aquí: ya se muestra como "Índice de Confianza" en la sección
+  // "Controles del Proceso" (ver inf.confianza). Incluirlo también acá lo duplicaba como
+  // "Índice de Sinceridad Laboral" bajo un rótulo ajeno a lo que mide (validez, no atención/tareas).
+  COGNITIVO: ['correctas', 'percentil', 'score', 'documentos', 'comparacion', 'concentracion', 'errores_texto', 'errores_numeros'],
   COMPETENCIAS: ['etica', 'negociacion', 'manejo_emocional', 'tolerancia_frustracion', 'comunicacion', 'liderazgo', 'trabajo_equipo', 'adaptabilidad', 'resolucion_problemas'],
   BIENESTAR: ['burnout', 'equilibrio', 'relaciones', 'claridad_rol', 'nivel_estres', 'carga_laboral', 'autonomia', 'expectativas', 'resiliencia', 'manejo_estres', 'autoestima', 'inteligencia_emocional']
 }
@@ -164,7 +168,7 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
   if (!reqs || reqs.length === 0 || (reqs.length === 1 && !(reqs[0]?.competencia || reqs[0]?.nombre))) {
     const todosLosFactores: number[] = []
     const CLAVES_IGNORAR = ['total', 'correctas', 'porcentaje', 'id', 'created_at', 'proceso_id', 'candidato_id', 'finalizada_en', 'iniciada_en', 'nivel_maximo']
-    
+
     sesiones.forEach(s => {
       const scan = (obj: any) => {
         if (!obj || typeof obj !== 'object') return
@@ -178,7 +182,7 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
             if (val > 5 && val <= 20) val = (val / 20) * 5
             else if (val > 20 && val <= 100) val = (val / 100) * 5
             if (val > 0 && val <= 5) todosLosFactores.push(val)
-          } 
+          }
           else if (typeof v === 'object' && v !== null && 'correctas' in v) {
             const score = (Number((v as any).correctas) / (Number((v as any).total) || 1)) * 5
             todosLosFactores.push(score)
@@ -188,12 +192,12 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
       }
       scan(s.puntaje_bruto)
     })
-    
+
     if (todosLosFactores.length === 0) return { general: 0, detalles: [] }
     const avg = todosLosFactores.reduce((a, b) => a + b, 0) / todosLosFactores.length
     return { general: Math.round((avg / 5) * 100), detalles: [] }
   }
-  
+
   const FACTORES_NEGATIVOS = ['neuroticismo', 'nivel_estres', 'carga_laboral', 'burnout', 'errores_texto', 'errores_numeros', 'tabswitches', 'copypasteattempts', 'alerta'];
 
   const scores: number[] = []
@@ -202,9 +206,9 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
     const reqLevelVal = getNumericLevel(r.nivel);
 
     // Buscar el valor más reciente para esta competencia
-    let valorCandidato = -1 
+    let valorCandidato = -1
     const mapping = COMPETENCIAS_MAPPING[compName]
-    
+
     // Sort sessions by date (newest first)
     const sortedSesiones = [...sesiones].sort((a, b) => {
       const dA = new Date(b.finalizada_en || b.iniciada_en || b.created_at || 0).getTime()
@@ -214,17 +218,17 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
 
     for (const s of sortedSesiones) {
       if (!s.puntaje_bruto || valorCandidato !== -1) continue
-      
+
       const buscar = (obj: any) => {
         if (!obj || typeof obj !== 'object' || valorCandidato !== -1) return
         Object.entries(obj).forEach(([f, v]: any) => {
           if (valorCandidato !== -1) return
           const keyNormalizada = f?.toLowerCase()?.trim()
-          
+
           // Caso 1: Coincidencia directa
           if (keyNormalizada === compName?.toLowerCase()?.trim()) {
             valorCandidato = (typeof v === 'object' && v !== null && 'correctas' in v) ? (v.correctas / (v.total || 1)) * 5 : Number(v)
-          } 
+          }
           // Caso 2: Coincidencia a través de mapeo (Big Five)
           else if (mapping && mapping[keyNormalizada as keyof typeof mapping]) {
             let val = (typeof v === 'object' && v !== null && 'correctas' in v) ? (v.correctas / (v.total || 1)) * 5 : Number(v)
@@ -262,7 +266,7 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
 function InformePageContent() {
   const searchParams = useSearchParams()
   const id = searchParams.get('candidato')
-  
+
   const [candidato, setCandidato] = useState<any>(null)
   const [proceso, setProceso] = useState<any>(null)
   const [sesiones, setSesiones] = useState<any[]>([])
@@ -319,12 +323,12 @@ function InformePageContent() {
       const mappedVids = Array.isArray(payload.videos) ? payload.videos : []
       setVideos(mappedVids)
       let aTab = 0, aCopia = 0, tDur = 0, sTime = 0
-      
+
       lista.forEach(s => {
         const pb = s.puntaje_bruto || {}
         aTab += Number(pb.metricas_fraude?.tabSwitches || 0)
         aCopia += Number(pb.metricas_fraude?.copyPasteAttempts || 0)
-        
+
         const start = s.created_at || s.iniciada_en
         if (s.finalizada_en && start) {
           const dur = (new Date(s.finalizada_en).getTime() - new Date(start).getTime()) / 1000 / 60
@@ -342,13 +346,13 @@ function InformePageContent() {
       if (lista.length > 0) {
         const resAjuste = calcAjuste(procData?.competencias_requeridas || [], lista)
         autoAjuste = (resAjuste && resAjuste.general > 0) ? resAjuste.general : 0
-        
+
         if (autoAjuste === 0) {
           console.log("DEBUG: Iniciando fallback omnisciente para Avril...");
           const todosLosFactores: number[] = []
           const CLAVES_IGNORAR = [
-            'total', 'correctas', 'porcentaje', 'id', 'created_at', 
-            'proceso_id', 'candidato_id', 'finalizada_en', 'iniciada_en', 
+            'total', 'correctas', 'porcentaje', 'id', 'created_at',
+            'proceso_id', 'candidato_id', 'finalizada_en', 'iniciada_en',
             'nivel_maximo', 'tabswitches', 'copypasteattempts', 'timeoutoffocus',
             'events', 'tab_switches', 'copy_paste_attempts', 'time_out_of_focus'
           ];
@@ -368,7 +372,7 @@ function InformePageContent() {
                     console.log(`  > Factor Detectado: ${k} = ${val} (Original: ${v})`);
                     todosLosFactores.push(val)
                   }
-                } 
+                }
                 else if (typeof v === 'object' && v !== null && 'correctas' in v) {
                   const score = (Number((v as any).correctas) / (Number((v as any).total) || 1)) * 5
                   console.log(`  > Puntaje Detectado (Objeto): ${k} = ${score}`);
@@ -390,15 +394,15 @@ function InformePageContent() {
       // ACTUALIZACIÓN CRÍTICA: Forzar el valor en el estado y asegurar persistencia
       setInf(prev => {
         const finalScore = autoAjuste > 0 ? autoAjuste : prev.ajusteCargo?.score || 0;
-        return { 
-          ...prev, 
-          alertasTab: aTab, 
-          alertasCopia: aCopia, 
-          confianza, 
+        return {
+          ...prev,
+          alertasTab: aTab,
+          alertasCopia: aCopia,
+          confianza,
           tiempoPromedio: tiempoFinal,
-          ajusteCargo: { 
-            score: finalScore, 
-            analisis: prev.ajusteCargo?.analisis || '' 
+          ajusteCargo: {
+            score: finalScore,
+            analisis: prev.ajusteCargo?.analisis || ''
           }
         };
       })
@@ -415,7 +419,7 @@ function InformePageContent() {
   const sanitizarPuntajes = (datos: any): any => {
     if (!datos) return datos
     const nuevo = JSON.parse(JSON.stringify(datos))
-    
+
     const limpiar = (obj: any) => {
       if (!obj || typeof obj !== 'object') return
       Object.entries(obj).forEach(([k, v]) => {
@@ -428,7 +432,7 @@ function InformePageContent() {
         }
       })
     }
-    
+
     limpiar(nuevo)
     return nuevo
   }
@@ -521,7 +525,7 @@ function InformePageContent() {
 
   function getFactoresUnicos(dominio: string[]) {
     const mapa = new Map<string, { valor: any, sesionId: string, testId: string, acc: number }>()
-    
+
     // Ordenar sesiones por fecha (más reciente primero)
     const sesionesOrd = [...sesiones].sort((a, b) => {
       const dA = new Date(b.finalizada_en || b.iniciada_en || b.created_at || 0).getTime()
@@ -555,6 +559,31 @@ function InformePageContent() {
     return Array.from(mapa.entries())
   }
 
+  // Aviso no bloqueante: compara "Habilidades para el Trabajo" contra los factores crudos
+  // reales de la propia batería, para detectar si quedó un valor viejo (de una generación
+  // anterior a este cambio) que contradice a otra sección del mismo informe.
+  function valorFactorEnEscala100(dominio: string[], clave: string): number | undefined {
+    const entrada = getFactoresUnicos(dominio).find(([k]) => k === clave)
+    if (!entrada) return undefined
+    const acc = entrada[1]?.acc
+    return typeof acc === 'number' && Number.isFinite(acc) ? Math.round((acc / 5) * 100) : undefined
+  }
+
+  const bienestarValoresDisponibles = ['burnout', 'equilibrio']
+    .map(clave => valorFactorEnEscala100(DOMINIOS.BIENESTAR, clave))
+    .filter((v): v is number => typeof v === 'number')
+  const bienestarPromedio100 = bienestarValoresDisponibles.length
+    ? Math.round(bienestarValoresDisponibles.reduce((a, b) => a + b, 0) / bienestarValoresDisponibles.length)
+    : undefined
+  const extraversion100 = valorFactorEnEscala100(DOMINIOS.PERSONALIDAD, 'extraversion')
+
+  const alertasConsistencia = detectarInconsistenciasNumericas({
+    resiliencia: inf.resiliencia,
+    comunicacion: inf.comunicacion,
+    bienestarPromedio100,
+    extraversion100,
+  })
+
   async function generarIA() {
     setGenerating(true)
     try {
@@ -575,9 +604,9 @@ function InformePageContent() {
       }
 
       const data = await res.json()
-      
+
       const rawRes = data.informe || data
-      
+
       if (rawRes && !data.error) {
         // Humanizador de factores técnicos y tono profesional (Consultoría)
         const humanizar = (t: string) => {
@@ -639,7 +668,7 @@ function InformePageContent() {
             'óptimo': 'adecuado',
             'máximo': 'alto'
           }
-          
+
           Object.entries(prohibidas).forEach(([mal, bien]) => {
             const regex = new RegExp(`\\b${mal}\\b`, 'gi')
             limpio = limpio.replace(regex, bien)
@@ -653,7 +682,7 @@ function InformePageContent() {
 
           // 5. Autocorrección de capitalización (Mayúscula al inicio de cada oración)
           limpio = limpio.replace(/(^\s*\w|[\.\!\?]\s+\w)/g, c => c.toUpperCase())
-          
+
           return limpio
         }
 
@@ -669,7 +698,7 @@ function InformePageContent() {
         }
         // BLINDAJE: Recuperamos el score que el Frontend ya calculó con éxito (ej: 61%)
         const scoreFrontend = inf.ajusteCargo?.score || 0;
-        
+
         const nuevoInforme = {
           ...rawRes,
           fundamentacion: humanizar(rawRes.fundamentacion),
@@ -680,7 +709,7 @@ function InformePageContent() {
             Object.entries(rawRes.interpretacionPorFactor || {}).map(([k, v]) => [k, humanizar(v as string)])
           ),
           ajusteCargo: {
-            score: scoreFrontend, 
+            score: scoreFrontend,
             analisis: humanizar(rawRes.ajusteCargo?.analisis || rawRes.fundamentacion || '')
           },
           ajusteMbti: humanizar(rawRes.ajusteMbti || ''),
@@ -784,7 +813,7 @@ ${inf.ajusteMbti || 'Sin análisis de personalidad'}
 --------------------------------------------------
 5. INTERPRETACIÓN POR FACTORES
 --------------------------------------------------
-${Object.entries(inf.interpretacionPorFactor || {}).length > 0 
+${Object.entries(inf.interpretacionPorFactor || {}).length > 0
   ? Object.entries(inf.interpretacionPorFactor || {}).map(([f, t]) => `[${f.toUpperCase()}]\n${t}`).join('\n\n')
   : 'Sin desglose detallado'}
 
@@ -812,15 +841,15 @@ PsicoPlataforma - Gestión Inteligente de Talento
         {/* Header Premium */}
         <header style={s.header}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <Link 
-              href="/panel" 
-              style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.5rem', 
-                color: '#64748b', 
-                textDecoration: 'none', 
-                fontSize: '0.85rem', 
+            <Link
+              href="/panel"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                color: '#64748b',
+                textDecoration: 'none',
+                fontSize: '0.85rem',
                 fontWeight: '600',
                 padding: '8px 12px',
                 borderRadius: '10px',
@@ -845,14 +874,14 @@ PsicoPlataforma - Gestión Inteligente de Talento
             <button onClick={guardar} disabled={saving} style={{ ...s.btnSave, opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Guardando...' : 'Guardar Cambios'}
             </button>
-            <button 
-              onClick={descargarTXT} 
-              style={{ 
-                background: '#475569', 
-                color: '#fff', 
-                padding: '12px 24px', 
-                borderRadius: '12px', 
-                fontWeight: '700', 
+            <button
+              onClick={descargarTXT}
+              style={{
+                background: '#475569',
+                color: '#fff',
+                padding: '12px 24px',
+                borderRadius: '12px',
+                fontWeight: '700',
                 fontSize: '0.9rem',
                 border: 'none',
                 cursor: 'pointer'
@@ -903,10 +932,341 @@ PsicoPlataforma - Gestión Inteligente de Talento
             <div style={s.item}><span style={s.label}>Profesión</span><div style={s.value}>{candidato.profesion || '—'}</div></div>
           </div>
         </div>
-        {/* ── 2. DIAGNÓSTICO ESTRATÉGICO ────────────────────────────────────── */}
+
+        {/* ── I. CONTROLES DEL PROCESO (movido primero: gate de validez) ───── */}
         <div style={s.card}>
           <div style={s.cardHead}>
-            <span style={s.cardHeadTxt}>Evaluacion General</span>
+            <span style={s.cardHeadTxt}>I. Controles del proceso</span>
+            <span style={s.badge}>Control de Calidad</span>
+          </div>
+          <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>Índice de Confianza</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: '900', color: inf.confianza > 80 ? '#059669' : inf.confianza > 60 ? '#d97706' : '#dc2626' }}>{inf.confianza}%</div>
+            </div>
+            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>Cambios de Pestaña</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: '900', color: '#334155' }}>{inf.alertasTab}</div>
+            </div>
+            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>Intentos de Copia</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: '900', color: '#334155' }}>{inf.alertasCopia}</div>
+            </div>
+            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>Tiempo Promedio</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: '900', color: '#334155' }}>{inf.tiempoPromedio} min</div>
+            </div>
+          </div>
+          <div style={{ padding: '0 1.25rem 1.25rem', fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic' }}>
+            * El Índice de Confianza evalúa la integridad del proceso mediante el monitoreo de eventos proctoring en tiempo real. Estos controles validan el proceso antes de interpretar cualquier resultado a continuación.
+          </div>
+        </div>
+
+        {/* ── II.A PERSONALIDAD ─────────────────────────────────────────────── */}
+        {hasP && (
+          <div style={s.card}>
+            <div style={s.cardHead}>
+              <span style={s.cardHeadTxt}>II.A — Personalidad</span>
+              <span style={s.badge}>Dimensiones del Big Five</span>
+            </div>
+
+            <div style={{ padding: '0 1.25rem' }}>
+              {getFactoresUnicos(DOMINIOS.PERSONALIDAD.filter(f => !['normas', 'promedio_general'].includes(f))).map(([factor, { valor, sesionId }]) => {
+
+                const normVal = Math.min(5.0, Math.max(0, parseVal(valor, factor)))
+                const clr = clrOf(normVal)
+                const fk = `${sesionId}_${factor.toLowerCase()}`
+                const descSugerida = obtenerNarrativaFactor(factor, normVal) || `El candidato muestra un nivel de ${Number(normVal.toFixed(1))}/5 en ${ETQ[factor.toLowerCase()] || factor}.`
+
+                return (
+                  <div key={factor} style={s.factBlk}>
+                    <div style={s.factRow}>
+                      <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
+                      <span style={{ ...s.factLvl, color: clr }}>{Number(normVal.toFixed(1))}/5</span>
+                    </div>
+                    <div style={s.barBg}><div style={{ ...s.barFill, width: `${(normVal / 5) * 100}%`, background: clr }} /></div>
+                    <textarea style={s.taFact} rows={4} value={textoInterpretacion(fk, factor, descSugerida)} onChange={(e) => updFactor(fk, e.target.value)} />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── HABILIDADES PARA EL TRABAJO (calculadas a partir de Personalidad/Bienestar, editable) ── */}
+        <div style={s.card}>
+          <div style={s.cardHead}>
+            <span style={s.cardHeadTxt}>Habilidades para el trabajo</span>
+            <span style={s.badge}>Derivadas de Personalidad y Bienestar</span>
+          </div>
+          <div style={{ padding: '1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
+              <div style={{ background: '#f5f3ff', padding: '1rem', borderRadius: '16px', border: '1px solid #ddd6fe', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#7c3aed', textTransform: 'uppercase', marginBottom: '0.4rem' }}>{labelLiderazgo}</div>
+                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#7c3aed', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.liderazgo} onChange={e => upd('liderazgo', Number(e.target.value))} />
+                <div style={{ fontSize: '0.6rem', color: '#9333ea', marginTop: '2px' }}>{descLiderazgo}</div>
+              </div>
+              <div style={{ background: '#fff7ed', padding: '1rem', borderRadius: '16px', border: '1px solid #ffedd5', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#ea580c', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Adaptabilidad</div>
+                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#ea580c', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.adaptabilidad} onChange={e => upd('adaptabilidad', Number(e.target.value))} />
+                <div style={{ fontSize: '0.6rem', color: '#c2410c', marginTop: '2px' }}>Flexibilidad al Cambio</div>
+              </div>
+              <div style={{ background: '#fef2f2', padding: '1rem', borderRadius: '16px', border: '1px solid #fee2e2', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#dc2626', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Resiliencia</div>
+                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#dc2626', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.resiliencia} onChange={e => upd('resiliencia', Number(e.target.value))} />
+                <div style={{ fontSize: '0.6rem', color: '#b91c1c', marginTop: '2px' }}>Tolerancia a la Presión</div>
+              </div>
+              <div style={{ background: '#ecfdf5', padding: '1rem', borderRadius: '16px', border: '1px solid #d1fae5', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#059669', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Colaboración</div>
+                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#059669', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.colaboracion} onChange={e => upd('colaboracion', Number(e.target.value))} />
+                <div style={{ fontSize: '0.6rem', color: '#047857', marginTop: '2px' }}>Sintonía Grupal</div>
+              </div>
+              <div style={{ background: '#f0f9ff', padding: '1rem', borderRadius: '16px', border: '1px solid #e0f2fe', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#0284c7', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Comunicación</div>
+                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#0284c7', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.comunicacion} onChange={e => upd('comunicacion', Number(e.target.value))} />
+                <div style={{ fontSize: '0.6rem', color: '#0369a1', marginTop: '2px' }}>Claridad y Discurso</div>
+              </div>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '1.25rem', textAlign: 'center', lineHeight: '1.4' }}>
+              Se calculan a partir de los factores de Personalidad y Bienestar de arriba/abajo (ver lib/metaCompetencias.ts) — no son una estimación independiente, así que no deberían contradecirlos. Editables si el evaluador quiere ajustarlos manualmente.
+            </p>
+          </div>
+        </div>
+
+        {/* ── 2.7 PERFIL DE PERSONALIDAD MBTI (RESTAURADO) ──────────────────── */}
+        {hasP && (
+          <div style={s.card}>
+            <div style={s.cardHead}>
+              <span style={s.cardHeadTxt}>Estilo de trabajo estimado</span>
+              <span style={s.badge}>Estimacion orientativa</span>
+            </div>
+            {(() => {
+              const mbtiCodigo = inf.mbtiType || estimarMBTIDesdeSesiones(sesiones) || 'N/A';
+              const mbtiDesc = MBTI_DESC[mbtiCodigo] || 'No se cuenta con datos suficientes para una estimación tipológica precisa.';
+
+              return (
+                <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '1.5rem', alignItems: 'center' }}>
+                  <div style={{ background: '#f0f9ff', padding: '2rem', borderRadius: '16px', border: '1px solid #bae6fd', textAlign: 'center' }}>
+                    <div style={{ fontSize: '3rem', fontWeight: '900', color: '#0369a1' }}>{mbtiCodigo}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#0369a1', fontWeight: 'bold', textTransform: 'uppercase' }}>Estimacion orientativa</div>
+                  </div>
+                  <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                    <h4 style={{ color: '#1e293b', margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 'bold' }}>Análisis Tipológico</h4>
+                    <p style={{ fontSize: '0.9rem', color: '#475569', lineHeight: '1.6', fontStyle: 'italic' }}>
+                      {mbtiDesc}
+                    </p>
+                    <div style={{ marginTop: '1rem' }}>
+                      <label style={s.commentLabel}>Como podria desempenarse en el puesto</label>
+                      <textarea
+                        style={{ ...s.ta, fontSize: '0.85rem' }}
+                        rows={3}
+                        value={inf.ajusteMbti || ''}
+                        onChange={e => upd('ajusteMbti', e.target.value)}
+                        placeholder="Análisis del perfil tipológico en relación al puesto..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* ── II.B ATENCIÓN Y TAREAS ───────────────────────────────────────── */}
+        {hasC && (
+          <div style={s.card}>
+            <div style={s.cardHead}>
+              <span style={s.cardHeadTxt}>II.B — Atención y Tareas</span>
+              <span style={s.badge}>Métricas de Aptitud</span>
+            </div>
+            {sesCog.length > 0 && (() => {
+              // Calculamos el promedio de todos los tests cognitivos/aptitud
+              let sumaCorrectas = 0
+              let sumaTotal = 0
+              let sumaPercentil = 0
+
+              sesCog.forEach(s => {
+                const { correctas, total, percentil } = cogData(s.puntaje_bruto)
+                sumaCorrectas += correctas
+                sumaTotal += total
+                sumaPercentil += percentil
+              })
+
+              const normVal = sumaTotal > 0 ? Math.round((sumaCorrectas / sumaTotal) * 5 * 10) / 10 : 0
+              const percentil = Math.round(sumaPercentil / sesCog.length)
+              const nivel = nivelPercentil(percentil)
+
+              return (
+                <div key="cog-agregado" style={{ padding: '1.25rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ background: '#f0f9ff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #bae6fd' }}>
+                      <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#0369a1' }}>{Number(normVal.toFixed(1))}/5</div>
+                      <div style={{ fontSize: '0.75rem', color: '#0369a1', textTransform: 'uppercase', fontWeight: '800' }}>Efectividad Cognitiva</div>
+                    </div>
+                    <div style={{ background: '#f0f9ff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #bae6fd' }}>
+                      <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#0369a1' }}>P{percentil}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#0369a1', textTransform: 'uppercase', fontWeight: '800' }}>{nivel}</div>
+                    </div>
+                  </div>
+                  {getFactoresUnicos(DOMINIOS.COGNITIVO).filter(([k]) => !['correctas', 'total', 'score', 'percentil'].includes(k)).map(([factor, { valor, sesionId }]) => {
+                    const vNorm = parseVal(valor, factor)
+                    const clr = clrOf(vNorm)
+                    const fk = `${sesionId}_${factor.toLowerCase()}`
+
+                    const descSugerida = obtenerNarrativaFactor(factor, vNorm) || 'Nivel de desempeño funcional acorde a los requerimientos del cargo.';
+
+                    return (
+                      <div key={factor} style={s.factBlk}>
+                        <div style={s.factRow}>
+                        <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
+                        <span style={{...s.factLvl, color:clr}}>{Number(vNorm.toFixed(1))}/5</span>
+                      </div>
+                        <div style={s.barBg}><div style={{...s.barFill, width:`${(vNorm/5)*100}%`, background:clr}} /></div>
+                        <textarea
+                          style={s.taFact}
+                          rows={4}
+                          value={textoInterpretacion(fk, factor, descSugerida)}
+                          onChange={(e) => updFactor(fk, e.target.value)}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+          </div>
+        )}
+
+        {/* ── II.C INTEGRIDAD Y ÉTICA (agrupa métricas antes dispersas en Personalidad/Competencias) ── */}
+        {(hasP || hasK) && (
+          <div style={s.card}>
+            <div style={s.cardHead}>
+              <span style={s.cardHeadTxt}>II.C — Integridad y Ética</span>
+              <span style={s.badge}>Autopercepción + Conducta Situacional</span>
+            </div>
+            <div style={{ padding: '1rem 1.25rem 0', fontSize: '0.8rem', color: '#64748b', lineHeight: '1.4' }}>
+              Estas métricas miden ángulos distintos del mismo concepto — se agrupan para leerse juntas, no son el mismo dato repetido.
+            </div>
+            <div style={{ padding: '0 1.25rem 1.25rem' }}>
+              {[...getFactoresUnicos(['normas', 'promedio_general']), ...getFactoresUnicos(['etica'])].map(([factor, { valor, sesionId }]) => {
+                const normVal = parseVal(valor, factor)
+                const clr = clrOf(normVal)
+                const fk = `${sesionId}_${factor.toLowerCase()}`
+                const descSugerida = obtenerNarrativaFactor(factor, normVal) || `El candidato muestra un nivel de ${Number(normVal.toFixed(1))}/5 en ${ETQ[factor.toLowerCase()] || factor}.`
+
+                return (
+                  <div key={factor} style={s.factBlk}>
+                    <div style={s.factRow}>
+                      <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
+                      <span style={{ ...s.factLvl, color: clr }}>{Number(normVal.toFixed(1))}/5</span>
+                    </div>
+                    <div style={s.barBg}><div style={{ ...s.barFill, width: `${(normVal / 5) * 100}%`, background: clr }} /></div>
+                    <textarea style={s.taFact} rows={4} value={textoInterpretacion(fk, factor, descSugerida)} onChange={(e) => updFactor(fk, e.target.value)} />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── II.D COMPETENCIAS (Situacionales / SJT) ──────────────────────── */}
+        {hasK && (
+          <div style={s.card}>
+            <div style={s.cardHead}>
+              <span style={s.cardHeadTxt}>II.D — Competencias (Situacionales / SJT)</span>
+              <span style={s.badge}>Desempeño Situacional</span>
+            </div>
+            <div style={{ padding: '1rem 1.25rem 0', fontSize: '0.8rem', color: '#b45309', lineHeight: '1.4' }}>
+              ⚠ Estos valores provienen de pruebas situacionales con efecto techo documentado (la mayoría de los perfiles puntúa cerca del máximo) — interpretar con cautela.
+            </div>
+            <div style={{ padding: '0 1.25rem' }}>
+              {getFactoresUnicos(DOMINIOS.COMPETENCIAS.filter(f => f !== 'etica')).map(([factor, { valor, sesionId }]) => {
+                const normVal = parseVal(valor, factor)
+                const clr = clrOf(normVal)
+                const fk = `${sesionId}_${factor.toLowerCase()}`
+
+                const descSugerida = obtenerNarrativaFactor(factor, normVal) || 'Muestra un nivel de competencia alineado con los desafíos del puesto evaluado.';
+
+                return (
+                  <div key={factor} style={s.factBlk}>
+                    <div style={s.factRow}>
+                      <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
+                      <span style={{...s.factLvl, color:clr}}>{Number(normVal.toFixed(1))}/5</span>
+                    </div>
+                    <div style={s.barBg}><div style={{...s.barFill, width:`${(normVal/5)*100}%`, background:clr}} /></div>
+                    <textarea
+                      style={s.taFact}
+                      rows={4}
+                      value={textoInterpretacion(fk, factor, descSugerida)}
+                      onChange={(e) => updFactor(fk, e.target.value)}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── II.E BIENESTAR ────────────────────────────────────────────────── */}
+        {hasV && (
+          <div style={s.card}>
+            <div style={s.cardHead}>
+              <span style={s.cardHeadTxt}>II.E — Bienestar</span>
+              <span style={s.badge}>Indicadores de Riesgo</span>
+            </div>
+            <div style={{ padding: '0 1.25rem' }}>
+              {getFactoresUnicos(DOMINIOS.BIENESTAR).map(([factor, { valor, sesionId }]) => {
+                const normVal = parseVal(valor, factor)
+                const clr = clrOf(normVal)
+                const fk = `${sesionId}_${factor.toLowerCase()}`
+
+                const descSugerida = obtenerNarrativaFactor(factor, normVal) || 'Muestra indicadores de bienestar acordes a una integración saludable.';
+
+                return (
+                  <div key={factor} style={s.factBlk}>
+                    <div style={s.factRow}>
+                      <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
+                      <span style={{...s.factLvl, color:clr}}>{Number(normVal.toFixed(1))}/5</span>
+                    </div>
+                    <div style={s.barBg}><div style={{...s.barFill, width:`${(normVal/5)*100}%`, background:clr}} /></div>
+                    <textarea
+                      style={s.taFact}
+                      rows={4}
+                      value={textoInterpretacion(fk, factor, descSugerida)}
+                      onChange={(e) => updFactor(fk, e.target.value)}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            {hasK && (
+              <div style={{ padding: '0 1.25rem 1.25rem', fontSize: '0.8rem', color: '#b45309', lineHeight: '1.4' }}>
+                ⚠ Si estos valores contrastan fuertemente con los de Competencias (II.D), es esperable mientras esa sección siga afectada por el efecto techo mencionado arriba.
+              </div>
+            )}
+          </div>
+        )}
+
+        {alertasConsistencia.length > 0 && (
+          <div style={{ ...s.card, borderColor: '#fde68a', background: '#fffbeb' }}>
+            <div style={{ padding: '1rem 1.25rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+              <ShieldAlert size={18} color="#b45309" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#92400e', marginBottom: '0.35rem' }}>
+                  Revisar antes de publicar: valores que se contradicen dentro del mismo informe
+                </div>
+                {alertasConsistencia.map((a, i) => (
+                  <div key={i} style={{ fontSize: '0.8rem', color: '#92400e', marginBottom: '0.2rem' }}>• {a.detalle}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── III. EVALUACIÓN GENERAL Y AJUSTE AL PUESTO (movido despues de la evidencia) ── */}
+        <div style={s.card}>
+          <div style={s.cardHead}>
+            <span style={s.cardHeadTxt}>III. Evaluación General y Ajuste al Puesto</span>
             <span style={s.badge}>Ajuste Persona-Cargo</span>
           </div>
           <div style={{ padding: '1.25rem' }}>
@@ -964,7 +1324,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                         rows={2} style={{ background: 'transparent', border: '1px solid #dcfce7', borderRadius: '6px', width: '100%', fontSize: '0.9rem', lineHeight: '1.35', color: '#14532d', padding: '5px', resize: 'vertical', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
                         value={typeof f === 'object' ? `${f.tendencia || f.competencia} - ${f.mecanismo}` : f}
                         onChange={e => {
-                          const n = [...inf.fortalezas]; 
+                          const n = [...inf.fortalezas];
                           if (typeof f === 'object') {
                             n[i] = { ...f, tendencia: e.target.value };
                           } else {
@@ -1004,79 +1364,10 @@ PsicoPlataforma - Gestión Inteligente de Talento
           </div>
         </div>
 
-        {/* ── 2.5 AUDITORÍA DE PROCESO E INTEGRIDAD (RESTAURADO) ─────────────── */}
+        {/* ── IV. PERFIL INTEGRADO (antes "Resumen Ejecutivo", movido al final) ── */}
         <div style={s.card}>
           <div style={s.cardHead}>
-            <span style={s.cardHeadTxt}>Controles del proceso</span>
-            <span style={s.badge}>Control de Calidad</span>
-          </div>
-          <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
-            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>Índice de Confianza</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: '900', color: inf.confianza > 80 ? '#059669' : inf.confianza > 60 ? '#d97706' : '#dc2626' }}>{inf.confianza}%</div>
-            </div>
-            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>Cambios de Pestaña</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: '900', color: '#334155' }}>{inf.alertasTab}</div>
-            </div>
-            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>Intentos de Copia</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: '900', color: '#334155' }}>{inf.alertasCopia}</div>
-            </div>
-            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>Tiempo Promedio</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: '900', color: '#334155' }}>{inf.tiempoPromedio} min</div>
-            </div>
-          </div>
-          <div style={{ padding: '0 1.25rem 1.25rem', fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic' }}>
-            * El Índice de Confianza evalúa la integridad del proceso mediante el monitoreo de eventos proctoring en tiempo real.
-          </div>
-        </div>
-
-        {/* ── 2.6 MATRIZ DE POTENCIAL CONDUCTUAL (SOFT SKILLS - PREMIUM) ────── */}
-        <div style={s.card}>
-          <div style={s.cardHead}>
-            <span style={s.cardHeadTxt}>Habilidades para el trabajo</span>
-            <span style={s.badge}>Análisis de Meta-Competencias</span>
-          </div>
-          <div style={{ padding: '1.25rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
-              <div style={{ background: '#f5f3ff', padding: '1rem', borderRadius: '16px', border: '1px solid #ddd6fe', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#7c3aed', textTransform: 'uppercase', marginBottom: '0.4rem' }}>{labelLiderazgo}</div>
-                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#7c3aed', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.liderazgo} onChange={e => upd('liderazgo', Number(e.target.value))} />
-                <div style={{ fontSize: '0.6rem', color: '#9333ea', marginTop: '2px' }}>{descLiderazgo}</div>
-              </div>
-              <div style={{ background: '#fff7ed', padding: '1rem', borderRadius: '16px', border: '1px solid #ffedd5', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#ea580c', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Adaptabilidad</div>
-                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#ea580c', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.adaptabilidad} onChange={e => upd('adaptabilidad', Number(e.target.value))} />
-                <div style={{ fontSize: '0.6rem', color: '#c2410c', marginTop: '2px' }}>Flexibilidad al Cambio</div>
-              </div>
-              <div style={{ background: '#fef2f2', padding: '1rem', borderRadius: '16px', border: '1px solid #fee2e2', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#dc2626', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Resiliencia</div>
-                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#dc2626', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.resiliencia} onChange={e => upd('resiliencia', Number(e.target.value))} />
-                <div style={{ fontSize: '0.6rem', color: '#b91c1c', marginTop: '2px' }}>Tolerancia a la Presión</div>
-              </div>
-              <div style={{ background: '#ecfdf5', padding: '1rem', borderRadius: '16px', border: '1px solid #d1fae5', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#059669', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Colaboración</div>
-                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#059669', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.colaboracion} onChange={e => upd('colaboracion', Number(e.target.value))} />
-                <div style={{ fontSize: '0.6rem', color: '#047857', marginTop: '2px' }}>Sintonía Grupal</div>
-              </div>
-              <div style={{ background: '#f0f9ff', padding: '1rem', borderRadius: '16px', border: '1px solid #e0f2fe', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#0284c7', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Comunicación</div>
-                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#0284c7', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.comunicacion} onChange={e => upd('comunicacion', Number(e.target.value))} />
-                <div style={{ fontSize: '0.6rem', color: '#0369a1', marginTop: '2px' }}>Claridad y Discurso</div>
-              </div>
-            </div>
-            <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '1.25rem', textAlign: 'center', lineHeight: '1.4' }}>
-              Estas métricas integran múltiples rasgos de personalidad para predecir el éxito en entornos organizacionales dinámicos.
-            </p>
-          </div>
-        </div>
-
-        {/* ── 3. RESUMEN EJECUTIVO ───────────────────────────────────────────── */}
-        <div style={s.card}>
-          <div style={s.cardHead}>
-            <span style={s.cardHeadTxt}>Análisis Integrativo Final</span>
+            <span style={s.cardHeadTxt}>IV. Perfil Integrado</span>
             <span style={s.badge}>Editable</span>
           </div>
           <textarea
@@ -1088,216 +1379,9 @@ PsicoPlataforma - Gestión Inteligente de Talento
           />
         </div>
 
-        {/* ── II. EVALUACIÓN PSICOMÉTRICA POR TÉCNICA (PERSONALIDAD) ────────── */}
-        {hasP && (
-          <div style={s.card}>
-            <div style={s.cardHead}>
-              <span style={s.cardHeadTxt}>II. Resultados de la evaluacion (Personalidad)</span>
-              <span style={s.badge}>Dimensiones del Big Five</span>
-            </div>
-
-            <div style={{ padding: '0 1.25rem' }}>
-              {getFactoresUnicos(DOMINIOS.PERSONALIDAD).map(([factor, { valor, sesionId }]) => {
-
-                const normVal = Math.min(5.0, Math.max(0, parseVal(valor, factor)))
-                const clr = clrOf(normVal)
-                const fk = `${sesionId}_${factor.toLowerCase()}`
-                const descSugerida = obtenerNarrativaFactor(factor, normVal) || `El candidato muestra un nivel de ${Number(normVal.toFixed(1))}/5 en ${ETQ[factor.toLowerCase()] || factor}.`
-
-                return (
-                  <div key={factor} style={s.factBlk}>
-                    <div style={s.factRow}>
-                      <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
-                      <span style={{ ...s.factLvl, color: clr }}>{Number(normVal.toFixed(1))}/5</span>
-                    </div>
-                    <div style={s.barBg}><div style={{ ...s.barFill, width: `${(normVal / 5) * 100}%`, background: clr }} /></div>
-                    <textarea style={s.taFact} rows={4} value={textoInterpretacion(fk, factor, descSugerida)} onChange={(e) => updFactor(fk, e.target.value)} />
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── 2.7 PERFIL DE PERSONALIDAD MBTI (RESTAURADO) ──────────────────── */}
-        {hasP && (
-          <div style={s.card}>
-            <div style={s.cardHead}>
-              <span style={s.cardHeadTxt}>Estilo de trabajo estimado</span>
-              <span style={s.badge}>Estimacion orientativa</span>
-            </div>
-            {(() => {
-              const mbtiCodigo = inf.mbtiType || estimarMBTIDesdeSesiones(sesiones) || 'N/A';
-              const mbtiDesc = MBTI_DESC[mbtiCodigo] || 'No se cuenta con datos suficientes para una estimación tipológica precisa.';
-              
-              return (
-                <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '1.5rem', alignItems: 'center' }}>
-                  <div style={{ background: '#f0f9ff', padding: '2rem', borderRadius: '16px', border: '1px solid #bae6fd', textAlign: 'center' }}>
-                    <div style={{ fontSize: '3rem', fontWeight: '900', color: '#0369a1' }}>{mbtiCodigo}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#0369a1', fontWeight: 'bold', textTransform: 'uppercase' }}>Estimacion orientativa</div>
-                  </div>
-                  <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                    <h4 style={{ color: '#1e293b', margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 'bold' }}>Análisis Tipológico</h4>
-                    <p style={{ fontSize: '0.9rem', color: '#475569', lineHeight: '1.6', fontStyle: 'italic' }}>
-                      {mbtiDesc}
-                    </p>
-                    <div style={{ marginTop: '1rem' }}>
-                      <label style={s.commentLabel}>Como podria desempenarse en el puesto</label>
-                      <textarea 
-                        style={{ ...s.ta, fontSize: '0.85rem' }} 
-                        rows={3} 
-                        value={inf.ajusteMbti || ''} 
-                        onChange={e => upd('ajusteMbti', e.target.value)}
-                        placeholder="Análisis del perfil tipológico en relación al puesto..."
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        )}
-
-        {/* ── III. CAPACIDAD ANALÍTICA ─────────────────────────────────────── */}
-        {hasC && (
-          <div style={s.card}>
-            <div style={s.cardHead}>
-              <span style={s.cardHeadTxt}>III. Capacidad Analítica y Potencial Cognitivo</span>
-              <span style={s.badge}>Métricas de Aptitud</span>
-            </div>
-            {sesCog.length > 0 && (() => {
-              // Calculamos el promedio de todos los tests cognitivos/aptitud
-              let sumaCorrectas = 0
-              let sumaTotal = 0
-              let sumaPercentil = 0
-              
-              sesCog.forEach(s => {
-                const { correctas, total, percentil } = cogData(s.puntaje_bruto)
-                sumaCorrectas += correctas
-                sumaTotal += total
-                sumaPercentil += percentil
-              })
-
-              const normVal = sumaTotal > 0 ? Math.round((sumaCorrectas / sumaTotal) * 5 * 10) / 10 : 0
-              const percentil = Math.round(sumaPercentil / sesCog.length)
-              const nivel = nivelPercentil(percentil)
-              
-              return (
-                <div key="cog-agregado" style={{ padding: '1.25rem' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-                    <div style={{ background: '#f0f9ff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #bae6fd' }}>
-                      <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#0369a1' }}>{Number(normVal.toFixed(1))}/5</div>
-                      <div style={{ fontSize: '0.75rem', color: '#0369a1', textTransform: 'uppercase', fontWeight: '800' }}>Efectividad Cognitiva</div>
-                    </div>
-                    <div style={{ background: '#f0f9ff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #bae6fd' }}>
-                      <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#0369a1' }}>P{percentil}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#0369a1', textTransform: 'uppercase', fontWeight: '800' }}>{nivel}</div>
-                    </div>
-                  </div>
-                  {getFactoresUnicos(DOMINIOS.COGNITIVO).filter(([k]) => !['correctas', 'total', 'score', 'percentil'].includes(k)).map(([factor, { valor, sesionId }]) => {
-                    const vNorm = parseVal(valor, factor)
-                    const clr = clrOf(vNorm)
-                    const fk = `${sesionId}_${factor.toLowerCase()}`
-
-                    const descSugerida = obtenerNarrativaFactor(factor, vNorm) || 'Nivel de desempeño funcional acorde a los requerimientos del cargo.';
-
-                    return (
-                      <div key={factor} style={s.factBlk}>
-                        <div style={s.factRow}>
-                        <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
-                        <span style={{...s.factLvl, color:clr}}>{Number(vNorm.toFixed(1))}/5</span>
-                      </div>
-                        <div style={s.barBg}><div style={{...s.barFill, width:`${(vNorm/5)*100}%`, background:clr}} /></div>
-                        <textarea 
-                          style={s.taFact} 
-                          rows={4} 
-                          value={textoInterpretacion(fk, factor, descSugerida)} 
-                          onChange={(e) => updFactor(fk, e.target.value)} 
-                        />
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })()}
-          </div>
-        )}
-
-        {/* ── IV. COMPETENCIAS PROFESIONALES ───────────────────────────────── */}
-        {hasK && (
-          <div style={s.card}>
-            <div style={s.cardHead}>
-              <span style={s.cardHeadTxt}>IV. Competencias Profesionales</span>
-              <span style={s.badge}>Desempeño Situacional</span>
-            </div>
-            <div style={{ padding: '0 1.25rem' }}>
-              {getFactoresUnicos(DOMINIOS.COMPETENCIAS).map(([factor, { valor, sesionId }]) => {
-                const normVal = parseVal(valor, factor)
-                const clr = clrOf(normVal)
-                const fk = `${sesionId}_${factor.toLowerCase()}`
-
-                const descSugerida = obtenerNarrativaFactor(factor, normVal) || 'Muestra un nivel de competencia alineado con los desafíos del puesto evaluado.';
-
-                return (
-                  <div key={factor} style={s.factBlk}>
-                    <div style={s.factRow}>
-                      <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
-                      <span style={{...s.factLvl, color:clr}}>{Number(normVal.toFixed(1))}/5</span>
-                    </div>
-                    <div style={s.barBg}><div style={{...s.barFill, width:`${(normVal/5)*100}%`, background:clr}} /></div>
-                    <textarea 
-                      style={s.taFact} 
-                      rows={4} 
-                      value={textoInterpretacion(fk, factor, descSugerida)} 
-                      onChange={(e) => updFactor(fk, e.target.value)} 
-                    />
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── V. SALUD Y BIENESTAR LABORAL ─────────────────────────────────── */}
-        {hasV && (
-          <div style={s.card}>
-            <div style={s.cardHead}>
-              <span style={s.cardHeadTxt}>V. Salud y Bienestar Laboral</span>
-              <span style={s.badge}>Indicadores de Riesgo</span>
-            </div>
-            <div style={{ padding: '0 1.25rem' }}>
-              {getFactoresUnicos(DOMINIOS.BIENESTAR).map(([factor, { valor, sesionId }]) => {
-                const normVal = parseVal(valor, factor)
-                const clr = clrOf(normVal)
-                const fk = `${sesionId}_${factor.toLowerCase()}`
-
-                const descSugerida = obtenerNarrativaFactor(factor, normVal) || 'Muestra indicadores de bienestar acordes a una integración saludable.';
-
-                return (
-                  <div key={factor} style={s.factBlk}>
-                    <div style={s.factRow}>
-                      <span style={s.factName}>{ETQ[factor.toLowerCase()] || factor}</span>
-                      <span style={{...s.factLvl, color:clr}}>{Number(normVal.toFixed(1))}/5</span>
-                    </div>
-                    <div style={s.barBg}><div style={{...s.barFill, width:`${(normVal/5)*100}%`, background:clr}} /></div>
-                    <textarea 
-                      style={s.taFact} 
-                      rows={4} 
-                      value={textoInterpretacion(fk, factor, descSugerida)} 
-                      onChange={(e) => updFactor(fk, e.target.value)} 
-                    />
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-
-
-        {/* ── 6. RECOMENDACIÓN ──────────────────────────────────────────────── */}
+        {/* ── V. DICTAMEN FINAL ──────────────────────────────────────────────── */}
         <div style={s.card}>
-          <div style={s.cardHead}><span style={s.cardHeadTxt}>Dictamen Final</span><span style={s.badge}>Evaluación de Ajuste</span></div>
+          <div style={s.cardHead}><span style={s.cardHeadTxt}>V. Dictamen Final</span><span style={s.badge}>Evaluación de Ajuste</span></div>
           <div style={s.recBtns}>
             {(['recomendado', 'con_reservas', 'no_recomendado'] as Rec[]).map(op => (
               <button key={op} onClick={() => upd('recomendacion', op)} style={{ ...s.recBtn, borderColor: inf.recomendacion === op ? REC_COLOR[op] : '#e2e8f0', background: inf.recomendacion === op ? REC_COLOR[op] + '18' : '#fff', color: inf.recomendacion === op ? REC_COLOR[op] : '#64748b', fontWeight: inf.recomendacion === op ? '700' : '400' }}>

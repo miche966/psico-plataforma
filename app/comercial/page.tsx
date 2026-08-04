@@ -24,6 +24,8 @@ export default function ComercialPage() {
   const [itemActual, setItemActual] = useState(0)
   const [respuestas, setRespuestas] = useState<Respuesta[]>([])
   const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [intentoCarga, setIntentoCarga] = useState(0)
   const [finalizado, setFinalizado] = useState(false)
   const enEvaluacion = useEvaluacionRedirect(finalizado)
   const [nombreCandidato, setNombreCandidato] = useState('')
@@ -38,16 +40,27 @@ export default function ComercialPage() {
   useEffect(() => {
     async function iniciar() {
       if (!candidatoId || !procesoId) return
+      setError(null)
       const token = searchParams.get('token') || ''
-      const response = await fetch('/api/evaluacion/public-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'start', candidato_id: candidatoId, proceso_id: procesoId, token, test_id: TEST_ID }) })
-      const payload = await response.json().catch(() => ({}))
-      if (response.ok && payload.sesion?.id) { setSesionIdActual(payload.sesion.id); if (payload.alreadyCompleted) setFinalizado(true) }
-      const datos = await fetch(`/api/evaluacion/public-data?candidato=${encodeURIComponent(candidatoId)}&proceso=${encodeURIComponent(procesoId)}&token=${encodeURIComponent(token)}&test_id=${encodeURIComponent(TEST_ID)}`, { cache: 'no-store' })
-      const info = await datos.json().catch(() => ({}))
-      if (datos.ok) { setItems(info.items || []); if (info.candidato) setNombreCandidato(`${info.candidato.nombre} ${info.candidato.apellido}`); setCargando(false) }
+      try {
+        const response = await fetch('/api/evaluacion/public-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'start', candidato_id: candidatoId, proceso_id: procesoId, token, test_id: TEST_ID }) })
+        const payload = await response.json().catch(() => ({}))
+        if (!response.ok) { setError(payload.error || 'No se pudo iniciar el test.'); setCargando(false); return }
+        if (payload.sesion?.id) { setSesionIdActual(payload.sesion.id); if (payload.alreadyCompleted) setFinalizado(true) }
+        const datos = await fetch(`/api/evaluacion/public-data?candidato=${encodeURIComponent(candidatoId)}&proceso=${encodeURIComponent(procesoId)}&token=${encodeURIComponent(token)}&test_id=${encodeURIComponent(TEST_ID)}`, { cache: 'no-store' })
+        const info = await datos.json().catch(() => ({}))
+        if (!datos.ok) { setError(info.error || 'No se pudo cargar el test.'); setCargando(false); return }
+        setItems(info.items || [])
+        if (info.candidato) setNombreCandidato(`${info.candidato.nombre} ${info.candidato.apellido}`)
+        setCargando(false)
+      } catch {
+        setError('No se pudo conectar con el servidor.')
+        setCargando(false)
+      }
     }
+    setCargando(true)
     iniciar()
-  }, [candidatoId, procesoId, searchParams])
+  }, [candidatoId, procesoId, searchParams, intentoCarga])
 
   useEffect(() => {
     if (finalizado) return
@@ -99,6 +112,14 @@ export default function ComercialPage() {
   }
 
   if (cargando) return <div style={s.centro}><p>Cargando test...</p></div>
+  if (error) return (
+    <div style={s.centro}>
+      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
+        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{error}</p>
+        <button onClick={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
+      </div>
+    </div>
+  )
 
   if (finalizado && enEvaluacion) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}><p>Cargando siguiente evaluación...</p></div>
   if (finalizado) return (
