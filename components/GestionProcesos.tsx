@@ -6,6 +6,20 @@ import { getAdminHeaders, obtenerLinkEvaluacion } from '@/lib/evaluacionLink'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
 
+// navigator.clipboard.writeText exige que el documento tenga foco en el momento exacto en
+// que se llama. Como el link se genera con un fetch async antes de copiarlo, el foco se
+// puede perder en el medio (cambio de pestaña/ventana) y el navegador lo rechaza con
+// NotAllowedError sin mostrar nada util. Ante eso, se ofrece el link en un prompt para
+// copiarlo a mano en vez de fallar en silencio.
+async function copiarAlPortapapeles(texto: string, mensajeExito?: string) {
+  try {
+    await navigator.clipboard.writeText(texto)
+    if (mensajeExito) alert(mensajeExito)
+  } catch {
+    window.prompt('No se pudo copiar automáticamente (el navegador perdió el foco). Copiá el link manualmente:', texto)
+  }
+}
+
 const TESTS_DISPONIBLES = [
   { key: 'bigfive', label: 'Big Five' },
   { key: 'hexaco', label: 'HEXACO' },
@@ -300,7 +314,7 @@ export default function GestionProcesos() {
 
     try {
       const link = await obtenerLinkEvaluacion(candidatoId, procesoSeleccionado.id)
-      navigator.clipboard.writeText(link)
+      await copiarAlPortapapeles(link)
     } catch (err: any) {
       console.error('Error al generar el link firmado:', err.message)
     }
@@ -835,11 +849,14 @@ export default function GestionProcesos() {
                             </div>
                           </div>
                           <div className="flex items-center gap-1 shrink-0 ml-4">
-                            <button 
+                            <button
                               onClick={async () => {
-                                 const link = await obtenerLinkEvaluacion(c.id, procesoSeleccionado.id)
-                                navigator.clipboard.writeText(link)
-                                alert('Link copiado al portapapeles')
+                                try {
+                                  const link = await obtenerLinkEvaluacion(c.id, procesoSeleccionado.id)
+                                  await copiarAlPortapapeles(link, 'Link copiado al portapapeles')
+                                } catch (err: any) {
+                                  alert('No se pudo generar el link: ' + (err.message || err))
+                                }
                               }}
                               className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
                               title="Copiar link de evaluación"
