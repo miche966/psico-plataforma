@@ -63,6 +63,21 @@ const { similitudTexto, detectarRedundanciaNarrativa, detectarInconsistenciasNum
   assert.equal(alertas.length, 0)
 }
 
+// detectarInconsistenciasNumericas: divergencia grande entre Comunicación (meta, de personalidad)
+// y Comunicación Efectiva (SJT) debe alertar — caso real observado en Nicolás Manzo (74 vs 100,
+// que no llegó a cruzar el umbral) llevado a un valor que sí lo cruza.
+{
+  const alertas = detectarInconsistenciasNumericas({ comunicacion: 60, comunicacionEfectiva100: 100 })
+  assert.equal(alertas.length, 1)
+  assert.equal(alertas[0].etiqueta, 'Comunicación vs. Comunicación Efectiva')
+}
+
+// Divergencia moderada (por debajo del umbral, como el caso real de Nicolás) no debe alertar.
+{
+  const alertas = detectarInconsistenciasNumericas({ comunicacion: 74, comunicacionEfectiva100: 100 })
+  assert.equal(alertas.length, 0)
+}
+
 // detectarTemas: reconoce el mismo tema aunque el texto esté parafraseado con sinónimos
 // (caso real observado: "afinidad notable" vs "alineación profunda").
 {

@@ -576,12 +576,14 @@ function InformePageContent() {
     ? Math.round(bienestarValoresDisponibles.reduce((a, b) => a + b, 0) / bienestarValoresDisponibles.length)
     : undefined
   const extraversion100 = valorFactorEnEscala100(DOMINIOS.PERSONALIDAD, 'extraversion')
+  const comunicacionEfectiva100 = valorFactorEnEscala100(DOMINIOS.COMPETENCIAS, 'comunicacion')
 
   const alertasConsistencia = detectarInconsistenciasNumericas({
     resiliencia: inf.resiliencia,
     comunicacion: inf.comunicacion,
     bienestarPromedio100,
     extraversion100,
+    comunicacionEfectiva100,
   })
 
   async function generarIA() {

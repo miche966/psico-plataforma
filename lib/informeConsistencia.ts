@@ -167,11 +167,18 @@ export function detectarInconsistenciasNumericas(params: {
   comunicacion?: number
   bienestarPromedio100?: number
   extraversion100?: number
+  comunicacionEfectiva100?: number
 }): AlertaConsistencia[] {
   const alertas: AlertaConsistencia[] = []
   const a = compararPar('Resiliencia vs. Bienestar', 'Resiliencia', params.resiliencia, 'Promedio de Bienestar', params.bienestarPromedio100)
   if (a) alertas.push(a)
   const b = compararPar('Comunicación vs. Extraversión', 'Comunicación', params.comunicacion, 'Extraversión', params.extraversion100)
   if (b) alertas.push(b)
+  // "Comunicación" (Habilidades para el Trabajo, derivada de personalidad) y "Comunicación
+  // Efectiva" (II.D, prueba situacional SJT) miden ángulos distintos y pueden divergir sin ser
+  // un error — pero si divergen MUCHO conviene que el admin lo vea antes de publicar, mismo
+  // criterio que ya se aplica a Resiliencia vs. Bienestar.
+  const c = compararPar('Comunicación vs. Comunicación Efectiva', 'Comunicación', params.comunicacion, 'Comunicación Efectiva', params.comunicacionEfectiva100)
+  if (c) alertas.push(c)
   return alertas
 }

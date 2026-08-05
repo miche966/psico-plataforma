@@ -61,6 +61,18 @@ export async function POST(request: Request) {
 
       const db = createSupabaseAdmin()
 
+      // Antes de insertar, se borra cualquier fila previa de esta misma (candidato, entrevista,
+      // pregunta): sin esto, un reintento tras un error de subida o un candidato respondiendo de
+      // nuevo la misma pregunta dejaba filas viejas huérfanas en vez de reemplazarlas (confirmado
+      // en auditoria: 87 grupos duplicados, 130 filas de más, afectando conteos de progreso).
+      if (candidatoId) {
+        await db.from('respuestas_video')
+          .delete()
+          .eq('candidato_id', candidatoId)
+          .eq('entrevista_id', entrevistaId)
+          .eq('pregunta_id', preguntaId)
+      }
+
       if (body.exito) {
         const urlVideo = String(body.urlVideo || '')
         const { data, error } = await db.from('respuestas_video').insert({
