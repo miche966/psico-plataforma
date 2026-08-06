@@ -169,10 +169,15 @@ export async function POST(req: Request) {
           attempts++
           console.log(`[INFO] [ROLEPLAY CHAT] Llamando a Gemini (Intento ${attempts}/${maxAttempts})...`)
           
-          const chatModel = genAI.getGenerativeModel({ 
+          const chatModel = genAI.getGenerativeModel({
             model: 'gemini-2.5-flash',
             generationConfig: {
-              maxOutputTokens: 150,
+              // 150 no alcanzaba: gemini-2.5-flash usa "thinking" por defecto, que consume parte
+              // del presupuesto de salida antes de emitir el JSON visible — con un techo tan bajo,
+              // la respuesta llegaba vacía o cortada a mitad de una cadena (visto en produccion:
+              // el personaje "hablando" literalmente el preambulo del modelo, ej. "Here is the
+              // JSON requested", en vez de una frase real).
+              maxOutputTokens: 2000,
               responseMimeType: 'application/json'
             },
             safetySettings
@@ -216,10 +221,12 @@ export async function POST(req: Request) {
         console.log(`[INFO] [ROLEPLAY CHAT] Respuesta generada exitosamente en ${totalDuration}s.`)
         return NextResponse.json(parsed)
       } catch (e) {
-        // Fallback por si la IA no retorna JSON válido
+        // Fallback por si la IA no retorna JSON válido: nunca mostrar responseText tal cual como
+        // si fuera la frase del personaje (puede ser un preámbulo del modelo, ej. "Here is the
+        // JSON requested", en vez de dialogo real — visto en producción antes de este fix).
         console.warn(`[WARNING] [ROLEPLAY CHAT] Respuesta no es JSON valido. Usando fallback.`)
         return NextResponse.json({
-          respuesta: responseText,
+          respuesta: 'Disculpe, ¿podría repetir lo que me dijo?',
           cooperacion: 50,
           desviado: false
         })
@@ -307,7 +314,8 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
           const evalModel = genAI.getGenerativeModel({
             model: 'gemini-2.5-flash',
             generationConfig: {
-              maxOutputTokens: 800,
+              // Mismo problema que en la Llamada de chat: 800 se corta con el thinking activo.
+              maxOutputTokens: 3000,
               responseMimeType: 'application/json'
             },
             safetySettings
