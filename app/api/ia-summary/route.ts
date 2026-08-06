@@ -33,7 +33,9 @@ export async function POST(req: Request) {
         const model = genAI.getGenerativeModel({
           model: 'gemini-2.5-flash',
           generationConfig: {
-            maxOutputTokens: 500,
+            // 500 arriesgaba el mismo corte que en generar-informe/roleplay: gemini-2.5-flash usa
+            // "thinking" por defecto, que resta presupuesto antes de escribir los 2 parrafos pedidos.
+            maxOutputTokens: 2000,
             temperature: 0.3
           }
         })

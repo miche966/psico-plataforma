@@ -127,7 +127,10 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
         const model = genAI.getGenerativeModel({ 
           model: 'gemini-2.5-flash',
           generationConfig: {
-            maxOutputTokens: 1200,
+            // 1200 arriesgaba corte con el thinking activo, y este endpoint no tiene fallback si
+            // el JSON queda invalido (devuelve 500 directo, pudiendo trabar al candidato a mitad
+            // del test de Frases Incompletas).
+            maxOutputTokens: 3000,
             temperature: 0.2,
             responseMimeType: 'application/json'
           }
