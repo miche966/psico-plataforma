@@ -114,6 +114,7 @@ export default function GestionProcesos() {
   const [tabMasivo, setTabMasivo] = useState<'archivo' | 'texto'>('archivo')
   const [textoMasivo, setTextoMasivo] = useState('')
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'completada' | 'en curso' | 'pendiente'>('todos')
+  const [busquedaParticipante, setBusquedaParticipante] = useState('')
   const [videoRespuestas, setVideoRespuestas] = useState<any[]>([])
   const [progresoOperativo, setProgresoOperativo] = useState<any[]>([])
   const [exportandoLinks, setExportandoLinks] = useState(false)
@@ -739,31 +740,40 @@ export default function GestionProcesos() {
 
                 {/* PARTICIPANTES ACTUALES */}
                 <div>
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                       <CheckCircle2 className="w-3 h-3 text-green-500" />
                       Participantes en este proceso
                     </h4>
-                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                      {[
-                        { id: 'todos', label: 'Todos', color: 'text-slate-600' },
-                        { id: 'completada', label: 'Comp.', color: 'text-green-600' },
-                        { id: 'en curso', label: 'En curso', color: 'text-amber-600' },
-                        { id: 'pendiente', label: 'Pend.', color: 'text-slate-400' },
-                      ].map(f => (
-                        <button
-                          key={f.id}
-                          onClick={() => setFiltroEstado(f.id as any)}
-                          className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                            filtroEstado === f.id ? 'bg-white text-indigo-600 shadow-sm' : `${f.color} hover:bg-white/50`
-                          }`}
-                        >
-                          {f.label}
-                        </button>
-                      ))}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="Buscar por nombre o email..."
+                        value={busquedaParticipante}
+                        onChange={e => setBusquedaParticipante(e.target.value)}
+                        className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px] focus:ring-2 focus:ring-indigo-500/20 outline-none w-48"
+                      />
+                      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        {[
+                          { id: 'todos', label: 'Todos', color: 'text-slate-600' },
+                          { id: 'completada', label: 'Comp.', color: 'text-green-600' },
+                          { id: 'en curso', label: 'En curso', color: 'text-amber-600' },
+                          { id: 'pendiente', label: 'Pend.', color: 'text-slate-400' },
+                        ].map(f => (
+                          <button
+                            key={f.id}
+                            onClick={() => setFiltroEstado(f.id as any)}
+                            className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                              filtroEstado === f.id ? 'bg-white text-indigo-600 shadow-sm' : `${f.color} hover:bg-white/50`
+                            }`}
+                          >
+                            {f.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                  
+
                   {candidatosProceso.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
                       {candidatosProceso
@@ -805,6 +815,12 @@ export default function GestionProcesos() {
                         .filter(c => {
                           if (filtroEstado === 'todos') return true
                           return (c as any).progreso_real.estado === filtroEstado
+                        })
+                        .filter(c => {
+                          const q = busquedaParticipante.trim().toLowerCase()
+                          if (!q) return true
+                          const nombreCompleto = `${c.nombre || ''} ${c.apellido || ''}`.toLowerCase()
+                          return nombreCompleto.includes(q) || (c.email || '').toLowerCase().includes(q)
                         })
                         .map(c => (
                         <div key={c.id} className="p-4 bg-white border border-slate-200 rounded-2xl flex justify-between items-center group hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-500/5 transition-all">
