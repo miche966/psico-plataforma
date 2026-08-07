@@ -17,7 +17,7 @@ export function normalizarPuntaje(valor: unknown, factor = ''): number {
     }
   } else if (typeof valor === 'string') {
     const texto = valor.toLowerCase().trim()
-    resultado = texto === 'alto' ? 5 : texto === 'medio' ? 3 : texto === 'bajo' ? 1.5 : Number(valor) || 0
+    resultado = texto === 'alto' ? 5 : (texto === 'medio' || texto === 'moderado') ? 3 : texto === 'bajo' ? 1.5 : Number(valor) || 0
   } else {
     resultado = Number(valor) || 0
   }
@@ -28,9 +28,12 @@ export function normalizarPuntaje(valor: unknown, factor = ''): number {
     else resultado = 5
   }
 
-  // Neuroticismo es el unico factor de personalidad que se guarda en su
-  // orientacion original. La pantalla lo presenta como estabilidad emocional.
-  if (clave === 'neuroticismo') resultado = 6 - resultado
+  // Neuroticismo, y los factores del test de Estrés Laboral, se guardan en su orientación
+  // original de "frecuencia del síntoma" (1 = casi nunca le pasa/bueno, 5 = le pasa siempre/
+  // malo) — al revés de como se muestran e interpretan en el informe (alto = favorable).
+  // La pantalla los presenta ya invertidos: estabilidad emocional, y estos 6 de Bienestar.
+  const FACTORES_ESCALA_INVERTIDA = ['neuroticismo', 'burnout', 'equilibrio', 'relaciones', 'claridad_rol', 'carga_laboral', 'nivel_estres']
+  if (FACTORES_ESCALA_INVERTIDA.includes(clave)) resultado = 6 - resultado
 
   return Math.min(5, Math.max(0, resultado))
 }

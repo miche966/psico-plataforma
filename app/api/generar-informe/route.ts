@@ -143,6 +143,17 @@ export async function POST(req: Request) {
         delete factoresCrudos.neuroticismo;
     }
 
+    // Estrés Laboral (burnout/equilibrio/relaciones/claridad_rol/carga_laboral) se guarda en su
+    // escala original: 1 = casi nunca sufre ese síntoma (bueno), 5 = lo sufre todo el tiempo
+    // (malo) — lo opuesto a como la IA interpreta el resto de los factores (alto = favorable).
+    // Sin este ajuste, un candidato con muy buen manejo del estrés (puntaje bajo = poco
+    // síntoma) se describía en el informe como en riesgo, y viceversa.
+    for (const factor of ['burnout', 'equilibrio', 'relaciones', 'claridad_rol', 'carga_laboral']) {
+        if (typeof factoresCrudos[factor] === 'number') {
+            factoresCrudos[factor] = Math.min(5, Math.max(0, 6 - factoresCrudos[factor]));
+        }
+    }
+
     // 3. COMPILACIÓN DE TRANSCRIPCIONES DE VIDEO-ENTREVISTAS
     let discursoVideos = '';
     const tieneVideos = videos && Array.isArray(videos) && videos.length > 0;
