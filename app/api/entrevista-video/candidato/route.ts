@@ -29,12 +29,17 @@ export async function GET(request: Request) {
     if (preguntasError) throw preguntasError
 
     let candidato = null
+    let preguntasYaRespondidas: string[] = []
     if (candidatoId) {
-      const { data } = await db.from('candidatos').select('nombre, apellido').eq('id', candidatoId).single()
-      candidato = data
+      const [{ data: cand }, { data: respondidas }] = await Promise.all([
+        db.from('candidatos').select('nombre, apellido').eq('id', candidatoId).single(),
+        db.from('respuestas_video').select('pregunta_id').eq('candidato_id', candidatoId).eq('entrevista_id', entrevistaId).eq('estado', 'completado'),
+      ])
+      candidato = cand
+      preguntasYaRespondidas = (respondidas || []).map(r => r.pregunta_id)
     }
 
-    return NextResponse.json({ entrevista, preguntas: preguntas || [], candidato })
+    return NextResponse.json({ entrevista, preguntas: preguntas || [], candidato, preguntasYaRespondidas })
   } catch (error) {
     console.error('[entrevista-video/candidato GET]', error)
     return NextResponse.json({ error: 'No se pudo cargar la entrevista' }, { status: 500 })

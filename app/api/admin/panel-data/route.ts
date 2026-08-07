@@ -14,7 +14,7 @@ export async function GET(req: Request) {
       readAll(db, 'procesos', '*', 'creado_en'),
       readAll(db, 'sesiones', '*, procesos (id, nombre, cargo, competencias_requeridas, bateria_tests)', 'finalizada_en'),
       readAll(db, 'respuestas_video', '*', 'grabada_en'),
-      readAll(db, 'preguntas_video', 'id, entrevista_id')
+      readAll(db, 'preguntas_video', 'id, entrevista_id, pregunta')
     ])
 
     let progresoOperativo: any[] = []

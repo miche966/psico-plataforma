@@ -35,11 +35,11 @@ export async function POST(req: Request) {
       .map((t: string) => t.split(':')[1])
 
     let respuestasVideo: Array<{ entrevista_id: string, pregunta_id: string, estado: string }> = []
-    let preguntasVideo: Array<{ id: string, entrevista_id: string }> = []
+    let preguntasVideo: Array<{ id: string, entrevista_id: string, pregunta?: string | null }> = []
     if (entrevistaIds.length > 0) {
       const [{ data: rv, error: errVid }, { data: pv, error: errPv }] = await Promise.all([
         db.from('respuestas_video').select('entrevista_id, pregunta_id, estado').eq('candidato_id', candidatoId).in('entrevista_id', entrevistaIds),
-        db.from('preguntas_video').select('id, entrevista_id').in('entrevista_id', entrevistaIds),
+        db.from('preguntas_video').select('id, entrevista_id, pregunta').in('entrevista_id', entrevistaIds),
       ])
       if (errVid) console.error('Error DB Videos:', errVid)
       if (errPv) console.error('Error DB Preguntas Video:', errPv)
@@ -47,12 +47,7 @@ export async function POST(req: Request) {
       preguntasVideo = pv || []
     }
 
-    const preguntasPorEntrevista: Record<string, number> = {}
-    preguntasVideo.forEach(p => {
-      preguntasPorEntrevista[p.entrevista_id] = (preguntasPorEntrevista[p.entrevista_id] || 0) + 1
-    })
-
-    const progreso = calcularProgresoEvaluacion(bateria, sesiones || [], respuestasVideo, preguntasPorEntrevista)
+    const progreso = calcularProgresoEvaluacion(bateria, sesiones || [], respuestasVideo, preguntasVideo)
 
     return NextResponse.json({ valid: true, candidato, proceso, progreso, sesiones: sesiones || [], respuestasVideo })
   } catch (error) {

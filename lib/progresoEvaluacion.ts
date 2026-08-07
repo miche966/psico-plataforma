@@ -14,13 +14,38 @@ export const TEST_IDS: Record<string, string> = {
 }
 
 export type ProgresoItem = { test_id?: string | null; estado?: string | null; entrevista_id?: string | null; pregunta_id?: string | null }
+export type PreguntaVideoInfo = { id: string; entrevista_id: string; pregunta?: string | null }
 export type ProgresoResultado = { completados: number; total: number; testsCompletados: string[]; testsPendientes: string[] }
 
 export function normalizarTestId(testId: string | null | undefined): string | null {
   return testId ? (TEST_IDS[testId] || testId) : null
 }
 
-export function calcularProgresoEvaluacion(bateria: string[] = [], sesiones: ProgresoItem[] = [], respuestasVideo: ProgresoItem[] = [], preguntasPorEntrevista: Record<string, number> = {}): ProgresoResultado {
+// Cuántas preguntas de una entrevista le corresponden a un candidato. La mayoría de las
+// entrevistas no tienen ramas (todas sus preguntas aplican a todos) y ahí el total esperado
+// es simplemente la cantidad de preguntas. Algunas entrevistas ramifican según experiencia
+// previa ([CON_EXP]/[SIN_EXP] al inicio del texto de la pregunta) — un candidato solo ve y
+// responde una de las dos ramas, nunca ambas, así que exigirle el total de las dos (como hacía
+// antes esta función) lo deja perpetuamente "incompleto" aunque haya respondido todo lo suyo.
+// Como la elección de rama no se guarda en ningún lado, se infiere a partir de qué preguntas
+// ya respondió.
+function totalEsperadoParaCandidato(todasLasPreguntas: PreguntaVideoInfo[], idsRespondidos: Set<string>): number {
+  const conExp = todasLasPreguntas.filter(p => (p.pregunta || '').startsWith('[CON_EXP]'))
+  const sinExp = todasLasPreguntas.filter(p => (p.pregunta || '').startsWith('[SIN_EXP]'))
+  const comunes = todasLasPreguntas.filter(p => !(p.pregunta || '').startsWith('[CON_EXP]') && !(p.pregunta || '').startsWith('[SIN_EXP]'))
+
+  if (conExp.length === 0 || sinExp.length === 0) return todasLasPreguntas.length
+
+  const respondioCon = conExp.some(p => idsRespondidos.has(p.id))
+  const respondioSin = sinExp.some(p => idsRespondidos.has(p.id))
+  if (respondioCon && !respondioSin) return conExp.length + comunes.length
+  if (respondioSin && !respondioCon) return sinExp.length + comunes.length
+  // Sin respuestas todavía, o respuestas de ambas ramas (caso raro, ej. cambió su elección
+  // entre intentos): usar la rama más chica para no exigir de más ni marcar completo de menos.
+  return Math.min(conExp.length, sinExp.length) + comunes.length
+}
+
+export function calcularProgresoEvaluacion(bateria: string[] = [], sesiones: ProgresoItem[] = [], respuestasVideo: ProgresoItem[] = [], preguntasVideo: PreguntaVideoInfo[] = []): ProgresoResultado {
   const completados = new Set<string>()
   sesiones.forEach(s => {
     if (s.estado && s.estado !== 'finalizado') return
@@ -34,9 +59,18 @@ export function calcularProgresoEvaluacion(bateria: string[] = [], sesiones: Pro
     if (!respuestas.has(v.entrevista_id)) respuestas.set(v.entrevista_id, new Set())
     respuestas.get(v.entrevista_id)!.add(v.pregunta_id)
   })
-  respuestas.forEach((preguntas, entrevistaId) => {
+  const preguntasPorEntrevistaId = new Map<string, PreguntaVideoInfo[]>()
+  preguntasVideo.forEach(p => {
+    if (!preguntasPorEntrevistaId.has(p.entrevista_id)) preguntasPorEntrevistaId.set(p.entrevista_id, [])
+    preguntasPorEntrevistaId.get(p.entrevista_id)!.push(p)
+  })
+  respuestas.forEach((idsRespondidos, entrevistaId) => {
     const key = `entrevista:${entrevistaId}`
-    if ((preguntasPorEntrevista[entrevistaId] || 0) > 0 && preguntas.size >= preguntasPorEntrevista[entrevistaId] && bateria.includes(key)) completados.add(key)
+    if (!bateria.includes(key)) return
+    const todasLasPreguntas = preguntasPorEntrevistaId.get(entrevistaId) || []
+    if (todasLasPreguntas.length === 0) return
+    const totalEsperado = totalEsperadoParaCandidato(todasLasPreguntas, idsRespondidos)
+    if (totalEsperado > 0 && idsRespondidos.size >= totalEsperado) completados.add(key)
   })
   const testsCompletados = bateria.filter(key => completados.has(key))
   return { completados: testsCompletados.length, total: bateria.length, testsCompletados, testsPendientes: bateria.filter(key => !completados.has(key)) }

@@ -14,7 +14,7 @@ export async function GET(req: Request) {
         db.from('sesiones').select('candidato_id, test_id, estado').eq('proceso_id', procesoId).not('candidato_id', 'is', null),
         db.from('candidatos').select('id, nombre, apellido, email'),
         db.from('respuestas_video').select('candidato_id, entrevista_id, pregunta_id').eq('estado', 'completado'),
-        db.from('preguntas_video').select('id, entrevista_id')
+        db.from('preguntas_video').select('id, entrevista_id, pregunta')
       ])
       if (sesionesError || candidatosError || videosError || preguntasError) throw sesionesError || candidatosError || videosError || preguntasError
       return NextResponse.json({ sesiones: sesiones || [], candidatos: candidatos || [], respuestasVideo: respuestasVideo || [], preguntasVideo: preguntasVideo || [] })

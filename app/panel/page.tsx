@@ -387,10 +387,6 @@ export default function PanelEvaluador() {
     const progresoOperativo: any[] = payload.progresoOperativo || []
 
     if (sesionesData.length > 0) setSesionesGlobales(sesionesData)
-    const preguntasPorEntrevista: Record<string, number> = {}
-    ;(preguntasVideo || []).forEach(p => {
-      preguntasPorEntrevista[p.entrevista_id] = (preguntasPorEntrevista[p.entrevista_id] || 0) + 1
-    })
 
     // Agrupar todas las sesiones por candidato_id
     const sesionesPorCandidato: Record<string, any[]> = {}
@@ -447,7 +443,7 @@ export default function PanelEvaluador() {
         bateria,
         sesionesDeEsteProceso,
         Array.from(videosUnicosMap.values()),
-        preguntasPorEntrevista
+        preguntasVideo
       )
 
       const sesionBigFive = sesionesDeEsteProceso.find(s => TEST_IDS[s.test_id] === 'bigfive')

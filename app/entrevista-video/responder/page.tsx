@@ -25,6 +25,7 @@ export default function ResponderPage() {
   const [entrevista, setEntrevista] = useState<Entrevista | null>(null)
   const [preguntas, setPreguntas] = useState<Pregunta[]>([])
   const [todasLasPreguntas, setTodasLasPreguntas] = useState<Pregunta[]>([])
+  const [preguntasYaRespondidas, setPreguntasYaRespondidas] = useState<Set<string>>(new Set())
   const [tieneExperiencia, setTieneExperiencia] = useState<boolean | null>(null)
   const [preguntaActual, setPreguntaActual] = useState(0)
   const [estado, setEstado] = useState<Estado>('bienvenida')
@@ -117,23 +118,49 @@ export default function ResponderPage() {
     if (data.candidato) setNombreCandidato(`${data.candidato.nombre} ${data.candidato.apellido}`)
 
     const preguntasData = data.preguntas || []
-    setPreguntas(preguntasData)
+    const yaRespondidas = new Set<string>(data.preguntasYaRespondidas || [])
+    setPreguntasYaRespondidas(yaRespondidas)
     setTodasLasPreguntas(preguntasData)
+
+    const tieneCondicionales = preguntasData.some((p: Pregunta) =>
+      (p.pregunta || '').startsWith('[CON_EXP]') || (p.pregunta || '').startsWith('[SIN_EXP]')
+    )
+    if (tieneCondicionales) {
+      // La rama (con/sin experiencia) todavía no se eligió: se define recién al seleccionarla.
+      setPreguntas(preguntasData)
+    } else {
+      const pendientes = preguntasData.filter((p: Pregunta) => !yaRespondidas.has(p.id))
+      setPreguntas(pendientes)
+      if (pendientes.length === 0 && preguntasData.length > 0) setEstado('finalizado')
+    }
     setCargando(false)
   }
 
-  function seleccionarExperiencia(siTiene: boolean) {
-    setTieneExperiencia(siTiene)
-    const filtradas = todasLasPreguntas.filter(p => {
+  function preguntasDeLaRama(siTiene: boolean): Pregunta[] {
+    return todasLasPreguntas.filter(p => {
       const txt = p.pregunta || ''
       if (txt.startsWith('[CON_EXP]')) return siTiene === true
       if (txt.startsWith('[SIN_EXP]')) return siTiene === false
       return true
-    })
-    setPreguntas(filtradas)
+    }).filter(p => !preguntasYaRespondidas.has(p.id))
+  }
+
+  function seleccionarExperiencia(siTiene: boolean) {
+    setTieneExperiencia(siTiene)
+    setPreguntas(preguntasDeLaRama(siTiene))
   }
 
   async function iniciarCamaraConExperiencia(siTiene: boolean) {
+    const filtradas = preguntasDeLaRama(siTiene)
+    setPreguntas(filtradas)
+
+    // Ya respondió todas las preguntas que le correspondían en esta rama (ej. reingresó
+    // después de completarla): no hace falta abrir la cámara de nuevo.
+    if (filtradas.length === 0) {
+      setEstado('finalizado')
+      return
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       streamRef.current = stream
@@ -142,14 +169,6 @@ export default function ResponderPage() {
         videoRef.current.muted = true
       }
       setEstado('preparacion')
-      
-      const filtradas = todasLasPreguntas.filter(p => {
-        const txt = p.pregunta || ''
-        if (txt.startsWith('[CON_EXP]')) return siTiene === true
-        if (txt.startsWith('[SIN_EXP]')) return siTiene === false
-        return true
-      })
-      setPreguntas(filtradas)
       setTiempoRestante(filtradas[0]?.tiempo_preparacion || 30)
     } catch {
       alert('No se pudo acceder a la cámara. Verificá los permisos del navegador.')
@@ -380,7 +399,7 @@ export default function ResponderPage() {
 
   if (cargando) return <div style={s.centro}><p>Cargando entrevista...</p></div>
 
-  if (!entrevista || preguntas.length === 0) return (
+  if (!entrevista || (estado !== 'finalizado' && preguntas.length === 0)) return (
     <div style={s.centro}>
       <p>Entrevista no encontrada o sin preguntas configuradas.</p>
     </div>
