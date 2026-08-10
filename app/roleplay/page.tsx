@@ -33,7 +33,7 @@ export default function RolePlayPage() {
   const [mensajes, setMensajes] = useState<Array<{ role: 'user' | 'model', content: string; cooperacion?: number }>>([])
   const mensajesRef = useRef<Array<{ role: 'user' | 'model', content: string; cooperacion?: number }>>([])
   const [turnoActual, setTurnoActual] = useState(0)
-  const maxTurnos = 8
+  const maxTurnos = 16
   const evaluacionKey = esAtencion ? 'roleplay_atencion' : 'roleplay'
 
   useEffect(() => {
