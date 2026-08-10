@@ -9,11 +9,11 @@ export async function getAdminHeaders() {
   }
 }
 
-export async function obtenerLinkEvaluacion(candidatoId: string, procesoId: string) {
+export async function obtenerLinkEvaluacion(candidatoId: string, procesoId: string, ruta?: string) {
   const response = await fetch('/api/evaluacion-link', {
     method: 'POST',
     headers: await getAdminHeaders(),
-    body: JSON.stringify({ candidato_id: candidatoId, proceso_id: procesoId }),
+    body: JSON.stringify({ candidato_id: candidatoId, proceso_id: procesoId, ruta }),
   })
   const data = await response.json().catch(() => ({}))
   if (!response.ok || typeof data.link !== 'string') {

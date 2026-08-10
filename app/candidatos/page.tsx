@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { getAdminHeaders } from '@/lib/evaluacionLink'
+import { getAdminHeaders, obtenerLinkEvaluacion } from '@/lib/evaluacionLink'
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as ChartTooltip, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
 import AppLayout from '@/components/AppLayout'
 import { Plus, Check, Copy, FileText, Search, UserPlus, RotateCcw, BarChart3, Users, Sparkles, BellRing, AlertCircle, Info, LayoutDashboard, Award, Briefcase, X, Target, PieChart, ShieldAlert } from 'lucide-react'
@@ -146,7 +146,7 @@ export default function CandidatosPage() {
     cargarCandidatos()
   }
 
-  function copiarLink(candidatoId: string, test: string = 'bigfive', opciones?: Record<string, string>) {
+  async function copiarLink(candidatoId: string, test: string = 'bigfive', opciones?: Record<string, string>) {
     const rutas: Record<string, string> = {
       bigfive: '/test',
       hexaco: '/hexaco',
@@ -164,16 +164,48 @@ export default function CandidatosPage() {
       legal: '/sjt-legal',
       estres: '/estres-laboral',
       creatividad: '/creatividad',
-      problemas: '/sjt-problemas'
+      problemas: '/sjt-problemas',
+      dass21: '/dass21',
+      frases: '/frases-incompletas',
+      roleplay: '/roleplay',
+      roleplayAtencion: '/roleplay?tipo=atencion',
+      iniciativa: '/iniciativa-dinamismo',
     }
     const ruta = rutas[test] || '/test'
-    let url = `${window.location.origin}${ruta}?candidato=${candidatoId}`
-    if (opciones) {
-      Object.entries(opciones).forEach(([k, v]) => { if (v) url += `&${k}=${v}` })
+
+    // El link debe llevar el token firmado del proceso al que pertenece el candidato:
+    // sin eso, /api/evaluacion/public-data lo rechaza con "Enlace de evaluación inválido o vencido".
+    const procesosDelCandidato = Array.from(new Set(
+      sesionesData.filter(s => s.candidato_id === candidatoId && s.proceso_id).map(s => s.proceso_id)
+    ))
+    if (procesosDelCandidato.length === 0) {
+      alert('Este candidato todavía no está vinculado a ningún proceso. Asignalo a un proceso (en Gestión de Procesos) antes de generar un link de evaluación.')
+      return
     }
-    navigator.clipboard.writeText(url)
-    setLinkCopiado(candidatoId + test)
-    setTimeout(() => setLinkCopiado(null), 2000)
+    if (procesosDelCandidato.length > 1) {
+      alert('Este candidato está vinculado a más de un proceso. Generá el link desde Gestión de Procesos, eligiendo el proceso correcto, para evitar ambigüedad.')
+      return
+    }
+    const procesoId = procesosDelCandidato[0]
+
+    let rutaFinal = ruta
+    if (opciones) {
+      const params = Object.entries(opciones).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join('&')
+      if (params) rutaFinal += (ruta.includes('?') ? '&' : '?') + params
+    }
+
+    try {
+      const link = await obtenerLinkEvaluacion(candidatoId, procesoId, rutaFinal)
+      try {
+        await navigator.clipboard.writeText(link)
+      } catch {
+        window.prompt('No se pudo copiar automáticamente (el navegador perdió el foco). Copiá el link manualmente:', link)
+      }
+      setLinkCopiado(candidatoId + test)
+      setTimeout(() => setLinkCopiado(null), 2000)
+    } catch (err: any) {
+      alert('No se pudo generar el link: ' + (err?.message || 'error desconocido'))
+    }
   }
 
   function formatearFecha(fecha: string) {
@@ -484,6 +516,11 @@ export default function CandidatosPage() {
                           { key: 'estres', label: 'Estrés', color: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
                           { key: 'creatividad', label: 'Creatividad', color: 'bg-fuchsia-100 text-fuchsia-700 hover:bg-fuchsia-200' },
                           { key: 'problemas', label: 'Problemas', color: 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' },
+                          { key: 'dass21', label: 'DASS-21', color: 'bg-rose-100 text-rose-700 hover:bg-rose-200' },
+                          { key: 'frases', label: 'Frases Incompletas', color: 'bg-teal-100 text-teal-700 hover:bg-teal-200' },
+                          { key: 'roleplay', label: 'Role Play Cobranzas', color: 'bg-red-100 text-red-700 hover:bg-red-200' },
+                          { key: 'roleplayAtencion', label: 'Role Play Atención', color: 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' },
+                          { key: 'iniciativa', label: 'Iniciativa y Dinamismo', color: 'bg-lime-100 text-lime-700 hover:bg-lime-200' },
                         ].map(t => (
                           <button
                             key={t.key}
@@ -521,7 +558,7 @@ export default function CandidatosPage() {
                             className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
                               linkCopiado === candidato.id + 'icar' ? 'text-green-600' : 'text-slate-700 hover:bg-slate-200'
                             }`}
-                            onClick={() => copiarLink(candidato.id, 'icar', { nivel: nivelIcar, rotacion: rotacionIcar === 'no' ? 'no' : undefined } as Record<string, string>)}
+                            onClick={() => copiarLink(candidato.id, 'icar', { max: nivelIcar, norot: rotacionIcar === 'no' ? '1' : undefined } as Record<string, string>)}
                           >
                             {linkCopiado === candidato.id + 'icar' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                             Copiar
