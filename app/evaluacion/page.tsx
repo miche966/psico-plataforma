@@ -50,6 +50,7 @@ const NOMBRES_TESTS: Record<string, { nombre: string, duracion: string }> = {
   creatividad: { nombre: 'Creatividad e Innovación', duracion: '15 min' },
   'sjt-problemas': { nombre: 'Resolución de Problemas', duracion: '20 min' },
   'iniciativa-dinamismo': { nombre: 'Iniciativa y Dinamismo', duracion: '10 min' },
+  'frases-incompletas': { nombre: 'Frases Incompletas', duracion: '15 min' },
   roleplay: { nombre: 'Role Play: Cobranzas (IA)', duracion: '15-20 min' },
   roleplay_atencion: { nombre: 'Role Play: Atención al Cliente (IA)', duracion: '15-20 min' },
 }
