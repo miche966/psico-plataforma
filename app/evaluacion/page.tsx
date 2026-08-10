@@ -25,6 +25,7 @@ const RUTAS: Record<string, string> = {
   creatividad: '/creatividad',
   'sjt-problemas': '/sjt-problemas',
   roleplay: '/roleplay',
+  roleplay_atencion: '/roleplay?tipo=atencion',
   'frases-incompletas': '/frases-incompletas',
   'iniciativa-dinamismo': '/iniciativa-dinamismo',
 }
@@ -48,6 +49,8 @@ const NOMBRES_TESTS: Record<string, { nombre: string, duracion: string }> = {
   creatividad: { nombre: 'Creatividad e Innovación', duracion: '15 min' },
   'sjt-problemas': { nombre: 'Resolución de Problemas', duracion: '20 min' },
   'iniciativa-dinamismo': { nombre: 'Iniciativa y Dinamismo', duracion: '10 min' },
+  roleplay: { nombre: 'Role Play: Cobranzas (IA)', duracion: '15-20 min' },
+  roleplay_atencion: { nombre: 'Role Play: Atención al Cliente (IA)', duracion: '15-20 min' },
 }
 
 export default function PortalCandidatoPage() {
@@ -158,7 +161,8 @@ export default function PortalCandidatoPage() {
 
     const ruta = RUTAS[testKey]
     if (!ruta) return
-    router.push(`${ruta}?candidato=${candidatoId}&proceso=${procesoId}&evaluacion=1${tokenParam}`)
+    const separador = ruta.includes('?') ? '&' : '?'
+    router.push(`${ruta}${separador}candidato=${candidatoId}&proceso=${procesoId}&evaluacion=1${tokenParam}`)
   }
   // Hook para detectar si acaba de volver de un test y marcarlo completado
   useEffect(() => {
