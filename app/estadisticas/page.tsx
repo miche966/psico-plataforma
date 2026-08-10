@@ -53,6 +53,8 @@ const TEST_IDS: Record<string, string> = {
   '7a8b9c0d-e1f2-4356-abcd-999999999999': 'dass21',
   'f7a8b9c0-d1e2-4356-abcd-888888888888': 'frases-incompletas',
   '0b6ade42-0c8f-4084-a4a5-9ff7869d73b6': 'iniciativa-dinamismo',
+  'd8e9f0a1-b2c3-4567-defa-888888888888': 'roleplay',
+  'd8e9f0a1-b2c3-4567-defa-777777777777': 'roleplay_atencion',
 }
 
 export default function EstadisticasPage() {

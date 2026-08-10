@@ -17,6 +17,7 @@ export function useEvaluacionRedirect(finalizado: boolean): boolean {
     '/sjt-cobranzas': 'sjt-cobranzas', '/sjt-atencion': 'sjt-atencion', '/sjt-ventas': 'sjt-ventas',
     '/atencion-detalle': 'atencion-detalle', '/sjt-legal': 'sjt-legal', '/estres-laboral': 'estres-laboral',
     '/creatividad': 'creatividad', '/sjt-problemas': 'sjt-problemas',
+    '/frases-incompletas': 'frases-incompletas', '/iniciativa-dinamismo': 'iniciativa-dinamismo',
   } as Record<string, string>)[pathname || '']
 
   useEffect(() => {
