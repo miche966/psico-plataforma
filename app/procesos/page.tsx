@@ -28,6 +28,7 @@ const TESTS_DISPONIBLES = [
   { key: 'creatividad', label: 'Creatividad' },
   { key: 'sjt-problemas', label: 'SJT Problemas' },
   { key: 'dass21', label: 'DASS-21' },
+  { key: 'iniciativa-dinamismo', label: 'Iniciativa y Dinamismo' },
   { key: 'frases-incompletas', label: 'Frases Incompletas' },
   { key: 'roleplay', label: 'Role Play: Cobranzas (IA)' },
   { key: 'roleplay_atencion', label: 'Role Play: Atención al Cliente (IA)' },
