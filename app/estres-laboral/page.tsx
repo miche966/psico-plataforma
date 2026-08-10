@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
+import { finalizarTest, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
 
 const TEST_ID = 'd0e1f2a3-b4c5-6789-defa-000000000001'
 
@@ -29,6 +30,7 @@ export default function EstresLaboralPage() {
   const [error, setError] = useState<string | null>(null)
   const [intentoCarga, setIntentoCarga] = useState(0)
   const [finalizado, setFinalizado] = useState(false)
+  const [errorGuardado, setErrorGuardado] = useState<string | null>(null)
   const enEvaluacion = useEvaluacionRedirect(finalizado)
   const [nombreCandidato, setNombreCandidato] = useState('')
   const searchParams = useSearchParams()
@@ -73,7 +75,6 @@ export default function EstresLaboralPage() {
     setRespuestas(nuevasRespuestas)
     if (itemActual + 1 >= items.length) {
       calcularResultado(nuevasRespuestas)
-      setFinalizado(true)
     } else {
       setItemActual(itemActual + 1)
     }
@@ -103,14 +104,15 @@ export default function EstresLaboralPage() {
     const resultado = { ...promedios, promedio_general, nivel_estres: nivel }
 
     if (!candidatoId || !procesoId) return
+    setErrorGuardado(null)
     const token = searchParams.get('token') || ''
-    const response = await fetch('/api/evaluacion/public-data', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'finalize', candidato_id: candidatoId, proceso_id: procesoId, token, test_id: TEST_ID, puntaje_bruto: resultado, respuestas: todasLasRespuestas.map(r => ({ ...r, tiempo_respuesta: 0 })) })
+    const resultadoGuardado = await finalizarTest({
+      candidatoId, procesoId, token, testId: TEST_ID,
+      puntajeBruto: resultado,
+      respuestas: todasLasRespuestas.map(r => ({ ...r, tiempo_respuesta: 0 })),
     })
-    const payload = await response.json().catch(() => ({}))
-    if (!response.ok) console.error('Error al guardar Estrés Laboral:', payload.error)
-
+    if (resultadoGuardado.ok) setFinalizado(true)
+    else setErrorGuardado(resultadoGuardado.error)
   }
 
   if (cargando) return <div style={s.centro}><p>Cargando evaluación...</p></div>
@@ -119,6 +121,15 @@ export default function EstresLaboralPage() {
       <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
         <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{error}</p>
         <button onClick={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
+      </div>
+    </div>
+  )
+
+  if (errorGuardado) return (
+    <div style={s.centro}>
+      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
+        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{MENSAJE_ERROR_GUARDADO}</p>
+        <button onClick={() => calcularResultado(respuestas)} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
       </div>
     </div>
   )

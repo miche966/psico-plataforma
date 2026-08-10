@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { useProctoring } from '@/hooks/useProctoring'
+import { finalizarTest, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
 
 const TEST_ID = 'c3d4e5f6-a7b8-9012-cdef-123456789012'
 
@@ -24,6 +25,7 @@ export default function NumericoPage() {
   const [error, setError] = useState<string | null>(null)
   const [intentoCarga, setIntentoCarga] = useState(0)
   const [finalizado, setFinalizado] = useState(false)
+  const [errorGuardado, setErrorGuardado] = useState<string | null>(null)
   const enEvaluacion = useEvaluacionRedirect(finalizado)
   const [puntaje, setPuntaje] = useState({ correctas: 0, total: 0 })
   const [nombreCandidato, setNombreCandidato] = useState('')
@@ -60,10 +62,10 @@ export default function NumericoPage() {
     const nuevasRespuestas = { ...respuestas }
     if (respuestaActual) nuevasRespuestas[item.id] = respuestaActual
 
+    setRespuestas(nuevasRespuestas)
     if (itemActual + 1 >= items.length) {
       terminarTest(nuevasRespuestas, items)
     } else {
-      setRespuestas(nuevasRespuestas)
       setItemActual(itemActual + 1)
       setTiempoRestante(75)
       setSeleccionada(null)
@@ -97,16 +99,17 @@ export default function NumericoPage() {
     }
 
     setPuntaje({ correctas, total: todosLosItems.length })
-    setFinalizado(true)
 
     if (!candidatoId || !procesoId) return
+    setErrorGuardado(null)
     const token = searchParams.get('token') || ''
-    const response = await fetch('/api/evaluacion/public-data', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'finalize', candidato_id: candidatoId, proceso_id: procesoId, token, test_id: TEST_ID, puntaje_bruto: resultado, respuestas: todosLosItems.map(item => ({ item_id: item.id, valor: todasLasRespuestas[item.id] === item.respuesta_correcta ? 1 : 0, tiempo_respuesta: 0 })) })
+    const resultadoGuardado = await finalizarTest({
+      candidatoId, procesoId, token, testId: TEST_ID,
+      puntajeBruto: resultado,
+      respuestas: todosLosItems.map(item => ({ item_id: item.id, valor: todasLasRespuestas[item.id] === item.respuesta_correcta ? 1 : 0, tiempo_respuesta: 0 })),
     })
-    const payload = await response.json().catch(() => ({}))
-    if (!response.ok) console.error('Error al guardar Razonamiento Numérico:', payload.error)
+    if (resultadoGuardado.ok) setFinalizado(true)
+    else setErrorGuardado(resultadoGuardado.error)
   }
 
   function responder(opcion: string) {
@@ -120,6 +123,15 @@ export default function NumericoPage() {
       <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
         <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{error}</p>
         <button onClick={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
+      </div>
+    </div>
+  )
+
+  if (errorGuardado) return (
+    <div style={s.centro}>
+      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
+        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{MENSAJE_ERROR_GUARDADO}</p>
+        <button onClick={() => terminarTest(respuestas, items)} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
       </div>
     </div>
   )

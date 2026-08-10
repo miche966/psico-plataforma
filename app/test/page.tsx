@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { useProctoring } from '@/hooks/useProctoring'
+import { finalizarTest, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
 
 interface Item {
   id: string
@@ -37,6 +38,7 @@ export default function TestPage() {
   const [error, setError] = useState<string | null>(null)
   const [intentoCarga, setIntentoCarga] = useState(0)
   const [finalizado, setFinalizado] = useState(false)
+  const [errorGuardado, setErrorGuardado] = useState<string | null>(null)
   const enEvaluacion = useEvaluacionRedirect(finalizado)
   const [sesionIdActual, setSesionIdActual] = useState<string | null>(null)
   const [resultado, setResultado] = useState<Record<string, number>>({})
@@ -106,7 +108,6 @@ export default function TestPage() {
 
     if (itemActual + 1 >= items.length) {
       calcularResultado(nuevasRespuestas)
-      setFinalizado(true)
     } else {
       setItemActual(itemActual + 1)
     }
@@ -134,22 +135,15 @@ export default function TestPage() {
     setResultado(promedios)
 
     if (sesionIdActual && candidatoId && procesoId) {
+      setErrorGuardado(null)
       const token = searchParams.get('token') || ''
-      const response = await fetch('/api/evaluacion/public-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'finalize', candidato_id: candidatoId, proceso_id: procesoId,
-          token, test_id: BIG_FIVE_ID, sesion_id: sesionIdActual,
-          puntaje_bruto: { ...promedios, metricas_fraude: metricasFraude },
-          respuestas: todasLasRespuestas.map(r => ({ ...r, tiempo_respuesta: 0 }))
-        })
+      const resultadoGuardado = await finalizarTest({
+        candidatoId, procesoId, token, testId: BIG_FIVE_ID, sesionId: sesionIdActual,
+        puntajeBruto: { ...promedios, metricas_fraude: metricasFraude },
+        respuestas: todasLasRespuestas.map(r => ({ ...r, tiempo_respuesta: 0 })),
       })
-      const payload = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        console.error('Error al guardar sesión:', payload.error)
-        setFinalizado(false)
-      }
+      if (resultadoGuardado.ok) setFinalizado(true)
+      else setErrorGuardado(resultadoGuardado.error)
     }
   }
 
@@ -160,6 +154,14 @@ export default function TestPage() {
       <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
         <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{error}</p>
         <button onClick={() => { setError(null); setIntentoCarga(i => i + 1) }} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
+      </div>
+    </div>
+  )
+  if (errorGuardado) return (
+    <div style={estilos.centro}>
+      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
+        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{MENSAJE_ERROR_GUARDADO}</p>
+        <button onClick={() => calcularResultado(respuestas)} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
       </div>
     </div>
   )

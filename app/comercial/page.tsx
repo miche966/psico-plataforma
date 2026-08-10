@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
+import { finalizarTest, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
 
 interface Item {
   id: string
@@ -27,6 +28,7 @@ export default function ComercialPage() {
   const [error, setError] = useState<string | null>(null)
   const [intentoCarga, setIntentoCarga] = useState(0)
   const [finalizado, setFinalizado] = useState(false)
+  const [errorGuardado, setErrorGuardado] = useState<string | null>(null)
   const enEvaluacion = useEvaluacionRedirect(finalizado)
   const [nombreCandidato, setNombreCandidato] = useState('')
   const searchParams = useSearchParams()
@@ -79,7 +81,6 @@ export default function ComercialPage() {
     setRespuestas(nuevasRespuestas)
     if (itemActual + 1 >= items.length) {
       calcularResultado(nuevasRespuestas)
-      setFinalizado(true)
     } else {
       setItemActual(itemActual + 1)
     }
@@ -102,13 +103,15 @@ export default function ComercialPage() {
     })
 
     if (!sesionIdActual || !candidatoId || !procesoId) return
+    setErrorGuardado(null)
     const token = searchParams.get('token') || ''
-    const response = await fetch('/api/evaluacion/public-data', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'finalize', candidato_id: candidatoId, proceso_id: procesoId, token, test_id: TEST_ID, sesion_id: sesionIdActual, puntaje_bruto: promedios, respuestas: todasLasRespuestas.map(r => ({ ...r, tiempo_respuesta: 0 })) })
+    const resultado = await finalizarTest({
+      candidatoId, procesoId, token, testId: TEST_ID, sesionId: sesionIdActual,
+      puntajeBruto: promedios,
+      respuestas: todasLasRespuestas.map(r => ({ ...r, tiempo_respuesta: 0 })),
     })
-    const payload = await response.json().catch(() => ({}))
-    if (!response.ok) console.error('Error al guardar evaluación comercial:', payload.error)
+    if (resultado.ok) setFinalizado(true)
+    else setErrorGuardado(resultado.error)
   }
 
   if (cargando) return <div style={s.centro}><p>Cargando test...</p></div>
@@ -117,6 +120,15 @@ export default function ComercialPage() {
       <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
         <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{error}</p>
         <button onClick={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
+      </div>
+    </div>
+  )
+
+  if (errorGuardado) return (
+    <div style={s.centro}>
+      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
+        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{MENSAJE_ERROR_GUARDADO}</p>
+        <button onClick={() => calcularResultado(respuestas)} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
       </div>
     </div>
   )
