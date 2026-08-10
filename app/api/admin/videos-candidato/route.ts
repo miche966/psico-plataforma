@@ -41,13 +41,15 @@ export async function GET(req: Request) {
       }
     }
 
+    const ordenMap = new Map<string, number>()
     if (vids && vids.length > 0) {
       const pregIds = Array.from(new Set(vids.map(x => x.pregunta_id).filter(Boolean)))
       if (pregIds.length > 0) {
         const { data: pregsData, error: pregsError } = await db
-          .from('preguntas_video').select('id, pregunta').in('id', pregIds)
+          .from('preguntas_video').select('id, pregunta, orden').in('id', pregIds)
         if (pregsError) throw pregsError
         const pregMap = new Map((pregsData || []).map(p => [p.id, p.pregunta]))
+        ;(pregsData || []).forEach(p => { if (typeof p.orden === 'number') ordenMap.set(p.id, p.orden) })
         vids.forEach(v => {
           if (!v.preguntas_video && v.pregunta_id) v.preguntas_video = { pregunta: pregMap.get(v.pregunta_id) }
         })
@@ -61,7 +63,21 @@ export async function GET(req: Request) {
       if (!ex || new Date(v.grabada_en) > new Date(ex.grabada_en)) vMap.set(k, v)
     })
 
-    return NextResponse.json({ videos: Array.from(vMap.values()) })
+    // Se ordena por el orden canonico de diseno de cada pregunta (no por cuando se grabo
+    // la respuesta): dos candidatos pueden grabar en momentos distintos, con reintentos, o
+    // responder ramas [CON_EXP]/[SIN_EXP] distintas, y grabada_en no refleja el orden real
+    // de la entrevista. Si a alguna pregunta le faltara el orden (dato inesperado), se la
+    // deja al final ordenada por grabada_en como resguardo, en vez de romper el listado.
+    const resultado = Array.from(vMap.values()).sort((a, b) => {
+      const oa = ordenMap.get(a.pregunta_id)
+      const ob = ordenMap.get(b.pregunta_id)
+      if (oa != null && ob != null) return oa - ob
+      if (oa != null) return -1
+      if (ob != null) return 1
+      return new Date(a.grabada_en).getTime() - new Date(b.grabada_en).getTime()
+    })
+
+    return NextResponse.json({ videos: resultado })
   } catch (error) {
     console.error('[admin/videos-candidato GET]', error)
     return NextResponse.json({ error: 'No se pudieron cargar las video entrevistas' }, { status: 500 })
