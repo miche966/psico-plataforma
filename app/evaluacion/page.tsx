@@ -37,6 +37,7 @@ const NOMBRES_TESTS: Record<string, { nombre: string, duracion: string }> = {
   verbal: { nombre: 'Razonamiento Verbal', duracion: '15 min' },
   integridad: { nombre: 'Test de Integridad Laboral', duracion: '10 min' },
   icar: { nombre: 'Razonamiento Cognitivo Abstracto (ICAR)', duracion: '15 min' },
+  dass21: { nombre: 'Screening de Salud Mental (DASS-21)', duracion: '15 min' },
   comercial: { nombre: 'Perfil Comercial', duracion: '15 min' },
   'sjt-comercial': { nombre: 'Casos Prácticos: Comercial', duracion: '20 min' },
   'tolerancia-frustracion': { nombre: 'Tolerancia a la Frustración', duracion: '10 min' },
