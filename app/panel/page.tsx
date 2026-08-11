@@ -14,6 +14,7 @@ import { mapperAuditoriaUniversal } from '@/lib/auditoriaMapper'
 import { formatearFecha, ordenarPorPostulacionDescendente, ordenarPorPostulacionAscendente } from '@/lib/postulaciones/ordenamiento'
 import { TEST_IDS, calcularProgresoEvaluacion } from '@/lib/progresoEvaluacion'
 import SaludOperativa from '@/components/SaludOperativa'
+import { FRASES_INCOMPLETAS_ID, FRASES_ESTIMULO } from '@/lib/frasesIncompletas'
 
 
 const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
@@ -308,7 +309,21 @@ export default function PanelEvaluador() {
         const pb = sesion.puntaje_bruto as any
         const pbStr = JSON.stringify(pb || {}).toLowerCase()
 
-        if (pb && (pb.por_factor || pbStr.includes('transcripcion') || pbStr.includes('mensajes') || pbStr.includes('interaccion'))) {
+        if (sesion.test_id === FRASES_INCOMPLETAS_ID && pb) {
+          // Frases Incompletas no usa las tablas genéricas items/respuestas: sus 22 frases
+          // están hardcodeadas en el front (app/frases-incompletas/page.tsx) y las respuestas
+          // se guardan directo en puntaje_bruto como { "1": "texto", "2": "texto", ... }, no
+          // como filas en la tabla respuestas. Se reconstruye la auditoría desde ahí.
+          const sinteticos = FRASES_ESTIMULO.map(estimulo => ({
+            id: `frases-${estimulo.id}`,
+            numItem: estimulo.id,
+            categoria: 'Frases Incompletas',
+            pregunta: estimulo.texto,
+            textoRedactado: pb[String(estimulo.id)] || 'Sin respuesta registrada.',
+            esTextoAbierto: true,
+          }))
+          setItemsAuditoria(sinteticos)
+        } else if (pb && (pb.por_factor || pbStr.includes('transcripcion') || pbStr.includes('mensajes') || pbStr.includes('interaccion'))) {
           const factores = pb.por_factor ? Object.entries(pb.por_factor) : []
           const sinteticos = factores.map(([fact, obj]: [string, any], idx) => ({
             id: `sintetico-${idx}`,
