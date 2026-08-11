@@ -1252,11 +1252,10 @@ export default function PanelEvaluador() {
                         {videosCandidato.map((v, i) => (
                           <div key={i} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
                             <h5 className="text-sm font-bold text-slate-800 mb-3">Pregunta {i + 1}: {v.preguntas_video?.pregunta || 'Presentación y Evaluación Competencial de Entrada'}</h5>
-                            <video 
+                            <video
                               id={`video-entrevista-${i}`}
-                              src={v.url_video} 
-                              controls 
-                              crossOrigin="anonymous"
+                              src={v.url_video}
+                              controls
                               preload="metadata"
                               className="w-full aspect-video rounded-xl shadow-sm bg-black mb-3" 
                             />
