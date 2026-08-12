@@ -33,7 +33,7 @@ export default function RolePlayPage() {
   const [mensajes, setMensajes] = useState<Array<{ role: 'user' | 'model', content: string; cooperacion?: number }>>([])
   const mensajesRef = useRef<Array<{ role: 'user' | 'model', content: string; cooperacion?: number }>>([])
   const [turnoActual, setTurnoActual] = useState(0)
-  const maxTurnos = 16
+  const maxTurnos = 20
   const evaluacionKey = esAtencion ? 'roleplay_atencion' : 'roleplay'
 
   useEffect(() => {
@@ -65,6 +65,7 @@ export default function RolePlayPage() {
   const [audioMutado, setAudioMutado] = useState(false)
   
   const recognitionRef = useRef<any>(null)
+  const acumuladoVozRef = useRef('')
 
   useEffect(() => {
     // Resetear estados por si Next.js reutiliza la instancia del componente
@@ -91,7 +92,9 @@ export default function RolePlayPage() {
     inicializarReconocimiento()
 
     return () => {
-      // Detener micrófono al salir
+      // Detener micrófono al salir. Se limpia el acumulado antes de abortar para que el
+      // "onend" que dispara abort() no termine enviando un mensaje parcial tras desmontar.
+      acumuladoVozRef.current = ''
       if (recognitionRef.current) {
         recognitionRef.current.abort()
       }
@@ -134,12 +137,18 @@ export default function RolePlayPage() {
       }
 
       const rec = new SpeechRecognition()
-      rec.continuous = false
+      // continuous=true: no cortar la escucha ante la primera pausa/silencio (pensar, respirar,
+      // organizar la idea). Con continuous=false el navegador terminaba la sesión de
+      // reconocimiento en la primera pausa natural y enviaba ese fragmento incompleto como si
+      // fuera el mensaje entero, obligando a reiniciar el micrófono a mitad de una frase (visto
+      // en producción: transcripciones cortadas en pedazos como "y bueno en realidad").
+      rec.continuous = true
       rec.interimResults = true
       rec.lang = 'es-UY'
 
       rec.onstart = () => {
         setEscuchando(true)
+        acumuladoVozRef.current = ''
         setTranscripcionParcial('')
       }
 
@@ -148,13 +157,12 @@ export default function RolePlayPage() {
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
             const finalResult = event.results[i][0].transcript
-            setTranscripcionParcial(finalResult)
-            enviarMensajeVoz(finalResult)
+            acumuladoVozRef.current = `${acumuladoVozRef.current} ${finalResult}`.trim()
           } else {
             interimTranscript += event.results[i][0].transcript
-            setTranscripcionParcial(interimTranscript)
           }
         }
+        setTranscripcionParcial(`${acumuladoVozRef.current} ${interimTranscript}`.trim())
       }
 
       rec.onerror = (event: any) => {
@@ -168,6 +176,12 @@ export default function RolePlayPage() {
 
       rec.onend = () => {
         setEscuchando(false)
+        // Se envía recién acá (al terminar realmente la escucha, sea porque el candidato
+        // presionó "detener" o porque el navegador cortó tras un silencio prolongado), con todo
+        // lo acumulado durante la sesión de escucha, no fragmento por fragmento.
+        const textoFinal = acumuladoVozRef.current
+        acumuladoVozRef.current = ''
+        if (textoFinal.trim()) enviarMensajeVoz(textoFinal)
       }
 
       recognitionRef.current = rec
@@ -178,9 +192,21 @@ export default function RolePlayPage() {
     }
   }
 
-  // Activa el reconocimiento por voz
+  // Activa o detiene el reconocimiento por voz. Ahora que continuous=true mantiene la
+  // escucha abierta entre pausas, el candidato controla cuándo terminó de hablar
+  // presionando el mismo botón de nuevo (en vez de que el navegador lo corte solo).
   function hablar() {
-    if (escuchando || guardandoEvaluacion) return
+    if (guardandoEvaluacion) return
+
+    if (escuchando) {
+      try {
+        recognitionRef.current.stop()
+      } catch (err) {
+        console.error(err)
+      }
+      return
+    }
+
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel() // Interrumpir respuesta previa si el usuario habla
     }
@@ -622,7 +648,8 @@ export default function RolePlayPage() {
                   <div className="flex flex-col items-center gap-2">
                     <button
                       onClick={hablar}
-                      disabled={escuchando || guardandoEvaluacion}
+                      disabled={guardandoEvaluacion}
+                      title={escuchando ? 'Presiona para detener y enviar' : 'Presiona para hablar'}
                       className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg ${
                         escuchando 
                           ? 'bg-red-500/20 border border-red-500/30 text-red-500 scale-105 animate-pulse' 
@@ -644,7 +671,7 @@ export default function RolePlayPage() {
                       </div>
                     )}
                     <p className="text-[10px] text-slate-400 font-medium animate-pulse text-center">
-                      {escuchando ? "Hable ahora. La simulación transcribirá su voz..." : "Presiona el micrófono para hablar"}
+                      {escuchando ? "Hable ahora. Cuando termines de decir tu idea, presiona el micrófono de nuevo para enviarla." : "Presiona el micrófono para hablar"}
                     </p>
                     <button
                       onClick={() => setFallbackTexto(true)}
