@@ -1370,6 +1370,8 @@ export default function PanelEvaluador() {
                             {(() => {
                               const pbRoleplay = sesionSeleccionada.puntaje_bruto as any
                               const transcripcion = pbRoleplay?.transcripcion || pbRoleplay?.mensajes || pbRoleplay?.historial
+                              const esRoleplayAtencion = sesionSeleccionada.test_id === 'd8e9f0a1-b2c3-4567-defa-777777777777'
+                              const nombreClienteIA = esRoleplayAtencion ? 'Cliente (Laura Benítez - IA)' : 'Cliente Moroso (Carlos Gómez - IA)'
                               if (Array.isArray(transcripcion) && transcripcion.length > 0) {
                                 return (
                                   <div className="mt-6 bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 shadow-xl space-y-4">
@@ -1418,7 +1420,7 @@ export default function PanelEvaluador() {
                                           >
                                             <div className="flex items-center gap-1.5 px-1">
                                               <span className={`text-[11px] font-extrabold tracking-wide ${esCandidato ? 'text-indigo-400' : 'text-amber-400'}`}>
-                                                {esCandidato ? `Evaluado (${agrupadoSeleccionado.nombre} ${agrupadoSeleccionado.apellido})` : 'Cliente Moroso (Carlos Gómez - IA)'}
+                                                {esCandidato ? `Evaluado (${agrupadoSeleccionado.nombre} ${agrupadoSeleccionado.apellido})` : nombreClienteIA}
                                               </span>
                                             </div>
 
