@@ -152,7 +152,7 @@ export function AuditoriaRespuestasDetallada({ respuestas, tituloTest = "Auditor
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                       Texto Redactado por el Evaluado:
                     </span>
-                    <p className="text-sm text-slate-800 italic font-mono leading-relaxed">
+                    <p className="text-sm text-slate-800 italic font-mono leading-relaxed whitespace-pre-line">
                       "{item.textoRedactado || 'Sin respuesta redactada.'}"
                     </p>
                   </div>

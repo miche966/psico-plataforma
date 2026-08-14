@@ -262,12 +262,20 @@ Evalúa al candidato en las siguientes 4 dimensiones críticas de desempeño, ot
 3. resolucionConflicto: Capacidad de llegar a un acuerdo o compromiso de pago viable en lugar de dejar la llamada inconclusa.
 4. adherenciaProtocolo: Uso de un lenguaje formal pero cercano, presentarse al inicio y mantener el profesionalismo durante toda la llamada.
 
+Además de cada puntaje, escribe un análisis breve (1-2 oraciones) que justifique ese puntaje específico para esa dimensión, citando algo concreto de lo que dijo o no dijo el candidato.
+
 Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
 {
   "empatia": 85,
   "manejoObjeciones": 70,
   "resolucionConflicto": 90,
   "adherenciaProtocolo": 80,
+  "analisisPorFactor": {
+    "empatia": "Análisis breve del desempeño en empatía, citando algo concreto de la llamada.",
+    "manejoObjeciones": "Análisis breve del manejo de objeciones.",
+    "resolucionConflicto": "Análisis breve de la resolución del conflicto.",
+    "adherenciaProtocolo": "Análisis breve de la adherencia al protocolo."
+  },
   "retroalimentacion": "Resumen de fortalezas y áreas de mejora observadas durante la llamada en 3 oraciones.",
   "acuerdoAlcanzado": true
 }
@@ -286,12 +294,20 @@ Evalúa al candidato en las siguientes 4 dimensiones críticas de desempeño de 
 3. resolucion: Capacidad de explicar las políticas de reintegro de la organización de forma clara y pactar un plazo de resolución realista.
 4. calidadServicio: Uso de un tono profesional, claro, asertivo y un vocabulario respetuoso y reconfortante.
 
+Además de cada puntaje, escribe un análisis breve (1-2 oraciones) que justifique ese puntaje específico para esa dimensión, citando algo concreto de lo que dijo o no dijo el candidato.
+
 Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
 {
   "empatia": 85,
   "indagacion": 70,
   "resolucion": 90,
   "calidadServicio": 80,
+  "analisisPorFactor": {
+    "empatia": "Análisis breve del desempeño en empatía, citando algo concreto de la llamada.",
+    "indagacion": "Análisis breve de la indagación del problema.",
+    "resolucion": "Análisis breve de la resolución ofrecida.",
+    "calidadServicio": "Análisis breve de la calidad de servicio."
+  },
   "retroalimentacion": "Resumen de fortalezas y áreas de mejora en servicio al cliente observadas durante la llamada en 3 oraciones.",
   "acuerdoAlcanzado": true
 }
@@ -315,7 +331,9 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
             model: 'gemini-2.5-flash',
             generationConfig: {
               // Mismo problema que en la Llamada de chat: 800 se corta con el thinking activo.
-              maxOutputTokens: 3000,
+              // Se sube un poco de 3000 a 3500 porque ahora tambien se pide un analisis breve
+              // por cada una de las 4 dimensiones, no solo el puntaje.
+              maxOutputTokens: 3500,
               responseMimeType: 'application/json'
             },
             safetySettings
@@ -398,8 +416,25 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
         'Adherencia a Protocolo': parseado.adherenceProtocolo || parseado.adherenciaProtocolo || 50,
       }
 
+      // Analisis cualitativo breve por dimension (separado de por_factor a proposito: varios
+      // lugares del codigo -- estadisticas, informes -- leen por_factor esperando que cada valor
+      // sea un numero plano; cambiar esa forma los hubiera roto).
+      const apf = parseado.analisisPorFactor || {}
+      const analisisPorFactor = isAtencion ? {
+        'Empatía y Escucha': apf.empatia || null,
+        'Indagación del Problema': apf.indagacion || null,
+        'Resolución de Conflictos': apf.resolucion || null,
+        'Calidad de Servicio': apf.calidadServicio || null,
+      } : {
+        'Empatía y Escucha': apf.empatia || null,
+        'Manejo de Objeciones': apf.manejoObjeciones || null,
+        'Resolución de Conflictos': apf.resolucionConflicto || null,
+        'Adherencia a Protocolo': apf.adherenciaProtocolo || null,
+      }
+
       const puntajeBruto = {
         por_factor: porFactor,
+        analisis_por_factor: analisisPorFactor,
         transcripcion: mensajes,
         retroalimentacion: parseado.retroalimentacion,
         acuerdo_alcanzado: parseado.acuerdoAlcanzado,

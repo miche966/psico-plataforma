@@ -331,12 +331,13 @@ export default function PanelEvaluador() {
             // binario correcto/incorrecto de un multiple choice (leyendo obj.correctas/obj.total
             // sobre un numero) daba siempre "0 de 0 (0%)".
             if (typeof obj === 'number') {
+              const analisisFactor = pb.analisis_por_factor?.[fact]
               return {
                 id: `sintetico-${idx}`,
                 numItem: idx + 1,
                 categoria: fact.toUpperCase(),
                 pregunta: `Evaluación de competencia situacional y desempeño en factor: ${fact}`,
-                textoRedactado: `Puntaje obtenido: ${obj}/100`,
+                textoRedactado: analisisFactor ? `Puntaje obtenido: ${obj}/100\n\n${analisisFactor}` : `Puntaje obtenido: ${obj}/100`,
                 esTextoAbierto: true,
               }
             }
