@@ -230,10 +230,23 @@ export default function ResponderPage() {
 
   async function confirmarRespuesta() {
     if (!entrevistaId) return
+
+    const blob = new Blob(chunksRef.current, { type: 'video/webm' })
+
+    // Salvaguarda: en algunos dispositivos la camara/microfono deja de producir datos a mitad
+    // de la entrevista (visto en produccion: la grabacion de la primera pregunta salia bien pero
+    // las siguientes quedaban en 0 bytes, sin que la candidata se enterara -- se subian igual y
+    // la entrevista se daba por completada). Si el blob viene vacio, no se sube: se le avisa a
+    // la candidata y se la manda a regrabar antes de poder avanzar.
+    if (blob.size === 0) {
+      alert('No se pudo grabar tu respuesta (la cámara o el micrófono no capturaron nada). Por favor, volvé a grabar antes de continuar.')
+      repetirGrabacion()
+      return
+    }
+
     setSubiendo(true)
     setErrorUpload(false)
 
-    const blob = new Blob(chunksRef.current, { type: 'video/webm' })
     const fileName = `${entrevistaId}/${candidatoId || 'anonimo'}/${preguntas[preguntaActual].id}_${Date.now()}.webm`
 
     let urlVideo = null
