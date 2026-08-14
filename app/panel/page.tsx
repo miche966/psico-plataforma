@@ -325,16 +325,32 @@ export default function PanelEvaluador() {
           setItemsAuditoria(sinteticos)
         } else if (pb && (pb.por_factor || pbStr.includes('transcripcion') || pbStr.includes('mensajes') || pbStr.includes('interaccion'))) {
           const factores = pb.por_factor ? Object.entries(pb.por_factor) : []
-          const sinteticos = factores.map(([fact, obj]: [string, any], idx) => ({
-            id: `sintetico-${idx}`,
-            numItem: idx + 1,
-            categoria: fact.toUpperCase(),
-            pregunta: `Evaluación de competencia situacional y desempeño en factor: ${fact}`,
-            opcionSeleccionada: `Rendimiento obtenido: ${obj.correctas || 0} de ${obj.total || 0} (${Math.round(((obj.correctas || 0) / (obj.total || 1)) * 100)}%)`,
-            opcionCorrecta: `Desempeño esperado: Nivel Máximo (${obj.total || 0}/${obj.total || 0})`,
-            esTextoAbierto: false,
-            esCorrecto: (obj.correctas || 0) === (obj.total || 0)
-          }))
+          const sinteticos = factores.map(([fact, obj]: [string, any], idx) => {
+            // Roleplay (y cualquier evaluación cualitativa similar) guarda cada factor como un
+            // puntaje continuo 0-100, no como un conteo de aciertos/total -- forzarlo al esquema
+            // binario correcto/incorrecto de un multiple choice (leyendo obj.correctas/obj.total
+            // sobre un numero) daba siempre "0 de 0 (0%)".
+            if (typeof obj === 'number') {
+              return {
+                id: `sintetico-${idx}`,
+                numItem: idx + 1,
+                categoria: fact.toUpperCase(),
+                pregunta: `Evaluación de competencia situacional y desempeño en factor: ${fact}`,
+                textoRedactado: `Puntaje obtenido: ${obj}/100`,
+                esTextoAbierto: true,
+              }
+            }
+            return {
+              id: `sintetico-${idx}`,
+              numItem: idx + 1,
+              categoria: fact.toUpperCase(),
+              pregunta: `Evaluación de competencia situacional y desempeño en factor: ${fact}`,
+              opcionSeleccionada: `Rendimiento obtenido: ${obj?.correctas || 0} de ${obj?.total || 0} (${Math.round(((obj?.correctas || 0) / (obj?.total || 1)) * 100)}%)`,
+              opcionCorrecta: `Desempeño esperado: Nivel Máximo (${obj?.total || 0}/${obj?.total || 0})`,
+              esTextoAbierto: false,
+              esCorrecto: (obj?.correctas || 0) === (obj?.total || 0)
+            }
+          })
 
           setItemsAuditoria(sinteticos.length > 0 ? sinteticos : [
             {
