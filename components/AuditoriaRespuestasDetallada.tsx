@@ -125,13 +125,17 @@ export function AuditoriaRespuestasDetallada({ respuestas, tituloTest = "Auditor
                       <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">
                         ✍️ Respuesta Redactada
                       </span>
-                    ) : item.esCorrecto ? (
+                    ) : item.esCorrecto === true ? (
                       <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5" /> Correcto
                       </span>
-                    ) : (
+                    ) : item.esCorrecto === false ? (
                       <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
                         <XCircle className="w-3.5 h-3.5" /> Incorrecto
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
+                        Respuesta Registrada
                       </span>
                     )}
                   </div>
@@ -157,9 +161,11 @@ export function AuditoriaRespuestasDetallada({ respuestas, tituloTest = "Auditor
                     {/* Opción Seleccionada por Evaluado */}
                     <div
                       className={`p-3 rounded-xl border ${
-                        item.esCorrecto
+                        item.esCorrecto === true
                           ? 'bg-emerald-50/60 border-emerald-200 text-emerald-950'
-                          : 'bg-rose-50/60 border-rose-200 text-rose-950'
+                          : item.esCorrecto === false
+                          ? 'bg-rose-50/60 border-rose-200 text-rose-950'
+                          : 'bg-slate-50 border-slate-200 text-slate-800'
                       }`}
                     >
                       <span className="block font-bold text-[11px] uppercase tracking-wider mb-1 opacity-75">
@@ -171,7 +177,7 @@ export function AuditoriaRespuestasDetallada({ respuestas, tituloTest = "Auditor
                     </div>
 
                     {/* Opción Correcta / Esperada */}
-                    {!item.esCorrecto && item.opcionCorrecta && (
+                    {item.esCorrecto === false && item.opcionCorrecta && (
                       <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200 text-emerald-950">
                         <span className="block font-bold text-[11px] uppercase tracking-wider mb-1 text-emerald-700">
                           Respuesta Correcta / Esperada:

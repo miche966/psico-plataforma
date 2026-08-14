@@ -18,11 +18,19 @@ export function mapperAuditoriaUniversal(
 
   return items.map((item, index) => {
     const resp = respMap.get(item.id)
-    const esTextoAbierto = Boolean(item.es_texto_abierto || item.tipo === 'abierto' || testId.includes('dass21') || testId.includes('frases'))
+    const esTextoAbierto = Boolean(item.es_texto_abierto || item.tipo === 'abierto')
+    // Los tests de autoinforme (Big Five, HEXACO, DASS-21, Estrés Laboral, Integridad,
+    // Iniciativa y Dinamismo, Creatividad) no tienen una "respuesta correcta" -- no es una
+    // pregunta con opción válida/inválida, es una escala de acuerdo/frecuencia. La base de
+    // datos ya lo refleja: item.respuesta_correcta queda null a propósito para esos ítems.
+    // Antes, al no encontrar una, el código caía a opciones[0] como si esa fuera la
+    // respuesta correcta, mostrando un "Correcto/Incorrecto" sin sentido para un test de
+    // personalidad. Ahora, si no hay respuesta_correcta, no se fuerza ningún veredicto.
+    const tieneRespuestaCorrecta = Boolean(item.respuesta_correcta)
 
     let opcionSeleccionada = 'Sin respuesta registrada'
-    let opcionCorrecta = item.respuesta_correcta || (item.opciones ? item.opciones[0] : undefined)
-    let esCorrecto = false
+    let opcionCorrecta: string | undefined = tieneRespuestaCorrecta ? item.respuesta_correcta : undefined
+    let esCorrecto: boolean | undefined = tieneRespuestaCorrecta ? false : undefined
     let textoRedactado = undefined
 
     if (esTextoAbierto) {
@@ -32,23 +40,21 @@ export function mapperAuditoriaUniversal(
         opcionSeleccionada = resp.opcion_texto
       } else if (typeof resp.valor === 'number' && Array.isArray(item.opciones) && item.opciones.length > 0) {
         const idx = (resp.valor > 0 && resp.valor <= item.opciones.length) ? resp.valor - 1 : 0
-        opcionSeleccionada = item.opciones[idx] || item.respuesta_correcta || `Opción ${resp.valor}`
+        opcionSeleccionada = item.opciones[idx] || `Opción ${resp.valor}`
       } else if (typeof resp.valor === 'string') {
         opcionSeleccionada = resp.valor
-      } else if (resp.valor === 1 && item.respuesta_correcta) {
+      } else if (resp.valor === 1 && tieneRespuestaCorrecta) {
         opcionSeleccionada = item.respuesta_correcta
       } else {
         opcionSeleccionada = `Opción Registrada (${resp.valor})`
       }
 
-      if (opcionCorrecta) {
+      if (tieneRespuestaCorrecta) {
         esCorrecto = opcionSeleccionada.trim().toLowerCase() === String(opcionCorrecta).trim().toLowerCase() || resp.valor === 1
-      } else {
-        esCorrecto = true
       }
-    } else {
+    } else if (tieneRespuestaCorrecta) {
       // Fallback para sesiones finalizadas restauradas sin desglose fila a fila en tabla respuestas
-      opcionSeleccionada = item.respuesta_correcta || (item.opciones ? item.opciones[0] : 'Opción Seleccionada (Acreditada)')
+      opcionSeleccionada = item.respuesta_correcta
       esCorrecto = true
     }
 
