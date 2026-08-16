@@ -554,7 +554,7 @@ export default function RolePlayPage() {
                         <li><strong>Nombre:</strong> Carlos Gómez.</li>
                         <li><strong>Producto:</strong> Préstamo personal para Capital de Trabajo de su almacén.</li>
                         <li><strong>Situación de Mora:</strong> 45 días de atraso en la cuota mensual.</li>
-                        <li><strong>Monto adeudado:</strong> $12,500 (pesos Uruguayos).</li>
+                        <li><strong>Monto adeudado:</strong> $35,000 (pesos Uruguayos).</li>
                         <li><strong>Historial:</strong> Era un cliente con excelente conducta de pago, pero ha tenido dificultades recientes para regularizar sus cuotas.</li>
                       </ul>
                     </div>
