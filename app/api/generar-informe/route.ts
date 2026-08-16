@@ -223,6 +223,7 @@ REGLAS DE ORO DE REDACCIÓN (OBLIGATORIAS E INFLEXIBLES):
 8. SIN REFERENCIAS AL SOPORTE TECNOLÓGICO: Está estrictamente prohibido usar palabras como "video", "cámara", "grabación", "audio", "plataforma", "videoentrevista". Describe lo observado como "interacción directa", "comunicación discursiva", "estilo verbal", "comportamiento no verbal" o "presencia interactiva".
 9. INTEGRACIÓN INVISIBLE DE APORTES CUALITATIVOS Y SIMULACIONES (SI APLICA): Si se proveen datos de simulación, role play o transcripciones abajo, utilízalos EXCLUSIVAMENTE para enriquecer y matizar las conclusiones del perfil (estilo de persuasión, tolerancia ante la presión, búsqueda de consensos, escucha activa, manejo de objeciones). Queda ESTRICTAMENTE PROHIBIDO mencionar que se realizó o se observó una prueba, simulación o interacción, ni usar frases meta-referenciales ("como se observó en...", "durante una interacción directa...", "en el diálogo con..."). Redacta como una conclusión analítica consolidada y directa.
 10. CERO REDUNDANCIA ENTRE CAMPOS (REGLA CRÍTICA): "ajusteCargo.analisis", "fortalezas" y "oportunidadesMejora" parten de los mismos datos, pero cada uno cumple un rol distinto y NO debe repetir lo que ya dice otro campo. Antes de escribir cada uno, revisa mentalmente qué ya dijiste en los anteriores y evita reformular la misma idea con otras palabras. Roles:
+11. PROHIBIDA LA CONSTRUCCIÓN "ALINEAMIENTO DE EXPECTATIVAS": nunca uses la combinación "alineamiento de expectativas" en ninguna forma (ej: "las alineamiento de expectativas", "la alineamiento de expectativas del cliente/rol") — es gramaticalmente incorrecta y no depende de ningún dato puntual, es solo una muletilla a evitar. Para esa idea usa en cambio "las expectativas del cliente/rol", "lo que espera" o "se ajusta a lo que necesita", sin combinar la palabra "alineamiento" con "expectativas".
    - "ajusteCargo.analisis": 2-3 frases, ÚNICAMENTE sobre el encaje entre el perfil y las demandas concretas del puesto (${proceso?.cargo || 'N/A'}). No listes fortalezas ni menciones el bienestar.
    - "fortalezas" / "oportunidadesMejora": cada ítem debe combinar DOS O MÁS factores de los DATOS PARA ANÁLISIS de abajo (según la guía de interpretación) en una sola observación de comportamiento integrada (ej: responsabilidad alta + energía baja → "sostiene el cumplimiento incluso cuando el desgaste podría hacerle bajar el ritmo"). Prohibido describir un solo factor de forma aislada.
 
@@ -270,6 +271,7 @@ REGLAS DE ORO DE REDACCIÓN (OBLIGATORIAS E INFLEXIBLES):
 5. SIN META-LENGUAJE NI EXCUSAS DE DATOS FALTANTES: No escribas "Basado en los datos...", "El informe indica...". Si ciertos datos no están presentes, simplemente redacta analizando los disponibles, sin mención ni disculpa por lo que falta.
 6. SIN REFERENCIAS AL SOPORTE TECNOLÓGICO: Está estrictamente prohibido usar palabras como "video", "cámara", "grabación", "audio", "plataforma", "videoentrevista". Describe lo observado como "interacción directa", "comunicación discursiva", "estilo verbal", "comportamiento no verbal" o "presencia interactiva".
 7. Cada descripción de factor debe usar la GUÍA DE INTERPRETACIÓN de abajo para saber si, PARA ESE FACTOR PUNTUAL, un puntaje bajo es la señal de alerta o lo es uno alto — no asumas que "puntaje bajo" siempre significa algo negativo ni que siempre significa algo positivo, depende de cada factor.
+8. PROHIBIDA LA CONSTRUCCIÓN "ALINEAMIENTO DE EXPECTATIVAS": nunca uses la combinación "alineamiento de expectativas" en ninguna forma (ej: "las alineamiento de expectativas") — es gramaticalmente incorrecta. Para esa idea usa "las expectativas del rol", "lo que se espera de la función" u otra frase que no combine "alineamiento" con "expectativas".
 
 CONTEXTO DEL PUESTO: ${proceso?.cargo || 'N/A'}
 PERFIL CONDUCTUAL (MBTI): ${mbtiType}
@@ -360,6 +362,7 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
 REGLAS DE ESTILO (las mismas que ya se usaron abajo, síguelas igual):
 - Tono cercano, empático, atenuado y profesional. Sin tecnicismos de personalidad ni siglas de pruebas. Sin nombrar al candidato (usa "el perfil" o "la persona evaluada"). Sin adjetivos absolutos ("crucial", "excelente", "perfecta", "esencial", etc.).
 - No menciones videos, cámaras, plataformas ni ningún soporte tecnológico.
+- Nunca uses la construcción "alineamiento de expectativas" en ninguna forma (ej: "las alineamiento de expectativas") — es gramaticalmente incorrecta. Usa "las expectativas del rol" o "lo que se espera" en su lugar.
 
 TEXTOS YA ESCRITOS PARA ESTE INFORME (no los repitas, no los reformules con sinónimos, no vuelvas a describir lo mismo):
 - Encaje con el puesto: "${resultado.ajusteCargo?.analisis || ''}"
