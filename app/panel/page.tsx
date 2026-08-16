@@ -339,6 +339,7 @@ export default function PanelEvaluador() {
                 pregunta: `Evaluación de competencia situacional y desempeño en factor: ${fact}`,
                 textoRedactado: analisisFactor ? `Puntaje obtenido: ${obj}/100\n\n${analisisFactor}` : `Puntaje obtenido: ${obj}/100`,
                 esTextoAbierto: true,
+                tipoRespuesta: 'ia' as const,
               }
             }
             return {

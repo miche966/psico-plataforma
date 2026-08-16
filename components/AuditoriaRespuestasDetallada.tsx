@@ -15,6 +15,10 @@ export interface ItemAuditoria {
   esCorrecto?: boolean
   tiempoSegundos?: number
   puntaje?: number
+  // Distingue texto que efectivamente escribio el candidato (ej. Frases Incompletas) de un
+  // resumen/analisis generado por la IA (ej. puntaje por competencia del roleplay) -- son cosas
+  // distintas y no hay que atribuirle al candidato palabras que nunca escribio.
+  tipoRespuesta?: 'candidato' | 'ia'
 }
 
 interface Props {
@@ -60,22 +64,26 @@ export function AuditoriaRespuestasDetallada({ respuestas, tituloTest = "Auditor
           >
             Todos ({respuestas.length})
           </button>
-          <button
-            onClick={() => setFiltro('correctos')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-              filtro === 'correctos' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-            }`}
-          >
-            ✓ Correctos ({totalCorrectos})
-          </button>
-          <button
-            onClick={() => setFiltro('errores')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-              filtro === 'errores' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
-            }`}
-          >
-            ✗ Errores ({totalErrores})
-          </button>
+          {(totalCorrectos > 0 || totalErrores > 0) && (
+            <>
+              <button
+                onClick={() => setFiltro('correctos')}
+                className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                  filtro === 'correctos' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                }`}
+              >
+                ✓ Correctos ({totalCorrectos})
+              </button>
+              <button
+                onClick={() => setFiltro('errores')}
+                className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                  filtro === 'errores' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+                }`}
+              >
+                ✗ Errores ({totalErrores})
+              </button>
+            </>
+          )}
           {totalAbiertas > 0 && (
             <button
               onClick={() => setFiltro('redactadas')}
@@ -121,7 +129,11 @@ export function AuditoriaRespuestasDetallada({ respuestas, tituloTest = "Auditor
                       </span>
                     )}
 
-                    {item.esTextoAbierto ? (
+                    {item.esTextoAbierto && item.tipoRespuesta === 'ia' ? (
+                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-violet-50 text-violet-700 border border-violet-200 flex items-center gap-1">
+                        🤖 Análisis de IA
+                      </span>
+                    ) : item.esTextoAbierto ? (
                       <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">
                         ✍️ Respuesta Redactada
                       </span>
@@ -147,7 +159,16 @@ export function AuditoriaRespuestasDetallada({ respuestas, tituloTest = "Auditor
                 </div>
 
                 {/* Contenido de la Respuesta */}
-                {item.esTextoAbierto ? (
+                {item.esTextoAbierto && item.tipoRespuesta === 'ia' ? (
+                  <div className="p-3.5 bg-violet-50/50 rounded-xl border border-violet-200 space-y-1">
+                    <span className="text-[11px] font-bold text-violet-500 uppercase tracking-wider block">
+                      Análisis de la IA (no es texto del candidato):
+                    </span>
+                    <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-line">
+                      {item.textoRedactado || 'Sin análisis disponible.'}
+                    </p>
+                  </div>
+                ) : item.esTextoAbierto ? (
                   <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                       Texto Redactado por el Evaluado:
