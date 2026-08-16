@@ -182,7 +182,7 @@ ANÁLISIS CUALITATIVO DE LA TÉCNICA DE FRASES INCOMPLETAS (SACKS/ROTTER):
   * "relaciones" (Relaciones Interpersonales): 5.0 es clima de gran confianza y sociabilidad. Puntajes bajos (ej: 1.0 - 2.0) representan aislamiento, dificultades relacionales o tensión en el clima. Redacta un análisis de aislamiento/distancia.
   * "claridad_rol" (Claridad de funciones): 5.0 es conocimiento pleno del rol. Puntajes bajos (ej: 1.0 - 2.0) indican alta ambigüedad de funciones e inseguridad que requiere de guías estructuradas externas.
   * "autonomia": 5.0 es alta autogestión e independencia. Puntajes bajos (ej: 1.0 - 2.0) indican dependencia y necesidad de supervisión constante.
-  * "expectativas" (Alineación con el rol): 5.0 es alta motivación. Puntajes bajos indican brecha y desmotivación con la propuesta de valor.
+  * "expectativas" (Motivación y ajuste con la propuesta del puesto): 5.0 es alta motivación. Puntajes bajos indican brecha y desmotivación con la propuesta de valor. Al redactar sobre este factor, no combines las palabras "alineación"/"alineamiento" con "expectativas" y "rol" en una misma frase (genera construcciones gramaticalmente incorrectas como "alineamiento de expectativas del rol") — describe la motivación directamente, sin ese calco.
   * "resiliencia": 5.0 es adaptabilidad soberbia a la crisis. Puntajes bajos indican vulnerabilidad emocional y necesidad de validación externa.
   * "autoesteem" / "autoestima": 5.0 es alta seguridad. Puntajes bajos representan inseguridad técnica y temor marcado a cometer errores.
 
