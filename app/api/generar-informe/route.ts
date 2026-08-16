@@ -4,6 +4,7 @@ import { estimarMBTIDesdeSesiones } from '@/lib/baremos'
 import { requireAdminSession } from '@/lib/server/adminAuth'
 import { calcularMetaCompetencias } from '@/lib/metaCompetencias'
 import { detectarRedundanciaNarrativa, detectarFrasesTematicamenteRedundantes } from '@/lib/informeConsistencia'
+import { construirFactoresCrudos } from '@/lib/informeFactores'
 
 // Con Fluid Compute (activo por defecto en el proyecto, confirmado en el dashboard: Function Max
 // Duration = 300s) el plan Hobby ya no está limitado a 60s reales — ese límite quedó obsoleto y
@@ -105,54 +106,7 @@ export async function POST(req: Request) {
     const mbtiType = actual?.mbtiType || estimarMBTIDesdeSesiones(sesiones) || 'N/A';
 
     // 2. NORMALIZACIÓN Y EXTRACCIÓN DE FACTORES (EL "BUZÓN" UNIFICADO)
-    const factoresCrudos: Record<string, number> = {};
-    const NORMALIZACION_MAP: Record<string, string> = {
-        'relaciones': 'relaciones',
-        'relaciones interpersonales': 'relaciones',
-        'relaciones interpersonales y clima': 'relaciones',
-        'claridad_rol': 'claridad_rol',
-        'claridad de rol': 'claridad_rol',
-        'percepción de claridad de rol': 'claridad_rol',
-        'burnout': 'burnout',
-        'riesgo de agotamiento': 'burnout',
-        'equilibrio': 'equilibrio',
-        'balance vida-trabajo': 'equilibrio',
-        'extraversion': 'extraversion',
-        'amabilidad': 'amabilidad',
-        'responsabilidad': 'responsabilidad',
-        'neuroticismo': 'neuroticismo',
-        'apertura': 'apertura'
-    };
-
-    sesiones.forEach((s: any) => {
-        const scan = (obj: any) => {
-            if (!obj || typeof obj !== 'object') return;
-            Object.entries(obj).forEach(([k, v]) => {
-                const rawKey = k.toLowerCase().trim();
-                const cleanKey = NORMALIZACION_MAP[rawKey] || rawKey;
-                if (typeof v === 'number') factoresCrudos[cleanKey] = v;
-                if (typeof v === 'object') scan(v);
-            });
-        };
-        scan(s.puntaje_bruto);
-    });
-
-    // La IA recibe la escala final: alto = mayor estabilidad emocional.
-    if (typeof factoresCrudos.neuroticismo === 'number') {
-        factoresCrudos.estabilidad_emocional = Math.min(5, Math.max(0, 6 - factoresCrudos.neuroticismo));
-        delete factoresCrudos.neuroticismo;
-    }
-
-    // Estrés Laboral (burnout/equilibrio/relaciones/claridad_rol/carga_laboral) se guarda en su
-    // escala original: 1 = casi nunca sufre ese síntoma (bueno), 5 = lo sufre todo el tiempo
-    // (malo) — lo opuesto a como la IA interpreta el resto de los factores (alto = favorable).
-    // Sin este ajuste, un candidato con muy buen manejo del estrés (puntaje bajo = poco
-    // síntoma) se describía en el informe como en riesgo, y viceversa.
-    for (const factor of ['burnout', 'equilibrio', 'relaciones', 'claridad_rol', 'carga_laboral']) {
-        if (typeof factoresCrudos[factor] === 'number') {
-            factoresCrudos[factor] = Math.min(5, Math.max(0, 6 - factoresCrudos[factor]));
-        }
-    }
+    const factoresCrudos = construirFactoresCrudos(sesiones);
 
     // 3. COMPILACIÓN DE TRANSCRIPCIONES DE VIDEO-ENTREVISTAS
     let discursoVideos = '';
@@ -240,7 +194,16 @@ ANÁLISIS CUALITATIVO DE LA TÉCNICA DE FRASES INCOMPLETAS (SACKS/ROTTER):
 
 - Factores Estándar (Mayor puntaje es directamente favorable, sin necesidad de inversión de escala):
   * "logro" (Orientación al logro): 5.0 indica alta motivación para fijarse y cumplir metas exigentes. Puntajes bajos (ej: 1.0 - 2.0) indican menor motivación de logro, se beneficia de objetivos concretos y seguimiento cercano.
-  * "dinamismo" (Nivel de energía y ritmo de trabajo): 5.0 indica alta energía, capacidad de sostener varios frentes a la vez y reacción rápida. Puntajes bajos indican un estilo más pausado y reflexivo, que rinde mejor con tiempo para planificar.`;
+  * "dinamismo" (Nivel de energía y ritmo de trabajo): 5.0 indica alta energía, capacidad de sostener varios frentes a la vez y reacción rápida. Puntajes bajos indican un estilo más pausado y reflexivo, que rinde mejor con tiempo para planificar.
+  * "documentos", "comparacion", "concentracion", "errores_texto", "errores_numeros" (precisión y atención al detalle en tareas de oficina/soporte): 5.0 indica un desempeño prácticamente sin errores en ese tipo de tarea puntual. Puntajes bajos (ej: 0.0 - 1.5) indican una tasa de error alta y consistente en ese tipo de tarea específica — no un desliz aislado.
+  * "series", "matrices", "rotacion" (razonamiento lógico/abstracto): 5.0 indica un desempeño sólido en ese tipo de problema. Puntajes bajos indican mayor dificultad puntual con ese formato de razonamiento.
+  * "verbal_general", "numerico_general", "icar_general", "atencion_detalle_general" (desempeño global de la prueba cognitiva correspondiente, cuando no hay desglose más específico disponible): mismo criterio, 5.0 es un desempeño sólido, puntajes bajos indican mayor dificultad en ese tipo de tarea.
+
+PROPORCIONALIDAD DEL LENGUAJE (REGLA CRÍTICA PARA "oportunidadesMejora" Y PARA LA DESCRIPCIÓN POR FACTOR — TIENE PRIORIDAD SOBRE LA REGLA DE ORO 3 CUANDO ENTRAN EN CONFLICTO):
+La intensidad de la redacción debe reflejar la magnitud real del dato, dentro siempre de un tono profesional y nunca alarmista:
+- Puntajes extremos (ej: 0.0 - 1.0 de 5, o un factor de riesgo con esa misma lectura desfavorable) representan una tasa de error o una dificultad consistente y frecuente en esa tarea puntual, no un desliz ocasional. Redacta con claridad que es un punto de atención genuino y con peso real. Evita en estos casos expresiones que minimizan la frecuencia o el impacto ("en momentos puntuales", "ocasionalmente", "alguna vez"): son coherentes solo para brechas moderadas (aprox. 2.5 - 3.5), no para un extremo.
+- SI DOS FACTORES RELACIONADOS TIENEN PUNTAJES MUY DISTINTOS (ej: un 0.0 en uno y un 2.5 en otro, ambos del mismo tipo de tarea), NO los fusiones en una sola observación redactada al nivel del más leve de los dos — eso diluye la señal más grave. Trátalos por separado, o si van en el mismo ítem, que la redacción refleje primero y con más peso el extremo más bajo.
+- No presentes como "oportunidad de mejora" un factor cuyo puntaje ya es alto (4.0 o más) solo para completar la cantidad de ítems esperada. Si los datos disponibles no muestran una brecha real, es preferible listar una sola oportunidad de mejora (o enmarcarla como un matiz dentro de una fortaleza ya sólida) antes que inventar una debilidad que el propio dato contradice.`;
 
     const datosFactores = `DATOS PARA ANÁLISIS (FACTORES PSICOMÉTRICOS):\n${JSON.stringify(factoresCrudos)}`;
 
@@ -252,7 +215,7 @@ Eres un Consultor Senior en Desarrollo Humano y Psicólogo Organizacional. Tu mi
 REGLAS DE ORO DE REDACCIÓN (OBLIGATORIAS E INFLEXIBLES):
 1. TONO: Cercano, empático, equilibrado y corporativo. Habla de comportamientos y situaciones, NO de puntajes ni números.
 2. SIN TECNICISMOS NI JERGAS: Está strictly prohibido usar nombres de rasgos técnicos de personalidad (tales como "Extraversión", "Consciencia", "Amabilidad", "Neuroticismo", "Apertura"), siglas de pruebas ("Big Five", "DASS-21", "Sacks", "SJT"), o términos acartonados (como "resiliencia", "asertividad", "coherencia y fluidez", "riqueza de vocabulario", "seguridad al expresarse", "estructurar ideas complejas", "brechas cognitivas", "alineamiento operativo"). Traduce todo a un lenguaje cotidiano, fluido e inteligente (ej: en lugar de "Consciencia" di "capacidad para organizar el trabajo y hacer seguimiento"; en lugar de "Extraversión" di "facilidad para entablar diálogos y relacionarse"; en lugar de "Neuroticismo" di "estabilidad ante situaciones de presión"; en lugar de "seguridad al expresarse" di "estilo comunicativo directo y pausado").
-3. SIN MAXIMALISMOS: Prohibido usar adjetivos absolutos o grandilocuentes como "idealmente", "meticulosamente", "crucial", "esencial", "vital", "clave", "excelente", "soberbia", "perfectamente", "clara", "genuina", "total", "óptima", "necesaria" o "crítica". Utiliza una redacción atenuada, equilibrada y profesional (ej: "tiende a", "muestra propensión a", "encuentra facilidad en", "es valorable su disposición para", "se siente más cómodo en").
+3. SIN MAXIMALISMOS: Prohibido usar adjetivos absolutos o grandilocuentes como "idealmente", "meticulosamente", "crucial", "esencial", "vital", "clave", "excelente", "soberbia", "perfectamente", "clara", "genuina", "total", "óptima", "necesaria" o "crítica". Utiliza una redacción atenuada, equilibrada y profesional (ej: "tiende a", "muestra propensión a", "encuentra facilidad en", "es valorable su disposición para", "se siente más cómodo en"). EXCEPCIÓN OBLIGATORIA: esta atenuación aplica a puntajes moderados. Ante un puntaje extremo (0.0 - 1.0 de 5), la regla de PROPORCIONALIDAD DEL LENGUAJE de más abajo tiene prioridad sobre esta regla — no atenúes ni diluyas ese punto mezclándolo de forma genérica con un factor relacionado de puntaje distinto.
 4. ANONIMATO ABSOLUTO: No utilices el nombre del candidato en ninguna parte del análisis. Refiérete a él/ella únicamente como "el perfil", "la persona evaluada", "el postulante" o mediante estructuras impersonales.
 5. ESTRUCTURA DE ANÁLISIS: Cada punto debe explicar qué se observa, cómo actúa la persona y qué impacto tiene esto en el trabajo diario.
 6. SIN META-LENGUAJE NI EXCUSAS DE DATOS FALTANTES: No escribas "Basado en los datos...", "El informe indica...". Tampoco redactes advertencias sobre que la información está "incompleta", "ausente", "insuficiente". Si ciertos datos no están presentes, simplemente redacta analizando los disponibles, sin mención ni disculpa por lo que falta.
