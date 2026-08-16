@@ -5,6 +5,7 @@ import { requireAdminSession } from '@/lib/server/adminAuth'
 import { calcularMetaCompetencias } from '@/lib/metaCompetencias'
 import { detectarRedundanciaNarrativa, detectarFrasesTematicamenteRedundantes } from '@/lib/informeConsistencia'
 import { construirFactoresCrudos } from '@/lib/informeFactores'
+import { sanearProfundo } from '@/lib/informeSaneador'
 
 // Con Fluid Compute (activo por defecto en el proyecto, confirmado en el dashboard: Function Max
 // Duration = 300s) el plan Hobby ya no está limitado a 60s reales — ese límite quedó obsoleto y
@@ -477,7 +478,7 @@ Devuelve ÚNICAMENTE este JSON: { "resumenEjecutivo": "...", "fundamentacion": "
 
     const totalDuration = ((Date.now() - apiCallStartTime) / 1000).toFixed(2);
     console.log(`[INFO] [GENERAR INFORME] Informe generado exitosamente en ${totalDuration}s.`);
-    return NextResponse.json(resultado);
+    return NextResponse.json(sanearProfundo(resultado));
 
   } catch (error: any) {
     console.error('[FATAL ERROR]:', error.message);
