@@ -297,7 +297,12 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
      "estabilidad_emocional": "Estabilidad ante la presión...",
      "apertura": "Disposición al cambio...",
      "logro": "Orientación al logro y motivación de éxito (solo si hay datos disponibles)...",
-     "dinamismo": "Nivel de energía y ritmo de trabajo (solo si hay datos disponibles)..."
+     "dinamismo": "Nivel de energía y ritmo de trabajo (solo si hay datos disponibles)...",
+     "documentos": "Orden y prolijidad en el manejo de documentos y registros (solo si hay datos disponibles, aplica la PROPORCIONALIDAD DEL LENGUAJE de la guía si el puntaje es extremo)...",
+     "comparacion": "Velocidad y precisión al comparar o revisar información (solo si hay datos disponibles, aplica la PROPORCIONALIDAD DEL LENGUAJE si el puntaje es extremo)...",
+     "concentracion": "Nivel de foco y sostenimiento de la atención durante la jornada (solo si hay datos disponibles, aplica la PROPORCIONALIDAD DEL LENGUAJE si el puntaje es extremo)...",
+     "errores_texto": "Precisión al escribir y revisar textos (solo si hay datos disponibles, aplica la PROPORCIONALIDAD DEL LENGUAJE si el puntaje es extremo)...",
+     "errores_numeros": "Precisión al manejar datos numéricos (solo si hay datos disponibles, aplica la PROPORCIONALIDAD DEL LENGUAJE si el puntaje es extremo)..."
   },
   "analisisEntrevista": ${tieneVideos ? `{
     "trayectoriaMotivacion": "Un párrafo sobre trayectoria, estabilidad y motivación laboral del perfil.",
