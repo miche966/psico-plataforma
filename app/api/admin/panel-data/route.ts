@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/server/adminAuth'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { readAll } from '@/lib/server/readAll'
+import { candidatoIdsEnProcesos } from '@/lib/server/procesoScope'
 
 export async function GET(req: Request) {
   try {
@@ -9,7 +10,7 @@ export async function GET(req: Request) {
     if (auth.response) return auth.response
 
     const db = createSupabaseAdmin()
-    const [candidatos, procesos, sesiones, respuestasVideo, preguntasVideo] = await Promise.all([
+    let [candidatos, procesos, sesiones, respuestasVideo, preguntasVideo] = await Promise.all([
       readAll(db, 'candidatos', '*', 'creado_en'),
       readAll(db, 'procesos', '*', 'creado_en'),
       readAll(db, 'sesiones', '*, procesos (id, nombre, cargo, competencias_requeridas, bateria_tests)', 'finalizada_en'),
@@ -22,6 +23,16 @@ export async function GET(req: Request) {
       progresoOperativo = await readAll(db, 'progreso_evaluaciones', '*', 'ultima_actividad_en')
     } catch {
       progresoOperativo = []
+    }
+
+    if (auth.role === 'viewer') {
+      const procesosPermitidos = new Set(auth.allowedProcesoIds)
+      procesos = (procesos || []).filter((p: any) => procesosPermitidos.has(p.id))
+      sesiones = (sesiones || []).filter((s: any) => s.proceso_id && procesosPermitidos.has(s.proceso_id))
+      progresoOperativo = (progresoOperativo || []).filter((p: any) => p.proceso_id && procesosPermitidos.has(p.proceso_id))
+      const idsCandidatos = await candidatoIdsEnProcesos(db, auth.allowedProcesoIds)
+      candidatos = (candidatos || []).filter((c: any) => idsCandidatos.has(c.id))
+      respuestasVideo = (respuestasVideo || []).filter((r: any) => idsCandidatos.has(r.candidato_id))
     }
 
     return NextResponse.json({

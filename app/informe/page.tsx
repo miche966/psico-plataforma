@@ -6,6 +6,7 @@ import { normalizarPuntaje, colorPuntaje, PUNTAJES_VERSION, interpretacionVigent
 import { detectarInconsistenciasNumericas } from '@/lib/informeConsistencia'
 import { supabase } from '@/lib/supabase'
 import { getAdminHeaders } from '@/lib/evaluacionLink'
+import { useAdminRole } from '@/lib/useAdminRole'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { InformePDF } from '@/components/InformePDF'
 import Link from 'next/link'
@@ -264,6 +265,8 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
 }
 
 function InformePageContent() {
+  const { role } = useAdminRole()
+  const esViewer = role === 'viewer'
   const searchParams = useSearchParams()
   const id = searchParams.get('candidato')
 
@@ -587,6 +590,7 @@ function InformePageContent() {
   })
 
   async function generarIA() {
+    if (esViewer) return
     setGenerating(true)
     try {
       const mbtiCalculado = inf.mbtiType || estimarMBTIDesdeSesiones(sesiones)
@@ -754,6 +758,7 @@ function InformePageContent() {
   }
 
   async function guardar() {
+    if (esViewer) return
     setSaving(true)
     try {
       const response = await fetch('/api/admin/informe-data', {
@@ -874,12 +879,16 @@ PsicoPlataforma - Gestión Inteligente de Talento
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button onClick={generarIA} disabled={generating} style={{ ...s.btnGen, opacity: generating ? 0.6 : 1 }}>
-              {generating ? 'Analizando...' : '✦ Generar con IA'}
-            </button>
-            <button onClick={guardar} disabled={saving} style={{ ...s.btnSave, opacity: saving ? 0.6 : 1 }}>
-              {saving ? 'Guardando...' : 'Guardar Cambios'}
-            </button>
+            {!esViewer && (
+              <>
+                <button onClick={generarIA} disabled={generating} style={{ ...s.btnGen, opacity: generating ? 0.6 : 1 }}>
+                  {generating ? 'Analizando...' : '✦ Generar con IA'}
+                </button>
+                <button onClick={guardar} disabled={saving} style={{ ...s.btnSave, opacity: saving ? 0.6 : 1 }}>
+                  {saving ? 'Guardando...' : 'Guardar Cambios'}
+                </button>
+              </>
+            )}
             <button
               onClick={descargarTXT}
               style={{

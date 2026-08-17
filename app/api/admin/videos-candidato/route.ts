@@ -13,6 +13,12 @@ export async function GET(req: Request) {
 
     const db = createSupabaseAdmin()
 
+    if (auth.role === 'viewer') {
+      const { data: sesionPermitida } = await db
+        .from('sesiones').select('id').eq('candidato_id', candidatoId).in('proceso_id', auth.allowedProcesoIds).limit(1).maybeSingle()
+      if (!sesionPermitida) return NextResponse.json({ error: 'Candidato no encontrado' }, { status: 404 })
+    }
+
     let vids: any[] | null = null
     const { data: vidsDirect, error: vidsDirectError } = await db
       .from('respuestas_video')

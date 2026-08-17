@@ -1,12 +1,14 @@
 import * as nodemailer from 'nodemailer';
 import { NextResponse } from 'next/server';
 import { generarTokenEvaluacion } from '@/lib/server/evaluacionToken'
-import { requireAdminSession } from '@/lib/server/adminAuth'
+import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 
 export async function POST(req: Request) {
   try {
     const auth = await requireAdminSession(req)
     if (auth.response) return auth.response
+    const bloqueado = requireFullAdmin(auth)
+    if (bloqueado) return bloqueado
     const { email, nombre, proceso, link: linkOriginal, pendientes, candidato_id, proceso_id } = await req.json();
     let link = linkOriginal;
     if (candidato_id && proceso_id) {
@@ -111,6 +113,8 @@ export async function GET(req: Request) {
   try {
     const auth = await requireAdminSession(req)
     if (auth.response) return auth.response
+    const bloqueado = requireFullAdmin(auth)
+    if (bloqueado) return bloqueado
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ error: 'Configuración de Supabase incompleta' }, { status: 500 })

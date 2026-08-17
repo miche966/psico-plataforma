@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server'
-import { requireAdminSession } from '@/lib/server/adminAuth'
+import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 
 export async function GET(request: Request) {
   const auth = await requireAdminSession(request)
   if (auth.response) return auth.response
+  // Biblioteca de preguntas compartida entre procesos, sin un dueno por proceso claro para
+  // acotar -- se bloquea entera para viewer en vez de intentar filtrarla (ver plan de roles).
+  const bloqueado = requireFullAdmin(auth)
+  if (bloqueado) return bloqueado
   const id = new URL(request.url).searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'Falta id de entrevista' }, { status: 400 })
 
@@ -45,6 +49,8 @@ function aplicarPrefijo(texto: string, perfil: string) {
 export async function POST(request: Request) {
   const auth = await requireAdminSession(request)
   if (auth.response) return auth.response
+  const bloqueado = requireFullAdmin(auth)
+  if (bloqueado) return bloqueado
 
   try {
     const body = await request.json().catch(() => ({}))

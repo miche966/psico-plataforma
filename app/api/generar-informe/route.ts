@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { estimarMBTIDesdeSesiones } from '@/lib/baremos'
-import { requireAdminSession } from '@/lib/server/adminAuth'
+import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { calcularMetaCompetencias } from '@/lib/metaCompetencias'
 import { detectarRedundanciaNarrativa, detectarFrasesTematicamenteRedundantes } from '@/lib/informeConsistencia'
 import { construirFactoresCrudos } from '@/lib/informeFactores'
@@ -86,6 +86,8 @@ export async function POST(req: Request) {
   try {
     const auth = await requireAdminSession(req)
     if (auth.response) return auth.response
+    const bloqueado = requireFullAdmin(auth)
+    if (bloqueado) return bloqueado
 
     const payload = await req.json();
     const { candidato, proceso, sesiones, actual, videos } = payload;

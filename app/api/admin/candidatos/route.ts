@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
-import { requireAdminSession } from '@/lib/server/adminAuth'
+import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { candidatoIdsEnProcesos } from '@/lib/server/procesoScope'
 
 export async function GET(request: Request) {
   const auth = await requireAdminSession(request)
@@ -8,14 +9,20 @@ export async function GET(request: Request) {
 
   try {
     const db = createSupabaseAdmin()
-    const { data: candidatos, error } = await db
+    const { data: candidatosSinFiltrar, error } = await db
       .from('candidatos')
       .select('*')
       .order('creado_en', { ascending: false })
     if (error) throw error
 
+    let candidatos = candidatosSinFiltrar || []
+    if (auth.role === 'viewer') {
+      const idsPermitidos = await candidatoIdsEnProcesos(db, auth.allowedProcesoIds)
+      candidatos = candidatos.filter((c: any) => idsPermitidos.has(c.id))
+    }
+
     // Chunk candidate IDs to avoid the 1000-row PostgREST select limit in Supabase
-    const candidateIds = candidatos ? candidatos.map((c: any) => c.id) : []
+    const candidateIds = candidatos.map((c: any) => c.id)
     const chunkSize = 50
     const chunks: string[][] = []
     for (let i = 0; i < candidateIds.length; i += chunkSize) {
@@ -45,6 +52,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const auth = await requireAdminSession(request)
   if (auth.response) return auth.response
+  const bloqueado = requireFullAdmin(auth)
+  if (bloqueado) return bloqueado
 
   try {
     const body = await request.json().catch(() => ({}))

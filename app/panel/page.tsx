@@ -15,6 +15,7 @@ import { formatearFecha, ordenarPorPostulacionDescendente, ordenarPorPostulacion
 import { TEST_IDS, calcularProgresoEvaluacion } from '@/lib/progresoEvaluacion'
 import SaludOperativa from '@/components/SaludOperativa'
 import { FRASES_INCOMPLETAS_ID, FRASES_ESTIMULO } from '@/lib/frasesIncompletas'
+import { useAdminRole } from '@/lib/useAdminRole'
 
 
 const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
@@ -254,6 +255,8 @@ async function generarResumenIA(candidato: CandidatoAgrupado) {
 
 
 export default function PanelEvaluador() {
+  const { role } = useAdminRole()
+  const esViewer = role === 'viewer'
   const [tab, setTab] = useState<'evaluaciones' | 'gestion' | 'dashboard' | 'historial' | 'diagnostico' | 'salud'>('evaluaciones')
   const [candidatos, setCandidatos] = useState<CandidatoAgrupado[]>([])
   const [procesos, setProcesos] = useState<any[]>([])
@@ -274,6 +277,7 @@ export default function PanelEvaluador() {
   const router = useRouter()
 
   async function procesarVideoConIA(respuestaId: string, urlVideo: string, idx: number) {
+    if (esViewer) return
     if (procesandoVideos[respuestaId]) return
     setProcesandoVideos(prev => ({ ...prev, [respuestaId]: true }))
     try {
@@ -530,6 +534,7 @@ export default function PanelEvaluador() {
   }
 
   async function enviarRecordatorio(c: CandidatoAgrupado) {
+    if (esViewer) return
     if (!c.progreso || c.progreso.completados === c.progreso.total) return
     if (!c.proceso_id) return
 
@@ -1194,15 +1199,17 @@ export default function PanelEvaluador() {
                         <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-pulse" />
                         <h3 className="text-[10px] font-bold text-indigo-900 uppercase tracking-widest">Resumen Ejecutivo IA</h3>
                       </div>
-                      <button
-                        onClick={async () => {
-                          const res = await generarResumenIA(agrupadoSeleccionado)
-                          setAgrupadoSeleccionado({ ...agrupadoSeleccionado, resumen_ia: res })
-                        }}
-                        className="text-[9px] font-bold bg-indigo-600 text-white px-2 py-1 rounded-lg hover:bg-indigo-700 transition-all"
-                      >
-                        {agrupadoSeleccionado.resumen_ia ? 'Regenerar' : 'Generar Informe'}
-                      </button>
+                      {!esViewer && (
+                        <button
+                          onClick={async () => {
+                            const res = await generarResumenIA(agrupadoSeleccionado)
+                            setAgrupadoSeleccionado({ ...agrupadoSeleccionado, resumen_ia: res })
+                          }}
+                          className="text-[9px] font-bold bg-indigo-600 text-white px-2 py-1 rounded-lg hover:bg-indigo-700 transition-all"
+                        >
+                          {agrupadoSeleccionado.resumen_ia ? 'Regenerar' : 'Generar Informe'}
+                        </button>
+                      )}
                     </div>
                     {agrupadoSeleccionado.resumen_ia ? (
                       <div className="text-xs text-slate-600 leading-relaxed space-y-2">{agrupadoSeleccionado.resumen_ia}</div>

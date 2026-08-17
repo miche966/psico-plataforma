@@ -63,9 +63,23 @@ export async function GET(req: Request) {
     if (!supabaseUrl || !serviceKey) return NextResponse.json({ error: 'Seguimiento operativo no configurado en el servidor' }, { status: 503 })
 
     const url = new URL(req.url)
+    const procesoIdSolicitado = url.searchParams.get('proceso_id')
+
+    if (auth.role === 'viewer') {
+      if (procesoIdSolicitado && !auth.allowedProcesoIds.includes(procesoIdSolicitado)) {
+        return NextResponse.json({ data: [] })
+      }
+      if (!auth.allowedProcesoIds.length) return NextResponse.json({ data: [] })
+    }
+
     const query = new URLSearchParams({ select: '*', order: 'ultima_actividad_en.desc.nullslast' })
     if (url.searchParams.get('candidato_id')) query.set('candidato_id', `eq.${url.searchParams.get('candidato_id')}`)
-    if (url.searchParams.get('proceso_id')) query.set('proceso_id', `eq.${url.searchParams.get('proceso_id')}`)
+    if (procesoIdSolicitado) {
+      query.set('proceso_id', `eq.${procesoIdSolicitado}`)
+    } else if (auth.role === 'viewer') {
+      // No se confia en que el llamador filtre por su cuenta -- se acota siempre en el servidor.
+      query.set('proceso_id', `in.(${auth.allowedProcesoIds.join(',')})`)
+    }
     const response = await fetch(`${supabaseUrl}/rest/v1/progreso_evaluaciones?${query.toString()}`, {
       headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
       cache: 'no-store',

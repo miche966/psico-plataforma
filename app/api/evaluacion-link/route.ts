@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import { generarTokenEvaluacion } from '@/lib/server/evaluacionToken'
-import { requireAdminSession } from '@/lib/server/adminAuth'
+import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 
 export async function POST(req: Request) {
   try {
     const auth = await requireAdminSession(req)
     if (auth.response) return auth.response
+    const bloqueado = requireFullAdmin(auth)
+    if (bloqueado) return bloqueado
 
     const body = await req.json()
     const candidatoId = String(body.candidato_id || '')

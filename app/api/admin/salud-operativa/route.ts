@@ -9,19 +9,32 @@ export async function GET(req: Request) {
 
   try {
     const db = createSupabaseAdmin()
-    const [sesionesPendientesRaw, recordatorios, progresoProblemas] = await Promise.all([
-      db.from('sesiones')
-        .select('candidato_id, proceso_id, test_id, candidatos (nombre, apellido, email), procesos (nombre, cargo, activo)')
-        .eq('estado', 'pendiente'),
+    const soloMisProcesos = auth.role === 'viewer' ? auth.allowedProcesoIds : null
+
+    let sesionesPendientesQuery = db.from('sesiones')
+      .select('candidato_id, proceso_id, test_id, candidatos (nombre, apellido, email), procesos (nombre, cargo, activo)')
+      .eq('estado', 'pendiente')
+    let progresoProblemasQuery = db.from('progreso_evaluaciones')
+      .select('candidato_id, proceso_id, evaluacion_key, estado, ultima_actividad_en, ultimo_error, candidatos (nombre, apellido, email)')
+      .in('estado', ['pausada', 'error', 'vencida'])
+      .order('ultima_actividad_en', { ascending: false })
+    if (soloMisProcesos) {
+      sesionesPendientesQuery = sesionesPendientesQuery.in('proceso_id', soloMisProcesos)
+      progresoProblemasQuery = progresoProblemasQuery.in('proceso_id', soloMisProcesos)
+    }
+
+    const [sesionesPendientesRaw, recordatoriosSinFiltrar, progresoProblemas] = await Promise.all([
+      sesionesPendientesQuery,
       readAll(db, 'recordatorios_evaluacion', 'candidato_id, proceso_id, estado, enviado_en', 'enviado_en'),
-      db.from('progreso_evaluaciones')
-        .select('candidato_id, proceso_id, evaluacion_key, estado, ultima_actividad_en, ultimo_error, candidatos (nombre, apellido, email)')
-        .in('estado', ['pausada', 'error', 'vencida'])
-        .order('ultima_actividad_en', { ascending: false }),
+      progresoProblemasQuery,
     ])
 
     if (sesionesPendientesRaw.error) throw sesionesPendientesRaw.error
     if (progresoProblemas.error) throw progresoProblemas.error
+
+    const recordatorios = soloMisProcesos
+      ? recordatoriosSinFiltrar.filter((r: any) => soloMisProcesos.includes(r.proceso_id))
+      : recordatoriosSinFiltrar
 
     const ultimoRecordatorioPorPar = new Map<string, any>()
     recordatorios.forEach((r: any) => {

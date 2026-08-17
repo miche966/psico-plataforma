@@ -13,6 +13,14 @@ export async function GET(req: Request) {
     if (!testId || !sesionId) return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
 
     const db = createSupabaseAdmin()
+
+    if (auth.role === 'viewer') {
+      const { data: sesion } = await db.from('sesiones').select('proceso_id').eq('id', sesionId).maybeSingle()
+      if (!sesion?.proceso_id || !auth.allowedProcesoIds.includes(sesion.proceso_id)) {
+        return NextResponse.json({ error: 'Sesión no encontrada' }, { status: 404 })
+      }
+    }
+
     const [{ data: items, error: itemsError }, { data: respuestas, error: respuestasError }] = await Promise.all([
       db.from('items').select('*').eq('test_id', testId).order('orden'),
       db.from('respuestas').select('*').eq('sesion_id', sesionId),

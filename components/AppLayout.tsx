@@ -3,12 +3,14 @@
 import { ReactNode, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Users, FileText, BarChart3, Video, LogOut, Bell, Sun, Moon } from 'lucide-react'
+import { LayoutDashboard, Users, FileText, BarChart3, Video, LogOut, Bell, Sun, Moon, UserCog } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useAdminRole } from '@/lib/useAdminRole'
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { role } = useAdminRole()
   const [novedades, setNovedades] = useState(0)
   const [isDarkMode, setIsDarkMode] = useState(false)
 
@@ -78,6 +80,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 { href: '/estadisticas', label: 'Estadísticas', icon: BarChart3 },
                 { href: '/candidatos', label: 'Base de Candidatos', icon: Users },
                 { href: '/entrevista-video', label: 'Librería Video', icon: Video },
+                ...(role === 'admin' ? [{ href: '/accesos', label: 'Accesos', icon: UserCog }] : []),
               ].map((item) => {
                 const isActive = pathname === item.href
                 const Icon = item.icon

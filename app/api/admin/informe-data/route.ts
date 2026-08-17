@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAdminSession } from '@/lib/server/adminAuth'
+import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 
 export async function GET(req: Request) {
@@ -17,6 +17,10 @@ export async function GET(req: Request) {
     if (sesionesError) throw sesionesError
     const lista = sesiones || []
     const procesoId = candidato.proceso_id || lista.find(s => s.proceso_id)?.proceso_id || null
+
+    if (auth.role === 'viewer' && (!procesoId || !auth.allowedProcesoIds.includes(procesoId))) {
+      return NextResponse.json({ error: 'Candidato no encontrado' }, { status: 404 })
+    }
 
     let proceso = null
     if (procesoId) {
@@ -48,6 +52,8 @@ export async function POST(req: Request) {
   try {
     const auth = await requireAdminSession(req)
     if (auth.response) return auth.response
+    const bloqueado = requireFullAdmin(auth)
+    if (bloqueado) return bloqueado
     const body = await req.json()
     if (!body.candidato_id || !body.contenido || JSON.stringify(body.contenido).length > 500000) {
       return NextResponse.json({ error: 'Datos de informe inválidos' }, { status: 400 })

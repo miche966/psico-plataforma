@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
-import { requireAdminSession } from '@/lib/server/adminAuth'
+import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
@@ -21,6 +21,8 @@ export async function POST(req: Request) {
     if (!tokenValido) {
       const auth = await requireAdminSession(req)
       if (auth.response) return auth.response
+      const bloqueado = requireFullAdmin(auth)
+      if (bloqueado) return bloqueado
     }
 
     const db = createSupabaseAdmin()

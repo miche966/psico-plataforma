@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
-import { requireAdminSession } from '@/lib/server/adminAuth'
+import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { readAll } from '@/lib/server/readAll'
+import { candidatoIdsEnProcesos } from '@/lib/server/procesoScope'
 
 export async function GET(req: Request) {
   try {
@@ -9,7 +10,11 @@ export async function GET(req: Request) {
     if (auth.response) return auth.response
     const db = createSupabaseAdmin()
     const procesoId = new URL(req.url).searchParams.get('proceso_id')
+
     if (procesoId) {
+      if (auth.role === 'viewer' && !auth.allowedProcesoIds.includes(procesoId)) {
+        return NextResponse.json({ error: 'No tenes acceso a este proceso' }, { status: 403 })
+      }
       const [{ data: sesiones, error: sesionesError }, { data: candidatos, error: candidatosError }, { data: respuestasVideo, error: videosError }, { data: preguntasVideo, error: preguntasError }] = await Promise.all([
         db.from('sesiones').select('candidato_id, test_id, estado').eq('proceso_id', procesoId).not('candidato_id', 'is', null),
         db.from('candidatos').select('id, nombre, apellido, email'),
@@ -17,8 +22,13 @@ export async function GET(req: Request) {
         db.from('preguntas_video').select('id, entrevista_id, pregunta')
       ])
       if (sesionesError || candidatosError || videosError || preguntasError) throw sesionesError || candidatosError || videosError || preguntasError
-      return NextResponse.json({ sesiones: sesiones || [], candidatos: candidatos || [], respuestasVideo: respuestasVideo || [], preguntasVideo: preguntasVideo || [] })
+      // Filtramos la lista global de candidatos al set real vinculado a este proceso (aplica siempre,
+      // no solo para viewer -- esta rama ya recorta por proceso_id en sesiones, corresponde recortar igual el resto).
+      const idsDelProceso = new Set((sesiones || []).map(s => s.candidato_id))
+      const candidatosDelProceso = (candidatos || []).filter(c => idsDelProceso.has(c.id))
+      return NextResponse.json({ sesiones: sesiones || [], candidatos: candidatosDelProceso, respuestasVideo: respuestasVideo || [], preguntasVideo: preguntasVideo || [] })
     }
+
     const [{ data, error }, { data: candidatos, error: candidatosError }, { data: entrevistas, error: entrevistasError }, sesiones, respuestasVideo] = await Promise.all([
       db.from('procesos').select('*').order('creado_en', { ascending: false }),
       db.from('candidatos').select('id, nombre, apellido, email').order('creado_en', { ascending: false }),
@@ -27,6 +37,17 @@ export async function GET(req: Request) {
       readAll(db, 'respuestas_video', 'candidato_id, entrevista_id')
     ])
     if (error || candidatosError || entrevistasError) throw error || candidatosError || entrevistasError
+
+    if (auth.role === 'viewer') {
+      const procesosPermitidos = new Set(auth.allowedProcesoIds)
+      const procesosFiltrados = (data || []).filter(p => procesosPermitidos.has(p.id))
+      const sesionesFiltradas = (sesiones || []).filter(s => s.proceso_id && procesosPermitidos.has(s.proceso_id))
+      const idsCandidatos = await candidatoIdsEnProcesos(db, auth.allowedProcesoIds)
+      const candidatosFiltrados = (candidatos || []).filter(c => idsCandidatos.has(c.id))
+      const respuestasFiltradas = (respuestasVideo || []).filter((r: any) => idsCandidatos.has(r.candidato_id))
+      return NextResponse.json({ data: procesosFiltrados, candidatos: candidatosFiltrados, entrevistas: entrevistas || [], sesiones: sesionesFiltradas, respuestasVideo: respuestasFiltradas })
+    }
+
     return NextResponse.json({ data: data || [], candidatos: candidatos || [], entrevistas: entrevistas || [], sesiones, respuestasVideo })
   } catch (error) {
     console.error('Error cargando procesos administrativos:', error)
@@ -67,6 +88,8 @@ function testIdDesdeSlug(slug: string) {
 export async function POST(request: Request) {
   const auth = await requireAdminSession(request)
   if (auth.response) return auth.response
+  const bloqueado = requireFullAdmin(auth)
+  if (bloqueado) return bloqueado
 
   try {
     const body = await request.json().catch(() => ({}))

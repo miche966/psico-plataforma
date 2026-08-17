@@ -8,6 +8,7 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 import AppLayout from '@/components/AppLayout'
 import { Plus, Check, Copy, FileText, Search, UserPlus, RotateCcw, BarChart3, Users, Sparkles, BellRing, AlertCircle, Info, LayoutDashboard, Award, Briefcase, X, Target, PieChart, ShieldAlert } from 'lucide-react'
 import { normalizarContextoInterpretacion, obtenerInterpretacion } from '@/lib/interpretaciones/resolver'
+import { useAdminRole } from '@/lib/useAdminRole'
 
 interface Candidato {
   id: string
@@ -24,6 +25,8 @@ interface Candidato {
 
 export default function CandidatosPage() {
   const router = useRouter()
+  const { role } = useAdminRole()
+  const esViewer = role === 'viewer'
   const [candidatos, setCandidatos] = useState<Candidato[]>([])
   const [cargando, setCargando] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -89,6 +92,7 @@ export default function CandidatosPage() {
   }
 
   async function resetearSesiones(candidatoId: string, nombre: string) {
+    if (esViewer) { alert('Esta cuenta tiene acceso de solo lectura.'); return }
     if (!confirm(`¿Quieres habilitar a ${nombre} para que pueda continuar sus respuestas? \n\nEsto reseteará el estado de sus evaluaciones finalizadas a 'en progreso'.`)) {
       return
     }
@@ -112,6 +116,7 @@ export default function CandidatosPage() {
   }
 
   async function guardarCandidato() {
+    if (esViewer) return
     if (!form.nombres || !form.apellidos || !form.email || !form.documento) return
 
     setGuardando(true)
@@ -147,6 +152,7 @@ export default function CandidatosPage() {
   }
 
   async function copiarLink(candidatoId: string, test: string = 'bigfive', opciones?: Record<string, string>) {
+    if (esViewer) { alert('Esta cuenta tiene acceso de solo lectura.'); return }
     const rutas: Record<string, string> = {
       bigfive: '/test',
       hexaco: '/hexaco',
@@ -261,16 +267,18 @@ export default function CandidatosPage() {
             {candidatos.length} candidato{candidatos.length !== 1 ? 's' : ''} registrado{candidatos.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <button 
-          onClick={() => setMostrarForm(!mostrarForm)}
-          className={`px-4 py-2 font-medium rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2 ${
-            mostrarForm 
-              ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' 
-              : 'bg-indigo-600 hover:bg-indigo-700 text-white border border-transparent'
-          }`}
-        >
-          {mostrarForm ? 'Cancelar' : <><UserPlus className="w-4 h-4" /> Nuevo candidato</>}
-        </button>
+        {!esViewer && (
+          <button
+            onClick={() => setMostrarForm(!mostrarForm)}
+            className={`px-4 py-2 font-medium rounded-lg shadow-sm transition-colors text-sm flex items-center gap-2 ${
+              mostrarForm
+                ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white border border-transparent'
+            }`}
+          >
+            {mostrarForm ? 'Cancelar' : <><UserPlus className="w-4 h-4" /> Nuevo candidato</>}
+          </button>
+        )}
       </div>
 
       {mostrarForm && (

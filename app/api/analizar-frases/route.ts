@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import { requireAdminSession } from '@/lib/server/adminAuth'
+import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 
 const FRASES_ESTIMULO: Record<number, string> = {
   1: 'Siempre me gustó',
@@ -31,6 +31,8 @@ export async function POST(req: Request) {
   try {
     const auth = await requireAdminSession(req)
     if (auth.response) return auth.response
+    const bloqueado = requireFullAdmin(auth)
+    if (bloqueado) return bloqueado
 
     const payload = await req.json()
     const { candidato, proceso, respuestas } = payload
