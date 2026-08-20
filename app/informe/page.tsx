@@ -75,6 +75,7 @@ interface InformeState {
 }
 
 import { ETQ } from '@/lib/labels'
+import { sanearFraseAlineamiento } from '@/lib/informeSaneador'
 import { estimarMBTI, estimarMBTIDesdeSesiones } from '@/lib/baremos'
 import { obtenerNarrativaFactor } from '@/lib/interpretaciones/narrativasFactor'
 
@@ -692,6 +693,13 @@ function InformePageContent() {
 
           // 5. Autocorrección de capitalización (Mayúscula al inicio de cada oración)
           limpio = limpio.replace(/(^\s*\w|[\.\!\?]\s+\w)/g, c => c.toUpperCase())
+
+          // 6. La normalización ETQ del paso 2 puede reconstruir "alineamiento de expectativas"
+          // al reemplazar la palabra suelta "expectativas" por la etiqueta completa del factor
+          // (ver lib/labels.ts) — el mismo texto que el servidor ya había limpiado con este mismo
+          // saneador antes de responder. Se vuelve a aplicar acá, al final, para no depender de
+          // en qué paso se reintrodujo.
+          limpio = sanearFraseAlineamiento(limpio)
 
           return limpio
         }
