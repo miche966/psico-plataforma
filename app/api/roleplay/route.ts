@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
+import { GEMINI_MODEL } from '@/lib/server/geminiModel'
 
 const SYSTEM_PROMPT = `
 Actúas como Carlos Gómez, un cliente de microfinanzas con un microcrédito comercial atrasado 45 días por un monto de $35,000 pesos uruguayos.
@@ -170,7 +171,7 @@ export async function POST(req: Request) {
           console.log(`[INFO] [ROLEPLAY CHAT] Llamando a Gemini (Intento ${attempts}/${maxAttempts})...`)
           
           const chatModel = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
+            model: GEMINI_MODEL,
             generationConfig: {
               // 150 no alcanzaba: gemini-2.5-flash usa "thinking" por defecto, que consume parte
               // del presupuesto de salida antes de emitir el JSON visible — con un techo tan bajo,
@@ -328,7 +329,7 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
           console.log(`[INFO] [ROLEPLAY EVALUAR] Llamando a Gemini (Intento ${evalAttempts}/${evalMaxAttempts})...`)
           
           const evalModel = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
+            model: GEMINI_MODEL,
             generationConfig: {
               // Mismo problema que en la Llamada de chat: 800 se corta con el thinking activo.
               // Se sube un poco de 3000 a 3500 porque ahora tambien se pide un analisis breve

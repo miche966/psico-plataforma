@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
+import { GEMINI_MODEL } from '@/lib/server/geminiModel'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
@@ -33,11 +34,12 @@ export async function POST(req: Request) {
         console.log(`[INFO] [IA SUMMARY] Llamando a Gemini (Intento ${attempts}/${maxAttempts})...`)
         
         const model = genAI.getGenerativeModel({
-          model: 'gemini-2.5-flash',
+          model: GEMINI_MODEL,
           generationConfig: {
-            // 500 arriesgaba el mismo corte que en generar-informe/roleplay: gemini-2.5-flash usa
-            // "thinking" por defecto, que resta presupuesto antes de escribir los 2 parrafos pedidos.
-            maxOutputTokens: 2000,
+            // Migrado a gemini-3.5-flash: en la simulación previa a la migración, 2000 se quedaba
+            // corto (MAX_TOKENS) porque este modelo usó ~35% más tokens de "thinking" que 2.5-flash
+            // para el mismo prompt real. Subido a 3500 con ese margen verificado.
+            maxOutputTokens: 3500,
             temperature: 0.3
           }
         })

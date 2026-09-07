@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
+import { GEMINI_MODEL } from '@/lib/server/geminiModel'
 
 const FRASES_ESTIMULO: Record<number, string> = {
   1: 'Siempre me gustó',
@@ -126,13 +127,15 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
         attempts++
         console.log(`[INFO] [ANALISIS FRASES] Llamando a Gemini (Intento ${attempts}/${maxAttempts})...`)
         
-        const model = genAI.getGenerativeModel({ 
-          model: 'gemini-2.5-flash',
+        const model = genAI.getGenerativeModel({
+          model: GEMINI_MODEL,
           generationConfig: {
-            // 1200 arriesgaba corte con el thinking activo, y este endpoint no tiene fallback si
-            // el JSON queda invalido (devuelve 500 directo, pudiendo trabar al candidato a mitad
-            // del test de Frases Incompletas).
-            maxOutputTokens: 3000,
+            // 3000 seguía sin alcanzar: confirmado con un candidato real (22 respuestas) que se
+            // cortaba a mitad del JSON con AMBOS modelos (2.5-flash y 3.5-flash), el "thinking" solo
+            // ya consumía ~2900 de los 3000 disponibles. Este endpoint no tiene fallback si el JSON
+            // queda invalido (devuelve 500 directo, pudiendo trabar al candidato a mitad del test de
+            // Frases Incompletas), así que el margen tiene que ser generoso.
+            maxOutputTokens: 5500,
             temperature: 0.2,
             responseMimeType: 'application/json'
           }

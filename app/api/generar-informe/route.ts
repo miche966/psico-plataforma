@@ -6,6 +6,7 @@ import { calcularMetaCompetencias } from '@/lib/metaCompetencias'
 import { detectarRedundanciaNarrativa, detectarFrasesTematicamenteRedundantes } from '@/lib/informeConsistencia'
 import { construirFactoresCrudos } from '@/lib/informeFactores'
 import { sanearProfundo } from '@/lib/informeSaneador'
+import { GEMINI_MODEL } from '@/lib/server/geminiModel'
 
 // Con Fluid Compute (activo por defecto en el proyecto, confirmado en el dashboard: Function Max
 // Duration = 300s) el plan Hobby ya no está limitado a 60s reales — ese límite quedó obsoleto y
@@ -24,7 +25,7 @@ async function generarSeccionConReintentos(
   etiqueta: string
 ): Promise<any> {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: GEMINI_MODEL,
     generationConfig: { maxOutputTokens, responseMimeType: 'application/json' }
   });
 
@@ -324,9 +325,13 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
 
     // Llamada 1A y 1B corren en paralelo (antes eran una sola llamada secuencial que tardaba 36-50s
     // por sí sola): el tiempo de esta etapa pasa a ser el de la más lenta de las dos, no la suma.
+    // 8000 alcanzaba en la mayoría de los casos, pero la simulación previa a migrar a gemini-3.5-flash
+    // mostró variabilidad alta en el "thinking" de la Llamada 1B (hasta 5662 tokens en una corrida real,
+    // vs 2125 de gemini-2.5-flash para el mismo candidato) — se sube el margen para no depender de que
+    // cada caso puntual tenga poco pensamiento interno.
     const [resultadoA, resultadoB] = await Promise.all([
-      generarSeccionConReintentos(genAI, promptA, 8000, 'Llamada 1A (fortalezas/ajuste)'),
-      generarSeccionConReintentos(genAI, promptB, 8000, 'Llamada 1B (factores/mbti/entrevista)'),
+      generarSeccionConReintentos(genAI, promptA, 11000, 'Llamada 1A (fortalezas/ajuste)'),
+      generarSeccionConReintentos(genAI, promptB, 11000, 'Llamada 1B (factores/mbti/entrevista)'),
     ]);
 
     const resultado: any = { ...resultadoA, ...resultadoB };
@@ -384,10 +389,12 @@ Ninguno de los dos campos puede reutilizar frases textuales de los textos ya esc
 Devuelve ÚNICAMENTE este JSON: { "resumenEjecutivo": "...", "fundamentacion": "..." }`;
 
         const modelSintesis = genAI.getGenerativeModel({
-          model: 'gemini-2.5-flash',
+          model: GEMINI_MODEL,
           // 1500 no alcanzaba: la respuesta se cortaba a mitad de una cadena JSON
           // ("Unterminated string in JSON") antes de terminar los 3+ párrafos pedidos.
-          generationConfig: { maxOutputTokens: 4000, responseMimeType: 'application/json' }
+          // Subido de 4000 a 6000 al migrar a gemini-3.5-flash, con el mismo margen de seguridad
+          // proporcional que el resto de los llamados de este endpoint.
+          generationConfig: { maxOutputTokens: 6000, responseMimeType: 'application/json' }
         });
 
         let resultadoSintesis: any = null;
@@ -450,8 +457,8 @@ Reescribe SOLO las frases problemáticas (podés dejar el resto igual si ya est�
 Devuelve ÚNICAMENTE este JSON: { "resumenEjecutivo": "...", "fundamentacion": "..." }`;
 
             const modelPulido = genAI.getGenerativeModel({
-              model: 'gemini-2.5-flash',
-              generationConfig: { maxOutputTokens: 8000, responseMimeType: 'application/json' }
+              model: GEMINI_MODEL,
+              generationConfig: { maxOutputTokens: 11000, responseMimeType: 'application/json' }
             });
             const respuestaPulido = await modelPulido.generateContent(promptPulido);
             const textoPulido = respuestaPulido.response.text();

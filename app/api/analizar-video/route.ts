@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
+import { GEMINI_MODEL } from '@/lib/server/geminiModel'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
@@ -85,9 +86,9 @@ export async function POST(req: Request) {
         console.log(`[INFO] [ANALIZAR VIDEO] Llamando a Gemini (Intento ${attempts}/${maxAttempts})...`)
         
         const model = genAI.getGenerativeModel({
-          model: 'gemini-2.5-flash',
+          model: GEMINI_MODEL,
           generationConfig: {
-            maxOutputTokens: 3000,
+            maxOutputTokens: 6000,
             temperature: 0.2,
             responseMimeType: 'application/json'
           }
