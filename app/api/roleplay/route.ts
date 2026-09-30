@@ -133,6 +133,11 @@ export async function POST(req: Request) {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
     // ACCIÓN 1: CONTINUACIÓN DE CHAT EN TIEMEMPO REAL
     if (action === 'chat') {
+      // A diferencia de iniciar/descartar/evaluar, esta acción no validaba token -- cualquiera
+      // podía llamarla sin autenticarse y usar la clave de Gemini del proyecto como proxy gratuito.
+      if (!candidatoId || !procesoId || !testId || !token || !validarTokenEvaluacion(String(token), String(candidatoId), String(procesoId))) {
+        return NextResponse.json({ error: 'Token de evaluación inválido o vencido' }, { status: 401 })
+      }
       let tempHistory = (mensajes || []).map((m: any) => ({
         role: m.role === 'user' ? 'user' : 'model',
         parts: [{ text: m.role === 'user' ? m.content : JSON.stringify({ respuesta: m.content }) }]

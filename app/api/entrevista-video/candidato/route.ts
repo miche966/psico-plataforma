@@ -2,8 +2,12 @@ import { NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 
+// Los tres parámetros son obligatorios: antes, si faltaba CUALQUIERA de los tres (no los tres
+// juntos), la función devolvía "válido" por error -- alcanzaba con omitir el token para saltarse
+// la validación por completo en guardar_respuesta (escritura sin autenticación real). El único
+// llamador real (app/entrevista-video/responder/page.tsx) siempre manda los tres juntos.
 function tokenValido(candidatoId: string, procesoId: string, token: string) {
-  if (!candidatoId || !procesoId || !token) return true
+  if (!candidatoId || !procesoId || !token) return false
   return validarTokenEvaluacion(token, candidatoId, procesoId)
 }
 

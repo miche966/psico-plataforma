@@ -62,14 +62,15 @@ export async function POST(request: Request) {
 
     const db = createSupabaseAdmin()
 
-    // 1. Verificar si el candidato ya existe (por email, sin distinguir mayúsculas, o por documento)
-    let { data: candidato, error: candError } = await db
-      .from('candidatos')
-      .select('*')
-      .or(`email.ilike.${email},documento.eq.${documento}`)
-      .maybeSingle()
-
-    if (candError) throw candError
+    // 1. Verificar si el candidato ya existe (por email, sin distinguir mayúsculas, o por documento).
+    // Dos consultas separadas en vez de interpolar email/documento dentro de un filtro .or() como
+    // texto: ese texto es sintaxis de filtro de PostgREST (coma/paréntesis son operadores), así que
+    // un valor con esos caracteres podía inyectar una cláusula de filtro adicional.
+    let { data: porEmail, error: emailError } = await db.from('candidatos').select('*').ilike('email', email).maybeSingle()
+    if (emailError) throw emailError
+    let { data: porDocumento, error: docError } = await db.from('candidatos').select('*').eq('documento', documento).maybeSingle()
+    if (docError) throw docError
+    let candidato = porEmail || porDocumento
 
     if (!candidato) {
       const { data: nuevoCandidato, error: createError } = await db
