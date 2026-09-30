@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { GEMINI_MODEL } from '@/lib/server/geminiModel'
+import { rlAdmin, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
@@ -20,6 +21,8 @@ export async function POST(req: Request) {
     if (prompt.length > 12000) {
       return NextResponse.json({ error: 'El contenido del resumen supera el límite permitido' }, { status: 413 })
     }
+    const { permitido } = await verificarLimite(rlAdmin, auth.user.email)
+    if (!permitido) return NextResponse.json(respuestaLimiteExcedido(), { status: 429 })
 
     let result = null
     let attempts = 0

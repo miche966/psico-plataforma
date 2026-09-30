@@ -3,6 +3,7 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/ge
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { GEMINI_MODEL } from '@/lib/server/geminiModel'
+import { rlEvaluacion, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
 
 const SYSTEM_PROMPT = `
 Actúas como Carlos Gómez, un cliente de microfinanzas con un microcrédito comercial atrasado 45 días por un monto de $35,000 pesos uruguayos.
@@ -138,6 +139,9 @@ export async function POST(req: Request) {
       if (!candidatoId || !procesoId || !testId || !token || !validarTokenEvaluacion(String(token), String(candidatoId), String(procesoId))) {
         return NextResponse.json({ error: 'Token de evaluación inválido o vencido' }, { status: 401 })
       }
+      const { permitido } = await verificarLimite(rlEvaluacion, String(candidatoId))
+      if (!permitido) return NextResponse.json(respuestaLimiteExcedido(), { status: 429 })
+
       let tempHistory = (mensajes || []).map((m: any) => ({
         role: m.role === 'user' ? 'user' : 'model',
         parts: [{ text: m.role === 'user' ? m.content : JSON.stringify({ respuesta: m.content }) }]
@@ -247,6 +251,8 @@ export async function POST(req: Request) {
       if (!candidatoId || !procesoId || !testId) {
         return NextResponse.json({ error: 'Faltan parámetros requeridos para guardar la sesión.' }, { status: 400 })
       }
+      const { permitido } = await verificarLimite(rlEvaluacion, String(candidatoId))
+      if (!permitido) return NextResponse.json(respuestaLimiteExcedido(), { status: 429 })
 
       const isAtencion = testId === 'd8e9f0a1-b2c3-4567-defa-777777777777'
 

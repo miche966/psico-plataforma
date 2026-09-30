@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { GEMINI_MODEL } from '@/lib/server/geminiModel'
+import { rlAdmin, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
 
 const FRASES_ESTIMULO: Record<number, string> = {
   1: 'Siempre me gustó',
@@ -41,6 +42,8 @@ export async function POST(req: Request) {
     if (!respuestas || typeof respuestas !== 'object' || respuestasEntries.length > 50 || respuestasEntries.some(([, value]) => String(value ?? '').length > 3000)) {
       return NextResponse.json({ error: 'Las respuestas no tienen un formato o tamaño válido' }, { status: 400 })
     }
+    const { permitido } = await verificarLimite(rlAdmin, candidato?.id ? String(candidato.id) : auth.user.email)
+    if (!permitido) return NextResponse.json(respuestaLimiteExcedido(), { status: 429 })
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: 'Falta la llave de API de Gemini.' }, { status: 500 })

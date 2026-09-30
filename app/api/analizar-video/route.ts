@@ -4,6 +4,7 @@ import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { GEMINI_MODEL } from '@/lib/server/geminiModel'
+import { rlEvaluacion, rlAdmin, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
@@ -19,12 +20,18 @@ export async function POST(req: Request) {
     }
 
     const tokenValido = Boolean(token) && validarTokenEvaluacion(String(token), String(candidato_id), String(proceso_id))
+    let claveLimite = String(candidato_id)
+    let limitador = rlEvaluacion
     if (!tokenValido) {
       const auth = await requireAdminSession(req)
       if (auth.response) return auth.response
       const bloqueado = requireFullAdmin(auth)
       if (bloqueado) return bloqueado
+      claveLimite = auth.user.email
+      limitador = rlAdmin
     }
+    const { permitido } = await verificarLimite(limitador, claveLimite)
+    if (!permitido) return NextResponse.json(respuestaLimiteExcedido(), { status: 429 })
 
     const db = createSupabaseAdmin()
     const { data: respuesta, error: respuestaError } = await db

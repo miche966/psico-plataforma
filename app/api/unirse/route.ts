@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { generarTokenEvaluacion } from '@/lib/server/evaluacionToken'
+import { rlPublico, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
 
 const SLUG_TO_ID: Record<string, string> = {
   'bigfive': 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -45,6 +46,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'desconocida'
+    const { permitido } = await verificarLimite(rlPublico, ip)
+    if (!permitido) return NextResponse.json(respuestaLimiteExcedido(), { status: 429 })
+
     const body = await request.json().catch(() => ({}))
     const nombres = String(body.nombres || '').trim()
     const apellidos = String(body.apellidos || '').trim()

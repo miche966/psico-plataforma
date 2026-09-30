@@ -7,6 +7,7 @@ import { detectarRedundanciaNarrativa, detectarFrasesTematicamenteRedundantes } 
 import { construirFactoresCrudos } from '@/lib/informeFactores'
 import { sanearProfundo } from '@/lib/informeSaneador'
 import { GEMINI_MODEL } from '@/lib/server/geminiModel'
+import { rlAdmin, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
 
 // Con Fluid Compute (activo por defecto en el proyecto, confirmado en el dashboard: Function Max
 // Duration = 300s) el plan Hobby ya no está limitado a 60s reales — ese límite quedó obsoleto y
@@ -95,6 +96,8 @@ export async function POST(req: Request) {
     if (!payload || JSON.stringify(payload).length > 500000) {
       return NextResponse.json({ error: 'El informe supera el tamaño permitido' }, { status: 413 });
     }
+    const { permitido } = await verificarLimite(rlAdmin, candidato?.id ? String(candidato.id) : auth.user.email)
+    if (!permitido) return NextResponse.json(respuestaLimiteExcedido(), { status: 429 });
     if (!Array.isArray(sesiones) || sesiones.length > 500 || (videos !== undefined && (!Array.isArray(videos) || videos.length > 200))) {
       return NextResponse.json({ error: 'La estructura del informe no es válida' }, { status: 400 });
     }
