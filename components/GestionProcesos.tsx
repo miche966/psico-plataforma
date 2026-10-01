@@ -171,7 +171,8 @@ export default function GestionProcesos() {
       if (!response.ok) throw new Error(resultado.error || 'Error en la carga masiva')
 
       await cargarDatos()
-      alert(`Carga completada: ${resultado.total ?? candidatosParaCargar.length} candidatos procesados correctamente.`)
+      const omitidos = resultado.omitidos ? `\n\nSe omitieron ${resultado.omitidos} fila(s) por tener un correo inválido o estar repetidas en el archivo.` : ''
+      alert(`Carga completada: ${resultado.total ?? candidatosParaCargar.length} candidatos procesados correctamente.${omitidos}`)
       setMostrarCargaMasiva(false)
       setTextoMasivo('')
     } catch (error: any) {
