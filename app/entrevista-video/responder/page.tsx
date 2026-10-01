@@ -370,7 +370,8 @@ export default function ResponderPage() {
         entrevistaId,
         preguntaId: preguntas[preguntaActual].id,
         duracion: preguntas[preguntaActual].tiempo_respuesta,
-        urlVideo
+        urlVideo,
+        fileName
       })
     })
     const guardarData = await guardarRes.json().catch(() => ({}))

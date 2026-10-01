@@ -1,6 +1,34 @@
 import { NextResponse } from 'next/server'
+import { HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
+import { r2Client, R2_BUCKET_NAME, R2_PUBLIC_URL } from '@/lib/r2'
+
+// Mismo limite que ya tiene configurado el bucket de Supabase Storage (videos-entrevista,
+// file_size_limit=52428800) -- se replica aca para que R2 (la vía primaria) sea consistente con el
+// fallback. Un video legitimo (bitrate throttleado a ~1.26 Mbps, cortado por tiempo_respuesta de
+// cada pregunta) nunca deberia acercarse a esto.
+const TAMANO_MAXIMO_VIDEO = 50 * 1024 * 1024
+
+// Verifica tamaño/tipo del objeto ya subido a R2 antes de darlo por valido. No se puede restringir
+// esto en la propia URL firmada (PutObjectCommand no soporta condiciones de tamaño como un
+// presigned POST), asi que se chequea despues de subido y se borra si no pasa.
+async function validarVideoR2(fileName: string): Promise<boolean> {
+  try {
+    const head = await r2Client.send(new HeadObjectCommand({ Bucket: R2_BUCKET_NAME, Key: fileName }))
+    const tamanoOk = typeof head.ContentLength === 'number' && head.ContentLength > 0 && head.ContentLength <= TAMANO_MAXIMO_VIDEO
+    const tipoOk = head.ContentType === 'video/webm'
+    if (tamanoOk && tipoOk) return true
+    await r2Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET_NAME, Key: fileName }))
+    return false
+  } catch (err) {
+    // Igual que el resto de las capas de seguridad secundarias de esta plataforma (rate limiting):
+    // si R2 no responde al HEAD, se deja pasar en vez de perder la respuesta del candidato por una
+    // falla transitoria de un servicio de terceros.
+    console.error('[entrevista-video/candidato] Error validando video en R2, se deja pasar:', err)
+    return true
+  }
+}
 
 // Los tres parámetros son obligatorios: antes, si faltaba CUALQUIERA de los tres (no los tres
 // juntos), la función devolvía "válido" por error -- alcanzaba con omitir el token para saltarse
@@ -84,13 +112,21 @@ export async function POST(request: Request) {
 
       if (body.exito) {
         const urlVideo = String(body.urlVideo || '')
+        const fileName = String(body.fileName || '')
+
+        let valido = true
+        if (urlVideo.startsWith(R2_PUBLIC_URL) && fileName) {
+          valido = await validarVideoR2(fileName)
+        }
+
         const { data, error } = await db.from('respuestas_video').insert({
           pregunta_id: preguntaId,
           candidato_id: candidatoId || null,
           entrevista_id: entrevistaId,
-          url_video: urlVideo,
+          url_video: valido ? urlVideo : null,
           duracion,
-          estado: 'completado'
+          estado: valido ? 'completado' : 'error_upload',
+          ...(valido ? {} : { transcripcion: 'Archivo subido no paso la validacion de tamano/tipo' })
         }).select('id').single()
         if (error) throw error
         return NextResponse.json({ respuesta: data })

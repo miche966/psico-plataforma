@@ -4,12 +4,20 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { r2Client, R2_BUCKET_NAME, R2_PUBLIC_URL } from '@/lib/r2'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 
+// El cliente (app/entrevista-video/responder/page.tsx) siempre graba y sube con este único tipo --
+// cualquier otro valor es una solicitud armada a mano contra el endpoint, no un candidato real.
+const CONTENT_TYPES_PERMITIDOS = ['video/webm']
+
 export async function POST(request: Request) {
   try {
     const { fileName, contentType, candidatoId, procesoId, entrevistaId, token } = await request.json()
 
     if (!fileName || !contentType || !candidatoId || !procesoId || !entrevistaId || !token) {
       return NextResponse.json({ error: 'Faltan parámetros de evaluación' }, { status: 400 })
+    }
+
+    if (!CONTENT_TYPES_PERMITIDOS.includes(contentType)) {
+      return NextResponse.json({ error: 'Tipo de archivo no permitido' }, { status: 400 })
     }
 
     if (!validarTokenEvaluacion(String(token), String(candidatoId), String(procesoId))) {
