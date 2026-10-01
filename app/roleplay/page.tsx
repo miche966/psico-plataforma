@@ -302,6 +302,9 @@ export default function RolePlayPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'chat',
+          candidatoId,
+          procesoId,
+          token,
           testId: TEST_ID,
           mensajes: listaMensajes.slice(0, -1).map(m => ({ role: m.role, content: m.content })), // Evitar circularidad o campos extra
           nuevoMensaje: listaMensajes[listaMensajes.length - 1].content // El nuevo mensaje
