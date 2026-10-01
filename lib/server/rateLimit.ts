@@ -26,6 +26,11 @@ export const rlPublico = redis ? new Ratelimit({ redis, limiter: Ratelimit.slidi
 // sin importar desde cuántas IPs distintas se intente. Se complementa con rlPublico por IP.
 export const rlLogin = redis ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, '15 m'), prefix: 'rl:login' }) : null
 
+// /api/forgot-password: por email normalizado, para que nadie pueda llenarle la casilla de correos de
+// recuperacion a una cuenta conocida (y gastar la cuota de envio de Supabase Auth). Se complementa con
+// rlPublico por IP.
+export const rlRecuperacion = redis ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(3, '60 m'), prefix: 'rl:recuperacion' }) : null
+
 /**
  * Chequea el límite para una clave dada. Si Upstash no está configurado o falla, deja pasar
  * (fail-open) con un warning -- esta es una capa de seguridad secundaria, no se quiere tumbar

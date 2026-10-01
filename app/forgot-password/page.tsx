@@ -2,7 +2,6 @@
 
 import { FormEvent, useState } from 'react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -14,9 +13,12 @@ export default function ForgotPasswordPage() {
     event.preventDefault(); setMensaje(''); setError('')
     if (!email.trim()) { setError('Ingresá tu email.'); return }
     setCargando(true)
-    const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/reset-password` })
-    if (recoveryError) setError('No se pudo enviar el correo de recuperación. Verificá el email e intentá nuevamente.')
-    else setMensaje('Si el email está registrado, recibirás un enlace para crear una nueva contraseña.')
+    // Pasa por el servidor para poder limitar los intentos (por IP y por email)
+    const respuesta = await fetch('/api/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim() }) }).catch(() => null)
+    const datos = respuesta ? await respuesta.json().catch(() => ({})) : {}
+    if (respuesta?.ok) setMensaje('Si el email está registrado, recibirás un enlace para crear una nueva contraseña.')
+    else if (respuesta?.status === 429) setError(datos.error || 'Demasiados intentos. Esperá un rato e intentá de nuevo.')
+    else setError('No se pudo enviar el correo de recuperación. Verificá el email e intentá nuevamente.')
     setCargando(false)
   }
 
