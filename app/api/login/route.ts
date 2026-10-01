@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { crearClienteLogin } from '@/lib/server/clienteLogin'
 import { rlLogin, rlPublico, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
 import { z, validar } from '@/lib/server/validacion'
 
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Configuración de autenticación incompleta.' }, { status: 500 })
   }
 
-  const supabase = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } })
+  const supabase = crearClienteLogin(supabaseUrl, anonKey)
   const { data, error } = await supabase.auth.signInWithPassword({ email: claveEmail, password })
 
   if (error || !data.session) {
