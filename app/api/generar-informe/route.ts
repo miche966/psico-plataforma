@@ -328,7 +328,7 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
 `;
 
     const apiCallStartTime = Date.now();
-    console.log(`[INFO] [GENERAR INFORME] Iniciando generación de informe para candidato: ${candidato?.nombre || 'N/A'} ${candidato?.apellido || ''}`);
+    console.log(`[INFO] [GENERAR INFORME] Iniciando generación de informe para candidato: ${candidato?.id || 'N/A'}`);
 
     // Llamada 1A y 1B corren en paralelo (antes eran una sola llamada secuencial que tardaba 36-50s
     // por sí sola): el tiempo de esta etapa pasa a ser el de la más lenta de las dos, no la suma.

@@ -124,7 +124,7 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
     const maxAttempts = 3
     const apiCallStartTime = Date.now()
 
-    console.log(`[INFO] [ANALISIS FRASES] Iniciando análisis para candidato: ${candidato?.nombre || 'No especificado'} ${candidato?.apellido || ''}`)
+    console.log(`[INFO] [ANALISIS FRASES] Iniciando análisis para candidato: ${candidato?.id || 'No especificado'}`)
 
     while (attempts < maxAttempts) {
       try {

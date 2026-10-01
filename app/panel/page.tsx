@@ -408,7 +408,6 @@ export default function PanelEvaluador() {
   }
 
   async function cargarCandidatos() {
-    console.log('[FRONTEND] Cargando datos administrativos mediante endpoint protegido...')
     const response = await fetch('/api/admin/panel-data', {
       headers: await getAdminHeaders(),
       cache: 'no-store'

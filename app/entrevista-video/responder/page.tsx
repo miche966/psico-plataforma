@@ -100,7 +100,7 @@ export default function ResponderPage() {
     if ((estado === 'preparacion' || estado === 'grabando') && streamRef.current && videoRef.current) {
       if (videoRef.current.srcObject !== streamRef.current) {
         videoRef.current.srcObject = streamRef.current
-        videoRef.current.play().catch(e => console.log("Error auto-play:", e))
+        videoRef.current.play().catch(() => {})
       }
     }
   }, [estado])

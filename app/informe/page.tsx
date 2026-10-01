@@ -351,7 +351,6 @@ function InformePageContent() {
         autoAjuste = (resAjuste && resAjuste.general > 0) ? resAjuste.general : 0
 
         if (autoAjuste === 0) {
-          console.log("DEBUG: Iniciando fallback omnisciente para Avril...");
           const todosLosFactores: number[] = []
           const CLAVES_IGNORAR = [
             'total', 'correctas', 'porcentaje', 'id', 'created_at',
@@ -359,8 +358,7 @@ function InformePageContent() {
             'nivel_maximo', 'tabswitches', 'copypasteattempts', 'timeoutoffocus',
             'events', 'tab_switches', 'copy_paste_attempts', 'time_out_of_focus'
           ];
-          lista.forEach((s, idx) => {
-            console.log(`DEBUG: Analizando sesión ${idx + 1}:`, s.test_id, s.puntaje_bruto);
+          lista.forEach((s) => {
             const scan = (obj: any) => {
               if (!obj || typeof obj !== 'object') return
               Object.entries(obj).forEach(([k, v]) => {
@@ -372,13 +370,11 @@ function InformePageContent() {
                   let val = valNum
                   if (val > 5 && val <= 100) val = (val / 100) * 5
                   if (val > 0 && val <= 5) {
-                    console.log(`  > Factor Detectado: ${k} = ${val} (Original: ${v})`);
                     todosLosFactores.push(val)
                   }
                 }
                 else if (typeof v === 'object' && v !== null && 'correctas' in v) {
                   const score = (Number((v as any).correctas) / (Number((v as any).total) || 1)) * 5
-                  console.log(`  > Puntaje Detectado (Objeto): ${k} = ${score}`);
                   todosLosFactores.push(score)
                 }
                 else if (typeof v === 'object') scan(v)
@@ -389,7 +385,6 @@ function InformePageContent() {
           if (todosLosFactores.length > 0) {
             const avg = todosLosFactores.reduce((a, b) => a + b, 0) / todosLosFactores.length
             autoAjuste = Math.round((avg / 5) * 100)
-            console.log(`DEBUG: AutoAjuste Final Calculado: ${autoAjuste}% basado en ${todosLosFactores.length} factores.`);
           }
         }
       }

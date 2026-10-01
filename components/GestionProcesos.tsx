@@ -459,12 +459,6 @@ export default function GestionProcesos() {
       const recordatoriosResponse = await fetch('/api/recordatorio', { headers: await getAdminHeaders() })
       const recordatoriosJson = recordatoriosResponse.ok ? await recordatoriosResponse.json() : { data: [] }
 
-      console.log('RECUENTO:', {
-        p: payload.data?.length || 0,
-        c: payload.candidatos?.length || 0,
-        s: payload.sesiones?.length || 0
-      })
-
       if (payload.data) setProcesos(payload.data)
       if (payload.candidatos) setCandidatos(payload.candidatos)
       if (payload.entrevistas) setEntrevistas(payload.entrevistas)
