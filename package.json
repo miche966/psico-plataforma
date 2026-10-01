@@ -17,7 +17,7 @@
     "verify": "npm run validate:repository && npm run typecheck && npm test && npm run build",
     "audit:integrity": "node scripts/audit-integrity-readonly.cjs",
     "audit:encoding": "node scripts/audit-encoding.cjs",
-    "audit:dependencias": "npm audit --audit-level=critical"
+    "audit:dependencias": "npm audit --audit-level=high"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1045.0",
@@ -37,19 +37,18 @@
     "jszip": "^3.10.1",
     "lucide-react": "^1.11.0",
     "next": "^16.3.8",
-    "nodemailer": "8.0.11",
+    "nodemailer": "10.0.13",
     "papaparse": "^5.5.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^2.15.0",
-    "xlsx": "^0.18.5",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/file-saver": "^2.0.7",
     "@types/node": "^20",
-    "@types/nodemailer": "^6.4.15",
     "@types/papaparse": "^5.5.2",
     "@types/react": "latest",
     "@types/react-dom": "latest",
