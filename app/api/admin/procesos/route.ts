@@ -26,7 +26,8 @@ export async function GET(req: Request) {
       // no solo para viewer -- esta rama ya recorta por proceso_id en sesiones, corresponde recortar igual el resto).
       const idsDelProceso = new Set((sesiones || []).map(s => s.candidato_id))
       const candidatosDelProceso = (candidatos || []).filter(c => idsDelProceso.has(c.id))
-      return NextResponse.json({ sesiones: sesiones || [], candidatos: candidatosDelProceso, respuestasVideo: respuestasVideo || [], preguntasVideo: preguntasVideo || [] })
+      const respuestasDelProceso = (respuestasVideo || []).filter(r => idsDelProceso.has(r.candidato_id))
+      return NextResponse.json({ sesiones: sesiones || [], candidatos: candidatosDelProceso, respuestasVideo: respuestasDelProceso, preguntasVideo: preguntasVideo || [] })
     }
 
     const [{ data, error }, { data: candidatos, error: candidatosError }, { data: entrevistas, error: entrevistasError }, sesiones, respuestasVideo] = await Promise.all([

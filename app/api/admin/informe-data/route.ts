@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { entrevistaIdsEnProcesos } from '@/lib/server/procesoScope'
 
 export async function GET(req: Request) {
   try {
@@ -15,11 +16,17 @@ export async function GET(req: Request) {
 
     const { data: sesiones, error: sesionesError } = await db.from('sesiones').select('*').eq('candidato_id', id).order('finalizada_en', { ascending: false })
     if (sesionesError) throw sesionesError
-    const lista = sesiones || []
-    const procesoId = candidato.proceso_id || lista.find(s => s.proceso_id)?.proceso_id || null
+    let lista = sesiones || []
+    let procesoId = candidato.proceso_id || lista.find(s => s.proceso_id)?.proceso_id || null
 
-    if (auth.role === 'viewer' && (!procesoId || !auth.allowedProcesoIds.includes(procesoId))) {
-      return NextResponse.json({ error: 'Candidato no encontrado' }, { status: 404 })
+    // Para un viewer no alcanza con validar un solo proceso del candidato: si tiene sesiones en
+    // varios, solo se devuelven las de procesos permitidos (y el informe se arma sobre uno de ellos).
+    if (auth.role === 'viewer') {
+      const permitidos = new Set(auth.allowedProcesoIds)
+      lista = lista.filter(s => s.proceso_id && permitidos.has(s.proceso_id))
+      const procesoCandidato = candidato.proceso_id && permitidos.has(candidato.proceso_id) ? candidato.proceso_id : null
+      procesoId = procesoCandidato || lista[0]?.proceso_id || null
+      if (!procesoId) return NextResponse.json({ error: 'Candidato no encontrado' }, { status: 404 })
     }
 
     let proceso = null
@@ -32,7 +39,11 @@ export async function GET(req: Request) {
     const { data: videos, error: videosError } = await db.from('respuestas_video').select('*').eq('candidato_id', id).eq('estado', 'completado')
     if (videosError) throw videosError
 
-    const listaVideos = videos || []
+    let listaVideos = videos || []
+    if (auth.role === 'viewer') {
+      const entrevistasPermitidas = await entrevistaIdsEnProcesos(db, auth.allowedProcesoIds)
+      listaVideos = listaVideos.filter(v => entrevistasPermitidas.has(v.entrevista_id))
+    }
     const pregIds = Array.from(new Set(listaVideos.map(v => v.pregunta_id).filter(Boolean)))
     if (pregIds.length > 0) {
       const { data: pregsData, error: pregsError } = await db.from('preguntas_video').select('id, pregunta').in('id', pregIds)

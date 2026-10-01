@@ -9,13 +9,14 @@ export async function POST(req: Request) {
     if (auth.response) return auth.response
     const bloqueado = requireFullAdmin(auth)
     if (bloqueado) return bloqueado
-    const { email, nombre, proceso, link: linkOriginal, pendientes, candidato_id, proceso_id } = await req.json();
-    let link = linkOriginal;
-    if (candidato_id && proceso_id) {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(req.url).origin
-      const token = generarTokenEvaluacion(String(candidato_id), String(proceso_id))
-      link = `${baseUrl.replace(/\/$/, '')}/evaluacion?candidato=${encodeURIComponent(candidato_id)}&proceso=${encodeURIComponent(proceso_id)}&token=${encodeURIComponent(token)}`
+    const { email, nombre, proceso, pendientes, candidato_id, proceso_id } = await req.json();
+    // El link siempre se firma aca: un link sin token ya no abre el portal de evaluacion.
+    if (!candidato_id || !proceso_id) {
+      return NextResponse.json({ error: 'Faltan candidato_id o proceso_id para generar el enlace' }, { status: 400 })
     }
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(req.url).origin
+    const token = generarTokenEvaluacion(String(candidato_id), String(proceso_id))
+    let link = `${baseUrl.replace(/\/$/, '')}/evaluacion?candidato=${encodeURIComponent(candidato_id)}&proceso=${encodeURIComponent(proceso_id)}&token=${encodeURIComponent(token)}`
 
 
     // Sanitización de seguridad: Reemplazar localhost por el dominio público de producción para postulantes

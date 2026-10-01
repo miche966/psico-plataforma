@@ -12,7 +12,9 @@ export async function POST(req: Request) {
     if (!candidatoId || !procesoId) {
       return NextResponse.json({ error: 'Enlace de evaluacion incompleto' }, { status: 400 })
     }
-    if (token && !validarTokenEvaluacion(token, candidatoId, procesoId)) {
+    // Obligatorio: antes solo se validaba si venia, asi que con candidato_id + proceso_id
+    // cualquiera obtenia nombre, proceso y progreso del candidato sin un link firmado.
+    if (!token || !validarTokenEvaluacion(token, candidatoId, procesoId)) {
       return NextResponse.json({ error: 'El enlace de evaluacion es invalido o vencio' }, { status: 403 })
     }
 

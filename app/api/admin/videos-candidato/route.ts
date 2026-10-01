@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/server/adminAuth'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { candidatoIdsEnProcesos, entrevistaIdsEnProcesos } from '@/lib/server/procesoScope'
 
 export async function GET(req: Request) {
   const auth = await requireAdminSession(req)
@@ -45,6 +46,16 @@ export async function GET(req: Request) {
           vids = vidsByEmail
         }
       }
+    }
+
+    // El fallback por email puede traer videos de otros registros del mismo candidato; para un
+    // viewer se dejan solo los de candidatos y entrevistas de sus procesos permitidos.
+    if (auth.role === 'viewer' && vids && vids.length > 0) {
+      const [candidatosPermitidos, entrevistasPermitidas] = await Promise.all([
+        candidatoIdsEnProcesos(db, auth.allowedProcesoIds),
+        entrevistaIdsEnProcesos(db, auth.allowedProcesoIds),
+      ])
+      vids = vids.filter(v => candidatosPermitidos.has(v.candidato_id) && entrevistasPermitidas.has(v.entrevista_id))
     }
 
     const ordenMap = new Map<string, number>()

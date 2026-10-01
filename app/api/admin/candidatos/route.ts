@@ -30,12 +30,16 @@ export async function GET(request: Request) {
     }
 
     let sesiones: any[] = []
+    // Para un viewer, ademas de recortar candidatos, se recortan sus sesiones: un candidato de un
+    // proceso permitido puede tener sesiones (con puntajes) en otros procesos que no le corresponden.
     const results = await Promise.all(
-      chunks.map(chunk =>
-        db.from('sesiones')
+      chunks.map(chunk => {
+        let consulta = db.from('sesiones')
           .select('id, test_id, candidato_id, proceso_id, estado, finalizada_en, puntaje_bruto')
           .in('candidato_id', chunk)
-      )
+        if (auth.role === 'viewer') consulta = consulta.in('proceso_id', auth.allowedProcesoIds)
+        return consulta
+      })
     )
     for (const res of results) {
       if (res.error) throw res.error
@@ -79,12 +83,16 @@ export async function POST(request: Request) {
       if (!nombres || !apellidos || !email || !documento) {
         return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 })
       }
-      const { data: existente, error: dupError } = await db
-        .from('candidatos')
-        .select('id, nombre, apellido, email')
-        .or(`email.ilike.${email},documento.eq.${documento}`)
-        .maybeSingle()
-      if (dupError) throw dupError
+      // Dos consultas separadas en vez de interpolar email/documento en un .or(): ese texto es
+      // sintaxis de filtro de PostgREST, un valor con coma o parentesis inyectaba clausulas (mismo
+      // fix que /api/unirse).
+      const { data: porEmail, error: emailError } = await db
+        .from('candidatos').select('id, nombre, apellido, email').ilike('email', email).limit(1).maybeSingle()
+      if (emailError) throw emailError
+      const { data: porDocumento, error: docError } = await db
+        .from('candidatos').select('id, nombre, apellido, email').eq('documento', documento).limit(1).maybeSingle()
+      if (docError) throw docError
+      const existente = porEmail || porDocumento
       if (existente) {
         return NextResponse.json({ error: `Ya existe un candidato con ese email o documento: ${existente.nombre} ${existente.apellido} (${existente.email})` }, { status: 409 })
       }

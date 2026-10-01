@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video, CheckCircle2, Settings2, BarChart2, LayoutDashboard, Sparkles } from 'lucide-react'
-import { getBaseUrl } from '@/lib/utils'
 import { getAdminHeaders } from '@/lib/evaluacionLink'
 import GestionProcesos from '@/components/GestionProcesos'
 import Dashboard from '@/components/Dashboard'
@@ -539,8 +538,6 @@ export default function PanelEvaluador() {
     if (!c.proceso_id) return
 
     setEnviandoRecordatorio(claveFila(c))
-    
-    const link = `${getBaseUrl()}/evaluacion?candidato=${c.id}&proceso=${c.proceso_id}`
 
     try {
       const res = await fetch('/api/recordatorio', {
@@ -550,7 +547,6 @@ export default function PanelEvaluador() {
           email: c.email,
           nombre: c.nombre,
           proceso: c.proceso_cargo || c.proceso_nombre,
-          link: link,
           pendientes: c.progreso.tests_pendientes.length, candidato_id: c.id, proceso_id: c.proceso_id
         })
       })
