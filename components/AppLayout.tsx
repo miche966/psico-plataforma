@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, Users, FileText, BarChart3, Video, LogOut, Bell, Sun, Moon, UserCog } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAdminRole } from '@/lib/useAdminRole'
+import { getAdminHeaders } from '@/lib/evaluacionLink'
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
@@ -41,13 +42,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const checkNewResults = async () => {
-      const hace24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-      const { count } = await supabase
-        .from('sesiones')
-        .select('*', { count: 'exact', head: true })
-        .gt('finalizada_en', hace24h)
-      
-      if (count) setNovedades(count)
+      try {
+        const headers = await getAdminHeaders()
+        const res = await fetch('/api/admin/novedades', { headers, cache: 'no-store' })
+        const data = await res.json().catch(() => ({}))
+        if (res.ok && typeof data.novedades === 'number') setNovedades(data.novedades)
+      } catch {
+        // sesion admin no disponible todavia (ej. recien montado antes de hidratar auth) -- sin novedades por ahora
+      }
     }
     checkNewResults()
   }, [])
