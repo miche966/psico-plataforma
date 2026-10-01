@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { GEMINI_MODEL } from '@/lib/server/geminiModel'
 import { rlAdmin, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
+import { mensajeParaCliente } from '@/lib/server/mensajesError'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
@@ -77,6 +78,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('Error en ia-summary:', error)
-    return NextResponse.json({ error: error.message || 'Error desconocido' }, { status: 500 })
+    return NextResponse.json({ error: mensajeParaCliente(error, 'No se pudo generar el resumen. Intentá de nuevo.') }, { status: 500 })
   }
 }

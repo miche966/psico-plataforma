@@ -5,6 +5,7 @@ import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { GEMINI_MODEL } from '@/lib/server/geminiModel'
 import { rlEvaluacion, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
 import { z, validar } from '@/lib/server/validacion'
+import { mensajeParaCliente } from '@/lib/server/mensajesError'
 
 const SYSTEM_PROMPT = `
 Actúas como Carlos Gómez, un cliente de microfinanzas con un microcrédito comercial atrasado 45 días por un monto de $35,000 pesos uruguayos.
@@ -504,7 +505,7 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
     return NextResponse.json({ error: 'Acción no soportada.' }, { status: 400 })
 
   } catch (error: any) {
-    console.error('[API ROLEPLAY ERROR]:', error.message)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[API ROLEPLAY ERROR]:', error)
+    return NextResponse.json({ error: mensajeParaCliente(error, 'No se pudo procesar la simulación. Intentá de nuevo.') }, { status: 500 })
   }
 }

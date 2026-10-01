@@ -4,6 +4,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { r2Client, R2_BUCKET_NAME, R2_PUBLIC_URL } from '@/lib/r2'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { z, validar, rutaVideoSchema } from '@/lib/server/validacion'
+import { mensajeParaCliente } from '@/lib/server/mensajesError'
 
 const subidaSchema = z.object({
   fileName: rutaVideoSchema,
@@ -52,6 +53,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ signedUrl, publicUrl })
   } catch (error: any) {
     console.error('Error generando Presigned URL:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: mensajeParaCliente(error, 'No se pudo preparar la subida del video.') }, { status: 500 })
   }
 }

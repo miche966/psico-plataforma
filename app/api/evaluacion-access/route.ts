@@ -32,8 +32,8 @@ export async function POST(req: Request) {
     if (errProc) console.error('Error al cargar proceso:', errProc)
     if (errSes) console.error('Error DB Sesiones:', errSes)
 
-    if (!candidato) return NextResponse.json({ error: `Candidato no encontrado en la base de datos (ID: ${candidatoId})` }, { status: 404 })
-    if (!proceso) return NextResponse.json({ error: `Proceso de selección no encontrado (ID: ${procesoId})` }, { status: 404 })
+    if (!candidato) return NextResponse.json({ error: 'Candidato no encontrado' }, { status: 404 })
+    if (!proceso) return NextResponse.json({ error: 'Proceso de selección no encontrado' }, { status: 404 })
 
     const bateria: string[] = proceso.bateria_tests || []
     const entrevistaIds = bateria

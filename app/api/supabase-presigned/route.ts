@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { z, validar, rutaVideoSchema } from '@/lib/server/validacion'
+import { mensajeParaCliente } from '@/lib/server/mensajesError'
 
 const subidaSchema = z.object({
   fileName: rutaVideoSchema,
@@ -42,7 +43,8 @@ export async function POST(request: Request) {
       .createSignedUploadUrl(fileName)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('Error creando la URL firmada de Supabase Storage:', error)
+      return NextResponse.json({ error: mensajeParaCliente(error, 'No se pudo preparar la subida del video.') }, { status: 500 })
     }
 
     return NextResponse.json({ 
@@ -52,6 +54,6 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     console.error('Error generando Supabase Signed Upload URL:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: mensajeParaCliente(error, 'No se pudo preparar la subida del video.') }, { status: 500 })
   }
 }

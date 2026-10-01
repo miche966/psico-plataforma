@@ -497,11 +497,14 @@ Devuelve ÚNICAMENTE este JSON: { "resumenEjecutivo": "...", "fundamentacion": "
     return NextResponse.json(sanearProfundo(resultado));
 
   } catch (error: any) {
-    console.error('[FATAL ERROR]:', error.message);
-    let errorMsg = error.message || 'Error desconocido';
-    if (errorMsg.includes('dunning') || errorMsg.includes('billing') || errorMsg.includes('403')) {
+    console.error('[FATAL ERROR]:', error);
+    // El texto crudo del error (puede traer fragmentos de la respuesta del modelo o URLs internas) solo
+    // se usa para reconocer los casos de facturacion/creditos de Gemini; al cliente nunca se le devuelve.
+    const detalle = String(error?.message || '');
+    let errorMsg = 'No se pudo generar el informe. Intentá de nuevo en unos minutos.';
+    if (detalle.includes('dunning') || detalle.includes('billing') || detalle.includes('403')) {
       errorMsg = 'La clave de Gemini API está temporalmente inhabilitada por Google Cloud debido a un problema de facturación del proyecto (tarjeta rechazada o saldo pendiente). Por favor, verifique la facturación en su consola de Google Cloud.';
-    } else if (errorMsg.includes('credits') || errorMsg.includes('depleted') || errorMsg.includes('429')) {
+    } else if (detalle.includes('credits') || detalle.includes('depleted') || detalle.includes('429')) {
       errorMsg = 'Los créditos prepagos de tu cuenta de Gemini API se han agotado por completo (Prepayment credits are depleted). Por favor, ingresa a tu consola de Google AI Studio (https://aistudio.google.com/) o de Google Cloud y recarga saldo en tu cuenta de facturación.';
     }
     return NextResponse.json({ error: errorMsg }, { status: 500 });

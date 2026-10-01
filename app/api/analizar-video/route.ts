@@ -5,6 +5,7 @@ import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { GEMINI_MODEL } from '@/lib/server/geminiModel'
 import { rlEvaluacion, rlAdmin, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
+import { mensajeParaCliente } from '@/lib/server/mensajesError'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
@@ -160,6 +161,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('Error en analizar-video:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: mensajeParaCliente(error, 'No se pudo analizar el video.') }, { status: 500 })
   }
 }

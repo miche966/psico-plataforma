@@ -2,6 +2,7 @@ import * as nodemailer from 'nodemailer';
 import { NextResponse } from 'next/server';
 import { generarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
+import { mensajeParaCliente, mensajeErrorCorreo } from '@/lib/server/mensajesError'
 
 export async function POST(req: Request) {
   try {
@@ -106,7 +107,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     console.error('Error enviando email:', err);
-    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+    return NextResponse.json({ error: mensajeErrorCorreo(err, 'No se pudo enviar el recordatorio.') }, { status: 500 });
   }
 }
 
@@ -141,6 +142,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ data: await response.json() })
   } catch (err: unknown) {
     console.error('Error consultando auditoría de recordatorios:', err)
-    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 })
+    return NextResponse.json({ error: mensajeParaCliente(err, 'No se pudo consultar la auditoría de recordatorios.') }, { status: 500 })
   }
 }

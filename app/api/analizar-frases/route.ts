@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { GEMINI_MODEL } from '@/lib/server/geminiModel'
 import { rlAdmin, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
+import { mensajeParaCliente } from '@/lib/server/mensajesError'
 
 const FRASES_ESTIMULO: Record<number, string> = {
   1: 'Siempre me gustó',
@@ -178,6 +179,6 @@ Devuelve ÚNICAMENTE un objeto JSON estructurado con el siguiente formato:
 
   } catch (error: any) {
     console.error('[ANALISIS FRASES ERROR FATAL]:', error.message || error)
-    return NextResponse.json({ error: error.message || 'Error desconocido' }, { status: 500 })
+    return NextResponse.json({ error: mensajeParaCliente(error, 'No se pudo completar el análisis de las frases. Intentá de nuevo.') }, { status: 500 })
   }
 }

@@ -5,6 +5,7 @@ import { readAll } from '@/lib/server/readAll'
 import { candidatoIdsEnProcesos } from '@/lib/server/procesoScope'
 import { SLUG_TO_ID } from '@/lib/server/catalogoTests'
 import { z, validar, lenient } from '@/lib/server/validacion'
+import { mensajeParaCliente } from '@/lib/server/mensajesError'
 import { procesoCamposSchema, procesoIdSchema, vinculoSchema, filaCandidatoSchema, cargaMasivaSchema } from '@/lib/server/esquemasProcesos'
 
 export async function GET(req: Request) {
@@ -232,6 +233,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Acción no soportada' }, { status: 400 })
   } catch (error: any) {
     console.error('[admin/procesos POST]', error)
-    return NextResponse.json({ error: error?.message || 'No se pudo completar la operación' }, { status: 500 })
+    return NextResponse.json({ error: mensajeParaCliente(error, 'No se pudo completar la operación') }, { status: 500 })
   }
 }
