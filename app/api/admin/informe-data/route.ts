@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { entrevistaIdsEnProcesos } from '@/lib/server/procesoScope'
+import { registrarAcceso } from '@/lib/server/registroAccesos'
 
 export async function GET(req: Request) {
   try {
@@ -52,6 +53,7 @@ export async function GET(req: Request) {
       listaVideos.forEach(v => { v.preguntas_video = { pregunta: pregMap.get(v.pregunta_id) } })
     }
 
+    await registrarAcceso(db, auth, { accion: 'ver_informe', candidatoId: id, procesoId }, req)
     return NextResponse.json({ candidato, sesiones: lista, proceso, videos: listaVideos })
   } catch (error) {
     console.error('Error cargando datos administrativos del informe:', error)

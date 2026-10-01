@@ -8,6 +8,8 @@ import { construirFactoresCrudos } from '@/lib/informeFactores'
 import { sanearProfundo } from '@/lib/informeSaneador'
 import { GEMINI_MODEL } from '@/lib/server/geminiModel'
 import { rlAdmin, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
+import { registrarAcceso } from '@/lib/server/registroAccesos'
+import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 
 // Con Fluid Compute (activo por defecto en el proyecto, confirmado en el dashboard: Function Max
 // Duration = 300s) el plan Hobby ya no está limitado a 60s reales — ese límite quedó obsoleto y
@@ -105,6 +107,8 @@ export async function POST(req: Request) {
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: 'Falta llave de API.' }, { status: 500 });
     }
+
+    await registrarAcceso(createSupabaseAdmin(), auth, { accion: 'generar_informe', candidatoId: candidato?.id, procesoId: proceso?.id }, req)
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 

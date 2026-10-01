@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/server/adminAuth'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { candidatoIdsEnProcesos, entrevistaIdsEnProcesos } from '@/lib/server/procesoScope'
+import { registrarAcceso } from '@/lib/server/registroAccesos'
 
 export async function GET(req: Request) {
   const auth = await requireAdminSession(req)
@@ -94,6 +95,7 @@ export async function GET(req: Request) {
       return new Date(a.grabada_en).getTime() - new Date(b.grabada_en).getTime()
     })
 
+    await registrarAcceso(db, auth, { accion: 'ver_videos', candidatoId }, req)
     return NextResponse.json({ videos: resultado })
   } catch (error) {
     console.error('[admin/videos-candidato GET]', error)
