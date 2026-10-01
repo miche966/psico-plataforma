@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server'
 import { HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
-import { r2Client, R2_BUCKET_NAME, R2_PUBLIC_URL } from '@/lib/r2'
+import { r2Client, R2_BUCKET_NAME } from '@/lib/r2'
+import { claveDeUrlVideo } from '@/lib/server/firmarVideos'
+import { claveVideoPerteneceA } from '@/lib/server/urlsVideo'
 import { z, validar, lenient, textoLeniente, numeroLeniente } from '@/lib/server/validacion'
 
 // Los metadatos de un error de subida solo se guardan para diagnostico: se conservan las claves que
@@ -135,9 +137,14 @@ export async function POST(request: Request) {
       }
 
       if (exito) {
-        let valido = true
-        if (urlVideo.startsWith(R2_PUBLIC_URL) && fileName) {
-          valido = await validarVideoR2(fileName)
+        // La URL debe ser de nuestros almacenes y su clave de ESTA entrevista y ESTE candidato. Antes se
+        // guardaba cualquier texto, asi que con un token valido se podia apuntar la fila al video de otra
+        // persona (y leer su transcripcion), y se podia borrar un video ajeno haciendolo fallar el HEAD de
+        // R2 con un fileName ajeno. fileName ya no se usa: la clave sale de la propia URL.
+        const ref = claveDeUrlVideo(urlVideo)
+        let valido = Boolean(ref) && claveVideoPerteneceA(ref!.clave, entrevistaId, candidatoId)
+        if (valido && ref!.origen === 'r2') {
+          valido = await validarVideoR2(ref!.clave)
         }
 
         const { data, error } = await db.from('respuestas_video').insert({
@@ -147,7 +154,7 @@ export async function POST(request: Request) {
           url_video: valido ? urlVideo : null,
           duracion,
           estado: valido ? 'completado' : 'error_upload',
-          ...(valido ? {} : { transcripcion: 'Archivo subido no paso la validacion de tamano/tipo' })
+          ...(valido ? {} : { transcripcion: 'El video subido no paso la validacion (ubicacion, tamano o tipo)' })
         }).select('id').single()
         if (error) throw error
         return NextResponse.json({ respuesta: data })

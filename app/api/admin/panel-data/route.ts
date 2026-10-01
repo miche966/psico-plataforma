@@ -39,7 +39,8 @@ export async function GET(req: Request) {
       candidatos,
       procesos,
       sesiones,
-      respuestasVideo,
+      // El panel solo usa quien respondio que y cuando: la URL del video se pide aparte (ya firmada) al abrir al candidato
+      respuestasVideo: (respuestasVideo || []).map((r: any) => { const { url_video, ...resto } = r; return resto }),
       preguntasVideo,
       progresoOperativo
     })

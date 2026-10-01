@@ -6,17 +6,23 @@ import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { GEMINI_MODEL } from '@/lib/server/geminiModel'
 import { rlEvaluacion, rlAdmin, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
 import { mensajeParaCliente } from '@/lib/server/mensajesError'
+import { claveDeUrlVideo, descargarVideo } from '@/lib/server/firmarVideos'
+
+// Mismo tope que se valida al subir (guardar_respuesta) y que tiene el bucket de Supabase Storage
+const TAMANO_MAXIMO_VIDEO = 50 * 1024 * 1024
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
 export async function POST(req: Request) {
   try {
-    const { url_video, respuesta_id, candidato_id, proceso_id, token } = await req.json()
+    // url_video ya no se usa: el cliente podia mandar cualquier URL y el servidor la bajaba (SSRF). El video
+    // se lee siempre de la URL que figura en la base para esa respuesta.
+    const { respuesta_id, candidato_id, proceso_id, token } = await req.json()
 
     if (!respuesta_id || !candidato_id || !proceso_id) {
       return NextResponse.json({ error: 'Faltan datos' }, { status: 400 })
     }
-    if (String(respuesta_id).length > 100 || String(candidato_id).length > 100 || String(proceso_id).length > 100 || String(url_video || '').length > 4096) {
+    if (String(respuesta_id).length > 100 || String(candidato_id).length > 100 || String(proceso_id).length > 100) {
       return NextResponse.json({ error: 'Los datos del video superan el límite permitido' }, { status: 400 })
     }
 
@@ -49,11 +55,10 @@ export async function POST(req: Request) {
       if (!relation && String(candidate?.proceso_id || '') !== String(proceso_id)) return NextResponse.json({ error: 'El candidato no pertenece al proceso indicado' }, { status: 403 })
     }
 
-    const sourceUrl = String(respuesta.url_video || url_video || '')
-    if (!sourceUrl) return NextResponse.json({ error: 'La respuesta no tiene un video disponible' }, { status: 400 })
-    // 1. Descargar el video desde la URL (o via Supabase SDK)
-    const response = await fetch(sourceUrl)
-    const videoBuffer = await response.arrayBuffer()
+    const ref = claveDeUrlVideo(respuesta.url_video)
+    if (!ref) return NextResponse.json({ error: 'La respuesta no tiene un video disponible' }, { status: 400 })
+    // 1. Descargar el video con las credenciales del servidor (el bucket no es de lectura publica)
+    const videoBuffer = await descargarVideo(ref, db, TAMANO_MAXIMO_VIDEO)
 
     const prompt = `
       Actúa como un experto en Reclutamiento y Selección de élite. 
@@ -107,7 +112,7 @@ export async function POST(req: Request) {
           prompt,
           {
             inlineData: {
-              data: Buffer.from(videoBuffer).toString('base64'),
+              data: videoBuffer.toString('base64'),
               mimeType: 'video/webm'
             }
           }

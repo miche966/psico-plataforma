@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { registrarAcceso } from '@/lib/server/registroAccesos'
+import { firmarVideos } from '@/lib/server/firmarVideos'
 
 export async function GET(request: Request) {
   const auth = await requireAdminSession(request)
@@ -30,10 +32,14 @@ export async function GET(request: Request) {
       if (result.error) throw result.error
       candidatos = result.data || []
     }
-    const respuestasConCandidato = (respuestas || []).map((r: any) => ({
+    const respuestasFirmadas = await firmarVideos(respuestas || [], db)
+    const respuestasConCandidato = respuestasFirmadas.map((r: any) => ({
       ...r,
       candidato: candidatos.find(c => c.id === r.candidato_id)
     }))
+    // Firmar las URLs es el momento del acceso a los videos; esta lista abarca varios candidatos,
+    // asi que se anota sin candidato puntual
+    await registrarAcceso(db, auth, { accion: 'ver_videos' }, request)
     return NextResponse.json({ entrevista, preguntas: preguntas || [], respuestas: respuestasConCandidato })
   } catch (error) {
     console.error('[admin/entrevista-video]', error)

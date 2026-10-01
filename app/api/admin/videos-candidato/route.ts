@@ -3,6 +3,7 @@ import { requireAdminSession } from '@/lib/server/adminAuth'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { candidatoIdsEnProcesos, entrevistaIdsEnProcesos } from '@/lib/server/procesoScope'
 import { registrarAcceso } from '@/lib/server/registroAccesos'
+import { firmarVideos } from '@/lib/server/firmarVideos'
 
 export async function GET(req: Request) {
   const auth = await requireAdminSession(req)
@@ -96,7 +97,8 @@ export async function GET(req: Request) {
     })
 
     await registrarAcceso(db, auth, { accion: 'ver_videos', candidatoId }, req)
-    return NextResponse.json({ videos: resultado })
+    // url_video llega al navegador firmada y de corta vida: el bucket ya no es de lectura publica
+    return NextResponse.json({ videos: await firmarVideos(resultado, db) })
   } catch (error) {
     console.error('[admin/videos-candidato GET]', error)
     return NextResponse.json({ error: 'No se pudieron cargar las video entrevistas' }, { status: 500 })

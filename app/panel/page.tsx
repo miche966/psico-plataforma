@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { FileText, Download, X, Search, AlertTriangle, BellRing, Clock, History, Video, CheckCircle2, Settings2, BarChart2, LayoutDashboard, Sparkles } from 'lucide-react'
@@ -275,12 +275,35 @@ export default function PanelEvaluador() {
   const [velocidadesVideo, setVelocidadesVideo] = useState<Record<number, number>>({})
   const router = useRouter()
 
-  async function procesarVideoConIA(respuestaId: string, urlVideo: string, idx: number) {
+  const ultimaCargaVideosRef = useRef(0)
+
+  async function cargarVideosDe(c: CandidatoAgrupado) {
+    ultimaCargaVideosRef.current = Date.now()
+    const videosRes = await fetch(`/api/admin/videos-candidato?candidato_id=${encodeURIComponent(c.id)}`, { headers: await getAdminHeaders() })
+    const videosPayload = await videosRes.json().catch(() => ({}))
+    const todosLosVideos: any[] = videosRes.ok ? (videosPayload.videos || []) : []
+    // La entrevista de video es especifica de cada proceso (bateria_tests
+    // incluye "entrevista:<id>"): sin este filtro, una tarjeta de un proceso
+    // sin interacción mostraba la video-entrevista respondida en OTRO proceso
+    // vinculado al mismo candidato.
+    const entrevistaKey = (c.bateria_tests || []).find((k: string) => k.startsWith('entrevista:'))
+    const entrevistaId = entrevistaKey ? entrevistaKey.replace('entrevista:', '') : null
+    setVideosCandidato(entrevistaId ? todosLosVideos.filter(v => v.entrevista_id === entrevistaId) : [])
+  }
+
+  // Las URLs de los videos son firmadas y vencen (2 h): si un video falla se piden de nuevo, una vez por
+  // minuto como maximo (un video realmente inexistente no debe generar un bucle de recargas)
+  function recargarUrlsVideo() {
+    if (!agrupadoSeleccionado || Date.now() - ultimaCargaVideosRef.current < 60_000) return
+    cargarVideosDe(agrupadoSeleccionado)
+  }
+
+  async function procesarVideoConIA(respuestaId: string, idx: number) {
     if (esViewer) return
     if (procesandoVideos[respuestaId]) return
     setProcesandoVideos(prev => ({ ...prev, [respuestaId]: true }))
     try {
-      const res = await fetch('/api/analizar-video', { method: 'POST', headers: await getAdminHeaders(), body: JSON.stringify({ url_video: urlVideo, respuesta_id: respuestaId, candidato_id: agrupadoSeleccionado?.id, proceso_id: agrupadoSeleccionado?.proceso_id }) })
+      const res = await fetch('/api/analizar-video', { method: 'POST', headers: await getAdminHeaders(), body: JSON.stringify({ respuesta_id: respuestaId, candidato_id: agrupadoSeleccionado?.id, proceso_id: agrupadoSeleccionado?.proceso_id }) })
       const data = await res.json()
       if (!res.ok || !data.analisis) throw new Error(data.error || 'No se pudo analizar el video')
       setVideosCandidato(prev => prev.map((video, i) => i === idx ? { ...video, transcripcion: data.analisis.transcripcion, analisis_ia: data.analisis } : video))
@@ -1081,16 +1104,7 @@ export default function PanelEvaluador() {
                   setSesionSeleccionada(sInicial)
                   if (sInicial) cargarAuditoriaSesion(sInicial)
 
-                  const videosRes = await fetch(`/api/admin/videos-candidato?candidato_id=${encodeURIComponent(c.id)}`, { headers: await getAdminHeaders() })
-                  const videosPayload = await videosRes.json().catch(() => ({}))
-                  const todosLosVideos: any[] = videosRes.ok ? (videosPayload.videos || []) : []
-                  // La entrevista de video es especifica de cada proceso (bateria_tests
-                  // incluye "entrevista:<id>"): sin este filtro, una tarjeta de un proceso
-                  // sin interacción mostraba la video-entrevista respondida en OTRO proceso
-                  // vinculado al mismo candidato.
-                  const entrevistaKey = (c.bateria_tests || []).find(k => k.startsWith('entrevista:'))
-                  const entrevistaId = entrevistaKey ? entrevistaKey.replace('entrevista:', '') : null
-                  setVideosCandidato(entrevistaId ? todosLosVideos.filter(v => v.entrevista_id === entrevistaId) : [])
+                  await cargarVideosDe(c)
                 }}
                 className={`p-4 rounded-xl border bg-white cursor-pointer transition-all duration-200 hover:shadow-md ${
                   agrupadoSeleccionado && claveFila(agrupadoSeleccionado) === claveFila(c)
@@ -1275,6 +1289,7 @@ export default function PanelEvaluador() {
                             <video
                               id={`video-entrevista-${i}`}
                               src={v.url_video}
+                              onError={recargarUrlsVideo}
                               controls
                               preload="metadata"
                               className="w-full aspect-video rounded-xl shadow-sm bg-black mb-3" 
@@ -1286,7 +1301,7 @@ export default function PanelEvaluador() {
                               ))}
                             </div>
                             {(!v.transcripcion || !v.analisis_ia) && v.url_video && (
-                              <button onClick={() => procesarVideoConIA(v.id, v.url_video, i)} disabled={procesandoVideos[v.id]} className="mt-2 w-full rounded-lg border border-indigo-200 bg-indigo-50 py-2 text-[10px] font-bold text-indigo-700 disabled:opacity-50">
+                              <button onClick={() => procesarVideoConIA(v.id, i)} disabled={procesandoVideos[v.id]} className="mt-2 w-full rounded-lg border border-indigo-200 bg-indigo-50 py-2 text-[10px] font-bold text-indigo-700 disabled:opacity-50">
                                 {procesandoVideos[v.id] ? 'Generando transcripción...' : 'Generar transcripción y análisis'}
                               </button>
                             )}

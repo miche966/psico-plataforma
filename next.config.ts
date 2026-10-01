@@ -12,7 +12,7 @@ const CSP = [
   `script-src 'self' 'unsafe-inline' ${TURNSTILE_ORIGIN}${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${SUPABASE_ORIGIN} ${R2_PUBLIC_ORIGIN}`,
-  `media-src 'self' blob: ${SUPABASE_ORIGIN} ${R2_PUBLIC_ORIGIN}`,
+  `media-src 'self' blob: ${SUPABASE_ORIGIN} ${R2_PUBLIC_ORIGIN} ${R2_UPLOAD_ORIGIN}`,
   `connect-src 'self' ${SUPABASE_ORIGIN} ${R2_PUBLIC_ORIGIN} ${R2_UPLOAD_ORIGIN}`,
   "font-src 'self'",
   "object-src 'none'",

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useSearchParams, useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
@@ -37,6 +37,7 @@ export default function RevisarPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const entrevistaId = searchParams.get('id')
+  const ultimaCargaRef = useRef(0)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -46,7 +47,8 @@ export default function RevisarPage() {
     else setCargando(false)
   }, [entrevistaId])
 
-  async function cargarDatos() {
+  async function cargarDatos(soloRespuestas = false) {
+    ultimaCargaRef.current = Date.now()
     const auth = await supabase.auth.getSession()
     const token = auth.data.session?.access_token
     const response = await fetch(`/api/admin/entrevista-video?id=${encodeURIComponent(entrevistaId || '')}`, {
@@ -59,11 +61,22 @@ export default function RevisarPage() {
       setCargando(false)
       return
     }
+    if (soloRespuestas) {
+      setRespuestas(payload.respuestas || [])
+      return
+    }
     setEntrevista(payload.entrevista || null)
     setPreguntas(payload.preguntas || [])
     setRespuestas(payload.respuestas || [])
     if (payload.preguntas?.length > 0) setPreguntaSeleccionada(payload.preguntas[0].id)
     setCargando(false)
+  }
+
+  // Las URLs de los videos son firmadas y vencen (2 h): si un video falla, se piden de nuevo una vez
+  // por minuto como maximo (un video realmente inexistente no debe generar un bucle de recargas)
+  function recargarUrlsVideo() {
+    if (Date.now() - ultimaCargaRef.current < 60_000) return
+    cargarDatos(true)
   }
 
   function nombreCandidato(respuesta: RespuestaVideo) {
@@ -198,6 +211,7 @@ export default function RevisarPage() {
                           controls
                           className="w-full max-h-[400px] rounded-xl shadow-lg ring-1 ring-white/10"
                           src={respuesta.url_video}
+                          onError={recargarUrlsVideo}
                         />
                       ) : (
                         <div className="py-16 text-center flex flex-col items-center justify-center">
