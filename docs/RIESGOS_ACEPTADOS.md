@@ -51,6 +51,11 @@ meses entienda que no fue un olvido.
 - Autenticación de administrador en cada endpoint admin; las cuentas `viewer` ven solo los procesos asignados.
 - **Registro de accesos** (`registro_accesos`): queda anotado quién abrió el informe, los videos o las
   respuestas de un candidato, y cuándo (desde 2026-10-01).
+- **Videos de entrevista en buckets privados** (desde 2026-10-01): el acceso público está desactivado en Cloudflare R2
+  (subdominio `r2.dev`) y en Supabase Storage (`videos-entrevista`). Los administradores reciben URLs firmadas de
+  lectura que vencen a las 2 horas; `analizar-video` lee el video con las credenciales del servidor. Quien copie una
+  URL firmada ve ese video hasta que venza (no es control de acceso por usuario). Para revertir basta reactivar el
+  acceso público en Cloudflare y marcar el bucket de Supabase como público; la base no se modificó.
 - Rate limiting en los endpoints públicos y de IA; bloqueo de intentos de login; Turnstile en `/unirse`.
 - Cabeceras de seguridad HTTP (CSP, HSTS, etc.), validación de entradas con zod y auditoría de dependencias en CI.
 

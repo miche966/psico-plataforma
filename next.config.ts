@@ -1,19 +1,19 @@
 import type { NextConfig } from "next";
 
 const SUPABASE_ORIGIN = "https://wzhdidxssnwfvzzapfwu.supabase.co";
-const R2_PUBLIC_ORIGIN = "https://pub-8c13e3844d9c4aa0b884ae0b3c1093e3.r2.dev";
-// Las URLs firmadas de R2 llevan el bucket como subdominio (host distinto del endpoint de la cuenta) y la
-// CSP exige host exacto. Sin comodin: un comodin permitiria subir a cualquier cuenta de R2.
-const R2_UPLOAD_ORIGIN = "https://video-psicoplataforma.8c662e7d3be33f7a66b01eefc1f0a051.r2.cloudflarestorage.com";
+// El bucket de R2 es privado: los videos (subida y lectura) van solo por URL firmada. Esas URLs llevan el
+// bucket como subdominio (host distinto del endpoint de la cuenta) y la CSP exige host exacto. Sin comodin:
+// un comodin permitiria subir a cualquier cuenta de R2.
+const R2_FIRMADO_ORIGIN = "https://video-psicoplataforma.8c662e7d3be33f7a66b01eefc1f0a051.r2.cloudflarestorage.com";
 const TURNSTILE_ORIGIN = "https://challenges.cloudflare.com";
 
 const CSP = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' ${TURNSTILE_ORIGIN}${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${SUPABASE_ORIGIN} ${R2_PUBLIC_ORIGIN}`,
-  `media-src 'self' blob: ${SUPABASE_ORIGIN} ${R2_PUBLIC_ORIGIN} ${R2_UPLOAD_ORIGIN}`,
-  `connect-src 'self' ${SUPABASE_ORIGIN} ${R2_PUBLIC_ORIGIN} ${R2_UPLOAD_ORIGIN}`,
+  `img-src 'self' data: blob: ${SUPABASE_ORIGIN}`,
+  `media-src 'self' blob: ${SUPABASE_ORIGIN} ${R2_FIRMADO_ORIGIN}`,
+  `connect-src 'self' ${SUPABASE_ORIGIN} ${R2_FIRMADO_ORIGIN}`,
   "font-src 'self'",
   "object-src 'none'",
   `frame-src ${TURNSTILE_ORIGIN}`,
