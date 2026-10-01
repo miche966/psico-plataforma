@@ -16,8 +16,18 @@ export default function LoginPage() {
     if (!email || !password) { setError('Completá todos los campos.'); return }
     setCargando(true)
     setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) { setError('Email o contraseña incorrectos.'); setCargando(false); return }
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok || !data.session) {
+      setError(data.error || 'Email o contraseña incorrectos.')
+      setCargando(false)
+      return
+    }
+    await supabase.auth.setSession({ access_token: data.session.access_token, refresh_token: data.session.refresh_token })
     router.push('/panel')
   }
 

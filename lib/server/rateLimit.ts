@@ -22,6 +22,10 @@ export const rlAdmin = redis ? new Ratelimit({ redis, limiter: Ratelimit.sliding
 // /api/unirse: público por diseño, sin token, así que se limita por IP.
 export const rlPublico = redis ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, '60 s'), prefix: 'rl:publico' }) : null
 
+// /api/login: por email normalizado, para frenar fuerza bruta contra una cuenta admin conocida
+// sin importar desde cuántas IPs distintas se intente. Se complementa con rlPublico por IP.
+export const rlLogin = redis ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, '15 m'), prefix: 'rl:login' }) : null
+
 /**
  * Chequea el límite para una clave dada. Si Upstash no está configurado o falla, deja pasar
  * (fail-open) con un warning -- esta es una capa de seguridad secundaria, no se quiere tumbar
