@@ -2,8 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Script from 'next/script'
 import { UserPlus, ChevronRight, CheckCircle2, AlertCircle, Building2 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
+
+declare global {
+  interface Window {
+    turnstile?: { reset: (widgetId?: string) => void }
+    onTurnstileSuccess?: (token: string) => void
+  }
+}
 
 interface Proceso {
   id: string
@@ -18,7 +26,13 @@ export default function UnirsePage() {
   const [cargando, setCargando] = useState(true)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+  const [turnstileToken, setTurnstileToken] = useState('')
+
+  useEffect(() => {
+    window.onTurnstileSuccess = (token: string) => setTurnstileToken(token)
+    return () => { window.onTurnstileSuccess = undefined }
+  }, [])
+
   const [form, setForm] = useState({
     nombres: '',
     apellidos: '',
@@ -76,7 +90,8 @@ export default function UnirsePage() {
           sexo: form.sexo,
           formacion: form.formacion,
           profesion: form.profesion,
-          procesoId: form.procesoId
+          procesoId: form.procesoId,
+          turnstileToken
         })
       })
       const data = await response.json().catch(() => ({}))
@@ -89,6 +104,8 @@ export default function UnirsePage() {
       console.error('Error en registro:', err)
       setError(err.message || 'Hubo un problema al procesar tu registro. Por favor, intenta de nuevo.')
       setEnviando(false)
+      setTurnstileToken('')
+      window.turnstile?.reset()
     }
   }
 
@@ -105,6 +122,7 @@ export default function UnirsePage() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4 py-12">
+      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" async defer />
       {/* Background Decor */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-indigo-100/50 rounded-full blur-3xl opacity-50"></div>
@@ -265,10 +283,16 @@ export default function UnirsePage() {
               </div>
             </div>
 
+            <div
+              className="cf-turnstile flex justify-center"
+              data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+              data-callback="onTurnstileSuccess"
+            />
+
             <div className="pt-4">
               <button
                 type="submit"
-                disabled={enviando}
+                disabled={enviando || !turnstileToken}
                 className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
               >
                 {enviando ? (
@@ -276,6 +300,8 @@ export default function UnirsePage() {
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                     Procesando...
                   </>
+                ) : !turnstileToken ? (
+                  'Verificando...'
                 ) : (
                   <>
                     Iniciar Evaluación

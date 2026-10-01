@@ -3,6 +3,30 @@ import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { generarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { rlPublico, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
 
+async function verificarTurnstile(token: string, ip: string): Promise<boolean> {
+  const secret = process.env.TURNSTILE_SECRET_KEY
+  if (!secret) {
+    console.error('[TURNSTILE] TURNSTILE_SECRET_KEY no configurado, se rechaza el registro')
+    return false
+  }
+  if (!token) return false
+  try {
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ secret, response: token, remoteip: ip }),
+    })
+    const data = await res.json()
+    return data.success === true
+  } catch (err) {
+    // A diferencia de un rechazo explícito (token inválido = bot real), un error de red hacia
+    // Cloudflare es una falla de un tercero -- se deja pasar para no tumbar el único flujo de alta
+    // de candidatos por una caída externa, mismo criterio que verificarLimite.
+    console.error('[TURNSTILE] Error de red contactando a Cloudflare, se deja pasar:', err)
+    return true
+  }
+}
+
 const SLUG_TO_ID: Record<string, string> = {
   'bigfive': 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   'icar': 'f6a7b8c9-d0e1-2345-fabc-456789012345',
@@ -51,6 +75,12 @@ export async function POST(request: Request) {
     if (!permitido) return NextResponse.json(respuestaLimiteExcedido(), { status: 429 })
 
     const body = await request.json().catch(() => ({}))
+
+    const turnstileOk = await verificarTurnstile(String(body.turnstileToken || ''), ip)
+    if (!turnstileOk) {
+      return NextResponse.json({ error: 'Verificación de seguridad fallida. Recargá la página e intentá de nuevo.' }, { status: 403 })
+    }
+
     const nombres = String(body.nombres || '').trim()
     const apellidos = String(body.apellidos || '').trim()
     const email = String(body.email || '').trim().toLowerCase()
