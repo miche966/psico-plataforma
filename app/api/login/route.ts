@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { rlLogin, rlPublico, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
+import { z, validar } from '@/lib/server/validacion'
+
+const loginSchema = z.object({
+  email: z.string().min(1).max(254),
+  password: z.string().min(1).max(256),
+})
 
 export async function POST(request: Request) {
-  const { email, password } = await request.json()
-  if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
-    return NextResponse.json({ error: 'Completá todos los campos.' }, { status: 400 })
-  }
+  const body = await request.json().catch(() => ({}))
+  const campos = validar(loginSchema, body, 'Completá todos los campos.')
+  if (!campos.ok) return campos.response
+  const { email, password } = campos.data
 
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'desconocida'
   const { permitido: permitidoIp } = await verificarLimite(rlPublico, ip)

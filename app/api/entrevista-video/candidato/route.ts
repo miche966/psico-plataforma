@@ -3,6 +3,31 @@ import { HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { r2Client, R2_BUCKET_NAME, R2_PUBLIC_URL } from '@/lib/r2'
+import { z, validar, lenient, textoLeniente, numeroLeniente } from '@/lib/server/validacion'
+
+// Los metadatos de un error de subida solo se guardan para diagnostico: se conservan las claves que
+// el cliente realmente manda y se descarta cualquier otra (antes era JSON arbitrario sin limite
+// dentro de una columna jsonb).
+const extraDataSchema = z.object({
+  blobSize: z.number().optional(),
+  blobType: z.string().max(100).optional(),
+  chunksCount: z.number().optional(),
+  userAgent: z.string().max(500).optional(),
+})
+
+const guardarRespuestaSchema = z.object({
+  entrevistaId: z.guid(),
+  preguntaId: z.guid(),
+  duracion: numeroLeniente(0, 36000),
+  exito: lenient(Boolean),
+  urlVideo: textoLeniente(2048),
+  fileName: textoLeniente(512),
+  logs: textoLeniente(5000),
+  extraData: lenient(v => {
+    const r = extraDataSchema.safeParse(v)
+    return r.success ? r.data : {}
+  }),
+})
 
 // Mismo limite que ya tiene configurado el bucket de Supabase Storage (videos-entrevista,
 // file_size_limit=52428800) -- se replica aca para que R2 (la vía primaria) sea consistente con el
@@ -91,10 +116,9 @@ export async function POST(request: Request) {
     }
 
     if (action === 'guardar_respuesta') {
-      const entrevistaId = String(body.entrevistaId || '')
-      const preguntaId = String(body.preguntaId || '')
-      const duracion = body.duracion
-      if (!entrevistaId || !preguntaId) return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
+      const campos = validar(guardarRespuestaSchema, body, 'Faltan parámetros')
+      if (!campos.ok) return campos.response
+      const { entrevistaId, preguntaId, duracion, exito, urlVideo, fileName, logs, extraData } = campos.data
 
       const db = createSupabaseAdmin()
 
@@ -110,10 +134,7 @@ export async function POST(request: Request) {
           .eq('pregunta_id', preguntaId)
       }
 
-      if (body.exito) {
-        const urlVideo = String(body.urlVideo || '')
-        const fileName = String(body.fileName || '')
-
+      if (exito) {
         let valido = true
         if (urlVideo.startsWith(R2_PUBLIC_URL) && fileName) {
           valido = await validarVideoR2(fileName)
@@ -132,8 +153,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ respuesta: data })
       }
 
-      const logs = String(body.logs || '')
-      const extraData = body.extraData && typeof body.extraData === 'object' ? body.extraData : {}
       const { error } = await db.from('respuestas_video').insert({
         pregunta_id: preguntaId,
         candidato_id: candidatoId || null,

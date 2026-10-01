@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types tests/ordenamiento-postulaciones.test.ts && node --experimental-strip-types tests/evaluacion-token.test.ts && node --experimental-strip-types tests/progreso-evaluacion.test.ts && node --experimental-strip-types tests/meta-competencias.test.ts && node --experimental-strip-types tests/informe-consistencia.test.ts && node --experimental-strip-types tests/puntajes.test.ts && node --experimental-strip-types tests/informe-factores.test.ts && node --experimental-strip-types tests/informe-saneador.test.ts",
+    "test": "node --experimental-strip-types tests/ordenamiento-postulaciones.test.ts && node --experimental-strip-types tests/evaluacion-token.test.ts && node --experimental-strip-types tests/progreso-evaluacion.test.ts && node --experimental-strip-types tests/meta-competencias.test.ts && node --experimental-strip-types tests/informe-consistencia.test.ts && node --experimental-strip-types tests/puntajes.test.ts && node --experimental-strip-types tests/informe-factores.test.ts && node --experimental-strip-types tests/informe-saneador.test.ts && node --experimental-strip-types tests/validacion.test.ts",
     "prepare": "husky install",
     "validate:repository": "node scripts/validate-repository.cjs",
     "verify": "npm run validate:repository && npm run typecheck && npm test && npm run build",
@@ -42,7 +42,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^2.15.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

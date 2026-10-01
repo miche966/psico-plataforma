@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
+import { z, validar, rutaVideoSchema } from '@/lib/server/validacion'
+
+const subidaSchema = z.object({
+  fileName: rutaVideoSchema,
+  candidatoId: z.guid(),
+  procesoId: z.guid(),
+  entrevistaId: z.guid(),
+  token: z.string().min(1).max(2048),
+})
 
 export async function POST(request: Request) {
   try {
@@ -13,13 +22,12 @@ export async function POST(request: Request) {
       )
     }
 
-    const { fileName, candidatoId, procesoId, entrevistaId, token } = await request.json()
+    const body = await request.json().catch(() => ({}))
+    const campos = validar(subidaSchema, body, 'Faltan parámetros de evaluación')
+    if (!campos.ok) return campos.response
+    const { fileName, candidatoId, procesoId, entrevistaId, token } = campos.data
 
-    if (!fileName || !candidatoId || !procesoId || !entrevistaId || !token) {
-      return NextResponse.json({ error: 'Faltan parámetros de evaluación' }, { status: 400 })
-    }
-
-    if (!validarTokenEvaluacion(String(token), String(candidatoId), String(procesoId))) {
+    if (!validarTokenEvaluacion(token, candidatoId, procesoId)) {
       return NextResponse.json({ error: 'Token de evaluación inválido o vencido' }, { status: 401 })
     }
 

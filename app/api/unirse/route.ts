@@ -2,6 +2,21 @@ import { NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { generarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { rlPublico, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
+import { z, validar } from '@/lib/server/validacion'
+
+const OBLIGATORIOS = 'Por favor, completa todos los campos obligatorios.'
+
+const registroSchema = z.object({
+  nombres: z.string().trim().min(1, OBLIGATORIOS).max(100, 'Los nombres son demasiado largos.'),
+  apellidos: z.string().trim().min(1, OBLIGATORIOS).max(100, 'Los apellidos son demasiado largos.'),
+  email: z.string().trim().toLowerCase().pipe(z.email('El correo electrónico no es válido.').max(254, 'El correo electrónico es demasiado largo.')),
+  documento: z.string().trim().min(1, OBLIGATORIOS).max(30, 'El documento es demasiado largo.'),
+  edad: z.coerce.number().int('La edad no es válida.').min(14, 'La edad no es válida.').max(99, 'La edad no es válida.'),
+  sexo: z.string().trim().min(1, OBLIGATORIOS).max(30, 'El valor de sexo no es válido.'),
+  formacion: z.string().trim().max(200, 'La formación es demasiado larga.').optional().transform(v => v ?? ''),
+  profesion: z.string().trim().max(200, 'La profesión es demasiado larga.').optional().transform(v => v ?? ''),
+  procesoId: z.guid('La búsqueda seleccionada no es válida.'),
+})
 
 async function verificarTurnstile(token: string, ip: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY
@@ -81,19 +96,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Verificación de seguridad fallida. Recargá la página e intentá de nuevo.' }, { status: 403 })
     }
 
-    const nombres = String(body.nombres || '').trim()
-    const apellidos = String(body.apellidos || '').trim()
-    const email = String(body.email || '').trim().toLowerCase()
-    const documento = String(body.documento || '').trim()
-    const edad = body.edad
-    const sexo = String(body.sexo || '').trim()
-    const formacion = String(body.formacion || '').trim()
-    const profesion = String(body.profesion || '').trim()
-    const procesoId = String(body.procesoId || '').trim()
-
-    if (!nombres || !apellidos || !email || !documento || !procesoId || !edad || !sexo) {
-      return NextResponse.json({ error: 'Por favor, completa todos los campos obligatorios.' }, { status: 400 })
-    }
+    const campos = validar(registroSchema, body, OBLIGATORIOS)
+    if (!campos.ok) return campos.response
+    const { nombres, apellidos, email, documento, edad, sexo, formacion, profesion, procesoId } = campos.data
 
     const db = createSupabaseAdmin()
 
@@ -115,7 +120,7 @@ export async function POST(request: Request) {
           apellido: apellidos,
           email,
           documento,
-          edad: parseInt(edad),
+          edad,
           sexo,
           formacion,
           profesion
@@ -129,7 +134,7 @@ export async function POST(request: Request) {
       const { error: updateError } = await db.from('candidatos').update({
         nombre: nombres,
         apellido: apellidos,
-        edad: parseInt(edad),
+        edad,
         sexo,
         formacion,
         profesion

@@ -2,16 +2,20 @@ import { NextResponse } from 'next/server'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { calcularProgresoEvaluacion } from '@/lib/progresoEvaluacion'
+import { z, validar } from '@/lib/server/validacion'
+
+const accesoSchema = z.object({
+  candidato_id: z.guid(),
+  proceso_id: z.guid(),
+  token: z.string().max(2048).optional().transform(v => v ?? ''),
+})
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
-    const candidatoId = String(body.candidato_id || '')
-    const procesoId = String(body.proceso_id || '')
-    const token = String(body.token || '')
-    if (!candidatoId || !procesoId) {
-      return NextResponse.json({ error: 'Enlace de evaluacion incompleto' }, { status: 400 })
-    }
+    const body = await req.json().catch(() => ({}))
+    const campos = validar(accesoSchema, body, 'Enlace de evaluacion incompleto')
+    if (!campos.ok) return campos.response
+    const { candidato_id: candidatoId, proceso_id: procesoId, token } = campos.data
     // Obligatorio: antes solo se validaba si venia, asi que con candidato_id + proceso_id
     // cualquiera obtenia nombre, proceso y progreso del candidato sin un link firmado.
     if (!token || !validarTokenEvaluacion(token, candidatoId, procesoId)) {

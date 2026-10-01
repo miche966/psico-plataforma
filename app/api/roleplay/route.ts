@@ -4,6 +4,7 @@ import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { GEMINI_MODEL } from '@/lib/server/geminiModel'
 import { rlEvaluacion, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
+import { z, validar } from '@/lib/server/validacion'
 
 const SYSTEM_PROMPT = `
 Actúas como Carlos Gómez, un cliente de microfinanzas con un microcrédito comercial atrasado 45 días por un monto de $35,000 pesos uruguayos.
@@ -52,10 +53,27 @@ INSTRUCCIONES DE COMPORTAMIENTO:
    }
 `
 
+// Tope a lo que el cliente puede mandar: el historial va entero al modelo (costo de Gemini) y la
+// transcripcion se guarda tal cual en la BD. El tope de turnos de la simulacion es 16 (~32 mensajes),
+// asi que estos limites estan muy por encima del uso real.
+const roleplaySchema = z.object({
+  mensajes: z.array(z.object({
+    role: z.string().max(20),
+    content: z.string().max(8000),
+    cooperacion: z.number().min(0).max(100).optional(),
+  })).max(100).default([]),
+  nuevoMensaje: z.string().max(8000).optional(),
+  latenciaPromedio: z.number().min(0).max(1_000_000).nullish(),
+  turnosTotales: z.number().min(0).max(200).nullish(),
+})
+
 export async function POST(req: Request) {
   try {
-    const payload = await req.json()
-    const { action, mensajes, nuevoMensaje, candidatoId, procesoId, testId, token, latenciaPromedio, turnosTotales } = payload
+    const payload = await req.json().catch(() => ({}))
+    const { action, candidatoId, procesoId, testId, token } = payload
+    const entrada = validar(roleplaySchema, payload, 'Los datos de la simulación no son válidos.')
+    if (!entrada.ok) return entrada.response
+    const { mensajes, nuevoMensaje, latenciaPromedio, turnosTotales } = entrada.data
 
     // ACCIÓN 0A: INICIAR/REANUDAR SESIÓN
     if (action === 'iniciar') {
@@ -141,6 +159,7 @@ export async function POST(req: Request) {
       }
       const { permitido } = await verificarLimite(rlEvaluacion, String(candidatoId))
       if (!permitido) return NextResponse.json(respuestaLimiteExcedido(), { status: 429 })
+      if (!nuevoMensaje?.trim()) return NextResponse.json({ error: 'El mensaje no puede estar vacío.' }, { status: 400 })
 
       let tempHistory = (mensajes || []).map((m: any) => ({
         role: m.role === 'user' ? 'user' : 'model',

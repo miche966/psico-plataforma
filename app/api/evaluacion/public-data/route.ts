@@ -1,6 +1,33 @@
 import { NextResponse } from 'next/server'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { z, validar, lenient } from '@/lib/server/validacion'
+
+// sesion_id viene del estado del cliente (puede faltar o venir vacio): si no es un uuid valido se trata
+// como "sin sesion" y se busca por candidato/proceso/test, igual que antes, en vez de rechazar y
+// dejar al candidato sin poder guardar su evaluacion.
+const sesionIdOVacio = (v: unknown): string => (z.guid().safeParse(v).success ? (v as string) : '')
+
+// puntaje_bruto lo calcula el navegador y su forma cambia por test, asi que no se puede fijar un
+// schema por test aca; se acota el tamano (el mayor legitimo, Frases Incompletas, ronda los 70 KB).
+const finalizarSchema = z.object({
+  respuestas: z.array(z.object({
+    item_id: z.guid('Una respuesta tiene un identificador de ítem inválido.'),
+    valor: z.coerce.number().int('Una respuesta tiene un valor inválido.'),
+    tiempo_respuesta: lenient(v => {
+      const n = Number(v || 0)
+      return Number.isFinite(n) && n >= 0 ? Math.round(n) : 0
+    }),
+  })).max(1000, 'Se enviaron demasiadas respuestas.').default([]),
+  puntaje_bruto: z.unknown().optional().transform((v, ctx) => {
+    const puntaje = v && typeof v === 'object' ? v : {}
+    if (JSON.stringify(puntaje).length > 300_000) {
+      ctx.addIssue({ code: 'custom', message: 'Los resultados enviados son demasiado grandes.' })
+      return z.NEVER
+    }
+    return puntaje
+  }),
+})
 
 const TEST_IDS = new Set([
   'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'f6a7b8c9-d0e1-2345-fabc-456789012345',
@@ -69,7 +96,7 @@ export async function POST(request: Request) {
     const { db, ids, testId } = contexto
     const action = String(body.action || '')
     if (action === 'start') {
-      const requestedId = typeof body.sesion_id === 'string' ? body.sesion_id : ''
+      const requestedId = sesionIdOVacio(body.sesion_id)
       const base = db.from('sesiones').select('id, estado, puntaje_bruto').eq('candidato_id', ids.candidatoId).eq('proceso_id', ids.procesoId).eq('test_id', testId).order('iniciada_en', { ascending: false }).limit(1)
       const query = requestedId ? db.from('sesiones').select('id, estado, puntaje_bruto').eq('id', requestedId).eq('candidato_id', ids.candidatoId).eq('proceso_id', ids.procesoId).eq('test_id', testId).limit(1) : base
       const { data: existentes, error: findError } = await query
@@ -86,7 +113,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ sesion: nueva })
     }
     if (action === 'start_resumable') {
-      const requestedId = typeof body.sesion_id === 'string' ? body.sesion_id : ''
+      const requestedId = sesionIdOVacio(body.sesion_id)
       if (requestedId) {
         const { data: sesion, error } = await db.from('sesiones').select('id, estado, puntaje_bruto').eq('id', requestedId).eq('candidato_id', ids.candidatoId).eq('proceso_id', ids.procesoId).eq('test_id', testId).maybeSingle()
         if (error) throw error
@@ -109,9 +136,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ sesion: nueva })
     }
     if (action === 'finalize') {
-      let sesionId = String(body.sesion_id || '')
-      const respuestas = Array.isArray(body.respuestas) ? body.respuestas : []
-      const puntaje = body.puntaje_bruto && typeof body.puntaje_bruto === 'object' ? body.puntaje_bruto : {}
+      const entrada = validar(finalizarSchema, body, 'Los datos de la evaluación no son válidos.')
+      if (!entrada.ok) return entrada.response
+      const { respuestas, puntaje_bruto: puntaje } = entrada.data
+      let sesionId = sesionIdOVacio(body.sesion_id)
       if (sesionId) {
         const { data: sesion, error } = await db.from('sesiones').select('id, estado').eq('id', sesionId).eq('candidato_id', ids.candidatoId).eq('proceso_id', ids.procesoId).eq('test_id', testId).maybeSingle()
         if (error) throw error
@@ -136,7 +164,7 @@ export async function POST(request: Request) {
         const { data: existentes, error: existingError } = await db.from('respuestas').select('item_id').eq('sesion_id', sesionId)
         if (existingError) throw existingError
         if (!existentes?.length) {
-          const filas = respuestas.map((r: any) => ({ sesion_id: sesionId, item_id: String(r.item_id), valor: Number(r.valor), tiempo_respuesta: Number(r.tiempo_respuesta || 0) }))
+          const filas = respuestas.map(r => ({ sesion_id: sesionId, item_id: r.item_id, valor: r.valor, tiempo_respuesta: r.tiempo_respuesta }))
           const { error: insertError } = await db.from('respuestas').insert(filas)
           if (insertError) throw insertError
         }

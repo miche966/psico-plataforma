@@ -1,20 +1,31 @@
 import { NextResponse } from 'next/server'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { requireAdminSession } from '@/lib/server/adminAuth'
+import { z, validar } from '@/lib/server/validacion'
 
-const ESTADOS = new Set(['pendiente', 'en_curso', 'pausada', 'completada', 'error', 'vencida'])
+const fechaIso = z.string().refine(s => !Number.isNaN(Date.parse(s)), 'La fecha no es válida.')
+const contador = z.number().int().min(0).max(100000)
+
+// total_preguntas / pregunta_actual pueden venir en null (lib/progresoOperativo.ts los manda asi).
+const progresoSchema = z.object({
+  candidato_id: z.guid(),
+  proceso_id: z.guid(),
+  token: z.string().min(1).max(2048),
+  evaluacion_key: z.string().min(1).max(200),
+  estado: z.enum(['pendiente', 'en_curso', 'pausada', 'completada', 'error', 'vencida']).default('en_curso'),
+  pregunta_actual: contador.nullish(),
+  total_preguntas: contador.nullish(),
+  respuestas_completadas: z.coerce.number().int().min(0).max(100000).optional(),
+  iniciada_en: fechaIso.nullish(),
+  completada_en: fechaIso.nullish(),
+})
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
-    const candidato_id = String(body.candidato_id || '')
-    const proceso_id = String(body.proceso_id || '')
-    const token = String(body.token || '')
-    const evaluacion_key = String(body.evaluacion_key || '')
-    const estado = String(body.estado || 'en_curso')
-    if (!candidato_id || !proceso_id || !token || !evaluacion_key || !ESTADOS.has(estado)) {
-      return NextResponse.json({ error: 'Datos de progreso incompletos' }, { status: 400 })
-    }
+    const body = await req.json().catch(() => ({}))
+    const campos = validar(progresoSchema, body, 'Datos de progreso incompletos')
+    if (!campos.ok) return campos.response
+    const { candidato_id, proceso_id, token, evaluacion_key, estado, pregunta_actual, total_preguntas, respuestas_completadas, iniciada_en, completada_en } = campos.data
     if (!validarTokenEvaluacion(token, candidato_id, proceso_id)) {
       return NextResponse.json({ error: 'Enlace de evaluación inválido o vencido' }, { status: 403 })
     }
@@ -38,11 +49,11 @@ export async function POST(req: Request) {
         proceso_id,
         evaluacion_key,
         estado,
-        ...(body.pregunta_actual !== undefined ? { pregunta_actual: body.pregunta_actual } : {}),
-        ...(body.total_preguntas !== undefined ? { total_preguntas: body.total_preguntas } : {}),
-        ...(body.respuestas_completadas !== undefined ? { respuestas_completadas: Number(body.respuestas_completadas) } : {}),
-        ...(body.iniciada_en ? { iniciada_en: body.iniciada_en } : {}),
-        ...(body.completada_en ? { completada_en: body.completada_en } : {}),
+        ...(pregunta_actual !== undefined ? { pregunta_actual } : {}),
+        ...(total_preguntas !== undefined ? { total_preguntas } : {}),
+        ...(respuestas_completadas !== undefined ? { respuestas_completadas } : {}),
+        ...(iniciada_en ? { iniciada_en } : {}),
+        ...(completada_en ? { completada_en } : {}),
         ultima_actividad_en: new Date().toISOString(),
       }),
     })
