@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 
-const { calcularPuntaje, esPuntuable, bancoDeItems, esIcar } = await import('../lib/server/puntuacion.ts')
+const { calcularPuntaje, diferenciasDePuntaje, esPuntuable, bancoDeItems, esIcar } = await import('../lib/server/puntuacion.ts')
 
 const BIGFIVE = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
 const HEXACO = 'b2c3d4e5-f6a7-8901-bcde-f12345678901'
@@ -151,6 +151,21 @@ assert.equal(esIcar(VERBAL), false)
   for (const malo of [4, -1, 1.5, '2']) assert.equal(calcularPuntaje(DASS, [item(1, { factor: 'estres' })], [resp(item(1), { valor: malo })]).ok, false, `DASS rechaza ${String(malo)}`)
   for (const malo of [2, -1, 0.5, '1']) assert.equal(calcularPuntaje(VERBAL, [item(1, { respuesta_correcta: 'a', opciones: ['a'] })], [resp(item(1), { valor: malo })]).ok, false, `Con clave rechaza valor ${String(malo)}`)
   assert.equal(calcularPuntaje(BIGFIVE, [], []).ok, false, 'sin items')
+}
+
+// ---- Comparacion con lo que manda el navegador (modo paralelo) ----
+{
+  const calculado = { correctas: 2, total: 3, porcentaje: 67, por_factor: { etica: { correctas: 1, total: 2 } } }
+  const enviado = { ...calculado, metricas_fraude: { tabSwitches: 1 }, nivel_maximo: 3 }
+  assert.deepEqual(diferenciasDePuntaje(enviado, calculado), [], 'las claves que el servidor no calcula (metricas_fraude, nivel_maximo) no cuentan')
+  assert.deepEqual(diferenciasDePuntaje({ ...enviado, correctas: 3 }, calculado), ['correctas'], 'un puntaje inflado se detecta')
+  assert.deepEqual(diferenciasDePuntaje({ ...enviado, por_factor: { etica: { correctas: 2, total: 2 } } }, calculado), ['por_factor'], 'tambien dentro de un desglose')
+  assert.deepEqual(diferenciasDePuntaje({ ...enviado, por_factor: { etica: { correctas: 1, total: 2 }, extra: { correctas: 9, total: 9 } } }, calculado), ['por_factor'], 'claves de mas en el desglose')
+  assert.deepEqual(diferenciasDePuntaje({ x: 1 }, { a: 1 }), ['a'], 'clave ausente')
+  assert.deepEqual(diferenciasDePuntaje(null, { a: 1 }), ['a'])
+  assert.deepEqual(diferenciasDePuntaje('texto', { a: 1 }), ['a'])
+  assert.deepEqual(diferenciasDePuntaje({ f: null, g: 2 }, { f: NaN, g: 2 }), [], 'NaN calculado equivale al null que JSON guardo')
+  assert.deepEqual(diferenciasDePuntaje({ f: 0 }, { f: NaN }), ['f'])
 }
 
 console.log('✅ puntuacion: Likert (inversion, redondeo, factores vacios, promedio_general, nivel_estres), DASS-21, tests con clave (opcion por indice/texto, sin responder) e ICAR dan la misma forma que las paginas, y se rechazan ids ajenos, repetidos y valores fuera de rango')

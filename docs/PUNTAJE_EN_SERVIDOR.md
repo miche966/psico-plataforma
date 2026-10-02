@@ -14,7 +14,7 @@ Pendiente abierto en `docs/RIESGOS_ACEPTADOS.md`.
 |---|---|---|
 | 0 | Datos y auditoría de solo lectura (`npm run audit:puntajes`) | hecha (2026-10-02) |
 | 1 | Módulo puro `lib/server/puntuacion.ts` + `tests/puntuacion.test.ts` | hecha (2026-10-02) |
-| 2 | Modo paralelo en `finalize` (el servidor recalcula y compara, sigue guardando lo del navegador) | pendiente |
+| 2 | Modo paralelo en `finalize` (`lib/server/puntajeSombra.ts`: el servidor recalcula y compara, sigue guardando lo del navegador) y reversión de la sesión si falla el guardado de respuestas | hecha (2026-10-02) |
 | 3 | Protocolo nuevo: el navegador manda la elección cruda y el servidor corrige, test por test | pendiente |
 | 4 | El GET deja de devolver `respuesta_correcta` e `inverso`; se borra el cálculo de las páginas | pendiente |
 
@@ -40,3 +40,15 @@ Resultado al 2026-10-02: 3069 coinciden o no tienen respuestas; **18 difieren, t
 ## No se puede recalcular desde las respuestas
 `metricas_fraude` (telemetría del navegador; se conserva, saneada), `nivel_maximo` de ICAR (viene de la URL: hay que
 firmarlo en el token en la Etapa 3) y los tests sin puntaje (Frases, Role Play).
+
+## Cómo revisar el modo paralelo (etapa 2)
+- En cada `finalize` el servidor recalcula el puntaje y, **solo si algo no coincide**, deja una línea en los logs de
+  Vercel: `[PUNTAJE SOMBRA] difiere test=<8 primeros del id> sesion=<8> claves=...` (el navegador mandó otro puntaje que
+  el que salen de sus respuestas) o `[PUNTAJE SOMBRA] rechazaria ...` (ítem ajeno, repetido o valor fuera de rango).
+  Que no haya líneas significa que coincide. No hay datos personales en el log.
+- Comprobación completa sobre lo ya guardado: `npm run audit:puntajes` (recalcula las sesiones finalizadas). Las 18
+  diferencias históricas explicadas arriba son esperables; cualquier diferencia nueva hay que investigarla.
+- Criterio para pasar a la etapa 3: unos días de tráfico real sin líneas `[PUNTAJE SOMBRA]` y la auditoría sin
+  diferencias nuevas.
+- `finalize` ahora revierte la sesión a `iniciado` si falla el guardado de las respuestas (antes quedaba finalizada y el
+  reintento del candidato recibía "ya completada", perdiendo las respuestas).

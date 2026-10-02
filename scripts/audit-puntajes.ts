@@ -7,7 +7,7 @@
 // Uso: npm run audit:puntajes   (lee las credenciales de .env.local)
 import { readFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
-import { calcularPuntaje, esPuntuable, bancoDeItems, esIcar, type ItemPuntuable } from '../lib/server/puntuacion.ts'
+import { calcularPuntaje, diferenciasDePuntaje, esPuntuable, bancoDeItems, esIcar, type ItemPuntuable } from '../lib/server/puntuacion.ts'
 
 for (const linea of readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
   const m = linea.match(/^([A-Z0-9_]+)=(.*)$/)
@@ -26,18 +26,6 @@ async function leerTodo<T>(tabla: string, columnas: string, filtro?: (q: any) =>
     if (!data || data.length < 1000) break
   }
   return filas
-}
-
-// Un valor guardado como null (NaN en JSON) equivale a NaN calculado
-const igual = (guardado: unknown, calculado: unknown): boolean => {
-  if (typeof calculado === 'number' && Number.isNaN(calculado)) return guardado === null
-  if (calculado && typeof calculado === 'object') {
-    if (!guardado || typeof guardado !== 'object') return false
-    const a = calculado as Record<string, unknown>
-    const b = guardado as Record<string, unknown>
-    return Object.keys(a).every(k => igual(b[k], a[k])) && Object.keys(b).every(k => k in a)
-  }
-  return guardado === calculado
 }
 
 async function main() {
@@ -77,9 +65,7 @@ async function main() {
     if (!calc.ok) { r.difiere++; if (r.ejemplos.length < 5) r.ejemplos.push(`${s.id.slice(0, 8)}: ${calc.error}`); continue }
     // nivel_maximo y metricas_fraude no salen de las respuestas: se comparan solo las claves calculadas
     const guardado = s.puntaje_bruto || {}
-    const claves = Object.keys(calc.puntaje)
-    const coincide = claves.every(k => igual(guardado[k], calc.puntaje[k]))
-    if (coincide) r.coincide++
+    if (diferenciasDePuntaje(guardado, calc.puntaje).length === 0) r.coincide++
     else { r.difiere++; if (r.ejemplos.length < 5) r.ejemplos.push(`${s.id.slice(0, 8)}: guardado=${JSON.stringify(guardado).slice(0, 110)} recalculado=${JSON.stringify(calc.puntaje).slice(0, 110)}`) }
   }
   let totalDifiere = 0

@@ -95,6 +95,26 @@ const BANCO_DE_ITEMS: Record<string, string> = {
   [ID.sjtCobranzas]: ID.tolerancia,
 }
 
+/**
+ * Claves de primer nivel en las que el puntaje enviado difiere del calculado (lista vacia = coinciden).
+ * Solo se miran las claves que el servidor calcula: `metricas_fraude` y `nivel_maximo` de ICAR no salen de
+ * las respuestas. Un valor NaN calculado se guarda como null en JSON, y asi se compara.
+ */
+export function diferenciasDePuntaje(enviado: unknown, calculado: Record<string, unknown>): string[] {
+  const igual = (a: unknown, b: unknown): boolean => {
+    if (typeof b === 'number' && Number.isNaN(b)) return a === null
+    if (b && typeof b === 'object') {
+      if (!a || typeof a !== 'object') return false
+      const x = a as Record<string, unknown>
+      const y = b as Record<string, unknown>
+      return Object.keys(y).every(k => igual(x[k], y[k])) && Object.keys(x).every(k => k in y)
+    }
+    return a === b
+  }
+  const base = enviado && typeof enviado === 'object' ? (enviado as Record<string, unknown>) : {}
+  return Object.keys(calculado).filter(k => !igual(base[k], calculado[k]))
+}
+
 /** True si el servidor sabe puntuar este test (Frases incompletas y Role Play quedan fuera). */
 export function esPuntuable(testId: string): boolean {
   return testId in CONFIG

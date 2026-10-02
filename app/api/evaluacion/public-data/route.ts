@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { z, validar, lenient } from '@/lib/server/validacion'
+import { compararPuntajeEnSombra } from '@/lib/server/puntajeSombra'
 
 // sesion_id viene del estado del cliente (puede faltar o venir vacio): si no es un uuid valido se trata
 // como "sin sesion" y se busca por candidato/proceso/test, igual que antes, en vez de rechazar y
@@ -157,17 +158,27 @@ export async function POST(request: Request) {
           sesionId = nueva.id
         }
       }
+      // Modo paralelo: el servidor recalcula y compara en silencio; lo que se guarda sigue siendo lo del navegador
+      await compararPuntajeEnSombra(db, testId, respuestas, puntaje, sesionId)
       const { data: actualizada, error: updateError } = await db.from('sesiones').update({ estado: 'finalizado', finalizada_en: new Date().toISOString(), puntaje_bruto: puntaje }).eq('id', sesionId).eq('estado', 'iniciado').select('id, estado, puntaje_bruto').maybeSingle()
       if (updateError) throw updateError
       if (!actualizada) return NextResponse.json({ error: 'La sesión cambió de estado; no se duplicaron respuestas' }, { status: 409 })
-      if (respuestas.length) {
-        const { data: existentes, error: existingError } = await db.from('respuestas').select('item_id').eq('sesion_id', sesionId)
-        if (existingError) throw existingError
-        if (!existentes?.length) {
-          const filas = respuestas.map(r => ({ sesion_id: sesionId, item_id: r.item_id, valor: r.valor, tiempo_respuesta: r.tiempo_respuesta }))
-          const { error: insertError } = await db.from('respuestas').insert(filas)
-          if (insertError) throw insertError
+      try {
+        if (respuestas.length) {
+          const { data: existentes, error: existingError } = await db.from('respuestas').select('item_id').eq('sesion_id', sesionId)
+          if (existingError) throw existingError
+          if (!existentes?.length) {
+            const filas = respuestas.map(r => ({ sesion_id: sesionId, item_id: r.item_id, valor: r.valor, tiempo_respuesta: r.tiempo_respuesta }))
+            const { error: insertError } = await db.from('respuestas').insert(filas)
+            if (insertError) throw insertError
+          }
         }
+      } catch (errorRespuestas) {
+        // La sesion ya se marco finalizada: si no se pudieron guardar las respuestas hay que volver atras, o el
+        // reintento del candidato recibiria "ya completada" y las respuestas se perderian para siempre
+        const { error: reversionError } = await db.from('sesiones').update({ estado: 'iniciado', finalizada_en: null }).eq('id', sesionId).eq('estado', 'finalizado')
+        if (reversionError) console.error('[evaluacion/public-data] No se pudo revertir la sesion tras fallar el guardado de respuestas:', reversionError)
+        throw errorRespuestas
       }
       return NextResponse.json({ sesion: actualizada, alreadyCompleted: false })
     }
