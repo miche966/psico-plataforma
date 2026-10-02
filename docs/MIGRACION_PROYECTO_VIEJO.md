@@ -47,6 +47,15 @@ node --experimental-strip-types scripts/revertir-migracion.ts docs/migracion-man
 ```
 Borra solo los ids del manifiesto y los 4 videos de R2 (el respaldo de las tablas tocadas se tomó antes de migrar).
 
+## Decisiones posteriores
+- **2026-10-02: no se exportan los 689 resultados de tests retirados** (HEXACO, SJT Problemas y la versión Likert de
+  Tolerancia). Decisión del responsable de la plataforma: no hay necesidad prevista de reutilizarlos y conservarlos
+  implicaría otra copia de datos personales fuera del sistema. Desaparecen al borrar el proyecto viejo; no afectan
+  nada de lo que se ve hoy.
+- Siguen sin resolver los 10 conflictos y los 5 candidatos con documento distinto; resolverlos requiere crear una clave de
+  lectura nueva en el proyecto viejo (las anteriores están inutilizadas). Si no se resuelven antes de borrarlo, se pierden
+  esos casos.
+
 ## Cierre del proyecto viejo
 Con todo verificado: eliminar la clave `secret` creada para la migración, pausar el proyecto y, pasado un mes sin
 problemas, borrarlo. Los videos del bucket viejo ya están en R2 (229 desde antes, 4 ahora).
