@@ -1,0 +1,23 @@
+# Actualizaciones automaticas de dependencias (punto 20 del checklist de seguridad).
+# Dependabot abre un pull request cuando hay una version nueva; el CI (tests, build, npm audit) lo valida antes de
+# que se pueda fusionar. Los avisos de seguridad (alertas y actualizaciones de seguridad) se activan aparte, en
+# GitHub: Settings -> Code security.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # Un solo PR por semana con las actualizaciones menores y de parche; las mayores van por separado
+      menores-y-parches:
+        update-types: [minor, patch]
+    ignore:
+      # xlsx 0.20.x solo se publica en el CDN de SheetJS (no en npm): se actualiza a mano
+      - dependency-name: xlsx
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
