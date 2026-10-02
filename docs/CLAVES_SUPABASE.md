@@ -22,7 +22,8 @@ dos JWT con vencimiento en 2036 que no se pueden rotar sin cortar el servicio).
 | Prueba local solo con claves nuevas (lectura/escritura, Storage, `auth.admin`, Auth) | 2026-10-02 | hecho |
 | Variables nuevas en Vercel (Production) + redespliegue; prueba del responsable (2FA, panel, informe, Accesos, recordatorios) | 2026-10-02 | hecho |
 | Quitar de Vercel (Production) `SUPABASE_SERVICE_ROLE_KEY` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` y redesplegar | 2026-10-02 | hecho |
-| Deshabilitar las claves clásicas en el proyecto (API Keys → Legacy → *Disable JWT-based API keys*) | 2026-10-02 | hecho: la `service_role` clásica responde 401. La `anon` clásica **sigue aceptándose pero sin acceso a datos** (RLS sin políticas: 0 filas, mismo poder que la `publishable`); para invalidarla del todo habría que revocar el secreto JWT legado (Settings → JWT Keys), decisión pendiente |
+| Deshabilitar las claves clásicas en el proyecto (API Keys → Legacy → *Disable JWT-based API keys*) | 2026-10-02 | hecho: `service_role` y `anon` clásicas responden 401 |
+| Revocar la *Previous key* (Legacy HS256) en Settings → JWT Keys, que mantenía vivo el secreto legado | 2026-10-02 | hecho: las claves clásicas ya no valen ni en Storage (`signature verification failed`). La clave de firma vigente es ECC (P-256) |
 
 ## Rotar una clave (sin cortar el servicio)
 1. En Supabase → Settings → API Keys → crear una `secret` (o `publishable`) nueva con otro nombre.

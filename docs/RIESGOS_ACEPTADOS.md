@@ -59,7 +59,7 @@ meses entienda que no fue un olvido.
 - **Verificación en dos pasos en el panel** (desde 2026-10-02): el servidor exige una sesión con el código de la app
   autenticadora (`aal2`) en todas las rutas de administración. Ver `docs/DOBLE_FACTOR.md`.
 - **Claves nuevas de Supabase** (desde 2026-10-02): producción usa `publishable` y `secret` (se pueden rotar y revocar de a
-  una); las claves clásicas se quitaron de Vercel y la `service_role` clásica quedó deshabilitada y verificada (401) el 2026-10-02; la `anon` clásica aún se acepta pero no lee datos (RLS). Ver `docs/CLAVES_SUPABASE.md`.
+  una); las claves clásicas se quitaron de Vercel y el 2026-10-02 se deshabilitaron las claves clásicas y se revocó el secreto JWT legado (Legacy HS256): `anon` y `service_role` clásicas verificadas inválidas (401, también en Storage). Ver `docs/CLAVES_SUPABASE.md`.
 - Rate limiting en los endpoints públicos y de IA; bloqueo de intentos de login; Turnstile en `/unirse`.
 - Cabeceras de seguridad HTTP (CSP, HSTS, etc.), validación de entradas con zod y auditoría de dependencias en CI.
 
