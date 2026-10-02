@@ -56,6 +56,8 @@ meses entienda que no fue un olvido.
   lectura que vencen a las 2 horas; `analizar-video` lee el video con las credenciales del servidor. Quien copie una
   URL firmada ve ese video hasta que venza (no es control de acceso por usuario). Para revertir basta reactivar el
   acceso público en Cloudflare y marcar el bucket de Supabase como público; la base no se modificó.
+- **Verificación en dos pasos en el panel** (desde 2026-10-02): el servidor exige una sesión con el código de la app
+  autenticadora (`aal2`) en todas las rutas de administración. Ver `docs/DOBLE_FACTOR.md`.
 - Rate limiting en los endpoints públicos y de IA; bloqueo de intentos de login; Turnstile en `/unirse`.
 - Cabeceras de seguridad HTTP (CSP, HSTS, etc.), validación de entradas con zod y auditoría de dependencias en CI.
 
@@ -93,5 +95,5 @@ Estos puntos **no** están aceptados: son pendientes que se conocen y que nadie 
 | ~~`forgot-password` / `reset-password`~~ | **Cerrado el 2026-10-01**: el pedido de recuperación pasa por `/api/forgot-password`, con límite por IP (5 por minuto) y por email (3 por hora), y responde igual exista o no la cuenta. `reset-password` no necesita límite propio: solo funciona con la sesión de recuperación que emite Supabase desde el enlace del correo. |
 | Bloqueo del firewall SMTP | El servidor de correo corporativo bloquea las IPs dinámicas de Vercel para el envío de recordatorios. |
 | Candidatos históricos del bug de `/unirse` | 128 candidatos con sesión "pendiente" anterior al 2026-08-03 que nunca recibieron un link válido; el listado se entregó y falta una decisión de negocio. |
-| 2FA del panel: implementado, **falta activarlo** | Desde 2026-10-02 las cuentas pueden configurar la verificación en dos pasos (`/seguridad`) y el servidor sabe exigirla, pero está **apagada** (`MFA_OBLIGATORIO`). Pasos para activarla y marcha atrás en `docs/DOBLE_FACTOR.md`. Hasta entonces, el acceso al panel sigue siendo solo con contraseña. |
+| ~~2FA del panel~~ | **Activado el 2026-10-02** (`MFA_OBLIGATORIO=true` en Producción): el panel exige código de app autenticadora (admin y cuentas de solo lectura). Guía, recuperación y marcha atrás en `docs/DOBLE_FACTOR.md`. |
 | Sesión del panel en `localStorage` | El token de sesión de administrador vive en `localStorage` del navegador (lo lee cualquier script que se ejecute en la página). Pasarla a cookies httpOnly es un cambio grande (login, pantallas, rutas, protección CSRF) que se decide aparte; la CSP y los demás encabezados reducen el riesgo de XSS. |

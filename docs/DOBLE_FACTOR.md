@@ -9,7 +9,7 @@ nativo de Supabase Auth. Los postulantes **no** usan 2FA: entran con el enlace f
 - `MFA_OBLIGATORIO=true` (variable de entorno de Vercel) hace que el servidor exija `aal2` en todas las rutas de
   administración: `requireAdminSession` (`lib/server/adminAuth.ts`) y, como segunda barrera sin red, `proxy.ts`
   (`decidirAccesoApi` en `lib/server/rutasApi.ts`). Única excepción: `/api/admin/whoami`, que admite `aal1` para que la
-  pantalla sepa a dónde mandar a la cuenta. **Apagada por defecto.**
+  pantalla sepa a dónde mandar a la cuenta. Apagada por defecto en el código; **activada en Producción el 2026-10-02**.
 - Pantallas: `/seguridad` (agregar o quitar dispositivos), `/login/2fa` (pedir el código al ingresar) y
   `lib/useGateMfa.ts` (en `AppLayout` y en el informe: manda a `/login/2fa`, o a `/seguridad` si la cuenta aún no tiene
   dispositivo, cuando la exigencia está activa y la sesión es `aal1`).
