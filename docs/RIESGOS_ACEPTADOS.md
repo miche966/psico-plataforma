@@ -60,6 +60,10 @@ meses entienda que no fue un olvido.
   autenticadora (`aal2`) en todas las rutas de administración. Ver `docs/DOBLE_FACTOR.md`.
 - **Claves nuevas de Supabase** (desde 2026-10-02): producción usa `publishable` y `secret` (se pueden rotar y revocar de a
   una); las claves clásicas se quitaron de Vercel y el 2026-10-02 se deshabilitaron las claves clásicas y se revocó el secreto JWT legado (Legacy HS256): `anon` y `service_role` clásicas verificadas inválidas (401, también en Storage). Ver `docs/CLAVES_SUPABASE.md`.
+- **Proyecto de Vercel duplicado eliminado** (2026-10-02): `psico-plataforma-master`, un proyecto viejo conectado al mismo
+  repositorio, seguía público con una versión antigua sin las protecciones (rutas de IA y de R2 sin sesión) y con los
+  secretos de la plataforma. Se borró y se rotó la clave de Gemini (la anterior estuvo en ese proyecto). Sin señales de
+  abuso en R2. Los despliegues antiguos del proyecto vivo están protegidos por la autenticación de Vercel.
 - Rate limiting en los endpoints públicos y de IA; bloqueo de intentos de login; Turnstile en `/unirse`.
 - Cabeceras de seguridad HTTP (CSP, HSTS, etc.), validación de entradas con zod y auditoría de dependencias en CI.
 
