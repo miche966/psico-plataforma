@@ -2,7 +2,7 @@ const dotenv = require('dotenv')
 dotenv.config({ path: '.env.local', quiet: true })
 
 const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const serviceKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 if (!baseUrl || !serviceKey) throw new Error('Faltan variables Supabase para auditoría de solo lectura.')
 
 async function readTable(table, select) {
@@ -13,7 +13,7 @@ async function readTable(table, select) {
     url.searchParams.set('select', select)
     url.searchParams.set('limit', String(pageSize))
     url.searchParams.set('offset', String(offset))
-    const response = await fetch(url, { headers: { apikey: serviceKey, Authorization: 'Bearer ' + serviceKey } })
+    const response = await fetch(url, { headers: serviceKey.startsWith('sb_') ? { apikey: serviceKey } : { apikey: serviceKey, Authorization: 'Bearer ' + serviceKey } })
     if (!response.ok) throw new Error('No se pudo leer ' + table + ': HTTP ' + response.status)
     const page = await response.json()
     rows.push(...page)

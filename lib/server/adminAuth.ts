@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseAdmin } from './supabaseAdmin'
 import { cumpleMfa } from './mfa'
+import { clavePublica } from './clavesSupabase'
 
 function allowedAdminEmails() {
   return (process.env.ADMIN_EMAILS || 'mochoa@republicamicrofinanzas.com.uy')
@@ -32,7 +33,7 @@ async function buscarRolViewer(email: string): Promise<{ role: 'viewer'; allowed
 export async function requireAdminSession(req: Request, opciones: { permitirAal1?: boolean } = {}): Promise<AdminSession> {
   const authorization = req.headers.get('authorization')
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const anonKey = clavePublica()
 
   if (!authorization?.startsWith('Bearer ') || !supabaseUrl || !anonKey) {
     return { response: NextResponse.json({ error: 'Sesion administrativa requerida' }, { status: 401 }) }

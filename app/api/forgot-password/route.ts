@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { crearClienteLogin } from '@/lib/server/clienteLogin'
+import { clavePublica } from '@/lib/server/clavesSupabase'
 import { rlPublico, rlRecuperacion, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
 import { z, validar } from '@/lib/server/validacion'
 
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const anonKey = clavePublica()
   if (!supabaseUrl || !anonKey) {
     return NextResponse.json({ error: 'Configuración de autenticación incompleta.' }, { status: 500 })
   }

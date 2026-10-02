@@ -14,7 +14,7 @@ const ruta = process.argv[2]
 if (!ruta) { console.error('Falta el manifiesto: node --experimental-strip-types scripts/revertir-migracion.ts <manifiesto.json> [--ejecutar]'); process.exit(1) }
 const manifiesto = JSON.parse(readFileSync(ruta, 'utf8')) as Record<string, string[]>
 const ejecutar = process.argv.includes('--ejecutar')
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } })
+const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)!, { auth: { persistSession: false, autoRefreshToken: false } })
 const r2 = new S3Client({ region: 'auto', endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`, credentials: { accessKeyId: process.env.R2_ACCESS_KEY_ID!, secretAccessKey: process.env.R2_SECRET_ACCESS_KEY! } })
 
 async function main() {

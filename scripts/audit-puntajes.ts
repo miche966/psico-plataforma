@@ -13,7 +13,7 @@ for (const linea of readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
   const m = linea.match(/^([A-Z0-9_]+)=(.*)$/)
   if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^"|"$/g, '')
 }
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } })
+const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)!, { auth: { persistSession: false } })
 
 async function leerTodo<T>(tabla: string, columnas: string, filtro?: (q: any) => any): Promise<T[]> {
   const filas: T[] = []

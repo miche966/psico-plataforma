@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { claveDeServicio } from '@/lib/server/clavesSupabase'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { z, validar, rutaVideoSchema } from '@/lib/server/validacion'
 import { mensajeParaCliente } from '@/lib/server/mensajesError'
@@ -14,11 +15,11 @@ const subidaSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const supabaseServiceKey = claveDeServicio()
 
     if (!supabaseServiceKey) {
       return NextResponse.json(
-        { error: 'Configuración del servidor incompleta: Falta la variable SUPABASE_SERVICE_ROLE_KEY.' },
+        { error: 'Configuración del servidor incompleta: Falta la clave de servicio de Supabase.' },
         { status: 500 }
       )
     }

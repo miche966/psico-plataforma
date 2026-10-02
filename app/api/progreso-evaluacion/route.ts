@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { requireAdminSession } from '@/lib/server/adminAuth'
+import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { claveDeServicio } from '@/lib/server/clavesSupabase'
 import { z, validar } from '@/lib/server/validacion'
 
 const fechaIso = z.string().refine(s => !Number.isNaN(Date.parse(s)), 'La fecha no es válida.')
@@ -30,34 +32,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Enlace de evaluación inválido o vencido' }, { status: 403 })
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!supabaseUrl || !serviceKey) {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !claveDeServicio()) {
       return NextResponse.json({ error: 'Seguimiento operativo no configurado en el servidor' }, { status: 503 })
     }
 
-    const response = await fetch(`${supabaseUrl}/rest/v1/progreso_evaluaciones`, {
-      method: 'POST',
-      headers: {
-        apikey: serviceKey,
-        Authorization: `Bearer ${serviceKey}`,
-        'Content-Type': 'application/json',
-        Prefer: 'resolution=merge-duplicates,return=minimal',
-      },
-      body: JSON.stringify({
-        candidato_id,
-        proceso_id,
-        evaluacion_key,
-        estado,
-        ...(pregunta_actual !== undefined ? { pregunta_actual } : {}),
-        ...(total_preguntas !== undefined ? { total_preguntas } : {}),
-        ...(respuestas_completadas !== undefined ? { respuestas_completadas } : {}),
-        ...(iniciada_en ? { iniciada_en } : {}),
-        ...(completada_en ? { completada_en } : {}),
-        ultima_actividad_en: new Date().toISOString(),
-      }),
-    })
-    if (!response.ok) return NextResponse.json({ error: 'No se pudo guardar el progreso' }, { status: 502 })
+    // onConflict por la restriccion unica (candidato, proceso, evaluacion): una fila por evaluacion que se actualiza.
+    // Antes el POST a mano no indicaba la clave y, desde la segunda vez para la misma evaluacion, chocaba con la
+    // restriccion (409) y el progreso quedaba congelado en el primer registro.
+    const { error } = await createSupabaseAdmin().from('progreso_evaluaciones').upsert({
+      candidato_id,
+      proceso_id,
+      evaluacion_key,
+      estado,
+      ...(pregunta_actual !== undefined ? { pregunta_actual } : {}),
+      ...(total_preguntas !== undefined ? { total_preguntas } : {}),
+      ...(respuestas_completadas !== undefined ? { respuestas_completadas } : {}),
+      ...(iniciada_en ? { iniciada_en } : {}),
+      ...(completada_en ? { completada_en } : {}),
+      ultima_actividad_en: new Date().toISOString(),
+    }, { onConflict: 'candidato_id,proceso_id,evaluacion_key' })
+    if (error) {
+      console.error('Error guardando el progreso de la evaluacion:', error)
+      return NextResponse.json({ error: 'No se pudo guardar el progreso' }, { status: 502 })
+    }
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error en progreso-evaluacion:', error)
@@ -69,9 +66,7 @@ export async function GET(req: Request) {
   try {
     const auth = await requireAdminSession(req)
     if (auth.response) return auth.response
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!supabaseUrl || !serviceKey) return NextResponse.json({ error: 'Seguimiento operativo no configurado en el servidor' }, { status: 503 })
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !claveDeServicio()) return NextResponse.json({ error: 'Seguimiento operativo no configurado en el servidor' }, { status: 503 })
 
     const url = new URL(req.url)
     const procesoIdSolicitado = url.searchParams.get('proceso_id')
@@ -83,20 +78,21 @@ export async function GET(req: Request) {
       if (!auth.allowedProcesoIds.length) return NextResponse.json({ data: [] })
     }
 
-    const query = new URLSearchParams({ select: '*', order: 'ultima_actividad_en.desc.nullslast' })
-    if (url.searchParams.get('candidato_id')) query.set('candidato_id', `eq.${url.searchParams.get('candidato_id')}`)
+    let consulta = createSupabaseAdmin().from('progreso_evaluaciones').select('*').order('ultima_actividad_en', { ascending: false, nullsFirst: false })
+    const candidatoSolicitado = url.searchParams.get('candidato_id')
+    if (candidatoSolicitado) consulta = consulta.eq('candidato_id', candidatoSolicitado)
     if (procesoIdSolicitado) {
-      query.set('proceso_id', `eq.${procesoIdSolicitado}`)
+      consulta = consulta.eq('proceso_id', procesoIdSolicitado)
     } else if (auth.role === 'viewer') {
       // No se confia en que el llamador filtre por su cuenta -- se acota siempre en el servidor.
-      query.set('proceso_id', `in.(${auth.allowedProcesoIds.join(',')})`)
+      consulta = consulta.in('proceso_id', auth.allowedProcesoIds)
     }
-    const response = await fetch(`${supabaseUrl}/rest/v1/progreso_evaluaciones?${query.toString()}`, {
-      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
-      cache: 'no-store',
-    })
-    if (!response.ok) return NextResponse.json({ error: 'No se pudo consultar el progreso' }, { status: 502 })
-    return NextResponse.json({ data: await response.json() })
+    const { data, error } = await consulta
+    if (error) {
+      console.error('Error consultando el progreso de las evaluaciones:', error)
+      return NextResponse.json({ error: 'No se pudo consultar el progreso' }, { status: 502 })
+    }
+    return NextResponse.json({ data })
   } catch (error) {
     console.error('Error consultando progreso-evaluacion:', error)
     return NextResponse.json({ error: 'Error interno consultando el progreso' }, { status: 500 })

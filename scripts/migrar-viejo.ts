@@ -33,7 +33,7 @@ if (!claveViejo) { console.error('No encontre una clave sb_secret_ en el archivo
 
 const sinSesion = { auth: { persistSession: false, autoRefreshToken: false } }
 const viejo = createClient(URL_VIEJO, claveViejo, sinSesion)
-const actual = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, sinSesion)
+const actual = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)!, sinSesion)
 
 type Fila = Record<string, any>
 
@@ -54,7 +54,9 @@ async function leerTodo(db: SupabaseClient, tabla: string, columnas = '*'): Prom
 
 // Columnas que tiene una tabla del actual (a partir del esquema que expone PostgREST)
 async function columnasDe(tabla: string): Promise<string[]> {
-  const r = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/`, { headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` } })
+  const claveActual = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)!
+  // La clave secret nueva no es un JWT: va solo en `apikey` (no como Authorization: Bearer)
+  const r = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/`, { headers: claveActual.startsWith('sb_') ? { apikey: claveActual } : { apikey: claveActual, Authorization: `Bearer ${claveActual}` } })
   const j: any = await r.json()
   return Object.keys(j.definitions?.[tabla]?.properties || {})
 }

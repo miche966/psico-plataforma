@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { generarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { mensajeParaCliente, mensajeErrorCorreo } from '@/lib/server/mensajesError'
+import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { claveDeServicio } from '@/lib/server/clavesSupabase'
 
 export async function POST(req: Request) {
   try {
@@ -84,24 +86,16 @@ export async function POST(req: Request) {
 
     await transporter.sendMail(mailOptions);
 
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      const auditResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/recordatorios_evaluacion`, {
-        method: 'POST',
-        headers: {
-          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-          'Content-Type': 'application/json',
-          Prefer: 'return=minimal',
-        },
-        body: JSON.stringify({
-          candidato_id: candidato_id || null,
-          proceso_id: proceso_id || null,
-          email,
-          estado: 'enviado',
-          pendientes: String(pendientes ?? ''),
-        }),
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && claveDeServicio()) {
+      // Via supabase-js (no fetch a mano): la clave secret nueva no es un JWT y no sirve como Authorization: Bearer
+      const { error: auditError } = await createSupabaseAdmin().from('recordatorios_evaluacion').insert({
+        candidato_id: candidato_id || null,
+        proceso_id: proceso_id || null,
+        email,
+        estado: 'enviado',
+        pendientes: String(pendientes ?? ''),
       })
-      if (!auditResponse.ok) console.warn('El correo se envio, pero no se pudo registrar la auditoria del recordatorio')
+      if (auditError) console.warn('El correo se envio, pero no se pudo registrar la auditoria del recordatorio')
     }
 
     return NextResponse.json({ success: true });
@@ -118,28 +112,17 @@ export async function GET(req: Request) {
     const bloqueado = requireFullAdmin(auth)
     if (bloqueado) return bloqueado
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !claveDeServicio()) {
       return NextResponse.json({ error: 'Configuración de Supabase incompleta' }, { status: 500 })
     }
 
-    const url = new URL(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/recordatorios_evaluacion`)
-    url.searchParams.set('select', '*')
-    url.searchParams.set('order', 'enviado_en.desc')
-    url.searchParams.set('limit', '100')
-
-    const response = await fetch(url, {
-      headers: {
-        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-      cache: 'no-store',
-    })
-
-    if (!response.ok) {
+    const { data, error } = await createSupabaseAdmin().from('recordatorios_evaluacion').select('*').order('enviado_en', { ascending: false }).limit(100)
+    if (error) {
+      console.error('Error consultando auditoría de recordatorios:', error)
       return NextResponse.json({ error: 'No se pudo consultar la auditoría de recordatorios' }, { status: 502 })
     }
 
-    return NextResponse.json({ data: await response.json() })
+    return NextResponse.json({ data })
   } catch (err: unknown) {
     console.error('Error consultando auditoría de recordatorios:', err)
     return NextResponse.json({ error: mensajeParaCliente(err, 'No se pudo consultar la auditoría de recordatorios.') }, { status: 500 })
