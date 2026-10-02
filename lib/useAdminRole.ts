@@ -8,6 +8,8 @@ export type AdminRole = 'admin' | 'viewer'
 interface EstadoRol {
   role: AdminRole | null
   allowedProcesoIds: string[] | null
+  /** El 2FA es obligatorio: la pantalla usa useGateMfa para mandar a verificar o a enrolar */
+  mfaRequerido: boolean
   loading: boolean
 }
 
@@ -18,7 +20,7 @@ interface EstadoRol {
  * no como "es viewer", para no ocultar controles de golpe antes de tiempo.
  */
 export function useAdminRole(): EstadoRol {
-  const [estado, setEstado] = useState<EstadoRol>({ role: null, allowedProcesoIds: null, loading: true })
+  const [estado, setEstado] = useState<EstadoRol>({ role: null, allowedProcesoIds: null, mfaRequerido: false, loading: true })
 
   useEffect(() => {
     let vivo = true
@@ -29,12 +31,12 @@ export function useAdminRole(): EstadoRol {
         const data = await res.json().catch(() => ({}))
         if (!vivo) return
         if (res.ok && (data.role === 'admin' || data.role === 'viewer')) {
-          setEstado({ role: data.role, allowedProcesoIds: data.allowedProcesoIds ?? null, loading: false })
+          setEstado({ role: data.role, allowedProcesoIds: data.allowedProcesoIds ?? null, mfaRequerido: data.mfaRequerido === true, loading: false })
         } else {
-          setEstado({ role: null, allowedProcesoIds: null, loading: false })
+          setEstado({ role: null, allowedProcesoIds: null, mfaRequerido: false, loading: false })
         }
       } catch {
-        if (vivo) setEstado({ role: null, allowedProcesoIds: null, loading: false })
+        if (vivo) setEstado({ role: null, allowedProcesoIds: null, mfaRequerido: false, loading: false })
       }
     }
     cargar()

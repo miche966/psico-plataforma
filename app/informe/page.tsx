@@ -6,6 +6,7 @@ import { normalizarPuntaje, colorPuntaje, PUNTAJES_VERSION, interpretacionVigent
 import { detectarInconsistenciasNumericas } from '@/lib/informeConsistencia'
 import { getAdminHeaders } from '@/lib/evaluacionLink'
 import { useAdminRole } from '@/lib/useAdminRole'
+import { useGateMfa } from '@/lib/useGateMfa'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { InformePDF } from '@/components/InformePDF'
 import Link from 'next/link'
@@ -265,7 +266,8 @@ function calcAjuste(reqs: any[], sesiones: any[]) {
 }
 
 function InformePageContent() {
-  const { role } = useAdminRole()
+  const { role, mfaRequerido } = useAdminRole()
+  useGateMfa(mfaRequerido)
   const esViewer = role === 'viewer'
   const searchParams = useSearchParams()
   const id = searchParams.get('candidato')

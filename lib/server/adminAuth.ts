@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseAdmin } from './supabaseAdmin'
+import { cumpleMfa } from './mfa'
 
 function allowedAdminEmails() {
   return (process.env.ADMIN_EMAILS || 'mochoa@republicamicrofinanzas.com.uy')
@@ -28,7 +29,7 @@ async function buscarRolViewer(email: string): Promise<{ role: 'viewer'; allowed
   return { role: 'viewer', allowedProcesoIds: (procesos || []).map(p => p.proceso_id) }
 }
 
-export async function requireAdminSession(req: Request): Promise<AdminSession> {
+export async function requireAdminSession(req: Request, opciones: { permitirAal1?: boolean } = {}): Promise<AdminSession> {
   const authorization = req.headers.get('authorization')
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -44,6 +45,12 @@ export async function requireAdminSession(req: Request): Promise<AdminSession> {
 
   if (!userResponse.ok) {
     return { response: NextResponse.json({ error: 'Sesion administrativa invalida o vencida' }, { status: 401 }) }
+  }
+
+  // Verificacion en dos pasos (MFA_OBLIGATORIO=true): el token ya lo valido Supabase Auth, aca se exige que su
+  // claim "aal" sea 'aal2' (codigo de la app autenticadora verificado). Solo whoami admite una sesion 'aal1'.
+  if (!opciones.permitirAal1 && !cumpleMfa(authorization)) {
+    return { response: NextResponse.json({ error: 'Se requiere verificación en dos pasos', codigo: 'mfa_requerido' }, { status: 401 }) }
   }
 
   const user = await userResponse.json()

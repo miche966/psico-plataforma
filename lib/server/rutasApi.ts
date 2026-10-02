@@ -9,6 +9,9 @@
  * Modulo puro (sin next/server) para poder usarlo desde el proxy y desde los tests.
  */
 
+import { decodificarPayloadJwt } from './jwtPlano.ts'
+import { cumpleMfa } from './mfa.ts'
+
 export interface RutaPublica {
   /** Metodos HTTP abiertos sin sesion de administrador; el resto de los metodos de esa ruta exige sesion */
   metodos: string[]
@@ -41,24 +44,6 @@ export function esRutaApiPublica(pathname: string, metodo: string): boolean {
   return Boolean(ruta && ruta.metodos.includes(metodo.toUpperCase()))
 }
 
-function decodificarPayloadJwt(token: string): Record<string, unknown> | null {
-  const partes = token.split('.')
-  if (partes.length !== 3 || partes.some(p => !p)) return null
-  try {
-    const base64 = partes[1].replace(/-/g, '+').replace(/_/g, '/')
-    const json = decodeURIComponent(
-      atob(base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '='))
-        .split('')
-        .map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
-        .join('')
-    )
-    const payload = JSON.parse(json)
-    return payload && typeof payload === 'object' ? payload : null
-  } catch {
-    return null
-  }
-}
-
 /**
  * Filtro barato (sin red ni firma) para el proxy: el encabezado debe traer un JWT de un usuario
  * autenticado y no vencido. Deja afuera a quien no manda nada, manda basura, un token vencido o la
@@ -70,4 +55,30 @@ export function tokenAdminPlausible(authorization: string | null, ahoraSegundos 
   const payload = decodificarPayloadJwt(authorization.slice('Bearer '.length).trim())
   if (!payload) return false
   return payload.role === 'authenticated' && typeof payload.exp === 'number' && payload.exp > ahoraSegundos
+}
+
+/**
+ * Rutas de administracion que se pueden llamar con una sesion que todavia esta en 'aal1' (solo contrasena)
+ * aunque el 2FA sea obligatorio: la pantalla las usa para saber que rol tiene la cuenta y a donde mandarla
+ * (verificar el codigo o enrolar el dispositivo). No devuelven datos de candidatos.
+ */
+export const RUTAS_API_ADMIN_AAL1 = ['/api/admin/whoami']
+
+export function permiteAal1(pathname: string): boolean {
+  return RUTAS_API_ADMIN_AAL1.includes(normalizarRutaApi(pathname))
+}
+
+export type DecisionApi = 'permitir' | 'sesion_requerida' | 'mfa_requerido'
+
+/**
+ * Decision del proxy para una solicitud a /api (pura, para poder testearla):
+ * publica -> pasa; preflight -> pasa; sin sesion con forma valida -> 401; con el 2FA obligatorio y la sesion en
+ * 'aal1' -> 401 mfa_requerido (salvo las rutas de RUTAS_API_ADMIN_AAL1).
+ */
+export function decidirAccesoApi(entrada: { pathname: string; metodo: string; authorization: string | null; mfaObligatorio: boolean; ahoraSegundos?: number }): DecisionApi {
+  if (esRutaApiPublica(entrada.pathname, entrada.metodo)) return 'permitir'
+  if (entrada.metodo.toUpperCase() === 'OPTIONS') return 'permitir'
+  if (!tokenAdminPlausible(entrada.authorization, entrada.ahoraSegundos)) return 'sesion_requerida'
+  if (!permiteAal1(entrada.pathname) && !cumpleMfa(entrada.authorization, entrada.mfaObligatorio)) return 'mfa_requerido'
+  return 'permitir'
 }

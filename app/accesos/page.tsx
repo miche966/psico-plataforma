@@ -58,6 +58,20 @@ export default function AccesosPage() {
     })
   }
 
+  async function restablecer2fa(cuenta: CuentaViewer) {
+    if (!confirm(`¿Restablecer el 2FA de ${cuenta.email}? Se cierran sus sesiones y tendrá que configurar un dispositivo nuevo la próxima vez que ingrese.`)) return
+    setMensaje(null)
+    try {
+      const headers = await getAdminHeaders()
+      const res = await fetch('/api/admin/usuarios', { method: 'POST', headers, body: JSON.stringify({ accion: 'restablecer_2fa', email: cuenta.email }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'No se pudo restablecer el 2FA')
+      setMensaje({ tipo: 'ok', texto: data.eliminados > 0 ? `Se restableció el 2FA de ${cuenta.email}. En su próximo ingreso va a configurar un dispositivo nuevo.` : `${cuenta.email} no tenía ningún dispositivo de 2FA configurado.` })
+    } catch (err: any) {
+      setMensaje({ tipo: 'error', texto: err.message })
+    }
+  }
+
   async function crearCuenta() {
     setMensaje(null)
     if (!email.trim() || !email.includes('@')) {
@@ -168,9 +182,14 @@ export default function AccesosPage() {
                     {c.procesoIds.length} proceso{c.procesoIds.length !== 1 ? 's' : ''} asignado{c.procesoIds.length !== 1 ? 's' : ''}
                   </p>
                 </div>
-                <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
-                  <CheckCircle2 className="w-3 h-3" /> Solo lectura
-                </span>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => restablecer2fa(c)} className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800">
+                    Restablecer 2FA
+                  </button>
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                    <CheckCircle2 className="w-3 h-3" /> Solo lectura
+                  </span>
+                </div>
               </div>
             ))}
           </div>

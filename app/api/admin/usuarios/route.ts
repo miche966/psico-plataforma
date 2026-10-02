@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { registrarAcceso } from '@/lib/server/registroAccesos'
 
 // Alta y listado de cuentas "viewer" (solo lectura, acotadas a procesos especificos).
 // Ambas operaciones son superadmin-only: un viewer nunca puede crear otro viewer ni
@@ -45,6 +46,9 @@ export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}))
     const email = String(body.email || '').trim().toLowerCase()
+
+    if (body.accion === 'restablecer_2fa') return await restablecer2fa(req, auth, email)
+
     const procesoIds: string[] = Array.isArray(body.procesoIds) ? body.procesoIds.filter((id: unknown) => typeof id === 'string') : []
 
     if (!email || !email.includes('@')) {
@@ -91,4 +95,39 @@ export async function POST(req: Request) {
     console.error('[admin/usuarios POST]', error)
     return NextResponse.json({ error: 'No se pudo crear la cuenta' }, { status: 500 })
   }
+}
+
+/**
+ * Restablece el 2FA de una cuenta de solo lectura que perdio su dispositivo: borra sus factores (cierra todas
+ * sus sesiones) y en su proximo ingreso tendra que enrolar uno nuevo. No hay codigos de recuperacion, asi que
+ * esta es la via de rescate; solo el administrador completo, y solo para cuentas dadas de alta en admin_roles.
+ */
+async function restablecer2fa(req: Request, auth: { user?: { email?: string | null }; role?: string }, email: string) {
+  if (!email || !email.includes('@')) return NextResponse.json({ error: 'Email inválido' }, { status: 400 })
+  const db = createSupabaseAdmin()
+
+  const { data: cuenta, error: cuentaError } = await db.from('admin_roles').select('email').eq('email', email).maybeSingle()
+  if (cuentaError) throw cuentaError
+  if (!cuenta) return NextResponse.json({ error: 'Esa cuenta no está entre las cuentas de solo lectura' }, { status: 404 })
+
+  // Supabase Auth no busca usuarios por email: se recorre el listado (hay pocas cuentas)
+  let userId: string | null = null
+  for (let pagina = 1; pagina <= 20 && !userId; pagina++) {
+    const { data, error } = await db.auth.admin.listUsers({ page: pagina, perPage: 200 })
+    if (error) throw error
+    userId = data.users.find(u => (u.email || '').toLowerCase() === email)?.id || null
+    if (data.users.length < 200) break
+  }
+  if (!userId) return NextResponse.json({ error: 'La cuenta todavía no creó su usuario (no aceptó la invitación)' }, { status: 404 })
+
+  const { data: lista, error: listaError } = await db.auth.admin.mfa.listFactors({ userId })
+  if (listaError) throw listaError
+  const factores = lista?.factors || []
+  for (const factor of factores) {
+    const { error } = await db.auth.admin.mfa.deleteFactor({ id: factor.id, userId })
+    if (error) throw error
+  }
+  console.warn(`[admin/usuarios] 2FA restablecido por ${auth.user?.email}: ${factores.length} dispositivo(s) de ${email}`)
+  await registrarAcceso(db, auth, { accion: 'restablecer_2fa' }, req)
+  return NextResponse.json({ success: true, eliminados: factores.length })
 }

@@ -3,15 +3,17 @@
 import { ReactNode, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Users, FileText, BarChart3, Video, LogOut, Bell, Sun, Moon, UserCog } from 'lucide-react'
+import { LayoutDashboard, Users, FileText, BarChart3, Video, LogOut, Bell, Sun, Moon, UserCog, ShieldCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAdminRole } from '@/lib/useAdminRole'
+import { useGateMfa } from '@/lib/useGateMfa'
 import { getAdminHeaders } from '@/lib/evaluacionLink'
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { role } = useAdminRole()
+  const { role, mfaRequerido } = useAdminRole()
+  useGateMfa(mfaRequerido)
   const [novedades, setNovedades] = useState(0)
   const [isDarkMode, setIsDarkMode] = useState(false)
 
@@ -83,6 +85,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 { href: '/candidatos', label: 'Base de Candidatos', icon: Users },
                 { href: '/entrevista-video', label: 'Librería Video', icon: Video },
                 ...(role === 'admin' ? [{ href: '/accesos', label: 'Accesos', icon: UserCog }] : []),
+                { href: '/seguridad', label: 'Seguridad', icon: ShieldCheck },
               ].map((item) => {
                 const isActive = pathname === item.href
                 const Icon = item.icon

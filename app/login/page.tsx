@@ -28,7 +28,9 @@ export default function LoginPage() {
       return
     }
     await supabase.auth.setSession({ access_token: data.session.access_token, refresh_token: data.session.refresh_token })
-    router.push('/panel')
+    // Si la cuenta tiene un dispositivo 2FA, la sesion recien iniciada (solo contrasena) todavia tiene que verificar el codigo
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    router.push(aal && aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2' ? '/login/2fa' : '/panel')
   }
 
   return (
