@@ -36,12 +36,14 @@ Quien entra a cualquiera de estas cuentas puede borrar datos, ver datos personal
    qué pasa con los usuarios y las políticas de acceso. Un respaldo que nunca se restauró no es una garantía.
 3. Decidí si alcanza con 7 días o querés PITR (Database → Backups → Point in Time).
 
-### Videos (R2) — decisión pendiente
+### Videos (R2) — decisión tomada el 2026-10-02: aceptar el riesgo
+Ver "2. Videos de entrevista sin respaldo" en `docs/RIESGOS_ACEPTADOS.md`. A esa fecha: 1640 videos, 12,8 GB, costo de
+R2 del período USD 0,02. Opciones consideradas:
 Hoy una baja accidental o una clave filtrada con permiso de borrado destruye los videos sin vuelta atrás. Opciones, de
 menor a mayor esfuerzo:
 - **Aceptar el riesgo** y dejarlo anotado (los videos se pueden volver a pedir a los postulantes, con costo humano).
-- **Token de R2 acotado**: que la clave que usa la plataforma tenga permiso solo sobre este bucket (Cloudflare → R2 →
-  Manage API tokens), sin acceso a nada más.
+- **Token de R2 acotado**: que la clave que usa la plataforma tenga permiso solo sobre este bucket. Hoy no aporta nada
+  porque la cuenta tiene un único bucket (revisado el 2026-10-02); pasa a ser necesario si se crea otro.
 - **Copia periódica** a otro bucket o a un disco (por ejemplo con `rclone sync`, o la migración a pedido de R2). Ocupa
   tanto espacio como los videos (varios GB) y hay que programarla.
 - No usar "Bucket Lock" tal cual: la plataforma borra a propósito los videos que no pasan la validación de tamaño, y un

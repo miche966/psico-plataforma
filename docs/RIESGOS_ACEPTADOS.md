@@ -83,6 +83,38 @@ Alcance recomendado, de menor a mayor costo:
 
 ---
 
+## 2. Videos de entrevista sin respaldo (Cloudflare R2) — RIESGO ACEPTADO
+
+- **Decisión**: no se hace copia de respaldo de los videos de las entrevistas. Tampoco se acota la clave de R2 a un
+  bucket por ahora: la cuenta de Cloudflare tiene un único bucket (el de los videos), así que no habría nada más que
+  proteger (ver "Mitigación").
+- **Fecha**: 2026-10-02
+- **Decidió**: Michel Ochoa (responsable de la plataforma)
+- **Origen**: punto 20 del checklist ("Actualizar, backups y 2FA"). Opciones evaluadas: aceptar, acotar la clave, o
+  copia periódica (`docs/RESPALDOS_Y_CUENTAS.md`).
+
+### Qué significa
+- R2 no versiona ni copia los objetos: un borrado accidental o una clave filtrada con permiso de borrado destruye los
+  videos sin recuperación posible. A 2026-10-02 son **1640 videos, 12,8 GB**.
+- Lo que **sí** está respaldado (base de datos, copia diaria de Supabase Pro): la transcripción, el análisis de la IA y
+  todos los resultados de los tests. Lo que se perdería es solo la imagen y el audio originales.
+- Recuperar un video perdido implicaría pedirle de nuevo la grabación al postulante.
+
+### Mitigación vigente
+- Los videos ya no son públicos (URLs firmadas de 2 horas, desde 2026-10-01): no se pueden bajar ni borrar desde afuera.
+- La clave de R2 que usa la plataforma tiene permisos de objetos solamente (verificado el 2026-10-02: no puede listar
+  buckets ni cambiar la configuración). Vale para todos los buckets de la cuenta, que hoy es uno solo: **si se crea otro
+  bucket, hay que reemplazarla por una clave acotada al bucket de los videos.**
+- El borrado de videos solo ocurre desde el código al rechazar una subida inválida (`validarVideoR2`).
+
+### Cuándo hay que reabrir esta decisión
+- Los videos pasan a ser evidencia que hay que conservar (auditoría, reclamo, requisito legal u organizacional).
+- Se pierde o se borra por error un video que se necesitaba.
+- Un incidente con la clave de R2 o con la cuenta de Cloudflare, o si se crea otro bucket en la cuenta.
+- Sugerencia: revisarla una vez al año, o si el volumen de videos crece mucho.
+
+---
+
 ## Pendientes conocidos (abiertos, sin decisión tomada)
 
 Estos puntos **no** están aceptados: son pendientes que se conocen y que nadie decidió todavía.
@@ -97,5 +129,4 @@ Estos puntos **no** están aceptados: son pendientes que se conocen y que nadie 
 | Candidatos históricos del bug de `/unirse` | 128 candidatos con sesión "pendiente" anterior al 2026-08-03 que nunca recibieron un link válido; el listado se entregó y falta una decisión de negocio. |
 | ~~2FA del panel~~ | **Activado el 2026-10-02** (`MFA_OBLIGATORIO=true` en Producción): el panel exige código de app autenticadora (admin y cuentas de solo lectura). Guía, recuperación y marcha atrás en `docs/DOBLE_FACTOR.md`. |
 | Sesión del panel en `localStorage` | El token de sesión de administrador vive en `localStorage` del navegador (lo lee cualquier script que se ejecute en la página). Pasarla a cookies httpOnly es un cambio grande (login, pantallas, rutas, protección CSRF) que se decide aparte; la CSP y los demás encabezados reducen el riesgo de XSS. |
-| Videos de entrevista (R2) sin respaldo | R2 no versiona ni copia los objetos: un borrado accidental o una clave filtrada con permiso de borrado pierde los ~1550 videos sin vuelta atrás. Opciones y recomendación en `docs/RESPALDOS_Y_CUENTAS.md`. Decisión tuya: aceptar el riesgo, acotar el token de R2 o programar una copia periódica. |
 | 2FA de las cuentas de los servicios y prueba de restauración de la base | Activar la verificación en dos pasos en GitHub, Vercel, Supabase, Cloudflare, Google y el correo; comprobar los respaldos diarios de Supabase y probar una restauración en un proyecto nuevo. Son acciones del dueño de las cuentas: lista en `docs/RESPALDOS_Y_CUENTAS.md`. |
