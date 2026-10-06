@@ -78,6 +78,7 @@ import { ETQ } from '@/lib/labels'
 import { sanearFraseAlineamiento } from '@/lib/informeSaneador'
 import { estimarMBTI, estimarMBTIDesdeSesiones } from '@/lib/baremos'
 import { obtenerNarrativaFactor } from '@/lib/interpretaciones/narrativasFactor'
+import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
 
 
 const DOMINIOS = {
@@ -943,7 +944,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
             <div style={s.item}><span style={s.label}>Email</span><div style={s.value}>{candidato.email}</div></div>
             {proceso && (
               <>
-                <div style={s.item}><span style={s.label}>Proceso</span><div style={s.value}>{proceso.nombre}</div></div>
+                <div style={s.item}><span style={s.label}>Proceso</span><div style={s.value}>{nombreDeProcesoLegible(proceso.nombre)}</div></div>
                 <div style={s.item}><span style={s.label}>Cargo</span><div style={s.value}>{proceso.cargo}</div></div>
               </>
             )}

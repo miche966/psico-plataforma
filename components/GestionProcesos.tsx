@@ -6,6 +6,7 @@ import { getAdminHeaders, obtenerLinkEvaluacion } from '@/lib/evaluacionLink'
 import { useAdminRole } from '@/lib/useAdminRole'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
+import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
 
 // navigator.clipboard.writeText exige que el documento tenga foco en el momento exacto en
 // que se llama. Como el link se genera con un fetch async antes de copiarlo, el foco se
@@ -624,7 +625,7 @@ export default function GestionProcesos() {
               <div className="flex justify-between items-start">
                 <div className="pr-8">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold text-slate-800 leading-tight">{p.nombre}</h3>
+                    <h3 className="font-bold text-slate-800 leading-tight">{nombreDeProcesoLegible(p.nombre)}</h3>
                     <span
                       onClick={esViewer ? undefined : (e) => toggleEstado(p, e)}
                       className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full transition-all ${esViewer ? '' : 'cursor-pointer hover:scale-105'} ${

@@ -15,6 +15,7 @@ import { TEST_IDS, calcularProgresoEvaluacion } from '@/lib/progresoEvaluacion'
 import SaludOperativa from '@/components/SaludOperativa'
 import { FRASES_INCOMPLETAS_ID, FRASES_ESTIMULO } from '@/lib/frasesIncompletas'
 import { useAdminRole } from '@/lib/useAdminRole'
+import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
 
 
 const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
@@ -802,85 +803,46 @@ export default function PanelEvaluador() {
     )
   }
 
+  const seleccionarCandidato = async (c: CandidatoAgrupado) => {
+    setAgrupadoSeleccionado(c)
+    const sInicial = c.sesiones[0]
+    setSesionSeleccionada(sInicial)
+    if (sInicial) cargarAuditoriaSesion(sInicial)
+
+    await cargarVideosDe(c)
+  }
+
   return (
     <AppLayout>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Centro de Control</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Gestión inteligente de talento y procesos
-          </p>
-        </div>
+      <header className="mb-2">
+        <h1 className="text-3xl font-semibold text-slate-900">Centro de control</h1>
+        <p className="text-slate-500 mt-1">Candidatos y procesos de selección</p>
+      </header>
 
-        <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-sm">
+      <nav className="flex flex-wrap gap-x-6 border-b border-slate-200 mb-6" aria-label="Secciones">
+        {([
+          ['dashboard', 'Dashboard'],
+          ['evaluaciones', 'Análisis'],
+          ['historial', 'Historial'],
+          ['diagnostico', 'Diagnóstico'],
+          ['gestion', 'Gestión de procesos'],
+          ['salud', 'Salud operativa'],
+        ] as const).map(([clave, etiqueta]) => (
           <button
-            onClick={() => setTab('dashboard')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              tab === 'dashboard' 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : 'text-slate-500 hover:text-slate-700'
+            key={clave}
+            type="button"
+            onClick={() => setTab(clave)}
+            aria-current={tab === clave ? 'page' : undefined}
+            className={`relative pt-2 pb-3 text-sm transition-colors ${
+              tab === clave
+                ? 'font-bold text-slate-900 after:absolute after:left-0 after:right-0 after:-bottom-px after:h-1 after:rounded after:bg-[#f5d547]'
+                : 'font-medium text-slate-500 hover:text-slate-800'
             }`}
           >
-            <LayoutDashboard className="w-4 h-4" />
-            DASHBOARD
+            {etiqueta}
           </button>
-          <button
-            onClick={() => setTab('evaluaciones')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              tab === 'evaluaciones' 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <BarChart2 className="w-4 h-4" />
-            ANÁLISIS
-          </button>
-          <button
-            onClick={() => setTab('historial')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              tab === 'historial' 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <History className="w-4 h-4" />
-            HISTORIAL
-          </button>
-          <button
-            onClick={() => setTab('diagnostico')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              tab === 'diagnostico' 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            DIAGNÓSTICO
-          </button>
-          <button
-            onClick={() => setTab('gestion')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              tab === 'gestion' 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <Settings2 className="w-4 h-4" />
-            GESTIÓN PROCESOS
-          </button>
-          <button
-            onClick={() => setTab('salud')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              tab === 'salud'
-                ? 'bg-white text-indigo-600 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <AlertTriangle className="w-4 h-4" />
-            SALUD OPERATIVA
-          </button>
-        </div>
-      </div>
+        ))}
+      </nav>
 
       {tab === 'dashboard' ? (
         <Dashboard />
@@ -944,7 +906,7 @@ export default function PanelEvaluador() {
                         <div className="text-[10px] text-slate-400">{c.email}</div>
                       </td>
                       <td className="py-3 px-4">
-                        <div className="text-[10px] text-slate-600 truncate max-w-[150px]">{c.proceso_nombre || 'Independiente'}</div>
+                        <div className="text-[10px] text-slate-600 truncate max-w-[150px]">{nombreDeProcesoLegible(c.proceso_nombre) || 'Independiente'}</div>
                         <div className="text-[10px] text-indigo-500 font-bold">{c.proceso_cargo || 'Sin cargo'}</div>
                       </td>
                       <td className="py-3 px-4">
@@ -1009,92 +971,111 @@ export default function PanelEvaluador() {
       ) : (
         <>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" aria-label="Resumen de postulaciones">
-        {[
-          { label: 'Total', value: candidatos.length, tone: 'text-slate-800' },
-          { label: 'Pendientes', value: conteoEstados.pendiente || 0, tone: 'text-slate-600' },
-          { label: 'En curso', value: conteoEstados['en curso'] || 0, tone: 'text-amber-600' },
-          { label: 'Completadas', value: conteoEstados.completada || 0, tone: 'text-emerald-600' }
-        ].map(item => (
-          <div key={item.label} className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
-            <div className={`text-xl font-bold ${item.tone}`}>{item.value}</div>
-            <div className="text-[10px] text-slate-500 uppercase tracking-wide">{item.label}</div>
+      <section className="flex flex-wrap items-center gap-x-10 gap-y-4 pb-6" aria-label="Resumen de postulaciones">
+        <div className="flex gap-8">
+          {[
+            { label: 'candidatos', value: candidatos.length, extra: 'pr-8 border-r border-slate-200' },
+            { label: 'pendientes', value: conteoEstados.pendiente || 0, extra: '' },
+            { label: 'en curso', value: conteoEstados['en curso'] || 0, extra: '' },
+            { label: 'completadas', value: conteoEstados.completada || 0, extra: '' },
+          ].map(item => (
+            <div key={item.label} className={item.extra}>
+              <div className="text-4xl font-semibold leading-none text-slate-900" style={{ fontFamily: 'var(--font-lectura), Georgia, serif' }}>{item.value}</div>
+              <div className="text-sm text-slate-500 mt-1">{item.label}</div>
+            </div>
+          ))}
+        </div>
+        <div className="flex-1 min-w-[16rem] space-y-2">
+          <div
+            className="flex h-3.5 rounded-full overflow-hidden bg-slate-200"
+            role="img"
+            aria-label={`${conteoEstados.completada || 0} completadas, ${conteoEstados['en curso'] || 0} en curso, ${conteoEstados.pendiente || 0} pendientes`}
+          >
+            <span className="bg-indigo-600" style={{ width: `${candidatos.length ? ((conteoEstados.completada || 0) / candidatos.length) * 100 : 0}%` }} />
+            <span className="bg-[#f5d547]" style={{ width: `${candidatos.length ? ((conteoEstados['en curso'] || 0) / candidatos.length) * 100 : 0}%` }} />
           </div>
-        ))}
-      </div>
-
-      {/* BARRA DE HERRAMIENTAS: BUSCADOR + FILTRO POR PROCESO */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-3 mb-6 shadow-sm space-y-3">
-        <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Buscar por nombre, email o cargo..."
-            value={filtro}
-            onChange={(e) => setFiltro(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
-          />
+          <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />Completadas</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#f5d547]" />En curso</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-slate-200" />Pendientes</span>
+          </div>
         </div>
+      </section>
 
-        <div className="flex items-center gap-2 w-full flex-wrap">
-          <Settings2 className="w-4 h-4 text-slate-400" />
-          <select
-            value={procesoSeleccionadoId}
-            onChange={(e) => setProcesoSeleccionadoId(e.target.value)}
-            className="flex-1 md:w-56 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium text-slate-700"
-          >
-            <option value="todos">Todos los procesos</option>
-            {procesos.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.nombre} ({p.cargo})
-              </option>
-            ))}
-          </select>
-          <select
-            value={estadoFiltro}
-            onChange={(e) => setEstadoFiltro(e.target.value as 'todos' | 'pendiente' | 'en curso' | 'completada')}
-            className="flex-1 md:w-44 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium text-slate-700"
-            aria-label="Filtrar por estado"
-          >
-            <option value="todos">Todos los estados</option>
-            <option value="pendiente">Pendientes</option>
-            <option value="en curso">En curso</option>
-            <option value="completada">Completadas</option>
-          </select>
+      {/* BARRA DE HERRAMIENTAS: BUSCADOR + FILTROS + EXPORTAR */}
+      <div className="flex flex-wrap items-center gap-2.5 pb-5">
+        <input
+          type="text"
+          aria-label="Buscar candidatos"
+          placeholder="Buscar por nombre, correo o cargo"
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          className="flex-1 min-w-[16rem] bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600"
+        />
+        <select
+          aria-label="Filtrar por proceso"
+          value={procesoSeleccionadoId}
+          onChange={(e) => setProcesoSeleccionadoId(e.target.value)}
+          className="bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600 max-w-[16rem]"
+        >
+          <option value="todos">Todos los procesos</option>
+          {procesos.map(p => (
+            <option key={p.id} value={p.id}>
+              {nombreDeProcesoLegible(p.nombre)} ({p.cargo})
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Filtrar por estado"
+          value={estadoFiltro}
+          onChange={(e) => setEstadoFiltro(e.target.value as 'todos' | 'pendiente' | 'en curso' | 'completada')}
+          className="bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600"
+        >
+          <option value="todos">Todos los estados</option>
+          <option value="pendiente">Pendientes</option>
+          <option value="en curso">En curso</option>
+          <option value="completada">Completadas</option>
+        </select>
+        <select
+          aria-label="Ordenar por fecha"
+          value={ordenFecha}
+          onChange={(e) => setOrdenFecha(e.target.value as 'desc' | 'asc')}
+          className="bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600"
+        >
+          <option value="desc">Más recientes primero</option>
+          <option value="asc">Más antiguas primero</option>
+        </select>
 
-          <select
-            value={ordenFecha}
-            onChange={(e) => setOrdenFecha(e.target.value as 'desc' | 'asc')}
-            className="flex-1 md:w-48 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium text-slate-700"
-          >
-            <option value="desc">Ordenar: Más recientes primero</option>
-            <option value="asc">Ordenar: Más antiguas primero</option>
-          </select>
-
-          <button
-            onClick={exportarPeopleAnalyticsCSV}
-            className="px-3 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold transition-all border border-indigo-200/60 flex items-center gap-1.5 shadow-sm whitespace-nowrap"
-            title="Exportar People Analytics en formato CSV"
-          >
-            <Download className="w-3.5 h-3.5 text-indigo-600" />
-            Exportar People Analytics
-          </button>
-          <button
-            onClick={() => { setFiltro(''); setProcesoSeleccionadoId('todos'); setEstadoFiltro('todos'); setOrdenFecha('desc') }}
-            className="px-3 py-2 text-slate-500 hover:text-indigo-600 rounded-xl text-xs font-bold transition-all"
-          >
-            Limpiar filtros
-          </button>
-
-          <button
-            onClick={exportarReporteMacroCSV}
-            className="px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-bold transition-all border border-emerald-200/60 flex items-center gap-1.5 shadow-sm whitespace-nowrap"
-            title="Exportar Reporte Macro Business Intelligence (BI)"
-          >
-            <Download className="w-3.5 h-3.5 text-emerald-600" />
-            Exportar Reporte Macro (BI)
-          </button>
-        </div>
+        <details className="relative">
+          <summary className="list-none cursor-pointer select-none px-4 py-2.5 rounded-lg border border-indigo-600 text-indigo-600 text-sm font-bold hover:bg-indigo-50">
+            Exportar ▾
+          </summary>
+          <div className="absolute right-0 mt-1 z-20 w-72 rounded-lg border border-slate-200 bg-white shadow-lg p-1">
+            <button
+              type="button"
+              onClick={(e) => { exportarPeopleAnalyticsCSV(); (e.currentTarget.closest('details') as HTMLDetailsElement).open = false }}
+              className="w-full text-left px-3 py-2.5 rounded-md text-sm text-slate-800 hover:bg-slate-100"
+              title="Exportar People Analytics en formato CSV"
+            >
+              People Analytics (CSV)
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { exportarReporteMacroCSV(); (e.currentTarget.closest('details') as HTMLDetailsElement).open = false }}
+              className="w-full text-left px-3 py-2.5 rounded-md text-sm text-slate-800 hover:bg-slate-100"
+              title="Exportar Reporte Macro Business Intelligence (BI)"
+            >
+              Reporte macro de BI (CSV)
+            </button>
+          </div>
+        </details>
+        <button
+          type="button"
+          onClick={() => { setFiltro(''); setProcesoSeleccionadoId('todos'); setEstadoFiltro('todos'); setOrdenFecha('desc') }}
+          className="px-2 py-2 text-sm text-slate-500 underline underline-offset-4 hover:text-slate-900"
+        >
+          Limpiar filtros
+        </button>
       </div>
 
       {candidatos.length === 0 ? (
@@ -1103,99 +1084,83 @@ export default function PanelEvaluador() {
           <a href="/candidatos" className="text-indigo-600 font-medium hover:text-indigo-700">Ir a candidatos aa~</a>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          <div className="flex flex-col gap-3 h-[calc(100vh-220px)] overflow-y-auto pr-2 custom-scrollbar-visible">
-            {candidatosFiltrados.map(c => (
-              <div
-                key={claveFila(c)}
-                onClick={async () => {
-                  setAgrupadoSeleccionado(c)
-                  const sInicial = c.sesiones[0]
-                  setSesionSeleccionada(sInicial)
-                  if (sInicial) cargarAuditoriaSesion(sInicial)
-
-                  await cargarVideosDe(c)
-                }}
-                className={`p-4 rounded-xl border bg-white cursor-pointer transition-all duration-200 hover:shadow-md ${
-                  agrupadoSeleccionado && claveFila(agrupadoSeleccionado) === claveFila(c)
-                    ? 'border-indigo-500 ring-1 ring-indigo-500/20 shadow-sm'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex gap-4 items-center w-full overflow-hidden">
-                  {/* INDICADOR DE ESTADO IZQUIERDO */}
-                  <div className="relative shrink-0">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border-2 ${
-                      c.progreso && c.progreso.completados === c.progreso.total && c.progreso.total > 0
-                        ? 'bg-green-50 border-green-200 text-green-600'
-                        : 'bg-slate-50 border-slate-100 text-slate-500'
-                    }`}>
-                      {c.progreso && c.progreso.completados === c.progreso.total && c.progreso.total > 0 ? (
-                        <CheckCircle2 className="w-5 h-5" />
-                      ) : (
-                        `${c.progreso?.completados || 0}/${c.progreso?.total || 0}`
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-6 items-start">
+          <div className="flex flex-col h-[calc(100vh-220px)] overflow-y-auto custom-scrollbar-visible bg-white border border-slate-200 rounded-xl" role="list" aria-label="Candidatos">
+            {candidatosFiltrados.map(c => {
+              const seleccionado = !!agrupadoSeleccionado && claveFila(agrupadoSeleccionado) === claveFila(c)
+              const hechas = c.progreso?.completados || 0
+              const total = c.progreso?.total || 0
+              const estado = c.estado_operativo || 'pendiente'
+              return (
+                <div
+                  key={claveFila(c)}
+                  role="listitem"
+                  tabIndex={0}
+                  aria-current={seleccionado ? 'true' : undefined}
+                  onClick={() => seleccionarCandidato(c)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); seleccionarCandidato(c) } }}
+                  className={`px-4 py-3.5 border-b border-slate-100 last:border-b-0 cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600 ${
+                    seleccionado ? 'bg-slate-100 shadow-[inset_5px_0_0_#f5d547]' : 'hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="grid grid-cols-[minmax(0,1fr)_6rem_6.75rem_auto] gap-3 items-center">
+                    <div className="min-w-0">
+                      <div className="font-bold text-slate-900 break-words">{c.nombre} {c.apellido}</div>
+                      <div className="text-sm text-slate-500 break-words" title={nombreDeProcesoLegible(c.proceso_nombre) || 'Proceso independiente'}>
+                        {nombreDeProcesoLegible(c.proceso_nombre) || 'Proceso independiente'}
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 text-xs text-slate-400">
+                        <span className="truncate max-w-[16rem]">{c.email || 'Sin email'}</span>
+                        <span className="whitespace-nowrap">Postuló el {formatearFecha(c.fecha_postulacion)}</span>
+                      </div>
+                    </div>
+                    <div className="text-sm tabular-nums text-slate-700">
+                      <div>{hechas} de {total}</div>
+                      <div className="h-1.5 mt-1 rounded-full bg-slate-200 overflow-hidden" aria-hidden="true">
+                        <div className="h-full rounded-full bg-indigo-600" style={{ width: `${total ? (hechas / total) * 100 : 0}%` }} />
+                      </div>
+                      {c.matchScore != null && (
+                        <div className="text-xs text-slate-500 mt-1" title="Puntaje de ajuste al perfil">Ajuste {c.matchScore}%</div>
                       )}
                     </div>
-                    {c.matchScore != null && (
-                      <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border border-white shadow-sm text-[8px] font-bold text-white ${
-                        Number(c.matchScore) >= 80 ? 'bg-emerald-500' : Number(c.matchScore) >= 60 ? 'bg-amber-500' : 'bg-slate-500'
-                      }`} title={`Match Score: ${c.matchScore}%`}>
-                        {c.matchScore}%
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0 pr-2">
-                    <div className="font-bold text-slate-900 leading-tight truncate">{c.nombre} {c.apellido}</div>
-                    <div
-                      className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mt-0.5 line-clamp-2 break-words"
-                      title={c.proceso_nombre || 'Proceso independiente'}
-                    >
-                      {c.proceso_nombre || 'Proceso independiente'}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${c.estado_operativo === 'completada' ? 'bg-emerald-50 text-emerald-700' : c.estado_operativo === 'en curso' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                        {c.estado_operativo || 'pendiente'}
-                      </span>
-                      <span className="text-[10px] text-slate-500">{c.progreso?.completados || 0}/{c.progreso?.total || 0} evaluaciones</span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="text-xs text-slate-500 truncate">{c.email || 'Sin email'}</span>
-                      <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap bg-slate-100 px-1.5 py-0.5 rounded-md">
-                        Postulación: {formatearFecha(c.fecha_postulacion)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-end gap-2 shrink-0 pr-1">
+                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-800">
+                      <span className={`w-2.5 h-2.5 rounded-full border-2 ${
+                        estado === 'completada' ? 'bg-indigo-600 border-indigo-600' : estado === 'en curso' ? 'bg-[#f5d547] border-[#f5d547]' : 'border-slate-400'
+                      }`} />
+                      <span className="inline-block first-letter:uppercase">{estado}</span>
+                    </span>
                     <div className="flex items-center gap-1.5">
                       {c.progreso && c.progreso.completados < c.progreso.total && (
                         <button
+                          type="button"
                           onClick={(e) => { e.stopPropagation(); enviarRecordatorio(c); }}
                           disabled={enviandoRecordatorio === claveFila(c)}
-                          className="p-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg transition-all border border-amber-100"
+                          className="p-2 text-amber-700 hover:bg-amber-50 rounded-lg transition-colors border border-slate-200 disabled:opacity-60"
+                          title="Enviar recordatorio"
+                          aria-label={`Enviar recordatorio a ${c.nombre} ${c.apellido}`}
                         >
-                          <BellRing className="w-3.5 h-3.5" />
+                          <BellRing className="w-4 h-4" />
                         </button>
                       )}
-                      <a href={`/informe?candidato=${c.id}`} target="_blank" onClick={(e) => e.stopPropagation()} className="p-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg border border-indigo-100">
-                        <FileText className="w-3.5 h-3.5" />
+                      <a
+                        href={`/informe?candidato=${c.id}`}
+                        target="_blank"
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg border border-slate-200"
+                        title="Abrir informe"
+                        aria-label={`Abrir informe de ${c.nombre} ${c.apellido}`}
+                      >
+                        <FileText className="w-4 h-4" />
                       </a>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {/* DETALLE DEL CANDIDATO SELECCIONADO CON SCROLL INDEPENDIENTE */}
           <div className="sticky top-0 h-[calc(100vh-220px)] flex flex-col">
-            <style jsx>{`
-              .custom-scrollbar-visible::-webkit-scrollbar { width: 6px; }
-              .custom-scrollbar-visible::-webkit-scrollbar-track { background: #f1f5f9; }
-              .custom-scrollbar-visible::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-            `}</style>
             {agrupadoSeleccionado ? (
               <div className="bg-white border border-slate-200 rounded-2xl shadow-xl flex flex-col h-full overflow-hidden border-indigo-100">
                 {/* CABEZAL FIJO */}

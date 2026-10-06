@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
+import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
 import { 
   Users, CheckCircle2, TrendingUp, AlertTriangle, 
   Search, ArrowUpDown, ExternalLink, Award, Video
@@ -306,7 +307,7 @@ export default function EstadisticasPage() {
         >
           <option value="todos">Todos los procesos</option>
           {procesos.map(p => (
-            <option key={p.id} value={p.id}>{p.nombre}</option>
+            <option key={p.id} value={p.id}>{nombreDeProcesoLegible(p.nombre)}</option>
           ))}
         </select>
       </div>

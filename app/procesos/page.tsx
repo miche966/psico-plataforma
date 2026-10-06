@@ -8,6 +8,7 @@ import { Plus, Check, Link as LinkIcon, Search, FileText, X, Video, Eye, Setting
 import { getBaseUrl } from '@/lib/utils'
 import { getAdminHeaders, obtenerLinkEvaluacion } from '@/lib/evaluacionLink'
 import { calcularProgresoEvaluacion } from '@/lib/progresoEvaluacion'
+import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
 
 const TESTS_DISPONIBLES = [
   { key: 'bigfive', label: 'Big Five' },
@@ -594,7 +595,7 @@ export default function ProcesosPage() {
               >
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">{proceso.nombre}</h3>
+                    <h3 className="text-base font-bold text-slate-900">{nombreDeProcesoLegible(proceso.nombre)}</h3>
                     <p className="text-sm font-medium text-indigo-600 mt-0.5">{proceso.cargo}</p>
                   </div>
                   <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold uppercase tracking-wide ${

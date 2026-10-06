@@ -6,6 +6,7 @@ import Script from 'next/script'
 import { Marco } from '@/components/candidato/Marco'
 import { PantallaCarga } from '@/components/candidato/Estados'
 import { useSearchParams } from 'next/navigation'
+import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
 
 declare global {
   interface Window {
@@ -238,7 +239,7 @@ export default function UnirsePage() {
             >
               <option value="">Elegí una búsqueda activa</option>
               {procesos.map(p => (
-                <option key={p.id} value={p.id}>{p.cargo} - {p.nombre}</option>
+                <option key={p.id} value={p.id}>{p.cargo} - {nombreDeProcesoLegible(p.nombre)}</option>
               ))}
             </select>
           </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, BellOff, Lock, RefreshCw } from 'lucide-react'
 import { getAdminHeaders } from '@/lib/evaluacionLink'
+import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
 
 interface SesionPendiente {
   candidato_id: string
@@ -91,7 +92,7 @@ export default function SaludOperativa() {
             <div key={`${s.candidato_id}-${s.proceso_id}-${i}`} className="p-4 flex justify-between items-center">
               <div>
                 <p className="text-sm font-bold text-slate-800">{s.candidato_nombre || s.candidato_id}</p>
-                <p className="text-xs text-slate-500">{s.candidato_email} · {s.proceso_nombre}</p>
+                <p className="text-xs text-slate-500">{s.candidato_email} · {nombreDeProcesoLegible(s.proceso_nombre)}</p>
               </div>
             </div>
           ))}
@@ -111,7 +112,7 @@ export default function SaludOperativa() {
             <div key={`${s.candidato_id}-${s.proceso_id}-${i}`} className="p-4 flex justify-between items-center">
               <div>
                 <p className="text-sm font-bold text-slate-800">{s.candidato_nombre || s.candidato_id}</p>
-                <p className="text-xs text-slate-500">{s.candidato_email} · {s.proceso_nombre}</p>
+                <p className="text-xs text-slate-500">{s.candidato_email} · {nombreDeProcesoLegible(s.proceso_nombre)}</p>
               </div>
             </div>
           ))}
