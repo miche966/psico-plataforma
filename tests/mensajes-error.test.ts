@@ -44,6 +44,12 @@ for (const code of ['ETIMEDOUT', 'ECONNREFUSED', 'ECONNECTION', 'ESOCKET', 'ENOT
 assert.match(mensajeErrorCorreo(smtp('EAUTH', 'Invalid login: 535 5.7.8 Authentication failed for seleccion@republicamicrofinanzas.com.uy'), FALLBACK), /credenciales/)
 assert.doesNotMatch(mensajeErrorCorreo(smtp('EAUTH', 'Invalid login: 535 seleccion@republicamicrofinanzas.com.uy'), FALLBACK), /republicamicrofinanzas|535/)
 assert.match(mensajeErrorCorreo(smtp('EENVELOPE', 'No recipients defined'), FALLBACK), /destinatario/)
+// Certificado del servidor de correo no confiable: mensaje propio, sin host ni detalles del certificado
+{
+  const m = mensajeErrorCorreo(smtp('ESOCKET', 'unable to verify the first certificate (rmclhyp1mail1.republicamicrofinanzas.com.uy 201.217.148.51)'), FALLBACK)
+  assert.match(m, /certificado/)
+  assert.doesNotMatch(m, /republicamicrofinanzas|201\.217|rmclhyp1/)
+}
 assert.equal(mensajeErrorCorreo(new Error('algo interno raro'), FALLBACK), FALLBACK, 'un error de correo desconocido cae al mensaje por defecto')
 assert.equal(mensajeParaCliente(smtp('ETIMEDOUT', crudo), FALLBACK), FALLBACK, 'fuera de correo, ETIMEDOUT NO se presenta como error de correo')
 

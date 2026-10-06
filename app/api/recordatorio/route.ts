@@ -5,6 +5,7 @@ import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { mensajeParaCliente, mensajeErrorCorreo } from '@/lib/server/mensajesError'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { claveDeServicio } from '@/lib/server/clavesSupabase'
+import { opcionesTls, tlsParaNodemailer } from '@/lib/server/smtpTls'
 
 export async function POST(req: Request) {
   try {
@@ -37,6 +38,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Configuración de email incompleta (EMAIL_USER/EMAIL_PASS)' }, { status: 500 });
     }
 
+    // TLS estricto: confia en la CA de Zimbra (EMAIL_TLS_CA) en lugar de aceptar cualquier certificado (ver lib/server/smtpTls.ts)
+    const tls = opcionesTls()
+    if (host && tls.modo === 'inseguro') console.warn('[recordatorio] EMAIL_TLS_INSEGURO=true: no se valida el certificado del servidor de correo')
+
     const transporter = nodemailer.createTransport(
       host 
         ? {
@@ -44,7 +49,7 @@ export async function POST(req: Request) {
             port,
             secure,
             auth: { user, pass },
-            tls: { rejectUnauthorized: false }
+            tls: tlsParaNodemailer(tls)
           }
         : {
             service: 'gmail',

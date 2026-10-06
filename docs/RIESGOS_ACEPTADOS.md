@@ -76,6 +76,13 @@ meses entienda que no fue un olvido.
   Limita cuánto serviría un token robado. La sesión sigue guardándose en `localStorage` (cookies httpOnly queda como
   proyecto futuro) y la CSP conserva `script-src 'unsafe-inline'` (pendiente: CSP con nonce, primero en modo informe;
   la superficie de XSS es baja: sin `dangerouslySetInnerHTML`, `innerHTML`, `eval` ni iframes).
+- **TLS del correo de recordatorios** (2026-10-06): la conexión al servidor de correo (Zimbra propio, `EMAIL_HOST`, puerto 587
+  con STARTTLS) ya no usa `rejectUnauthorized: false`. Ese servidor presenta el certificado autogenerado por la CA de
+  Zimbra (válido hasta 2029-01-29), que Node no reconoce. Ahora la validación es estricta y se confía solo en esa CA:
+  variable `EMAIL_TLS_CA` (certificado PEM de la CA, que entrega quien administra Zimbra: `/opt/zimbra/ssl/zimbra/ca/ca.pem`).
+  Mientras no esté cargada, `EMAIL_TLS_INSEGURO=true` mantiene el comportamiento anterior (se avisa en el log); sin ninguna
+  de las dos el envío falla con el mensaje "El certificado del servidor de correo no es de confianza". Ver
+  `lib/server/smtpTls.ts`. Aparte, el firewall de IT sigue pendiente para el envío desde Vercel.
 - Rate limiting en los endpoints públicos y de IA; bloqueo de intentos de login; Turnstile en `/unirse`.
 - Cabeceras de seguridad HTTP (CSP, HSTS, etc.), validación de entradas con zod y auditoría de dependencias en CI.
 
