@@ -91,6 +91,9 @@ meses entienda que no fue un olvido.
   estricta es la única que bloquea (las páginas pasan a renderizarse en cada visita). La variable se lee al compilar:
   cambiarla exige redesplegar. Pendiente: observar en local las pantallas con sesión (panel, informe, reproductor), corregir lo
   que aparezca y recién entonces activar `CSP_MODO=estricta` en Vercel (marcha atrás: quitar la variable y redesplegar).
+  El recorrido local con sesión (2026-10-06) encontró dos bloqueos que **ya ocurrían en producción** con la política vigente:
+  compilar WebAssembly (la librería de PDF, `@react-pdf` → `yoga-layout`) y `fetch` a `data:`. Se agregaron
+  `'wasm-unsafe-eval'` (solo WebAssembly, no eval de JavaScript) a `script-src` y `data:` a `connect-src`, en ambas políticas.
 - Rate limiting en los endpoints públicos y de IA; bloqueo de intentos de login; Turnstile en `/unirse`.
 - Cabeceras de seguridad HTTP (CSP, HSTS, etc.), validación de entradas con zod y auditoría de dependencias en CI.
 

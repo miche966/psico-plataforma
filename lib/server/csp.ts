@@ -51,16 +51,19 @@ interface OpcionesCsp {
 
 export function construirCsp({ dev = false, nonce, reportUri }: OpcionesCsp = {}): string {
   const unsafeEval = dev ? " 'unsafe-eval'" : ''
+  // 'wasm-unsafe-eval': solo permite COMPILAR WebAssembly (no habilita eval de JavaScript). La libreria de PDF
+  // (@react-pdf -> yoga-layout) lo necesita para armar el PDF en el navegador; sin esto el navegador lo bloqueaba.
   const scriptSrc = nonce
-    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${TURNSTILE_ORIGIN}${unsafeEval}`
-    : `script-src 'self' 'unsafe-inline' ${TURNSTILE_ORIGIN}${unsafeEval}`
+    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval' ${TURNSTILE_ORIGIN}${unsafeEval}`
+    : `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' ${TURNSTILE_ORIGIN}${unsafeEval}`
   const directivas = [
     "default-src 'self'",
     scriptSrc,
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: ${SUPABASE_ORIGIN}`,
     `media-src 'self' blob: ${SUPABASE_ORIGIN} ${R2_FIRMADO_ORIGIN}`,
-    `connect-src 'self' ${SUPABASE_ORIGIN} ${R2_FIRMADO_ORIGIN}`,
+    // data: en connect-src: pedidos a datos embebidos (sin red); la generacion de PDF/imagenes los usa y se bloqueaban
+    `connect-src 'self' data: ${SUPABASE_ORIGIN} ${R2_FIRMADO_ORIGIN}`,
     "font-src 'self'",
     "object-src 'none'",
     `frame-src ${TURNSTILE_ORIGIN}`,

@@ -5,9 +5,16 @@ const { construirCsp, generarNonce, resumirInformeCsp, modoCsp, RUTA_INFORMES_CS
 const dir = (csp: string, nombre: string) => csp.split('; ').find(d => d.startsWith(nombre + ' ')) || ''
 
 // ---- La politica vigente NO cambio: es exactamente la que sirve produccion hoy ----
-const VIGENTE_PRODUCCION = "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://wzhdidxssnwfvzzapfwu.supabase.co; media-src 'self' blob: https://wzhdidxssnwfvzzapfwu.supabase.co https://video-psicoplataforma.8c662e7d3be33f7a66b01eefc1f0a051.r2.cloudflarestorage.com; connect-src 'self' https://wzhdidxssnwfvzzapfwu.supabase.co https://video-psicoplataforma.8c662e7d3be33f7a66b01eefc1f0a051.r2.cloudflarestorage.com; font-src 'self'; object-src 'none'; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+const VIGENTE_PRODUCCION = "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://wzhdidxssnwfvzzapfwu.supabase.co; media-src 'self' blob: https://wzhdidxssnwfvzzapfwu.supabase.co https://video-psicoplataforma.8c662e7d3be33f7a66b01eefc1f0a051.r2.cloudflarestorage.com; connect-src 'self' data: https://wzhdidxssnwfvzzapfwu.supabase.co https://video-psicoplataforma.8c662e7d3be33f7a66b01eefc1f0a051.r2.cloudflarestorage.com; font-src 'self'; object-src 'none'; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 assert.equal(construirCsp(), VIGENTE_PRODUCCION)
 assert.equal(construirCsp({ dev: true }), VIGENTE_PRODUCCION.replace("https://challenges.cloudflare.com; style-src", "https://challenges.cloudflare.com 'unsafe-eval'; style-src"), 'en desarrollo solo suma unsafe-eval')
+// WebAssembly (libreria de PDF) permitido en ambas, SIN habilitar eval de JavaScript; y data: solo en connect-src
+for (const csp of [construirCsp(), construirCsp({ nonce: 'AAAAAAAAAAAAAAAAAAAAAA==' })]) {
+  assert.match(dir(csp, 'script-src'), /'wasm-unsafe-eval'/)
+  assert.doesNotMatch(dir(csp, 'script-src'), /'unsafe-eval'/, 'el eval de JavaScript sigue prohibido en produccion')
+  assert.match(dir(csp, 'connect-src'), / data:/)
+  for (const d of ['script-src', 'img-src', 'media-src', 'frame-src', 'default-src']) assert.doesNotMatch(dir(csp, d).replace("img-src 'self' data: blob:", ''), /data:/, `data: no se abre en ${d}`)
+}
 
 // ---- La estricta: sin unsafe-inline en scripts, con nonce y strict-dynamic ----
 {
@@ -17,7 +24,7 @@ assert.equal(construirCsp({ dev: true }), VIGENTE_PRODUCCION.replace("https://ch
   assert.match(scripts, new RegExp(`'nonce-${nonce.replace(/[=]/g, '\=')}'`))
   assert.match(scripts, /'strict-dynamic'/)
   assert.doesNotMatch(scripts, /unsafe-inline/, 'ahi esta el objetivo: nada en linea sin nonce')
-  assert.doesNotMatch(scripts, /unsafe-eval/, 'en produccion no se permite eval')
+  assert.doesNotMatch(scripts, /'unsafe-eval'/, 'en produccion no se permite eval de JavaScript')
   assert.match(construirCsp({ nonce, dev: true }), /script-src[^;]*'unsafe-eval'/, 'en desarrollo si (React lo usa)')
   assert.match(csp, /report-uri \/api\/csp-report$/)
   // Todo lo demas es identico a la vigente: mismos origenes, mismos bloqueos
