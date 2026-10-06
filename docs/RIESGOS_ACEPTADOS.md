@@ -71,6 +71,11 @@ meses entienda que no fue un olvido.
   audita solo las dependencias de producción (`--omit=dev`) y falla ante cualquier aviso alto; `npm audit` completo sigue
   disponible para revisarlo. Reabrir si aparece versión corregida (Dependabot lo avisará) o si `braces` pasa a procesar
   entradas externas.
+- **Vida acotada de las sesiones del panel** (2026-10-06): en Supabase (Authentication → Sessions) se fijaron la duración
+  máxima de la sesión en 7 días y el vencimiento por inactividad en 8 horas, con una sola sesión por usuario desactivada.
+  Limita cuánto serviría un token robado. La sesión sigue guardándose en `localStorage` (cookies httpOnly queda como
+  proyecto futuro) y la CSP conserva `script-src 'unsafe-inline'` (pendiente: CSP con nonce, primero en modo informe;
+  la superficie de XSS es baja: sin `dangerouslySetInnerHTML`, `innerHTML`, `eval` ni iframes).
 - Rate limiting en los endpoints públicos y de IA; bloqueo de intentos de login; Turnstile en `/unirse`.
 - Cabeceras de seguridad HTTP (CSP, HSTS, etc.), validación de entradas con zod y auditoría de dependencias en CI.
 
