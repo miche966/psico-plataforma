@@ -245,11 +245,16 @@ async function generarResumenIA(candidato: CandidatoAgrupado) {
       headers: await getAdminHeaders(),
       body: JSON.stringify({ prompt })
     })
-    const data = await response.json()
-    return data.summary
+    if (response.status === 429) return { error: 'Se alcanzó el límite de consultas a la IA. Probá de nuevo en unos minutos.' }
+    if (response.status === 403) return { error: 'Tu rol no permite generar resúmenes con IA.' }
+    const data = await response.json().catch(() => null)
+    if (!response.ok || typeof data?.summary !== 'string' || !data.summary.trim()) {
+      return { error: 'No se pudo generar el resumen. Probá de nuevo en un momento.' }
+    }
+    return { resumen: data.summary as string }
   } catch (err) {
     console.error("Error generando resumen:", err)
-    return "No se pudo generar el resumen en este momento."
+    return { error: 'No se pudo generar el resumen. Revisá tu conexión y probá de nuevo.' }
   }
 }
 
@@ -263,9 +268,26 @@ export default function PanelEvaluador() {
   const [procesos, setProcesos] = useState<any[]>([])
   const [procesoSeleccionadoId, setProcesoSeleccionadoId] = useState<string>('todos')
   const [agrupadoSeleccionado, setAgrupadoSeleccionado] = useState<CandidatoAgrupado | null>(null)
+  const [resumenEnCurso, setResumenEnCurso] = useState<string | null>(null)   // claveFila del candidato mientras la IA trabaja
+  const [errorResumen, setErrorResumen] = useState<{ clave: string; mensaje: string } | null>(null)
   const [sesionSeleccionada, setSesionSeleccionada] = useState<Sesion | null>(null)
   const [cargando, setCargando] = useState(true)
   const [enviandoRecordatorio, setEnviandoRecordatorio] = useState<string | null>(null)
+
+  const generarResumen = async () => {
+    const objetivo = agrupadoSeleccionado
+    if (!objetivo || resumenEnCurso) return
+    const clave = claveFila(objetivo)
+    setResumenEnCurso(clave)
+    setErrorResumen(null)
+    const res = await generarResumenIA(objetivo)
+    setResumenEnCurso(null)
+    if ('resumen' in res) {
+      setAgrupadoSeleccionado(actual => actual && claveFila(actual) === clave ? { ...actual, resumen_ia: res.resumen } : actual)
+    } else {
+      setErrorResumen({ clave, mensaje: res.error })
+    }
+  }
   const [filtro, setFiltro] = useState('')
   const [ordenFecha, setOrdenFecha] = useState<'desc' | 'asc'>('desc')
   const [estadoFiltro, setEstadoFiltro] = useState<'todos' | 'pendiente' | 'en curso' | 'completada'>('todos')
@@ -857,7 +879,25 @@ export default function PanelEvaluador() {
           {agrupadoSeleccionado ? (
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
               <h3 className="font-bold text-slate-900 text-sm mb-2">{agrupadoSeleccionado.nombre} {agrupadoSeleccionado.apellido}</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">{agrupadoSeleccionado.resumen_ia || "Generando síntesis de diagnóstico..."}</p>
+              {agrupadoSeleccionado.resumen_ia ? (
+                <p className="text-sm text-slate-700 leading-relaxed">{agrupadoSeleccionado.resumen_ia}</p>
+              ) : (
+                <p className="text-sm text-slate-500">Todavía no se generó el diagnóstico de este candidato.</p>
+              )}
+              {errorResumen?.clave === claveFila(agrupadoSeleccionado) && (
+                <p role="alert" className="mt-3 text-sm text-red-600">{errorResumen.mensaje}</p>
+              )}
+              {!esViewer && (
+                <button
+                  type="button"
+                  onClick={generarResumen}
+                  disabled={resumenEnCurso !== null}
+                  className="mt-3 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-wait transition-colors"
+                >
+                  {resumenEnCurso === claveFila(agrupadoSeleccionado) ? 'Generando…' : agrupadoSeleccionado.resumen_ia ? 'Regenerar' : 'Generar resumen'}
+                </button>
+              )}
+              <span role="status" className="sr-only">{resumenEnCurso === claveFila(agrupadoSeleccionado) ? 'Generando el resumen con IA' : ''}</span>
             </div>
           ) : (
             <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
@@ -1185,13 +1225,11 @@ export default function PanelEvaluador() {
                       {!esViewer && (
                         <button
                           type="button"
-                          onClick={async () => {
-                            const res = await generarResumenIA(agrupadoSeleccionado)
-                            setAgrupadoSeleccionado({ ...agrupadoSeleccionado, resumen_ia: res })
-                          }}
-                          className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors whitespace-nowrap"
+                          onClick={generarResumen}
+                          disabled={resumenEnCurso !== null}
+                          className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-wait transition-colors whitespace-nowrap"
                         >
-                          {agrupadoSeleccionado.resumen_ia ? 'Regenerar' : 'Generar informe'}
+                          {resumenEnCurso === claveFila(agrupadoSeleccionado) ? 'Generando…' : agrupadoSeleccionado.resumen_ia ? 'Regenerar' : 'Generar resumen'}
                         </button>
                       )}
                     </div>
@@ -1199,6 +1237,9 @@ export default function PanelEvaluador() {
                       <div className="text-sm text-slate-700 leading-relaxed space-y-2">{agrupadoSeleccionado.resumen_ia}</div>
                     ) : (
                       <p className="text-sm text-slate-500">Analiza todas las pruebas y los videos para armar un resumen profesional del candidato.</p>
+                    )}
+                    {errorResumen?.clave === claveFila(agrupadoSeleccionado) && (
+                      <p role="alert" className="mt-2 text-sm text-red-600">{errorResumen.mensaje}</p>
                     )}
                   </section>
 
