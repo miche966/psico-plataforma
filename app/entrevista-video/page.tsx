@@ -6,6 +6,7 @@ import { getAdminHeaders } from '@/lib/evaluacionLink'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
 import { Plus, Video, Calendar, Eye, Trash2, Settings } from 'lucide-react'
+import { EsqueletoPagina } from '@/components/Esqueleto'
 
 interface Entrevista {
   id: string
@@ -80,9 +81,7 @@ export default function EntrevistasVideoPage() {
   if (cargando) {
     return (
       <AppLayout>
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-        </div>
+        <EsqueletoPagina />
       </AppLayout>
     )
   }

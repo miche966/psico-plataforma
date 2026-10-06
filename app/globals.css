@@ -12,13 +12,14 @@
   --foreground: #12332e;
 
   --white-bg: #fbfcfb;
+  --marcador: #f5d547; /* el amarillo del marcador: seleccion, pestana activa, citas */
 
   --slate-50: #f3f6f4;
   --slate-100: #e8eeeb;
   --slate-200: #d6dfdb;
-  --slate-300: #bbc8c3;
-  --slate-400: #8a9c96;
-  --slate-500: #5b6f69;
+  --slate-300: #82948e; /* bordes de campo y controles: 3:1 */
+  --slate-400: #5a6e68; /* texto terciario: 4,5:1 sobre blanco */
+  --slate-500: #4f645e;
   --slate-600: #475d58;
   --slate-700: #2f4a44;
   --slate-800: #1d3a34;
@@ -46,7 +47,7 @@ html.dark, :root.dark {
   --slate-50: #12211e;
   --slate-100: #182b27;
   --slate-200: #24403a;
-  --slate-300: #3b5c54;
+  --slate-300: #53796f;
   --slate-400: #7f9a92;
   --slate-500: #9db4ad;
   --slate-600: #c3d3ce;
@@ -94,6 +95,7 @@ html.dark, :root.dark {
   --color-indigo-900: var(--indigo-900);
 
   --color-white: var(--white-bg);
+  --color-marcador: var(--marcador);
 
   /* Esquinas menos infladas: el panel usaba rounded-2xl y rounded-3xl en casi todo */
   --radius-lg: 0.5rem;
@@ -122,6 +124,10 @@ body {
 /* Las etiquetas se leen mejor en minuscula que en mayuscula sostenida */
 .admin-shell .uppercase { text-transform: none; }
 .admin-shell .tracking-widest, .admin-shell .tracking-wider, .admin-shell .tracking-wide { letter-spacing: normal; }
+
+/* Texto en gris muy claro (slate-300) y marcas de posicion: se leen con el mismo contraste que el terciario */
+.admin-shell .text-slate-300 { color: var(--slate-400); }
+.admin-shell ::placeholder { color: var(--slate-400); opacity: 1; }
 
 /* Premium smooth transitions for color variables, ignoring Recharts SVGs for stability */
 body, aside, main, header, div:not(.recharts-wrapper):not(.recharts-surface), section, article, nav, button, p, span, h1, h2, h3, h4, h5, h6, a, input, select, textarea {

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas-pro'
+import { EsqueletoLista } from '@/components/Esqueleto'
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
@@ -221,7 +222,7 @@ export default function Dashboard() {
     pdf.save('Dashboard_Evaluaciones.pdf')
   }
 
-  if (cargando) return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>
+  if (cargando) return <EsqueletoLista />
 
   return (
     <div className="animate-in fade-in duration-700">

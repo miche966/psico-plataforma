@@ -252,9 +252,7 @@ export default function CandidatosPage() {
   if (cargando) {
     return (
       <AppLayout>
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-        </div>
+        <EsqueletoPagina />
       </AppLayout>
     )
   }
@@ -452,7 +450,7 @@ export default function CandidatosPage() {
                       </div>
                       <div className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-slate-800">
                         <span className={`w-2.5 h-2.5 rounded-full border-2 ${
-                          estadoCandidato === 'Completado' ? 'bg-indigo-600 border-indigo-600' : estadoCandidato === 'Incompleto' ? 'bg-[#f5d547] border-[#f5d547]' : 'border-slate-400'
+                          estadoCandidato === 'Completado' ? 'bg-indigo-600 border-indigo-600' : estadoCandidato === 'Incompleto' ? 'bg-marcador border-marcador' : 'border-slate-400'
                         }`} />
                         {estadoCandidato}
                       </div>
@@ -3182,3 +3180,4 @@ function conclusionGeneral(testId: string, promedio: number): string {
 // Hack for lucide-react icon fix if Users was missing from import, though I added UserPlus above
 // Importación al final para evitar problemas de hoisting si es necesario
 import { Users as UsersIcon } from 'lucide-react'
+import { EsqueletoPagina } from '@/components/Esqueleto'

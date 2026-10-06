@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
 import { PruebaEscala } from '@/components/candidato/Prueba'
-import { PantallaCarga, PantallaError, PantallaFin, PantallaGuardadoFallido, PantallaSiguiente } from '@/components/candidato/Estados'
+import { PantallaError, PantallaFin, PantallaGuardadoFallido, PantallaSiguiente } from '@/components/candidato/Estados'
+import { EsqueletoPrueba } from '@/components/candidato/Esqueleto'
 
 interface Item {
   id: string
@@ -99,14 +100,14 @@ export default function ComercialPage() {
     else setErrorGuardado(resultado.error)
   }
 
-  if (cargando) return <PantallaCarga />
+  if (cargando) return <EsqueletoPrueba />
   if (error) return <PantallaError mensaje={error} onReintentar={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} />
   if (errorGuardado) return <PantallaGuardadoFallido mensaje={MENSAJE_ERROR_GUARDADO} onReintentar={() => calcularResultado(respuestas)} />
   if (finalizado && enEvaluacion) return <PantallaSiguiente />
   if (finalizado) return <PantallaFin nombre={nombreCandidato} />
 
   const item = items[itemActual]
-  if (!item) return <PantallaCarga texto="Cargando la pregunta…" />
+  if (!item) return <EsqueletoPrueba />
 
   const factorLabel: Record<string, string> = {
     orientacion_cliente: 'Orientación al cliente',

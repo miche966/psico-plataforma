@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
 import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
+import { EsqueletoPagina } from '@/components/Esqueleto'
 import { 
   Users, CheckCircle2, TrendingUp, AlertTriangle, 
   Search, ArrowUpDown, ExternalLink, Award, Video
@@ -282,9 +283,7 @@ export default function EstadisticasPage() {
   if (cargando) {
     return (
       <AppLayout>
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-        </div>
+        <EsqueletoPagina />
       </AppLayout>
     )
   }

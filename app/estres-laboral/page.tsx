@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
 import { PruebaEscala } from '@/components/candidato/Prueba'
-import { PantallaCarga, PantallaError, PantallaFin, PantallaGuardadoFallido, PantallaSiguiente } from '@/components/candidato/Estados'
+import { PantallaError, PantallaFin, PantallaGuardadoFallido, PantallaSiguiente } from '@/components/candidato/Estados'
+import { EsqueletoPrueba } from '@/components/candidato/Esqueleto'
 
 const TEST_ID = 'd0e1f2a3-b4c5-6789-defa-000000000001'
 
@@ -93,14 +94,14 @@ export default function EstresLaboralPage() {
     else setErrorGuardado(resultadoGuardado.error)
   }
 
-  if (cargando) return <PantallaCarga />
+  if (cargando) return <EsqueletoPrueba />
   if (error) return <PantallaError mensaje={error} onReintentar={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} />
   if (errorGuardado) return <PantallaGuardadoFallido mensaje={MENSAJE_ERROR_GUARDADO} onReintentar={() => calcularResultado(respuestas)} />
   if (finalizado && enEvaluacion) return <PantallaSiguiente />
   if (finalizado) return <PantallaFin nombre={nombreCandidato} />
 
   const item = items[itemActual]
-  if (!item) return <PantallaCarga texto="Cargando la pregunta…" />
+  if (!item) return <EsqueletoPrueba />
 
   const factorLabel: Record<string, string> = {
     carga_laboral: 'Carga laboral',

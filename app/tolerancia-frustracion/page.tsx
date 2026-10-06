@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
 import { PruebaEleccion } from '@/components/candidato/Prueba'
-import { PantallaCarga, PantallaError, PantallaFin, PantallaGuardadoFallido, PantallaSiguiente } from '@/components/candidato/Estados'
+import { PantallaError, PantallaFin, PantallaGuardadoFallido, PantallaSiguiente } from '@/components/candidato/Estados'
+import { EsqueletoPrueba } from '@/components/candidato/Esqueleto'
 
 const TEST_ID = 'e5f6a7b8-c9d0-1234-efab-555555555555'
 
@@ -110,14 +111,14 @@ export default function SjtCobranzasPage() {
     setTimeout(() => avanzar(opcion), 400)
   }
 
-  if (cargando) return <PantallaCarga />
+  if (cargando) return <EsqueletoPrueba />
   if (error) return <PantallaError mensaje={error} onReintentar={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} />
   if (errorGuardado) return <PantallaGuardadoFallido mensaje={MENSAJE_ERROR_GUARDADO} onReintentar={() => terminarTest(respuestas, items)} />
   if (finalizado && enEvaluacion) return <PantallaSiguiente />
   if (finalizado) return <PantallaFin nombre={nombreCandidato} />
 
   const item = items[itemActual]
-  if (!item) return <PantallaCarga texto="Cargando la pregunta…" />
+  if (!item) return <EsqueletoPrueba />
 
   const factorLabel: Record<string, string> = {
     negociacion: 'Negociación', manejo_emocional: 'Manejo emocional',

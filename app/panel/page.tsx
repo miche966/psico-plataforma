@@ -16,6 +16,7 @@ import SaludOperativa from '@/components/SaludOperativa'
 import { FRASES_INCOMPLETAS_ID, FRASES_ESTIMULO } from '@/lib/frasesIncompletas'
 import { useAdminRole } from '@/lib/useAdminRole'
 import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
+import { EsqueletoPagina } from '@/components/Esqueleto'
 
 
 const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
@@ -796,9 +797,7 @@ export default function PanelEvaluador() {
   if (cargando) {
     return (
       <AppLayout>
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-        </div>
+        <EsqueletoPagina detalle />
       </AppLayout>
     )
   }
@@ -835,7 +834,7 @@ export default function PanelEvaluador() {
             aria-current={tab === clave ? 'page' : undefined}
             className={`relative pt-2 pb-3 text-sm transition-colors ${
               tab === clave
-                ? 'font-bold text-slate-900 after:absolute after:left-0 after:right-0 after:-bottom-px after:h-1 after:rounded after:bg-[#f5d547]'
+                ? 'font-bold text-slate-900 after:absolute after:left-0 after:right-0 after:-bottom-px after:h-1 after:rounded after:bg-marcador'
                 : 'font-medium text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -992,11 +991,11 @@ export default function PanelEvaluador() {
             aria-label={`${conteoEstados.completada || 0} completadas, ${conteoEstados['en curso'] || 0} en curso, ${conteoEstados.pendiente || 0} pendientes`}
           >
             <span className="bg-indigo-600" style={{ width: `${candidatos.length ? ((conteoEstados.completada || 0) / candidatos.length) * 100 : 0}%` }} />
-            <span className="bg-[#f5d547]" style={{ width: `${candidatos.length ? ((conteoEstados['en curso'] || 0) / candidatos.length) * 100 : 0}%` }} />
+            <span className="bg-marcador" style={{ width: `${candidatos.length ? ((conteoEstados['en curso'] || 0) / candidatos.length) * 100 : 0}%` }} />
           </div>
           <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />Completadas</span>
-            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#f5d547]" />En curso</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-marcador" />En curso</span>
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-slate-200" />Pendientes</span>
           </div>
         </div>
@@ -1100,7 +1099,7 @@ export default function PanelEvaluador() {
                   onClick={() => seleccionarCandidato(c)}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); seleccionarCandidato(c) } }}
                   className={`px-4 py-3.5 border-b border-slate-100 last:border-b-0 cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600 ${
-                    seleccionado ? 'bg-slate-100 shadow-[inset_5px_0_0_#f5d547]' : 'hover:bg-slate-50'
+                    seleccionado ? 'bg-slate-100 shadow-[inset_5px_0_0_var(--marcador)]' : 'hover:bg-slate-50'
                   }`}
                 >
                   <div className="grid grid-cols-[minmax(0,1fr)_6rem_6.75rem_auto] gap-3 items-center">
@@ -1125,7 +1124,7 @@ export default function PanelEvaluador() {
                     </div>
                     <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-800">
                       <span className={`w-2.5 h-2.5 rounded-full border-2 ${
-                        estado === 'completada' ? 'bg-indigo-600 border-indigo-600' : estado === 'en curso' ? 'bg-[#f5d547] border-[#f5d547]' : 'border-slate-400'
+                        estado === 'completada' ? 'bg-indigo-600 border-indigo-600' : estado === 'en curso' ? 'bg-marcador border-marcador' : 'border-slate-400'
                       }`} />
                       <span className="inline-block first-letter:uppercase">{estado}</span>
                     </span>
@@ -1182,7 +1181,7 @@ export default function PanelEvaluador() {
                 {/* CONTENIDO DESPLAZABLE */}
                 <div className="flex-1 overflow-y-scroll p-6 custom-scrollbar-visible">
                   {/* RESUMEN EJECUTIVO IA */}
-                  <section className="mb-8 pl-5 pr-4 py-4 border-l-4 border-[#f5d547] bg-slate-100 rounded-r-lg" aria-labelledby="resumen-ia">
+                  <section className="mb-8 pl-5 pr-4 py-4 border-l-4 border-marcador bg-slate-100 rounded-r-lg" aria-labelledby="resumen-ia">
                     <div className="flex justify-between items-center gap-3 mb-2">
                       <h3 id="resumen-ia" className="text-lg font-semibold text-slate-900" style={{ fontFamily: 'var(--font-lectura), Georgia, serif' }}>Resumen ejecutivo con IA</h3>
                       {!esViewer && (
@@ -1244,7 +1243,7 @@ export default function PanelEvaluador() {
                                 }}
                                 className={`flex items-center gap-2.5 text-left px-3 py-2.5 rounded-lg border text-sm transition-colors ${
                                   isActive
-                                    ? 'border-indigo-600 bg-slate-100 font-bold text-slate-900 shadow-[inset_4px_0_0_#f5d547]'
+                                    ? 'border-indigo-600 bg-slate-100 font-bold text-slate-900 shadow-[inset_4px_0_0_var(--marcador)]'
                                     : 'border-slate-200 text-slate-700 hover:bg-slate-50'
                                 }`}
                               >
@@ -1407,7 +1406,7 @@ export default function PanelEvaluador() {
                                     </div>
 
                                     {pbRoleplay.retroalimentacion && (
-                                      <div className="m-4 pl-4 py-2 border-l-4 border-[#f5d547]">
+                                      <div className="m-4 pl-4 py-2 border-l-4 border-marcador">
                                         <p className="text-sm font-bold text-slate-900 mb-1">Análisis cualitativo de la IA</p>
                                         <p className="text-sm text-slate-700 leading-relaxed">{pbRoleplay.retroalimentacion}</p>
                                       </div>

@@ -95,7 +95,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   aria-current={isActive ? 'page' : undefined}
                   className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     isActive
-                      ? 'bg-slate-100 text-slate-900 font-bold shadow-[inset_4px_0_0_#f5d547]'
+                      ? 'bg-slate-100 text-slate-900 font-bold shadow-[inset_4px_0_0_var(--marcador)]'
                       : 'text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900'
                   }`}
                 >

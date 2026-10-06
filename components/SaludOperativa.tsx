@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, BellOff, Lock, RefreshCw } from 'lucide-react'
 import { getAdminHeaders } from '@/lib/evaluacionLink'
 import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
+import { EsqueletoLista } from '@/components/Esqueleto'
 
 interface SesionPendiente {
   candidato_id: string
@@ -56,7 +57,7 @@ export default function SaludOperativa() {
   const enProcesoCerrado = sesionesPendientes.filter(s => s.proceso_activo === false)
 
   if (cargando) {
-    return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>
+    return <EsqueletoLista />
   }
 
   if (error) {

@@ -6,7 +6,8 @@ import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { useProctoring } from '@/hooks/useProctoring'
 import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
 import { ListaOpciones, MarcoPrueba } from '@/components/candidato/Prueba'
-import { PantallaCarga, PantallaError, PantallaFin, PantallaGuardadoFallido, PantallaSiguiente } from '@/components/candidato/Estados'
+import { PantallaError, PantallaFin, PantallaGuardadoFallido, PantallaSiguiente } from '@/components/candidato/Estados'
+import { EsqueletoPrueba } from '@/components/candidato/Esqueleto'
 
 const ICAR_ID = 'f6a7b8c9-d0e1-2345-fabc-456789012345'
 
@@ -234,14 +235,14 @@ export default function IcarPage() {
     setTimeout(() => avanzar(opcion), 400)
   }
 
-  if (cargando) return <PantallaCarga />
+  if (cargando) return <EsqueletoPrueba />
   if (error) return <PantallaError mensaje={error} onReintentar={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} />
   if (errorGuardado) return <PantallaGuardadoFallido mensaje={MENSAJE_ERROR_GUARDADO} onReintentar={() => terminarTest(respuestas, items)} />
   if (finalizado && enEvaluacion) return <PantallaSiguiente />
   if (finalizado) return <PantallaFin nombre={nombreCandidato} />
 
   const item = items[itemActual]
-  if (!item) return <PantallaCarga texto="Cargando la pregunta…" />
+  if (!item) return <EsqueletoPrueba />
 
   const esMatriz = item.contenido.startsWith('MATRIZ_')
   const esRotacion = item.contenido.startsWith('ROTACION_')

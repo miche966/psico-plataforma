@@ -11,7 +11,7 @@
   --pp-tinta: #12332e;
   --pp-tinta-suave: #475d58;
   --pp-linea: #c5cfca;
-  --pp-linea-fuerte: #9fb0aa;
+  --pp-linea-fuerte: #798b85;
   --pp-pino: #17594e;
   --pp-pino-oscuro: #0f4036;
   --pp-marcador: #f5d547;
@@ -72,6 +72,11 @@
 .pp-contactos dt { color: var(--pp-tinta-suave); }
 .pp-contactos dd { margin: 0; }
 
+/* ---- Esqueleto de carga: la silueta gris de lo que va a aparecer ---- */
+.pp-esq { display: block; background: var(--pp-linea); border-radius: 0.4rem; animation: pp-pulso 1.6s ease-in-out infinite; }
+.pp-esq-opcion { height: 3.5rem; border-radius: var(--pp-radio); }
+@keyframes pp-pulso { 50% { opacity: 0.55; } }
+
 /* ---- Encabezado de una prueba ---- */
 .pp-prueba-cab { margin-bottom: 1.75rem; }
 .pp-prueba-fila { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
@@ -130,7 +135,7 @@
 .pp-campo { display: grid; gap: 0.35rem; align-content: start; }
 .pp-campo label { font-weight: 500; font-size: 0.9375rem; }
 .pp-campo input, .pp-campo select { width: 100%; min-height: 3rem; padding: 0 0.9rem; border: 1.5px solid var(--pp-linea-fuerte); border-radius: var(--pp-radio); background: var(--pp-hoja); color: var(--pp-tinta); font: inherit; }
-.pp-campo input::placeholder { color: #7a8a85; }
+.pp-campo input::placeholder { color: #5a6e68; }
 .pp-campo input:focus-visible, .pp-campo select:focus-visible { outline: 3px solid var(--pp-pino); outline-offset: 1px; border-color: var(--pp-pino); }
 .pp-boton-ancho { width: 100%; }
 .pp-boton:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -149,7 +154,7 @@
 .pp-frase-numero { color: var(--pp-tinta-suave); font-size: 0.875rem; }
 .pp-frase-texto { font-family: var(--font-lectura), Georgia, serif; font-size: 1.1875rem; font-weight: 500; line-height: 1.4; }
 .pp-frase input { width: 100%; min-height: 3rem; padding: 0 0.9rem; border: 1.5px solid var(--pp-linea-fuerte); border-radius: var(--pp-radio); background: var(--pp-hoja); color: var(--pp-tinta); font: inherit; }
-.pp-frase input::placeholder { color: #7a8a85; }
+.pp-frase input::placeholder { color: #5a6e68; }
 .pp-frase input:focus-visible { outline: 3px solid var(--pp-pino); outline-offset: 1px; border-color: var(--pp-pino); }
 
 /* ---- Acceso de evaluadores ---- */
@@ -245,7 +250,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pp-barrido::after { animation: none; width: 100%; }
-  .pp-girar, .pp-rec-punto { animation: none; }
+  .pp-girar, .pp-rec-punto, .pp-esq { animation: none; }
   .pp-tiempo-barra > span, .pp-avance > span { transition: none; }
 }
 @media (max-width: 30rem) {

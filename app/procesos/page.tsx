@@ -9,6 +9,7 @@ import { getBaseUrl } from '@/lib/utils'
 import { getAdminHeaders, obtenerLinkEvaluacion } from '@/lib/evaluacionLink'
 import { calcularProgresoEvaluacion } from '@/lib/progresoEvaluacion'
 import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
+import { EsqueletoPagina } from '@/components/Esqueleto'
 
 const TESTS_DISPONIBLES = [
   { key: 'bigfive', label: 'Big Five' },
@@ -334,9 +335,7 @@ export default function ProcesosPage() {
   if (cargando) {
     return (
       <AppLayout>
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-        </div>
+        <EsqueletoPagina />
       </AppLayout>
     )
   }

@@ -7,6 +7,7 @@ import { useAdminRole } from '@/lib/useAdminRole'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
 import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
+import { EsqueletoLista } from '@/components/Esqueleto'
 
 // navigator.clipboard.writeText exige que el documento tenga foco en el momento exacto en
 // que se llama. Como el link se genera con un fetch async antes de copiarlo, el foco se
@@ -479,7 +480,7 @@ export default function GestionProcesos() {
     p.cargo.toLowerCase().includes(filtro.toLowerCase())
   )
 
-  if (cargando) return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>
+  if (cargando) return <EsqueletoLista />
 
   return (
     <div className="animate-in fade-in duration-500">
