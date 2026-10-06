@@ -83,17 +83,15 @@ meses entienda que no fue un olvido.
   Mientras no esté cargada, `EMAIL_TLS_INSEGURO=true` mantiene el comportamiento anterior (se avisa en el log); sin ninguna
   de las dos el envío falla con el mensaje "El certificado del servidor de correo no es de confianza". Ver
   `lib/server/smtpTls.ts`. Aparte, el firewall de IT sigue pendiente para el envío desde Vercel.
-- **CSP estricta con nonce, lista pero sin activar** (2026-10-06): `script-src 'unsafe-inline'` sigue vigente en producción. La
-  política estricta (`'nonce-…' 'strict-dynamic'`, sin `'unsafe-inline'`) está implementada (`lib/server/csp.ts`,
-  `proxy.ts`) y se elige con la variable `CSP_MODO`: sin definir = vigente (páginas estáticas, comportamiento de siempre);
-  `informe` = la vigente bloquea y la estricta solo informa a `/api/csp-report` (**solo sirve en local con `next start`**:
-  en Vercel toda cabecera `Content-Security-Policy` se mezcla con la petición y le tapa el nonce a Next); `estricta` = la
-  estricta es la única que bloquea (las páginas pasan a renderizarse en cada visita). La variable se lee al compilar:
-  cambiarla exige redesplegar. Pendiente: observar en local las pantallas con sesión (panel, informe, reproductor), corregir lo
-  que aparezca y recién entonces activar `CSP_MODO=estricta` en Vercel (marcha atrás: quitar la variable y redesplegar).
-  El recorrido local con sesión (2026-10-06) encontró dos bloqueos que **ya ocurrían en producción** con la política vigente:
-  compilar WebAssembly (la librería de PDF, `@react-pdf` → `yoga-layout`) y `fetch` a `data:`. Se agregaron
-  `'wasm-unsafe-eval'` (solo WebAssembly, no eval de JavaScript) a `script-src` y `data:` a `connect-src`, en ambas políticas.
+- **CSP estricta con nonce, ACTIVA** (2026-10-06): en Producción `CSP_MODO=estricta` (`lib/server/csp.ts`, `proxy.ts`): `script-src`
+  usa un nonce por visita + `'strict-dynamic'` y **ya no permite `'unsafe-inline'`** (tampoco manejadores en línea ni
+  `javascript:`); permite compilar WebAssembly (`'wasm-unsafe-eval'`, la librería de PDF) y `data:` en `connect-src`. Se activó tras
+  observar en local, con sesión de administrador y con un candidato descartable, que no bloquea nada de la plataforma
+  (panel, informe/PDF, videos, tests, entrevista). `style-src` conserva `'unsafe-inline'` (atributos `style={...}`). Las
+  páginas se renderizan en cada visita. Las violaciones que reporten los navegadores quedan como líneas `[CSP]` en los
+  logs de Vercel (`/api/csp-report`). Marcha atrás: quitar la variable `CSP_MODO` y redesplegar (vuelve la política con
+  `'unsafe-inline'`; la variable se lee al compilar). Nota: `'strict-dynamic'` permite que un script ya autorizado cree otros
+  dinámicamente; lo que bloquea es el HTML inyectado (scripts y manejadores en línea).
 - Rate limiting en los endpoints públicos y de IA; bloqueo de intentos de login; Turnstile en `/unirse`.
 - Cabeceras de seguridad HTTP (CSP, HSTS, etc.), validación de entradas con zod y auditoría de dependencias en CI.
 
