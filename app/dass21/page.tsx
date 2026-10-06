@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { useProctoring } from '@/hooks/useProctoring'
 import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
+import { PruebaEscala } from '@/components/candidato/Prueba'
+import { PantallaCarga, PantallaError, PantallaFin, PantallaGuardadoFallido, PantallaSiguiente } from '@/components/candidato/Estados'
 
 interface Item {
   id: string
@@ -96,91 +98,26 @@ export default function Dass21Page() {
     else setErrorGuardado(resultadoGuardado.error)
   }
 
-  if (cargando) return <div style={s.centro}><p>Cargando Screening de Salud Mental...</p></div>
-  if (error) return (
-    <div style={s.centro}>
-      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
-        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{error}</p>
-        <button onClick={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
-      </div>
-    </div>
-  )
-  if (errorGuardado) return (
-    <div style={s.centro}>
-      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
-        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{MENSAJE_ERROR_GUARDADO}</p>
-        <button onClick={() => terminarTest(respuestas)} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
-      </div>
-    </div>
-  )
-
-  if (finalizado && enEvaluacion) return <div style={s.centro}><p>Guardando resultados...</p></div>
-
-  if (finalizado) {
-    return (
-      <div style={s.contenedor}>
-        <div style={s.checkCirculo}>✓</div>
-        <h1 style={s.titulo}>Evaluación completada</h1>
-        {nombreCandidato && <p style={s.nombreCandidato}>Gracias, <strong>{nombreCandidato}</strong>.</p>}
-        <p style={s.mensajeConfirmacion}>Tus respuestas han sido registradas. El equipo de selección analizará los resultados para garantizar el bienestar de todos los candidatos.</p>
-      </div>
-    )
-  }
+  if (cargando) return <PantallaCarga />
+  if (error) return <PantallaError mensaje={error} onReintentar={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} />
+  if (errorGuardado) return <PantallaGuardadoFallido mensaje={MENSAJE_ERROR_GUARDADO} onReintentar={() => terminarTest(respuestas)} />
+  if (finalizado && enEvaluacion) return <PantallaSiguiente />
+  if (finalizado) return <PantallaFin nombre={nombreCandidato} />
 
   const item = items[itemActual]
-  const progreso = Math.round((itemActual / items.length) * 100)
+  if (!item) return <PantallaCarga texto="Cargando la pregunta…" />
 
   return (
-    <div style={s.contenedor}>
-      <div style={s.encabezado}>
-        <div style={s.encabezadoTop}>
-          <span style={s.testNombre}>DASS-21</span>
-          <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-            {Math.floor(tiempoTranscurrido / 60)}:{String(tiempoTranscurrido % 60).padStart(2, '0')}
-          </span>
-        </div>
-        <div style={s.barraFondo}>
-          <div style={{ ...s.barraRelleno, width: `${progreso}%` }} />
-        </div>
-        <div style={s.progresoInfo}>
-          <span style={s.progresoTexto}>Ítem {itemActual + 1} de {items.length}</span>
-        </div>
-      </div>
-
-      <div style={s.card}>
-        <p style={s.instruccion}>Por favor, lee cada afirmación e indica cuánto se ha aplicado a ti durante la <strong>última semana</strong>. No hay respuestas correctas o incorrectas.</p>
-        <h2 style={s.pregunta}>{item?.contenido}</h2>
-        <div style={s.opciones}>
-          {item?.opciones.map((opcion, index) => (
-            <button key={index} style={s.opcionBoton} onClick={() => responder(index)}>
-              <span style={s.opcionIndex}>{index}</span>
-              {opcion}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
+    <PruebaEscala
+      nombre="DASS-21"
+      actual={itemActual + 1}
+      total={items.length}
+      instruccion="Por favor, lee cada afirmación e indica cuánto se ha aplicado a ti durante la última semana. No hay respuestas correctas o incorrectas."
+      transcurrido={tiempoTranscurrido}
+      enunciado={item.contenido}
+      opciones={item.opciones}
+      numerosDesde={0}
+      onElegir={responder}
+    />
   )
-}
-
-const s = {
-  centro: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' } as React.CSSProperties,
-  contenedor: { maxWidth: '700px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' } as React.CSSProperties,
-  encabezado: { marginBottom: '2rem' } as React.CSSProperties,
-  encabezadoTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' } as React.CSSProperties,
-  testNombre: { fontSize: '0.75rem', fontWeight: '600', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.05em' } as React.CSSProperties,
-  barraFondo: { width: '100%', height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden', marginBottom: '0.5rem' } as React.CSSProperties,
-  barraRelleno: { height: '100%', background: '#6366f1', borderRadius: '3px', transition: 'width 0.3s ease' } as React.CSSProperties,
-  progresoInfo: { textAlign: 'right' } as React.CSSProperties,
-  progresoTexto: { fontSize: '0.75rem', color: '#64748b' } as React.CSSProperties,
-  card: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '2rem', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' } as React.CSSProperties,
-  instruccion: { fontSize: '0.875rem', color: '#64748b', marginBottom: '1.5rem', lineHeight: '1.5', fontStyle: 'italic' } as React.CSSProperties,
-  pregunta: { fontSize: '1.35rem', fontWeight: '500', color: '#1e293b', lineHeight: '1.4', marginBottom: '2rem' } as React.CSSProperties,
-  opciones: { display: 'flex', flexDirection: 'column' as const, gap: '0.75rem' } as React.CSSProperties,
-  opcionBoton: { display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', border: '1.5px solid #e2e8f0', borderRadius: '12px', background: '#fff', color: '#1e293b', fontSize: '1rem', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.2s ease' } as React.CSSProperties,
-  opcionIndex: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '50%', background: '#f1f5f9', fontSize: '0.85rem', fontWeight: '600', color: '#475569' } as React.CSSProperties,
-  checkCirculo: { width: '64px', height: '64px', borderRadius: '50%', background: '#16a34a', color: '#fff', fontSize: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' } as React.CSSProperties,
-  titulo: { fontSize: '1.5rem', fontWeight: '600', color: '#1e293b', textAlign: 'center' as const, marginBottom: '0.5rem' } as React.CSSProperties,
-  nombreCandidato: { fontSize: '1.125rem', color: '#1e293b', textAlign: 'center' as const, margin: '0 0 1rem' } as React.CSSProperties,
-  mensajeConfirmacion: { fontSize: '0.95rem', color: '#475569', lineHeight: '1.7', textAlign: 'center' as const, marginBottom: '2rem' } as React.CSSProperties,
 }

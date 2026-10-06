@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
+import { PruebaEleccion } from '@/components/candidato/Prueba'
+import { PantallaCarga, PantallaError, PantallaFin, PantallaGuardadoFallido, PantallaSiguiente } from '@/components/candidato/Estados'
 
 const TEST_ID = 'e9b2c3d4-f5a6-7890-bcde-999999999999'
 
@@ -98,47 +100,14 @@ export default function SjtCobranzasPage() {
     setTimeout(() => avanzar(opcion), 400)
   }
 
-  if (cargando) return <div style={s.centro}><p>Cargando test...</p></div>
-  if (error) return (
-    <div style={s.centro}>
-      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
-        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{error}</p>
-        <button onClick={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
-      </div>
-    </div>
-  )
-
-  if (errorGuardado) return (
-    <div style={s.centro}>
-      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
-        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{MENSAJE_ERROR_GUARDADO}</p>
-        <button onClick={() => terminarTest(respuestas, items)} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
-      </div>
-    </div>
-  )
-
-  if (finalizado && enEvaluacion) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}><p>Cargando siguiente evaluación...</p></div>
-  if (finalizado) return (
-    <div style={s.contenedor}>
-      <div style={s.checkCirculo}>✓</div>
-      <h1 style={s.titulo}>Evaluación completada</h1>
-      {nombreCandidato && <p style={s.nombreCandidato}>Gracias, <strong>{nombreCandidato}</strong>.</p>}
-      <p style={s.mensajeConfirmacion}>Tu evaluación fue registrada correctamente.</p>
-      <div style={s.contactoBox}>
-        <p style={s.contactoTitulo}>Próximos pasos</p>
-        <p style={s.contactoTexto}>El equipo de selección se pondrá en contacto contigo a la brevedad.</p>
-        <div style={s.contactoDetalle}>
-          <p style={s.contactoItem}>📧 <a href="mailto:seleccion@republicamicrofinanzas.com.uy" style={s.link}>seleccion@republicamicrofinanzas.com.uy</a></p>
-          <p style={s.contactoItem}>💬 WhatsApp: <a href="https://wa.me/598092651770" style={s.link}>092 651 770</a></p>
-        </div>
-      </div>
-    </div>
-  )
+  if (cargando) return <PantallaCarga />
+  if (error) return <PantallaError mensaje={error} onReintentar={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} />
+  if (errorGuardado) return <PantallaGuardadoFallido mensaje={MENSAJE_ERROR_GUARDADO} onReintentar={() => terminarTest(respuestas, items)} />
+  if (finalizado && enEvaluacion) return <PantallaSiguiente />
+  if (finalizado) return <PantallaFin nombre={nombreCandidato} />
 
   const item = items[itemActual]
-  if (!item) return <div style={s.centro}><p>Cargando...</p></div>
-  const progreso = Math.round((itemActual / items.length) * 100)
-  const tiempoColor = tiempoRestante <= 15 ? '#dc2626' : tiempoRestante <= 30 ? '#ea580c' : '#1e293b'
+  if (!item) return <PantallaCarga texto="Cargando la pregunta…" />
 
   const factorLabel: Record<string, string> = {
     negociacion: 'Negociación', manejo_emocional: 'Manejo emocional',
@@ -146,72 +115,18 @@ export default function SjtCobranzasPage() {
   }
 
   return (
-    <div style={s.contenedor}>
-      <div style={s.encabezado}>
-        <div style={s.encabezadoTop}>
-          <span style={s.testNombre}>SJT — Cobranzas Telefónicas</span>
-          <div style={{ ...s.cronometro, color: tiempoColor }}>{tiempoRestante}s</div>
-        </div>
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '0.4rem', alignItems: 'center' }}>
-          <span style={s.progresoTexto}>{itemActual + 1} de {items.length}</span>
-          <span style={s.badge}>{factorLabel[item.factor] || item.factor}</span>
-        </div>
-        <div style={s.barraFondo}>
-          <div style={{ ...s.barraRelleno, width: `${progreso}%` }} />
-        </div>
-      </div>
-      <div style={s.escenarioBox}>
-        <div style={s.escenarioLabel}>Situación</div>
-        <p style={s.escenarioTexto}>{item.contenido}</p>
-      </div>
-      <div style={s.preguntaLabel}>¿Qué harías en esta situación?</div>
-      <div style={s.opciones}>
-        {item.opciones.map((opcion: string, index: number) => (
-          <button key={index}
-            style={{ ...s.opcionBoton, background: seleccionada === opcion ? '#dc2626' : '#fff', color: seleccionada === opcion ? '#fff' : '#1e293b', borderColor: seleccionada === opcion ? '#dc2626' : '#e2e8f0' }}
-            onClick={() => responder(opcion)} disabled={seleccionada !== null}>
-            <span style={{ ...s.opcionLetra, background: seleccionada === opcion ? 'rgba(255,255,255,0.2)' : '#f1f5f9', color: seleccionada === opcion ? '#fff' : '#64748b' }}>
-              {['A', 'B', 'C', 'D'][index]}
-            </span>
-            {opcion}
-          </button>
-        ))}
-      </div>
-      <div style={s.barraTiempo}>
-        <div style={{ ...s.barraTiempoRelleno, width: `${(tiempoRestante / 90) * 100}%`, background: tiempoColor }} />
-      </div>
-    </div>
+    <PruebaEleccion
+      nombre="SJT — Cobranzas Telefónicas"
+      actual={itemActual + 1}
+      total={items.length}
+      categoria={factorLabel[item.factor] || item.factor}
+      restante={tiempoRestante}
+      limite={90}
+      situacion={item.contenido}
+      consigna="¿Qué harías en esta situación?"
+      opciones={item.opciones}
+      elegida={seleccionada}
+      onElegir={responder}
+    />
   )
-}
-
-const s = {
-  centro: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' } as React.CSSProperties,
-  contenedor: { maxWidth: '620px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' } as React.CSSProperties,
-  encabezado: { marginBottom: '1.5rem' } as React.CSSProperties,
-  encabezadoTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' } as React.CSSProperties,
-  testNombre: { fontSize: '0.75rem', fontWeight: '500', color: '#dc2626', textTransform: 'uppercase' as const, letterSpacing: '0.05em' } as React.CSSProperties,
-  cronometro: { fontSize: '1.25rem', fontWeight: '700', minWidth: '48px', textAlign: 'right' as const } as React.CSSProperties,
-  progresoTexto: { fontSize: '0.875rem', color: '#64748b' } as React.CSSProperties,
-  badge: { fontSize: '10px', padding: '2px 8px', borderRadius: '99px', background: '#FCEBEB', color: '#501313', fontWeight: '500' } as React.CSSProperties,
-  barraFondo: { width: '100%', height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' } as React.CSSProperties,
-  barraRelleno: { height: '100%', background: '#dc2626', borderRadius: '3px', transition: 'width 0.3s ease' } as React.CSSProperties,
-  escenarioBox: { background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '1rem 1.25rem', marginBottom: '1.25rem' } as React.CSSProperties,
-  escenarioLabel: { fontSize: '10px', fontWeight: '600', color: '#991B1B', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: '6px' } as React.CSSProperties,
-  escenarioTexto: { fontSize: '13px', color: '#1e293b', lineHeight: '1.6', margin: 0 } as React.CSSProperties,
-  preguntaLabel: { fontSize: '13px', fontWeight: '500', color: '#475569', marginBottom: '0.75rem' } as React.CSSProperties,
-  opciones: { display: 'flex', flexDirection: 'column' as const, gap: '0.75rem', marginBottom: '1.5rem' } as React.CSSProperties,
-  opcionBoton: { padding: '0.875rem 1.25rem', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s ease', display: 'flex', alignItems: 'flex-start', gap: '0.75rem', lineHeight: '1.5' } as React.CSSProperties,
-  opcionLetra: { display: 'inline-flex', width: '22px', height: '22px', borderRadius: '50%', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '600', flexShrink: 0, marginTop: '1px' } as React.CSSProperties,
-  barraTiempo: { width: '100%', height: '4px', background: '#e2e8f0', borderRadius: '2px', overflow: 'hidden' } as React.CSSProperties,
-  barraTiempoRelleno: { height: '100%', borderRadius: '2px', transition: 'width 1s linear, background 0.3s' } as React.CSSProperties,
-  checkCirculo: { width: '64px', height: '64px', borderRadius: '50%', background: '#16a34a', color: '#fff', fontSize: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' } as React.CSSProperties,
-  titulo: { fontSize: '1.5rem', fontWeight: '600', color: '#1e293b', textAlign: 'center' as const, marginBottom: '0.5rem' } as React.CSSProperties,
-  nombreCandidato: { fontSize: '1.125rem', color: '#1e293b', textAlign: 'center' as const, margin: '0 0 1rem' } as React.CSSProperties,
-  mensajeConfirmacion: { fontSize: '0.9rem', color: '#475569', lineHeight: '1.6', textAlign: 'center' as const, marginBottom: '2rem' } as React.CSSProperties,
-  contactoBox: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem' } as React.CSSProperties,
-  contactoTitulo: { fontSize: '0.875rem', fontWeight: '600', color: '#1e293b', margin: '0 0 0.5rem' } as React.CSSProperties,
-  contactoTexto: { fontSize: '0.875rem', color: '#64748b', lineHeight: '1.6', margin: '0 0 1rem' } as React.CSSProperties,
-  contactoDetalle: { display: 'flex', flexDirection: 'column' as const, gap: '0.5rem' } as React.CSSProperties,
-  contactoItem: { fontSize: '0.875rem', color: '#1e293b', margin: 0 } as React.CSSProperties,
-  link: { color: '#2563eb', textDecoration: 'none' } as React.CSSProperties,
 }

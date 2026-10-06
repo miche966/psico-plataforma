@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Script from 'next/script'
-import { UserPlus, ChevronRight, CheckCircle2, AlertCircle, Building2 } from 'lucide-react'
+import { Marco } from '@/components/candidato/Marco'
+import { PantallaCarga } from '@/components/candidato/Estados'
 import { useSearchParams } from 'next/navigation'
 
 declare global {
@@ -109,224 +110,154 @@ export default function UnirsePage() {
     }
   }
 
-  if (cargando) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-500 font-medium animate-pulse">Cargando portal de selección...</p>
-        </div>
-      </div>
-    )
-  }
+  if (cargando) return <PantallaCarga texto="Cargando el portal…" />
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4 py-12">
+    <Marco titulo="Inscripción">
       <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" async defer />
-      {/* Background Decor */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-indigo-100/50 rounded-full blur-3xl opacity-50"></div>
-        <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-blue-100/50 rounded-full blur-3xl opacity-50"></div>
-      </div>
+      <h1 className="pp-titulo">Inscripción al proceso de selección</h1>
+      <p className="pp-lead">Completá tus datos para empezar la evaluación psicométrica. Los campos con <span aria-hidden="true">*</span><span className="pp-sr">asterisco</span> son obligatorios.</p>
 
-      <div className="w-full max-w-xl relative">
-        {/* Header Logo/Title */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-xl border border-slate-100 mb-6 group transition-transform hover:scale-105">
-            <Building2 className="w-8 h-8 text-indigo-600" />
+      <form onSubmit={handleSubmit} className="pp-formulario" noValidate={false}>
+        {error && (
+          <div className="pp-alerta" role="alert">
+            <p>{error}</p>
           </div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Portal del Candidato</h1>
-          <p className="text-slate-500 font-medium">Completa tus datos para iniciar el proceso de evaluación psicométrica.</p>
-        </div>
+        )}
 
-        {/* Main Card */}
-        <div className="bg-white rounded-[2rem] shadow-2xl shadow-indigo-200/20 border border-slate-100 overflow-hidden">
-          <div className="bg-indigo-600 p-6 text-white flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center">
-              <UserPlus className="w-6 h-6" />
+        <fieldset className="pp-grupo">
+          <legend>Tus datos</legend>
+          <div className="pp-grid2">
+            <div className="pp-campo">
+              <label htmlFor="nombres">Nombres <span aria-hidden="true">*</span></label>
+              <input
+                id="nombres"
+                required
+                value={form.nombres}
+                onChange={e => setForm({ ...form, nombres: e.target.value })}
+                placeholder="Ej: Franco"
+              />
             </div>
-            <div>
-              <h2 className="text-lg font-bold">Formulario de Inscripción</h2>
-              <p className="text-indigo-100 text-xs">Todos los campos con * son obligatorios</p>
+            <div className="pp-campo">
+              <label htmlFor="apellidos">Apellidos <span aria-hidden="true">*</span></label>
+              <input
+                id="apellidos"
+                required
+                value={form.apellidos}
+                onChange={e => setForm({ ...form, apellidos: e.target.value })}
+                placeholder="Ej: Rodríguez"
+              />
             </div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="p-8 space-y-6">
-            {error && (
-              <div className="bg-red-50 border border-red-100 p-4 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                <p className="text-sm text-red-700 font-medium">{error}</p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Nombres *</label>
-                <input
-                  required
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
-                  value={form.nombres}
-                  onChange={e => setForm({ ...form, nombres: e.target.value })}
-                  placeholder="Ej: Franco"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Apellidos *</label>
-                <input
-                  required
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
-                  value={form.apellidos}
-                  onChange={e => setForm({ ...form, apellidos: e.target.value })}
-                  placeholder="Ej: Rodríguez"
-                />
-              </div>
+            <div className="pp-campo">
+              <label htmlFor="edad">Edad <span aria-hidden="true">*</span></label>
+              <input
+                id="edad"
+                required
+                type="number"
+                min="18"
+                max="99"
+                inputMode="numeric"
+                value={form.edad}
+                onChange={e => setForm({ ...form, edad: e.target.value })}
+                placeholder="Ej: 25"
+              />
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Edad *</label>
-                <input
-                  required
-                  type="number"
-                  min="18"
-                  max="99"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
-                  value={form.edad}
-                  onChange={e => setForm({ ...form, edad: e.target.value })}
-                  placeholder="Ej: 25"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Sexo *</label>
-                <div className="relative">
-                  <select
-                    required
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
-                    value={form.sexo}
-                    onChange={e => setForm({ ...form, sexo: e.target.value })}
-                  >
-                    <option value="">Selecciona...</option>
-                    <option value="Masculino">Masculino</option>
-                    <option value="Femenino">Femenino</option>
-                    <option value="Otro">Otro / No binario</option>
-                    <option value="Prefiero no decirlo">Prefiero no decirlo</option>
-                  </select>
-                  <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
-                    <ChevronRight className="w-4 h-4 rotate-90" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Correo Electrónico *</label>
-                <input
-                  required
-                  type="email"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
-                  value={form.email}
-                  onChange={e => setForm({ ...form, email: e.target.value })}
-                  placeholder="ejemplo@correo.com"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Documento de Identidad *</label>
-                <input
-                  required
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
-                  value={form.documento}
-                  onChange={e => setForm({ ...form, documento: e.target.value })}
-                  placeholder="DNI / Cédula"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Formación Académica</label>
-                <input
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
-                  value={form.formacion}
-                  onChange={e => setForm({ ...form, formacion: e.target.value })}
-                  placeholder="Ej: Lic. en Psicología"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Profesión / Trabajo Actual</label>
-                <input
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
-                  value={form.profesion}
-                  onChange={e => setForm({ ...form, profesion: e.target.value })}
-                  placeholder="Ej: Reclutador IT"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Posición a la que postulas *</label>
-              <div className="relative">
-                <select
-                  required
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
-                  value={form.procesoId}
-                  onChange={e => setForm({ ...form, procesoId: e.target.value })}
-                >
-                  <option value="">Selecciona una búsqueda activa...</option>
-                  {procesos.map(p => (
-                    <option key={p.id} value={p.id}>{p.cargo} - {p.nombre}</option>
-                  ))}
-                </select>
-                <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
-                  <ChevronRight className="w-4 h-4 rotate-90" />
-                </div>
-              </div>
-            </div>
-
-            <div
-              className="cf-turnstile flex justify-center"
-              data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
-              data-callback="onTurnstileSuccess"
-            />
-
-            <div className="pt-4">
-              <button
-                type="submit"
-                disabled={enviando || !turnstileToken}
-                className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
+            <div className="pp-campo">
+              <label htmlFor="sexo">Sexo <span aria-hidden="true">*</span></label>
+              <select
+                id="sexo"
+                required
+                value={form.sexo}
+                onChange={e => setForm({ ...form, sexo: e.target.value })}
               >
-                {enviando ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    Procesando...
-                  </>
-                ) : !turnstileToken ? (
-                  'Verificando...'
-                ) : (
-                  <>
-                    Iniciar Evaluación
-                    <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </>
-                )}
-              </button>
+                <option value="">Elegí una opción</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Femenino">Femenino</option>
+                <option value="Otro">Otro / No binario</option>
+                <option value="Prefiero no decirlo">Prefiero no decirlo</option>
+              </select>
             </div>
-          </form>
-
-          <div className="bg-slate-50 p-6 border-t border-slate-100">
-            <div className="flex items-start gap-3">
-              <CheckCircle2 className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
-              <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-                Al iniciar, el sistema te guiará automáticamente por los tests asignados a tu perfil. Asegúrate de contar con tiempo suficiente y una conexión estable. Tus datos están protegidos y serán usados únicamente para fines de selección profesional.
-              </p>
+            <div className="pp-campo">
+              <label htmlFor="email">Correo electrónico <span aria-hidden="true">*</span></label>
+              <input
+                id="email"
+                required
+                type="email"
+                autoComplete="email"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+                placeholder="ejemplo@correo.com"
+              />
+            </div>
+            <div className="pp-campo">
+              <label htmlFor="documento">Documento de identidad <span aria-hidden="true">*</span></label>
+              <input
+                id="documento"
+                required
+                value={form.documento}
+                onChange={e => setForm({ ...form, documento: e.target.value })}
+                placeholder="DNI / Cédula"
+              />
             </div>
           </div>
-        </div>
+        </fieldset>
 
-        {/* Footer info */}
-        <p className="text-center text-slate-400 text-xs mt-8 font-medium">
-          PsicoPlataforma © 2026 • Evaluación Psicométrica Profesional
+        <fieldset className="pp-grupo">
+          <legend>Tu formación</legend>
+          <div className="pp-grid2">
+            <div className="pp-campo">
+              <label htmlFor="formacion">Formación académica</label>
+              <input
+                id="formacion"
+                value={form.formacion}
+                onChange={e => setForm({ ...form, formacion: e.target.value })}
+                placeholder="Ej: Lic. en Psicología"
+              />
+            </div>
+            <div className="pp-campo">
+              <label htmlFor="profesion">Profesión o trabajo actual</label>
+              <input
+                id="profesion"
+                value={form.profesion}
+                onChange={e => setForm({ ...form, profesion: e.target.value })}
+                placeholder="Ej: Reclutador IT"
+              />
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset className="pp-grupo">
+          <legend>Tu postulación</legend>
+          <div className="pp-campo">
+            <label htmlFor="procesoId">Posición a la que postulás <span aria-hidden="true">*</span></label>
+            <select
+              id="procesoId"
+              required
+              value={form.procesoId}
+              onChange={e => setForm({ ...form, procesoId: e.target.value })}
+            >
+              <option value="">Elegí una búsqueda activa</option>
+              {procesos.map(p => (
+                <option key={p.id} value={p.id}>{p.cargo} - {p.nombre}</option>
+              ))}
+            </select>
+          </div>
+        </fieldset>
+
+        <div
+          className="cf-turnstile"
+          data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+          data-callback="onTurnstileSuccess"
+        />
+
+        <button type="submit" className="pp-boton pp-boton-ancho" disabled={enviando || !turnstileToken}>
+          {enviando ? 'Procesando…' : !turnstileToken ? 'Verificando…' : 'Iniciar evaluación'}
+        </button>
+
+        <p className="pp-nota">
+          Al iniciar, el sistema te guiará automáticamente por las pruebas asignadas a tu perfil. Asegurate de contar con tiempo suficiente y una conexión estable. Tus datos están protegidos y se usan únicamente para fines de selección profesional.
         </p>
-      </div>
-    </div>
+      </form>
+    </Marco>
   )
 }

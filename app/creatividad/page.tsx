@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
+import { PruebaEscala } from '@/components/candidato/Prueba'
+import { PantallaCarga, PantallaError, PantallaFin, PantallaGuardadoFallido, PantallaSiguiente } from '@/components/candidato/Estados'
 
 const TEST_ID = 'e1f2a3b4-c5d6-7890-efab-111222333444'
 
@@ -91,46 +93,14 @@ export default function CreatividadPage() {
     else setErrorGuardado(resultadoGuardado.error)
   }
 
-  if (cargando) return <div style={s.centro}><p>Cargando test...</p></div>
-  if (error) return (
-    <div style={s.centro}>
-      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
-        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{error}</p>
-        <button onClick={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
-      </div>
-    </div>
-  )
-
-  if (errorGuardado) return (
-    <div style={s.centro}>
-      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
-        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{MENSAJE_ERROR_GUARDADO}</p>
-        <button onClick={() => calcularResultado(respuestas)} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
-      </div>
-    </div>
-  )
-
-  if (finalizado && enEvaluacion) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}><p>Cargando siguiente evaluación...</p></div>
-  if (finalizado) return (
-    <div style={s.contenedor}>
-      <div style={s.checkCirculo}>✓</div>
-      <h1 style={s.titulo}>Evaluación completada</h1>
-      {nombreCandidato && <p style={s.nombreCandidato}>Gracias, <strong>{nombreCandidato}</strong>.</p>}
-      <p style={s.mensajeConfirmacion}>Tu evaluación fue registrada correctamente.</p>
-      <div style={s.contactoBox}>
-        <p style={s.contactoTitulo}>Próximos pasos</p>
-        <p style={s.contactoTexto}>El equipo de selección se pondrá en contacto contigo a la brevedad.</p>
-        <div style={s.contactoDetalle}>
-          <p style={s.contactoItem}>📧 <a href="mailto:seleccion@republicamicrofinanzas.com.uy" style={s.link}>seleccion@republicamicrofinanzas.com.uy</a></p>
-          <p style={s.contactoItem}>💬 WhatsApp: <a href="https://wa.me/598092651770" style={s.link}>092 651 770</a></p>
-        </div>
-      </div>
-    </div>
-  )
+  if (cargando) return <PantallaCarga />
+  if (error) return <PantallaError mensaje={error} onReintentar={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} />
+  if (errorGuardado) return <PantallaGuardadoFallido mensaje={MENSAJE_ERROR_GUARDADO} onReintentar={() => calcularResultado(respuestas)} />
+  if (finalizado && enEvaluacion) return <PantallaSiguiente />
+  if (finalizado) return <PantallaFin nombre={nombreCandidato} />
 
   const item = items[itemActual]
-  if (!item) return <div style={s.centro}><p>Cargando...</p></div>
-  const progreso = Math.round((itemActual / items.length) * 100)
+  if (!item) return <PantallaCarga texto="Cargando la pregunta…" />
 
   const factorLabel: Record<string, string> = {
     pensamiento_divergente: 'Pensamiento divergente',
@@ -140,83 +110,17 @@ export default function CreatividadPage() {
     curiosidad: 'Curiosidad intelectual'
   }
 
-  const coloresFactores: Record<string, string> = {
-    pensamiento_divergente: '#9333ea',
-    flexibilidad: '#2563eb',
-    innovacion: '#16a34a',
-    tolerancia_ambiguedad: '#ea580c',
-    curiosidad: '#db2777'
-  }
-
-  const colorFactor = coloresFactores[item.factor] || '#9333ea'
-
   return (
-    <div style={s.contenedor}>
-      <div style={s.encabezado}>
-        <div style={s.testNombre}>Creatividad e Innovación</div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <span style={s.progresoTexto}>{itemActual + 1} de {items.length}</span>
-            <span style={{ ...s.badge, background: colorFactor + '20', color: colorFactor }}>
-              {factorLabel[item.factor] || item.factor}
-            </span>
-          </div>
-          <span style={{ fontSize: '0.75rem', color: tiempoTranscurrido > 1200 ? '#dc2626' : '#94a3b8' }}>
-            {Math.floor(tiempoTranscurrido / 60)}:{String(tiempoTranscurrido % 60).padStart(2, '0')} / 20:00
-          </span>
-        </div>
-        <div style={s.barraFondo}>
-          <div style={{ ...s.barraRelleno, width: `${progreso}%`, background: colorFactor }} />
-        </div>
-      </div>
-
-      <h2 style={s.pregunta}>{item.contenido}</h2>
-
-      <div style={s.opciones}>
-        {item.opciones.map((opcion: string, index: number) => (
-          <button
-            key={index}
-            style={s.opcionBoton}
-            onClick={() => responder(index + 1)}
-            onMouseEnter={e => {
-              (e.target as HTMLButtonElement).style.background = colorFactor
-              ;(e.target as HTMLButtonElement).style.color = '#fff'
-              ;(e.target as HTMLButtonElement).style.borderColor = colorFactor
-            }}
-            onMouseLeave={e => {
-              (e.target as HTMLButtonElement).style.background = '#fff'
-              ;(e.target as HTMLButtonElement).style.color = '#1e293b'
-              ;(e.target as HTMLButtonElement).style.borderColor = '#e2e8f0'
-            }}
-          >
-            {opcion}
-          </button>
-        ))}
-      </div>
-    </div>
+    <PruebaEscala
+      nombre="Creatividad e Innovación"
+      actual={itemActual + 1}
+      total={items.length}
+      categoria={factorLabel[item.factor] || item.factor}
+      transcurrido={tiempoTranscurrido}
+      limiteTotalMin={20}
+      enunciado={item.contenido}
+      opciones={item.opciones}
+      onElegir={indice => responder(indice + 1)}
+    />
   )
-}
-
-const s = {
-  centro: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' } as React.CSSProperties,
-  contenedor: { maxWidth: '600px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' } as React.CSSProperties,
-  encabezado: { marginBottom: '1.5rem' } as React.CSSProperties,
-  testNombre: { fontSize: '0.75rem', fontWeight: '500', color: '#9333ea', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: '0.5rem' } as React.CSSProperties,
-  progresoTexto: { fontSize: '0.875rem', color: '#64748b' } as React.CSSProperties,
-  badge: { fontSize: '10px', padding: '2px 8px', borderRadius: '99px', fontWeight: '500' } as React.CSSProperties,
-  barraFondo: { width: '100%', height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' } as React.CSSProperties,
-  barraRelleno: { height: '100%', borderRadius: '3px', transition: 'width 0.3s ease' } as React.CSSProperties,
-  pregunta: { fontSize: '1.2rem', fontWeight: '500', color: '#1e293b', lineHeight: '1.6', marginBottom: '1.75rem' } as React.CSSProperties,
-  opciones: { display: 'flex', flexDirection: 'column' as const, gap: '0.75rem' } as React.CSSProperties,
-  opcionBoton: { padding: '0.875rem 1.25rem', border: '1.5px solid #e2e8f0', borderRadius: '8px', background: '#fff', color: '#1e293b', fontSize: '1rem', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s ease' } as React.CSSProperties,
-  checkCirculo: { width: '64px', height: '64px', borderRadius: '50%', background: '#16a34a', color: '#fff', fontSize: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' } as React.CSSProperties,
-  titulo: { fontSize: '1.5rem', fontWeight: '600', color: '#1e293b', textAlign: 'center' as const, marginBottom: '0.5rem' } as React.CSSProperties,
-  nombreCandidato: { fontSize: '1.125rem', color: '#1e293b', textAlign: 'center' as const, margin: '0 0 1rem' } as React.CSSProperties,
-  mensajeConfirmacion: { fontSize: '0.9rem', color: '#475569', lineHeight: '1.6', textAlign: 'center' as const, marginBottom: '2rem' } as React.CSSProperties,
-  contactoBox: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem' } as React.CSSProperties,
-  contactoTitulo: { fontSize: '0.875rem', fontWeight: '600', color: '#1e293b', margin: '0 0 0.5rem' } as React.CSSProperties,
-  contactoTexto: { fontSize: '0.875rem', color: '#64748b', lineHeight: '1.6', margin: '0 0 1rem' } as React.CSSProperties,
-  contactoDetalle: { display: 'flex', flexDirection: 'column' as const, gap: '0.5rem' } as React.CSSProperties,
-  contactoItem: { fontSize: '0.875rem', color: '#1e293b', margin: 0 } as React.CSSProperties,
-  link: { color: '#2563eb', textDecoration: 'none' } as React.CSSProperties,
 }

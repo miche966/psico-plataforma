@@ -5,6 +5,9 @@ import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { marcarEvaluacionOperativaEnCurso, marcarEvaluacionOperativaCompletada } from '@/lib/progresoOperativo'
+import { Marco } from '@/components/candidato/Marco'
+import { MarcoPrueba } from '@/components/candidato/Prueba'
+import { PantallaCarga, PantallaError, PantallaFin, PantallaSiguiente } from '@/components/candidato/Estados'
 
 interface Pregunta {
   id: string
@@ -411,248 +414,143 @@ export default function ResponderPage() {
     (p.pregunta || '').startsWith('[CON_EXP]') || (p.pregunta || '').startsWith('[SIN_EXP]')
   )
 
-  if (cargando) return <div style={s.centro}><p>Cargando entrevista...</p></div>
+  if (cargando) return <PantallaCarga texto="Cargando la entrevista…" />
 
-  if (!entrevista || (estado !== 'finalizado' && preguntas.length === 0)) return (
-    <div style={s.centro}>
-      <p>Entrevista no encontrada o sin preguntas configuradas.</p>
-    </div>
-  )
+  if (!entrevista || (estado !== 'finalizado' && preguntas.length === 0)) {
+    return <PantallaError mensaje="Entrevista no encontrada o sin preguntas configuradas." />
+  }
 
-  if (estado === 'finalizado' && enEvaluacion) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}><p>Cargando siguiente evaluación...</p></div>
+  if (estado === 'finalizado' && enEvaluacion) return <PantallaSiguiente />
 
-  if (estado === 'finalizado') return (
-    <div style={s.contenedor}>
-      <div style={s.checkCirculo}>✓</div>
-      <h1 style={s.titulo}>Entrevista completada</h1>
-      {nombreCandidato && <p style={s.nombreCandidato}>Gracias, <strong>{nombreCandidato}</strong>.</p>}
-      <p style={s.mensajeConfirmacion}>
-        Tus respuestas fueron grabadas y enviadas correctamente al equipo de selección.
-      </p>
-      <div style={s.contactoBox}>
-        <p style={s.contactoTitulo}>Próximos pasos</p>
-        <p style={s.contactoTexto}>
-          El equipo de selección analizará tus respuestas a la brevedad. Si tenés dudas, podés contactarnos:
-        </p>
-        <div style={s.contactoDetalle}>
-          <p style={s.contactoItem}>📧 seleccion@republicamicrofinanzas.com.uy</p>
-          <p style={s.contactoItem}>💬 WhatsApp: 092 651 770</p>
-        </div>
-      </div>
-    </div>
-  )
+  if (estado === 'finalizado') {
+    return (
+      <PantallaFin titulo="Entrevista completada">
+        {nombreCandidato ? <>Gracias, <strong>{nombreCandidato}</strong>. </> : null}Tus respuestas fueron grabadas y enviadas correctamente al equipo de selección.
+      </PantallaFin>
+    )
+  }
 
   const pregunta = preguntas[preguntaActual]
-  const progreso = Math.round((preguntaActual / preguntas.length) * 100)
-  const tiempoColor = tiempoRestante <= 10 ? '#dc2626' : tiempoRestante <= 20 ? '#ea580c' : '#1e293b'
+
+  if (estado === 'bienvenida') {
+    return (
+      <Marco titulo={entrevista.nombre}>
+        <h1 className="pp-titulo">{entrevista.nombre}</h1>
+        {nombreCandidato && <p className="pp-lead">Hola, <strong>{nombreCandidato}</strong>.</p>}
+
+        <section className="pp-aparte" aria-labelledby="pp-antes">
+          <h2 id="pp-antes">Antes de comenzar</h2>
+          <ul className="pp-instrucciones">
+            <li>Asegurate de tener buena iluminación y la cámara a la altura de los ojos.</li>
+            <li>Verificá que el micrófono funcione y estés en un lugar tranquilo.</li>
+            <li>Tendrás tiempo de preparación antes de cada pregunta.</li>
+            <li>Podés repetir cada respuesta si no quedás conforme.</li>
+            <li>Son {preguntas.length} pregunta{preguntas.length !== 1 ? 's' : ''} en total.</li>
+          </ul>
+        </section>
+
+        {tienePreguntasCondicionales && tieneExperiencia === null ? (
+          <section className="pp-aparte" aria-labelledby="pp-perfil">
+            <h2 id="pp-perfil">Antes de iniciar, seleccioná tu perfil de experiencia laboral</h2>
+            <div className="pp-acciones">
+              <button
+                type="button"
+                className="pp-boton"
+                onClick={() => {
+                  seleccionarExperiencia(true)
+                  iniciarCamaraConExperiencia(true)
+                }}
+              >
+                Tengo experiencia laboral (formal o informal)
+              </button>
+              <button
+                type="button"
+                className="pp-boton pp-boton-secundario"
+                onClick={() => {
+                  seleccionarExperiencia(false)
+                  iniciarCamaraConExperiencia(false)
+                }}
+              >
+                No tengo experiencia laboral previa
+              </button>
+            </div>
+          </section>
+        ) : (
+          <button type="button" className="pp-boton" onClick={iniciarCamara}>Comenzar entrevista</button>
+        )}
+      </Marco>
+    )
+  }
+
+  // Cuenta regresiva: el tiempo de preparacion o el de respuesta, segun el momento
+  const cuentaRegresiva = estado === 'preparacion'
+    ? { restante: tiempoRestante, limite: pregunta.tiempo_preparacion || 30 }
+    : estado === 'grabando'
+      ? { restante: tiempoRestante, limite: pregunta.tiempo_respuesta }
+      : {}
 
   return (
-    <div style={s.contenedor}>
-      {estado !== 'bienvenida' && (
-        <div style={s.encabezado}>
-          <div style={s.encabezadoTop}>
-            <span style={s.testNombre}>Entrevista en Video</span>
-            <div style={{ ...s.cronometro, color: tiempoColor }}>
-              {tiempoRestante}s
-            </div>
+    <MarcoPrueba
+      nombre="Entrevista en video"
+      actual={preguntaActual + 1}
+      total={preguntas.length}
+      categoria={estado === 'preparacion' ? 'Preparate' : estado === 'grabando' ? 'Grabando tu respuesta' : 'Revisá tu respuesta'}
+      {...cuentaRegresiva}
+    >
+      <h2 className="pp-enunciado">{(pregunta.pregunta || '').replace(/^\[CON_EXP\]\s*|^\[SIN_EXP\]\s*|^\[GENERAL\]\s*/i, '')}</h2>
+      {estado === 'preparacion' && (
+        <p className="pp-instruccion">Tiempo máximo de respuesta: {pregunta.tiempo_respuesta} segundos.</p>
+      )}
+
+      <div className="pp-video">
+        <video ref={videoRef} autoPlay playsInline muted className="pp-video-el" />
+        {estado === 'grabando' && (
+          <div className="pp-rec"><span className="pp-rec-punto" aria-hidden="true" />REC</div>
+        )}
+        {estado === 'preparacion' && (
+          <div className="pp-video-velo">
+            <span>Preparate para responder</span>
+            <strong>{tiempoRestante}s</strong>
           </div>
-          <div style={s.progresoInfo}>
-            <span style={s.progresoTexto}>Pregunta {preguntaActual + 1} de {preguntas.length}</span>
-            <span style={{
-              ...s.estadoBadge,
-              background: estado === 'grabando' ? '#FCEBEB' : estado === 'preparacion' ? '#FAEEDA' : '#EAF3DE',
-              color: estado === 'grabando' ? '#dc2626' : estado === 'preparacion' ? '#b45309' : '#16a34a'
-            }}>
-              {estado === 'preparacion' ? 'Preparate' : estado === 'grabando' ? 'Grabando' : 'Revisá tu respuesta'}
-            </span>
-          </div>
-          <div style={s.barraFondo}>
-            <div style={{ ...s.barraRelleno, width: `${progreso}%` }} />
-          </div>
+        )}
+      </div>
+
+      {estado === 'preparacion' && (
+        <div className="pp-acciones">
+          <button type="button" className="pp-boton" onClick={iniciarGrabacion}>Empezar a grabar ahora</button>
         </div>
       )}
 
-      {estado === 'bienvenida' && (
-        <div style={s.bienvenida}>
-          <h1 style={s.titulo}>{entrevista.nombre}</h1>
-          {nombreCandidato && <p style={s.nombreCandidato}>Hola, <strong>{nombreCandidato}</strong>.</p>}
-          <div style={s.instruccionesBox}>
-            <p style={s.instruccionTitulo}>Antes de comenzar</p>
-            <div style={s.instruccionItem}>📷 Asegurate de tener buena iluminación y la cámara a la altura de los ojos</div>
-            <div style={s.instruccionItem}>🎤 Verificá que el micrófono funcione y estés en un lugar tranquilo</div>
-            <div style={s.instruccionItem}>⏱ Tendrás tiempo de preparación antes de cada pregunta</div>
-            <div style={s.instruccionItem}>🔄 Podés repetir cada respuesta si no quedás conforme</div>
-            <div style={s.instruccionItem}>📋 Son {preguntas.length} pregunta{preguntas.length !== 1 ? 's' : ''} en total</div>
-          </div>
-          
-          {tienePreguntasCondicionales && tieneExperiencia === null ? (
-            <div style={s.selectorExperienciaBox}>
-              <p style={s.selectorExperienciaTitulo}>Antes de iniciar, seleccioná tu perfil de experiencia laboral:</p>
-              <div style={s.botonesExperiencia}>
-                <button 
-                  style={{ ...s.botonGrande, background: '#2563eb', marginBottom: '12px' }} 
-                  onClick={() => {
-                    seleccionarExperiencia(true)
-                    iniciarCamaraConExperiencia(true)
-                  }}
-                >
-                  💼 Tengo experiencia laboral (Formal / Informal)
-                </button>
-                <button 
-                  style={{ ...s.botonGrande, background: '#0284c7' }} 
-                  onClick={() => {
-                    seleccionarExperiencia(false)
-                    iniciarCamaraConExperiencia(false)
-                  }}
-                >
-                  🎓 No tengo experiencia laboral previa
-                </button>
+      {estado === 'grabando' && (
+        <div className="pp-acciones">
+          <button type="button" className="pp-boton pp-boton-alarma" onClick={detenerGrabacion}>Detener grabación</button>
+        </div>
+      )}
+
+      {estado === 'confirmacion' && (
+        <div className="pp-acciones">
+          {subiendo ? (
+            <p className="pp-muted" role="status">Subiendo respuesta… por favor no cierres esta ventana.</p>
+          ) : errorUpload ? (
+            <>
+              <div className="pp-alerta" role="alert">
+                <p><strong>No se pudo enviar el video.</strong> Hubo un problema al subir tu respuesta. Por favor verificá tu conexión a internet e intentá nuevamente.</p>
               </div>
-            </div>
+              <div className="pp-acciones pp-acciones-2">
+                <button type="button" className="pp-boton pp-boton-secundario" onClick={repetirGrabacion}>Volver a grabar</button>
+                <button type="button" className="pp-boton" onClick={confirmarRespuesta}>Reintentar envío</button>
+              </div>
+            </>
           ) : (
-            <button style={s.botonGrande} onClick={iniciarCamara}>
-              Comenzar entrevista
-            </button>
+            <div className="pp-acciones pp-acciones-2">
+              <button type="button" className="pp-boton pp-boton-secundario" onClick={repetirGrabacion}>Repetir respuesta</button>
+              <button type="button" className="pp-boton" onClick={confirmarRespuesta}>
+                {preguntaActual + 1 >= preguntas.length ? 'Finalizar entrevista' : 'Siguiente pregunta'}
+              </button>
+            </div>
           )}
         </div>
       )}
-
-      {(estado === 'preparacion' || estado === 'grabando' || estado === 'confirmacion') && (
-        <>
-          <div style={s.preguntaBox}>
-            <div style={s.preguntaLabel}>Pregunta {preguntaActual + 1}</div>
-            <p style={s.preguntaTexto}>{(pregunta.pregunta || '').replace(/^\[CON_EXP\]\s*|^\[SIN_EXP\]\s*|^\[GENERAL\]\s*/i, '')}</p>
-            {estado === 'preparacion' && (
-              <div style={{ fontSize: '11px', color: '#1d4ed8', fontWeight: 'bold', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                ⏱️ Tiempo máximo de respuesta: {pregunta.tiempo_respuesta} segundos
-              </div>
-            )}
-          </div>
-
-          <div style={s.videoWrapper}>
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              style={s.video}
-            />
-            {estado === 'grabando' && (
-              <div style={s.recIndicator}>
-                <div style={s.recDot} />
-                REC
-              </div>
-            )}
-            {estado === 'preparacion' && (
-              <div style={s.overlayPrep}>
-                <div style={s.overlayTexto}>Preparate para responder</div>
-                <div style={s.overlayTimer}>{tiempoRestante}s</div>
-              </div>
-            )}
-          </div>
-
-          {estado === 'preparacion' && (
-            <div style={s.controles}>
-              <button style={s.botonGrande} onClick={iniciarGrabacion}>
-                Empezar a grabar ahora
-              </button>
-            </div>
-          )}
-
-          {estado === 'grabando' && (
-            <div style={s.controles}>
-              <div style={s.barraTiempo}>
-                <div style={{ ...s.barraTiempoRelleno, width: `${(tiempoRestante / pregunta.tiempo_respuesta) * 100}%`, background: tiempoColor }} />
-              </div>
-              <button style={{ ...s.botonGrande, background: '#dc2626' }} onClick={detenerGrabacion}>
-                Detener grabación
-              </button>
-            </div>
-          )}
-
-          {estado === 'confirmacion' && (
-            <div style={s.controles}>
-              {subiendo ? (
-                <div style={s.subiendo}>Subiendo respuesta... por favor no cierres esta ventana.</div>
-              ) : errorUpload ? (
-                <div style={s.errorUpload}>
-                  <p style={s.errorUploadTitulo}>⚠️ No se pudo enviar el video</p>
-                  <p style={s.errorUploadTexto}>
-                    Hubo un problema al subir tu respuesta. Por favor verificá tu conexión a internet e intentá nuevamente.
-                  </p>
-                  <div style={s.botonesConfirmacion}>
-                    <button style={{ ...s.botonGrande, background: '#f1f5f9', color: '#475569' }} onClick={repetirGrabacion}>
-                      Volver a grabar
-                    </button>
-                    <button style={{ ...s.botonGrande, background: '#dc2626' }} onClick={confirmarRespuesta}>
-                      Reintentar envío
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div style={s.botonesConfirmacion}>
-                  <button style={{ ...s.botonGrande, background: '#f1f5f9', color: '#475569' }} onClick={repetirGrabacion}>
-                    Repetir respuesta
-                  </button>
-                  <button style={s.botonGrande} onClick={confirmarRespuesta}>
-                    {preguntaActual + 1 >= preguntas.length ? 'Finalizar entrevista' : 'Siguiente pregunta'}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </>
-      )}
-    </div>
+    </MarcoPrueba>
   )
-}
-
-const s = {
-  centro: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' } as React.CSSProperties,
-  selectorExperienciaBox: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.5rem', marginTop: '1.5rem', textAlign: 'center' as const } as React.CSSProperties,
-  selectorExperienciaTitulo: { fontSize: '0.9rem', fontWeight: '700', color: '#334155', marginBottom: '1.25rem' } as React.CSSProperties,
-  botonesExperiencia: { display: 'flex', flexDirection: 'column' as const, gap: '0.5rem', maxWidth: '360px', margin: '0 auto' } as React.CSSProperties,
-  contenedor: { maxWidth: '680px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' } as React.CSSProperties,
-  encabezado: { marginBottom: '1.5rem' } as React.CSSProperties,
-  encabezadoTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' } as React.CSSProperties,
-  testNombre: { fontSize: '0.75rem', fontWeight: '500', color: '#2563eb', textTransform: 'uppercase' as const, letterSpacing: '0.05em' } as React.CSSProperties,
-  cronometro: { fontSize: '1.25rem', fontWeight: '700', minWidth: '48px', textAlign: 'right' as const } as React.CSSProperties,
-  progresoInfo: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '0.4rem' } as React.CSSProperties,
-  progresoTexto: { fontSize: '0.875rem', color: '#64748b' } as React.CSSProperties,
-  estadoBadge: { fontSize: '10px', padding: '2px 8px', borderRadius: '99px', fontWeight: '500' } as React.CSSProperties,
-  barraFondo: { width: '100%', height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' } as React.CSSProperties,
-  barraRelleno: { height: '100%', background: '#2563eb', borderRadius: '3px', transition: 'width 0.3s ease' } as React.CSSProperties,
-  bienvenida: { textAlign: 'center' as const } as React.CSSProperties,
-  titulo: { fontSize: '1.5rem', fontWeight: '600', color: '#1e293b', marginBottom: '0.5rem' } as React.CSSProperties,
-  nombreCandidato: { fontSize: '1.125rem', color: '#1e293b', margin: '0 0 1.5rem' } as React.CSSProperties,
-  instruccionesBox: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem', textAlign: 'left' as const } as React.CSSProperties,
-  instruccionTitulo: { fontSize: '0.875rem', fontWeight: '600', color: '#1e293b', marginBottom: '0.75rem' } as React.CSSProperties,
-  instruccionItem: { fontSize: '0.875rem', color: '#475569', padding: '4px 0', lineHeight: '1.5' } as React.CSSProperties,
-  preguntaBox: { background: '#E6F1FB', border: '1px solid #B5D4F4', borderRadius: '10px', padding: '1rem 1.25rem', marginBottom: '1rem' } as React.CSSProperties,
-  preguntaLabel: { fontSize: '10px', fontWeight: '600', color: '#0C447C', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: '6px' } as React.CSSProperties,
-  preguntaTexto: { fontSize: '1rem', color: '#1e293b', lineHeight: '1.6', margin: 0, fontWeight: '500' } as React.CSSProperties,
-  videoWrapper: { position: 'relative' as const, borderRadius: '12px', overflow: 'hidden', background: '#1e293b', marginBottom: '1rem', aspectRatio: '16/9' } as React.CSSProperties,
-  video: { width: '100%', height: '100%', objectFit: 'cover' as const } as React.CSSProperties,
-  recIndicator: { position: 'absolute' as const, top: '12px', right: '12px', background: '#dc2626', color: '#fff', padding: '4px 10px', borderRadius: '99px', fontSize: '11px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' } as React.CSSProperties,
-  recDot: { width: '8px', height: '8px', borderRadius: '50%', background: '#fff', animation: 'pulse 1s infinite' } as React.CSSProperties,
-  overlayPrep: { position: 'absolute' as const, inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' } as React.CSSProperties,
-  overlayTexto: { color: '#fff', fontSize: '1rem', fontWeight: '500', marginBottom: '0.5rem' } as React.CSSProperties,
-  overlayTimer: { color: '#fff', fontSize: '3rem', fontWeight: '700' } as React.CSSProperties,
-  controles: { display: 'flex', flexDirection: 'column' as const, gap: '0.75rem' } as React.CSSProperties,
-  barraTiempo: { width: '100%', height: '4px', background: '#e2e8f0', borderRadius: '2px', overflow: 'hidden' } as React.CSSProperties,
-  barraTiempoRelleno: { height: '100%', borderRadius: '2px', transition: 'width 1s linear' } as React.CSSProperties,
-  botonGrande: { width: '100%', padding: '0.875rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '1rem', fontWeight: '500', cursor: 'pointer' } as React.CSSProperties,
-  botonesConfirmacion: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' } as React.CSSProperties,
-  subiendo: { textAlign: 'center' as const, padding: '1rem', color: '#64748b', fontSize: '0.875rem' } as React.CSSProperties,
-  errorUpload: { background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', padding: '1.25rem', textAlign: 'center' as const } as React.CSSProperties,
-  errorUploadTitulo: { fontWeight: '700', color: '#dc2626', fontSize: '1rem', margin: '0 0 0.5rem' } as React.CSSProperties,
-  errorUploadTexto: { color: '#7f1d1d', fontSize: '0.875rem', margin: '0 0 1rem', lineHeight: '1.5' } as React.CSSProperties,
-  checkCirculo: { width: '64px', height: '64px', borderRadius: '50%', background: '#16a34a', color: '#fff', fontSize: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' } as React.CSSProperties,
-  mensajeConfirmacion: { fontSize: '0.9rem', color: '#475569', lineHeight: '1.6', textAlign: 'center' as const, marginBottom: '2rem' } as React.CSSProperties,
-  contactoBox: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem' } as React.CSSProperties,
-  contactoTitulo: { fontSize: '0.875rem', fontWeight: '600', color: '#1e293b', margin: '0 0 0.5rem' } as React.CSSProperties,
-  contactoTexto: { fontSize: '0.875rem', color: '#64748b', lineHeight: '1.6', margin: '0 0 1rem' } as React.CSSProperties,
-  contactoDetalle: { display: 'flex', flexDirection: 'column' as const, gap: '0.5rem' } as React.CSSProperties,
-  contactoItem: { fontSize: '0.875rem', color: '#1e293b', margin: 0 } as React.CSSProperties,
-  link: { color: '#2563eb', textDecoration: 'none' } as React.CSSProperties,
 }
