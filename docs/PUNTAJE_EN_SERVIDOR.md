@@ -71,3 +71,7 @@ firmarlo en el token en la Etapa 3) y los tests sin puntaje (Frases, Role Play).
   sesión guardada es del 29/07 y ningún proceso lo usa hoy. Ahora usa el id del catálogo (`e9b2…9999`) y el GET lee los ítems con
   `bancoDeItems()` (los del banco de Tolerancia), igual que `finalize`. El id `c3d4…3333` sigue en la lista de ids aceptados de la ruta
   (inofensivo; sin datos).
+- **Fase D (2026-10-06)**: Creatividad, HEXACO, Comercial, Iniciativa-dinamismo, Integridad y Estrés laboral mandan el **valor crudo** (1 a 5,
+  sin invertir) y el servidor invierte los ítems inversos (según `items.inverso`, que en modo estricto ya no viaja al navegador), calcula
+  las medias por factor, `promedio_general` y `nivel_estres`. Se conserva el comportamiento con factores vacíos (Iniciativa guarda 0, el resto
+  null). `respuestas.valor` sigue guardando el valor ya invertido, como en todo el histórico. Esas pantallas no muestran resultados al candidato.

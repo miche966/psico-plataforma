@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
-import { finalizarTest, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
+import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
 
 const TEST_ID = 'b2c3d4e5-f6a7-8901-bcde-f12345678901'
 
@@ -13,14 +13,12 @@ interface Item {
   contenido: string
   opciones: string[]
   factor: string
-  inverso: boolean
 }
 
 interface Respuesta {
   item_id: string
   valor: number
   factor: string
-  inverso: boolean
 }
 
 export default function HexacoPage() {
@@ -33,7 +31,6 @@ export default function HexacoPage() {
   const [finalizado, setFinalizado] = useState(false)
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null)
   const enEvaluacion = useEvaluacionRedirect(finalizado)
-  const [resultado, setResultado] = useState<Record<string, number>>({})
   const [nombreCandidato, setNombreCandidato] = useState('')
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
@@ -77,13 +74,10 @@ export default function HexacoPage() {
 
   function responder(valor: number) {
     const item = items[itemActual]
-    const valorFinal = item.inverso ? 6 - valor : valor
-
     const nuevaRespuesta: Respuesta = {
       item_id: item.id,
-      valor: valorFinal,
-      factor: item.factor,
-      inverso: item.inverso
+      valor,
+      factor: item.factor
     }
 
     const nuevasRespuestas = [...respuestas, nuevaRespuesta]
@@ -97,34 +91,13 @@ export default function HexacoPage() {
   }
 
   async function calcularResultado(todasLasRespuestas: Respuesta[]) {
-    const factores: Record<string, number[]> = {
-      honestidad: [],
-      emocionalidad: [],
-      extraversion: [],
-      amabilidad: [],
-      responsabilidad: [],
-      apertura: []
-    }
-
-    todasLasRespuestas.forEach(r => {
-      if (factores[r.factor]) factores[r.factor].push(r.valor)
-    })
-
-    const promedios: Record<string, number> = {}
-    Object.entries(factores).forEach(([factor, valores]) => {
-      const suma = valores.reduce((a, b) => a + b, 0)
-      promedios[factor] = Math.round((suma / valores.length) * 10) / 10
-    })
-
-    setResultado(promedios)
-
     if (!sesionIdActual || !candidatoId || !procesoId) return
     setErrorGuardado(null)
     const token = searchParams.get('token') || ''
-    const resultadoGuardado = await finalizarTest({
+    // El navegador solo informa el valor elegido (1 a 5, sin invertir): el servidor invierte los items inversos y calcula los promedios
+    const resultadoGuardado = await finalizarTestCrudo({
       candidatoId, procesoId, token, testId: TEST_ID, sesionId: sesionIdActual,
-      puntajeBruto: promedios,
-      respuestas: todasLasRespuestas.map(r => ({ item_id: r.item_id, valor: r.valor, tiempo_respuesta: 0 })),
+      respuestas: todasLasRespuestas.map(r => ({ item_id: r.item_id, valor: r.valor })),
     })
     if (resultadoGuardado.ok) setFinalizado(true)
     else setErrorGuardado(resultadoGuardado.error)

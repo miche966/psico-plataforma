@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
-import { finalizarTest, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
+import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
 
 const TEST_ID = 'd0e1f2a3-b4c5-6789-defa-000000000001'
 
@@ -13,7 +13,6 @@ interface Item {
   contenido: string
   opciones: string[]
   factor: string
-  inverso: boolean
 }
 
 interface Respuesta {
@@ -70,8 +69,7 @@ export default function EstresLaboralPage() {
 
   function responder(valor: number) {
     const item = items[itemActual]
-    const valorFinal = item.inverso ? 6 - valor : valor
-    const nuevasRespuestas = [...respuestas, { item_id: item.id, valor: valorFinal, factor: item.factor }]
+    const nuevasRespuestas = [...respuestas, { item_id: item.id, valor, factor: item.factor }]
     setRespuestas(nuevasRespuestas)
     if (itemActual + 1 >= items.length) {
       calcularResultado(nuevasRespuestas)
@@ -81,35 +79,13 @@ export default function EstresLaboralPage() {
   }
 
   async function calcularResultado(todasLasRespuestas: Respuesta[]) {
-    const factores: Record<string, number[]> = {
-      carga_laboral: [],
-      relaciones: [],
-      claridad_rol: [],
-      equilibrio: [],
-      burnout: []
-    }
-    todasLasRespuestas.forEach(r => {
-      if (factores[r.factor]) factores[r.factor].push(r.valor)
-    })
-    const promedios: Record<string, number> = {}
-    Object.entries(factores).forEach(([factor, valores]) => {
-      const suma = valores.reduce((a, b) => a + b, 0)
-      promedios[factor] = Math.round((suma / valores.length) * 10) / 10
-    })
-    const promedio_general = Math.round(
-      (Object.values(promedios).reduce((a, b) => a + b, 0) / Object.values(promedios).length) * 10
-    ) / 10
-
-    const nivel = promedio_general >= 4 ? 'alto' : promedio_general >= 3 ? 'moderado' : 'bajo'
-    const resultado = { ...promedios, promedio_general, nivel_estres: nivel }
-
     if (!candidatoId || !procesoId) return
     setErrorGuardado(null)
     const token = searchParams.get('token') || ''
-    const resultadoGuardado = await finalizarTest({
+    // El navegador solo informa el valor elegido (1 a 5, sin invertir): el servidor invierte los items inversos y calcula los promedios
+    const resultadoGuardado = await finalizarTestCrudo({
       candidatoId, procesoId, token, testId: TEST_ID,
-      puntajeBruto: resultado,
-      respuestas: todasLasRespuestas.map(r => ({ ...r, tiempo_respuesta: 0 })),
+      respuestas: todasLasRespuestas.map(r => ({ item_id: r.item_id, valor: r.valor })),
     })
     if (resultadoGuardado.ok) setFinalizado(true)
     else setErrorGuardado(resultadoGuardado.error)

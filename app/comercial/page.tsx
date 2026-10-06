@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
-import { finalizarTest, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
+import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
 
 interface Item {
   id: string
@@ -11,7 +11,6 @@ interface Item {
   contenido: string
   opciones: string[]
   factor: string
-  inverso: boolean
 }
 
 interface Respuesta {
@@ -76,8 +75,7 @@ export default function ComercialPage() {
 
   function responder(valor: number) {
     const item = items[itemActual]
-    const valorFinal = item.inverso ? 6 - valor : valor
-    const nuevasRespuestas = [...respuestas, { item_id: item.id, valor: valorFinal, factor: item.factor }]
+    const nuevasRespuestas = [...respuestas, { item_id: item.id, valor, factor: item.factor }]
     setRespuestas(nuevasRespuestas)
     if (itemActual + 1 >= items.length) {
       calcularResultado(nuevasRespuestas)
@@ -87,28 +85,13 @@ export default function ComercialPage() {
   }
 
   async function calcularResultado(todasLasRespuestas: Respuesta[]) {
-    const factores: Record<string, number[]> = {
-      orientacion_cliente: [],
-      tolerancia_rechazo: [],
-      motivacion_logro: [],
-      proactividad: []
-    }
-    todasLasRespuestas.forEach(r => {
-      if (factores[r.factor]) factores[r.factor].push(r.valor)
-    })
-    const promedios: Record<string, number> = {}
-    Object.entries(factores).forEach(([factor, valores]) => {
-      const suma = valores.reduce((a, b) => a + b, 0)
-      promedios[factor] = Math.round((suma / valores.length) * 10) / 10
-    })
-
     if (!sesionIdActual || !candidatoId || !procesoId) return
     setErrorGuardado(null)
     const token = searchParams.get('token') || ''
-    const resultado = await finalizarTest({
+    // El navegador solo informa el valor elegido (1 a 5, sin invertir): el servidor invierte los items inversos y calcula los promedios
+    const resultado = await finalizarTestCrudo({
       candidatoId, procesoId, token, testId: TEST_ID, sesionId: sesionIdActual,
-      puntajeBruto: promedios,
-      respuestas: todasLasRespuestas.map(r => ({ ...r, tiempo_respuesta: 0 })),
+      respuestas: todasLasRespuestas.map(r => ({ item_id: r.item_id, valor: r.valor })),
     })
     if (resultado.ok) setFinalizado(true)
     else setErrorGuardado(resultado.error)
