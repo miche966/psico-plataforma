@@ -41,10 +41,10 @@ export default function RevisarPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) router.push('/login')
+      if (!session) { router.push('/login'); return }
+      if (entrevistaId) cargarDatos()
+      else setCargando(false)
     })
-    if (entrevistaId) cargarDatos()
-    else setCargando(false)
   }, [entrevistaId])
 
   async function cargarDatos(soloRespuestas = false) {

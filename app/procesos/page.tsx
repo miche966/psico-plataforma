@@ -83,10 +83,11 @@ export default function ProcesosPage() {
   const router = useRouter()
 
   useEffect(() => {
+    // Sin sesion se redirige al login sin pedir datos (antes se pedian igual y fallaban con "La sesion administrativa expiro")
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) router.push('/login')
+      if (!session) { router.push('/login'); return }
+      cargarDatos()
     })
-    cargarDatos()
   }, [])
 
   async function cargarDatos() {
