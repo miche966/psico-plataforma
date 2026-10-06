@@ -83,6 +83,13 @@ meses entienda que no fue un olvido.
   Mientras no esté cargada, `EMAIL_TLS_INSEGURO=true` mantiene el comportamiento anterior (se avisa en el log); sin ninguna
   de las dos el envío falla con el mensaje "El certificado del servidor de correo no es de confianza". Ver
   `lib/server/smtpTls.ts`. Aparte, el firewall de IT sigue pendiente para el envío desde Vercel.
+- **CSP estricta con nonce, en modo informe** (fase 1, 2026-10-06): `proxy.ts` genera un nonce por visita y publica una
+  política estricta (`script-src 'self' 'nonce-…' 'strict-dynamic'`, sin `'unsafe-inline'`) solo como
+  `Content-Security-Policy-Report-Only`; la política vigente de `next.config.ts` (con `'unsafe-inline'`) sigue siendo la que
+  bloquea. Los navegadores informan lo que la estricta bloquearía a `/api/csp-report`, que deja una línea `[CSP] directiva=…
+  bloqueado=… pagina=…` en los logs de Vercel (sin parámetros ni datos personales). Todas las páginas pasaron a renderizarse en
+  cada visita (requisito del nonce). Pendiente: observar varios días de uso real (candidatos y evaluadores), corregir lo que
+  aparezca y recién entonces activar la política estricta (fase 3). Política en `lib/server/csp.ts`.
 - Rate limiting en los endpoints públicos y de IA; bloqueo de intentos de login; Turnstile en `/unirse`.
 - Cabeceras de seguridad HTTP (CSP, HSTS, etc.), validación de entradas con zod y auditoría de dependencias en CI.
 

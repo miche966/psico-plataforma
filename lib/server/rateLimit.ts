@@ -24,6 +24,9 @@ export const rlPublico = redis ? new Ratelimit({ redis, limiter: Ratelimit.slidi
 
 // /api/login: por email normalizado, para frenar fuerza bruta contra una cuenta admin conocida
 // sin importar desde cuántas IPs distintas se intente. Se complementa con rlPublico por IP.
+// Informes de violacion de CSP (/api/csp-report): una pagina puede mandar varios seguidos
+export const rlCsp = redis ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(30, '60 s'), prefix: 'rl:csp' }) : null
+
 export const rlLogin = redis ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, '15 m'), prefix: 'rl:login' }) : null
 
 // /api/forgot-password: por email normalizado, para que nadie pueda llenarle la casilla de correos de

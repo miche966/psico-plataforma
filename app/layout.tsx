@@ -8,6 +8,9 @@ export const metadata: Metadata = {
 
 import { Suspense } from "react";
 
+// Los scripts de Next llevan un nonce distinto por visita (lo genera proxy.ts): las paginas se renderizan en cada pedido
+export const dynamic = 'force-dynamic'
+
 export default function RootLayout({
   children,
 }: Readonly<{
