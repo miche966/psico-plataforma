@@ -22,12 +22,14 @@ export async function GET(request: Request) {
 
   try {
     const db = createSupabaseAdmin()
-    let [procesos, vinculos, respuestasVideo, candidatos, sesiones] = await Promise.all([
+    let [procesos, vinculos, respuestasVideo, candidatos, sesiones, preguntasVideo] = await Promise.all([
       readAll<any>(db.from('procesos').select('*').order('creado_en', { ascending: false })),
       readAll<any>(db.from('candidatos_procesos').select('candidato_id, proceso_id')),
-      readAll<any>(db.from('respuestas_video').select('candidato_id, id')),
+      // Solo lo que hace falta para saber si la videoentrevista esta completa (nunca la URL ni la transcripcion)
+      readAll<any>(db.from('respuestas_video').select('candidato_id, id, entrevista_id, pregunta_id, estado')),
       readAll<any>(db.from('candidatos').select('id, nombre, apellido, email')),
-      readAll<any>(db.from('sesiones').select('*'))
+      readAll<any>(db.from('sesiones').select('*')),
+      readAll<any>(db.from('preguntas_video').select('id, entrevista_id, pregunta'))
     ])
 
     if (auth.role === 'viewer') {
@@ -40,7 +42,7 @@ export async function GET(request: Request) {
       respuestasVideo = respuestasVideo.filter(r => idsCandidatos.has(r.candidato_id))
     }
 
-    return NextResponse.json({ procesos, vinculos, respuestasVideo, candidatos, sesiones })
+    return NextResponse.json({ procesos, vinculos, respuestasVideo, candidatos, sesiones, preguntasVideo })
   } catch (error) {
     console.error('[admin/estadisticas-data]', error)
     return NextResponse.json({ error: 'No se pudieron cargar las estadísticas' }, { status: 500 })

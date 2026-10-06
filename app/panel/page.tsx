@@ -826,6 +826,21 @@ export default function PanelEvaluador() {
     document.body.removeChild(link)
   }
 
+  // Enlace "Ver ficha" de Estadisticas: /panel?candidato=<id>&proceso=<id>
+  const [fichaPedida, setFichaPedida] = useState<{ candidato: string; proceso: string | null } | null>(null)
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search)
+    const candidato = q.get('candidato')
+    if (candidato) setFichaPedida({ candidato, proceso: q.get('proceso') })
+  }, [])
+  useEffect(() => {
+    if (!fichaPedida || cargando) return
+    const c = candidatos.find(x => x.id === fichaPedida.candidato && (!fichaPedida.proceso || x.proceso_id === fichaPedida.proceso))
+      || candidatos.find(x => x.id === fichaPedida.candidato)
+    setFichaPedida(null)
+    if (c) { setTab('evaluaciones'); seleccionarCandidato(c) }
+  }, [fichaPedida, cargando, candidatos])
+
   if (cargando) {
     return (
       <AppLayout>

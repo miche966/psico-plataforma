@@ -3,13 +3,11 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import AppLayout from '@/components/AppLayout'
 import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
 import { EsqueletoPagina } from '@/components/Esqueleto'
-import { 
-  Users, CheckCircle2, TrendingUp, AlertTriangle, 
-  Search, ArrowUpDown, ExternalLink, Award, Video
-} from 'lucide-react'
+import { TEST_IDS, calcularProgresoEvaluacion } from '@/lib/progresoEvaluacion'
 
 interface Candidato {
   id: string
@@ -32,32 +30,60 @@ interface Proceso {
   id: string
   nombre: string
   bateria_tests?: string[]
+  competencias_requeridas?: any
 }
 
-const TEST_IDS: Record<string, string> = {
-  'a1b2c3d4-e5f6-7890-abcd-ef1234567890': 'bigfive',
-  'f6a7b8c9-d0e1-2345-fabc-456789012345': 'icar',
-  'd0e1f2a3-b4c5-6789-defa-000000000001': 'estres-laboral',
-  'e1f2a3b4-c5d6-7890-efab-111222333444': 'creatividad',
-  'e5f6a7b8-c9d0-1234-efab-345678901234': 'integridad',
-  'b2c3d4e5-f6a7-8901-bcde-f12345678901': 'hexaco',
-  'c3d4e5f6-a7b8-9012-cdef-123456789012': 'numerico',
-  'd4e5f6a7-b8c9-0123-defa-234567890123': 'verbal',
-  'a7b8c9d0-e1f2-3456-abcd-777777777777': 'sjt-ventas',
-  'e5f6a7b8-c9d0-1234-efab-555555555555': 'tolerancia-frustracion',
-  'f2a3b4c5-d6e7-8901-fabc-222333444555': 'sjt-problemas',
-  'c9d0e1f2-a3b4-5678-cdef-999999999999': 'sjt-legal',
-  'b2c3d4e5-f6a7-8901-bcde-222222222222': 'sjt-comercial',
-  'a1b2c3d4-e5f6-7890-abcd-111111111111': 'comercial',
-  'b8c9d0e1-f2a3-4567-bcde-888888888888': 'atencion-detalle',
-  'f6a7b8c9-d0e1-2345-fabc-666666666666': 'sjt-atencion',
-  'e9b2c3d4-f5a6-7890-bcde-999999999999': 'sjt-cobranzas',
-  '7a8b9c0d-e1f2-4356-abcd-999999999999': 'dass21',
-  'f7a8b9c0-d1e2-4356-abcd-888888888888': 'frases-incompletas',
-  '0b6ade42-0c8f-4084-a4a5-9ff7869d73b6': 'iniciativa-dinamismo',
-  'd8e9f0a1-b2c3-4567-defa-888888888888': 'roleplay',
-  'd8e9f0a1-b2c3-4567-defa-777777777777': 'roleplay_atencion',
+const SERIF = { fontFamily: 'var(--font-lectura), Georgia, serif' }
+
+function calcularMatch(pb: any, proc: any) {
+  if (!pb || !proc || !proc.competencias_requeridas) return null
+  
+  // Mapeo básico para el cálculo rápido
+  const mapping: any = {
+    'extraversion': ['Extraversión', 'Liderazgo', 'Comunicación'],
+    'amabilidad': ['Amabilidad', 'Trabajo en equipo', 'Orientación al cliente'],
+    'responsabilidad': ['Responsabilidad', 'Orientación a resultados', 'Integridad'],
+    'neuroticismo': ['Neuroticismo', 'Tolerancia a la presión', 'Autocontrol'],
+    'apertura': ['Apertura', 'Adaptabilidad al cambio', 'Creatividad e innovación']
+  }
+
+  const norm: Record<string, number> = {}
+  const aliasesMap: Record<string, string[]> = {
+    extraversion: ['extraversion', 'Extraversión', 'extraversión', 'Extraversion', 'Extraversion_Score', 'Sociabilidad'],
+    amabilidad: ['amabilidad', 'Amabilidad', 'Amabilidad_Score', 'Cordialidad', 'cordialidad', 'Afabilidad'],
+    responsabilidad: ['responsabilidad', 'Responsabilidad', 'Responsabilidad_Score', 'Escrupulosidad', 'escrupulosidad', 'Organización'],
+    neuroticismo: ['neuroticismo', 'Neuroticismo', 'Estabilidad_Emocional', 'Emocionalidad', 'emocionalidad', 'Afectividad'],
+    apertura: ['apertura', 'Apertura', 'apertura_experiencia', 'Apertura_Score', 'Apertura a la experiencia', 'Creatividad']
+  }
+
+  Object.entries(aliasesMap).forEach(([key, aliases]) => {
+    const found = aliases.find(a => pb[a] !== undefined)
+    if (found) {
+      let val = Number(pb[found])
+      if (val > 5) val = val / 20
+      norm[key] = val
+    }
+  })
+  
+  let sumMatch = 0
+  let count = 0
+
+  proc.competencias_requeridas.forEach((r: any) => {
+    const factor = Object.keys(mapping).find(f => mapping[f].includes(r.nombre))
+    if (factor) {
+      let val = norm[factor] || 0
+      if (factor === 'neuroticismo') val = 6 - val
+      const ideal = r.nivel === 'A' ? 5 : r.nivel === 'B' ? 4 : 3
+      const diff = Math.abs(val - ideal)
+      sumMatch += Math.max(0, 1 - (diff / 3))
+      count++
+    }
+  })
+
+  return count > 0 ? Math.round((sumMatch / count) * 100) : null
 }
+
+type Orden = 'match' | 'progreso' | 'alertas' | 'nombre'
 
 export default function EstadisticasPage() {
   const [candidatos, setCandidatos] = useState<Candidato[]>([])
@@ -65,12 +91,14 @@ export default function EstadisticasPage() {
   const [procesos, setProcesos] = useState<Proceso[]>([])
   const [vinculos, setVinculos] = useState<any[]>([])
   const [respuestasVideo, setRespuestasVideo] = useState<any[]>([])
+  const [preguntasVideo, setPreguntasVideo] = useState<any[]>([])
   const [cargando, setCargando] = useState(true)
-  
+  const [error, setError] = useState(false)
+
   // Filtros y ordenamiento
   const [procesoSeleccionado, setProcesoSeleccionado] = useState<string>('todos')
   const [busqueda, setBusqueda] = useState<string>('')
-  const [ordenCriterio, setOrdenCriterio] = useState<'match' | 'progreso' | 'alertas' | 'nombre'>('match')
+  const [ordenCriterio, setOrdenCriterio] = useState<Orden>('match')
   const router = useRouter()
 
   useEffect(() => {
@@ -82,6 +110,8 @@ export default function EstadisticasPage() {
   }, [])
 
   async function cargarDatos() {
+    setCargando(true)
+    setError(false)
     try {
       const auth = await supabase.auth.getSession()
       const token = auth.data.session?.access_token
@@ -94,52 +124,50 @@ export default function EstadisticasPage() {
       setProcesos(payload.procesos || [])
       setVinculos(payload.vinculos || [])
       setRespuestasVideo(payload.respuestasVideo || [])
+      setPreguntasVideo(payload.preguntasVideo || [])
       setCandidatos(payload.candidatos || [])
       setSesiones(payload.sesiones || [])
     } catch (err) {
       console.error('Error cargando ranking de candidatos:', err)
+      setError(true)
     } finally {
       setCargando(false)
     }
   }
 
-  // Métricas y Cálculos de la Tabla
-  const rankingList = candidatos.map(c => {
-    // Buscar proceso asociado al candidato
-    const vinculo = vinculos.find(v => v.candidato_id === c.id)
-    const procId = vinculo?.proceso_id
+  // Una fila por candidato y proceso: quien esta en dos procesos aparece en los dos, cada uno con su avance
+  const candidatosPorId = new Map(candidatos.map(c => [c.id, c]))
+  const vistos = new Set<string>()
+  const rankingList = vinculos.flatMap(v => {
+    const c = candidatosPorId.get(v.candidato_id)
+    const clave = `${v.candidato_id}|${v.proceso_id}`
+    if (!c || vistos.has(clave)) return []
+    vistos.add(clave)
+    const procId: string = v.proceso_id
     const proc = procesos.find(p => p.id === procId)
     const bateria = proc?.bateria_tests || []
+    // Las sesiones sin proceso (carga antigua) se toman como del unico proceso del candidato
+    const sesionesDe = sesiones.filter(s => s.candidato_id === c.id && (!s.proceso_id || s.proceso_id === procId))
+    const videosDe = respuestasVideo.filter(r => r.candidato_id === c.id)
 
-    // 1. Progreso de Batería
-    let completadosCount = 0
-    bateria.forEach((slug: string) => {
-      // Encontrar si hay sesión finalizada para este test_id o slug
-      const tId = Object.keys(TEST_IDS).find(k => TEST_IDS[k] === slug)
-      const finalizado = sesiones.some(s => 
-        s.candidato_id === c.id && 
-        (s.test_id === tId || TEST_IDS[s.test_id] === slug) && 
-        s.estado === 'finalizado'
-      )
-      if (finalizado) completadosCount++
-    })
-    const totalBateria = bateria.length
+    // 1. Avance de la bateria (mismo calculo que el panel, videoentrevista incluida)
+    const progreso = calcularProgresoEvaluacion(bateria, sesionesDe, videosDe, preguntasVideo)
+    const totalBateria = progreso.total
+    const completadosCount = progreso.completados
     const progresoPct = totalBateria > 0 ? Math.round((completadosCount / totalBateria) * 100) : 0
 
-    // 2. Match Score (Big Five Match)
-    const sBF = sesiones.find(s => s.candidato_id === c.id && TEST_IDS[s.test_id] === 'bigfive')
+    // 2. Match Score (Big Five Match), reducido segun el avance de la bateria
+    const sBF = sesionesDe.find(s => TEST_IDS[s.test_id] === 'bigfive')
     const matchBase = sBF && sBF.puntaje_bruto ? calcularMatch(sBF.puntaje_bruto, proc) : null
     const matchScore = matchBase !== null && totalBateria > 0
       ? Math.round(matchBase * (completadosCount / totalBateria))
       : matchBase
 
-    // 3. Role Play Score (sjt-cobranzas o sjt-atencion)
-    const sRP = sesiones.find(s => 
-      s.candidato_id === c.id && 
-      (TEST_IDS[s.test_id] === 'sjt-cobranzas' || TEST_IDS[s.test_id] === 'sjt-atencion')
-    )
-    let scoreRP = 'Pendiente'
-    if (sRP && sRP.estado === 'finalizado') {
+    // 3. Role Play Score (sjt-cobranzas o sjt-atencion); null si la bateria no lo incluye
+    const aplicaRP = bateria.includes('sjt-cobranzas') || bateria.includes('sjt-atencion')
+    const sRP = sesionesDe.find(s => TEST_IDS[s.test_id] === 'sjt-cobranzas' || TEST_IDS[s.test_id] === 'sjt-atencion')
+    let scoreRP: string | null = aplicaRP ? 'Pendiente' : null
+    if (aplicaRP && sRP && sRP.estado === 'finalizado') {
       const factoresRP = Object.values(sRP.puntaje_bruto?.por_factor || {})
       if (factoresRP.length > 0) {
         const suma = factoresRP.reduce((acc: number, val: any) => acc + (Number(val) || 0), 0)
@@ -155,92 +183,43 @@ export default function EstadisticasPage() {
       }
     }
 
-    // 4. Videoentrevistas
-    const tieneVideo = respuestasVideo.some(v => v.candidato_id === c.id)
+    // 4. Videoentrevista: no aplica / pendiente / en curso / completada
+    const aplicaVideo = bateria.some(b => b.startsWith('entrevista:'))
+    const videoCompleto = aplicaVideo && progreso.testsCompletados.some(b => b.startsWith('entrevista:'))
+    const estadoVideo: 'no aplica' | 'pendiente' | 'en curso' | 'completada' =
+      !aplicaVideo ? 'no aplica' : videoCompleto ? 'completada' : videosDe.length > 0 ? 'en curso' : 'pendiente'
 
     // 5. Alertas de Proctoring
     let totalAlertas = 0
-    sesiones.filter(s => s.candidato_id === c.id).forEach(s => {
+    sesionesDe.forEach(s => {
       const m = s.puntaje_bruto?.metricas_fraude as any
-      if (m) {
-        totalAlertas += (m.tabSwitches || 0) + (m.copyPasteAttempts || 0)
-      }
+      if (m) totalAlertas += (m.tabSwitches || 0) + (m.copyPasteAttempts || 0)
     })
 
-    return {
+    return [{
       ...c,
-      procesoId: procId || 'ninguno',
-      procesoNombre: proc?.nombre || 'Sin Proceso',
-      progresoTexto: `${completadosCount} / ${totalBateria}`,
+      procesoId: procId,
+      procesoNombre: nombreDeProcesoLegible(proc?.nombre || 'Proceso sin nombre'),
+      completadosCount,
+      totalBateria,
       progresoPct,
       matchScore,
       scoreRP,
-      tieneVideo,
+      estadoVideo,
       totalAlertas
-    }
+    }]
   })
 
-  // Helper para calcular match score basado en competencias del cargo
-  function calcularMatch(pb: any, proc: any) {
-    if (!pb || !proc || !proc.competencias_requeridas) return null
-    
-    // Mapeo básico para el cálculo rápido
-    const mapping: any = {
-      'extraversion': ['Extraversión', 'Liderazgo', 'Comunicación'],
-      'amabilidad': ['Amabilidad', 'Trabajo en equipo', 'Orientación al cliente'],
-      'responsabilidad': ['Responsabilidad', 'Orientación a resultados', 'Integridad'],
-      'neuroticismo': ['Neuroticismo', 'Tolerancia a la presión', 'Autocontrol'],
-      'apertura': ['Apertura', 'Adaptabilidad al cambio', 'Creatividad e innovación']
-    }
-
-    const norm: Record<string, number> = {}
-    const aliasesMap: Record<string, string[]> = {
-      extraversion: ['extraversion', 'Extraversión', 'extraversión', 'Extraversion', 'Extraversion_Score', 'Sociabilidad'],
-      amabilidad: ['amabilidad', 'Amabilidad', 'Amabilidad_Score', 'Cordialidad', 'cordialidad', 'Afabilidad'],
-      responsabilidad: ['responsabilidad', 'Responsabilidad', 'Responsabilidad_Score', 'Escrupulosidad', 'escrupulosidad', 'Organización'],
-      neuroticismo: ['neuroticismo', 'Neuroticismo', 'Estabilidad_Emocional', 'Emocionalidad', 'emocionalidad', 'Afectividad'],
-      apertura: ['apertura', 'Apertura', 'apertura_experiencia', 'Apertura_Score', 'Apertura a la experiencia', 'Creatividad']
-    }
-
-    Object.entries(aliasesMap).forEach(([key, aliases]) => {
-      const found = aliases.find(a => pb[a] !== undefined)
-      if (found) {
-        let val = Number(pb[found])
-        if (val > 5) val = val / 20
-        norm[key] = val
-      }
-    })
-    
-    let sumMatch = 0
-    let count = 0
-
-    proc.competencias_requeridas.forEach((r: any) => {
-      const factor = Object.keys(mapping).find(f => mapping[f].includes(r.nombre))
-      if (factor) {
-        let val = norm[factor] || 0
-        if (factor === 'neuroticismo') val = 6 - val
-        const ideal = r.nivel === 'A' ? 5 : r.nivel === 'B' ? 4 : 3
-        const diff = Math.abs(val - ideal)
-        sumMatch += Math.max(0, 1 - (diff / 3))
-        count++
-      }
-    })
-
-    return count > 0 ? Math.round((sumMatch / count) * 100) : null
-  }
+  const sinProceso = candidatos.filter(c => !vinculos.some(v => v.candidato_id === c.id)).length
 
   // Filtrado de candidatos
   const listaFiltrada = rankingList.filter(item => {
-    // Filtro por proceso
     if (procesoSeleccionado !== 'todos' && item.procesoId !== procesoSeleccionado) return false
-    
-    // Filtro por búsqueda
     if (busqueda) {
       const b = busqueda.toLowerCase()
       const nombreCompleto = `${item.nombre} ${item.apellido}`.toLowerCase()
       return nombreCompleto.includes(b) || item.email.toLowerCase().includes(b)
     }
-
     return true
   })
 
@@ -250,34 +229,21 @@ export default function EstadisticasPage() {
       // 1. Priorizar candidatos que completaron el 100% de su batería
       const aCompleto = a.progresoPct >= 100 ? 1 : 0
       const bCompleto = b.progresoPct >= 100 ? 1 : 0
-      
-      if (aCompleto !== bCompleto) {
-        return bCompleto - aCompleto // Los completados van primero
-      }
-
+      if (aCompleto !== bCompleto) return bCompleto - aCompleto
       // 2. Si ambos están en el mismo grupo de completado/incompleto, ordenar por matchScore
       return (b.matchScore || 0) - (a.matchScore || 0)
     }
-    if (ordenCriterio === 'progreso') {
-      return b.progresoPct - a.progresoPct
-    }
-    if (ordenCriterio === 'alertas') {
-      return b.totalAlertas - a.totalAlertas
-    }
-    if (ordenCriterio === 'nombre') {
-      return `${a.nombre} ${a.apellido}`.localeCompare(`${b.nombre} ${b.apellido}`)
-    }
+    if (ordenCriterio === 'progreso') return b.progresoPct - a.progresoPct
+    if (ordenCriterio === 'alertas') return b.totalAlertas - a.totalAlertas
+    if (ordenCriterio === 'nombre') return `${a.nombre} ${a.apellido}`.localeCompare(`${b.nombre} ${b.apellido}`)
     return 0
   })
 
-  // Métricas para tarjetas superiores
-  const totalCandidatosProc = listaFiltrada.length
-  
+  // Cifras de arriba
   const matchesFiltrados = listaFiltrada.map(c => c.matchScore).filter(Boolean) as number[]
-  const calcePromedioProc = matchesFiltrados.length > 0 
-    ? Math.round(matchesFiltrados.reduce((a, b) => a + b, 0) / matchesFiltrados.length) 
+  const calcePromedioProc = matchesFiltrados.length > 0
+    ? Math.round(matchesFiltrados.reduce((a, b) => a + b, 0) / matchesFiltrados.length)
     : 0
-
   const completadosProc = listaFiltrada.filter(c => c.progresoPct >= 100).length
 
   if (cargando) {
@@ -288,220 +254,163 @@ export default function EstadisticasPage() {
     )
   }
 
+  if (error) {
+    return (
+      <AppLayout>
+        <div role="alert" className="py-16 text-center">
+          <p className="text-slate-900 font-medium mb-1">No se pudo cargar el ranking.</p>
+          <p className="text-sm text-slate-500 mb-4">Revisá tu conexión y probá de nuevo.</p>
+          <button
+            type="button"
+            onClick={cargarDatos}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
+      </AppLayout>
+    )
+  }
+
+  const colorEncaje = (n: number) => (n >= 75 ? 'bg-indigo-600' : n < 50 ? 'bg-amber-500' : 'bg-slate-500')
+
   return (
     <AppLayout>
-      {/* Cabecera */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Ranking de Encaje y Avance</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Visualiza y clasifica a los postulantes ordenados por nivel de calce (match) y progreso de evaluaciones
-          </p>
-        </div>
+      <header className="mb-6">
+        <h1 className="text-3xl font-semibold text-slate-900">Ranking de candidatos</h1>
+        <p className="text-slate-500 mt-1">Ordenados por encaje con el cargo y avance de la batería</p>
+      </header>
 
-        <select aria-label="Proceso a analizar"
+      <section className="flex flex-wrap gap-x-10 gap-y-4 pb-6" aria-label="Resumen">
+        {[
+          { valor: listaFiltrada.length, etiqueta: 'postulaciones' },
+          { valor: `${calcePromedioProc} %`, etiqueta: 'encaje promedio' },
+          { valor: completadosProc, etiqueta: 'con la batería completa' },
+        ].map(c => (
+          <div key={c.etiqueta}>
+            <div className="text-4xl font-semibold leading-none tabular-nums text-slate-900" style={SERIF}>{c.valor}</div>
+            <div className="text-sm text-slate-500 mt-1">{c.etiqueta}</div>
+          </div>
+        ))}
+      </section>
+
+      <div className="flex flex-wrap items-center gap-2.5 pb-5">
+        <input
+          type="text"
+          aria-label="Buscar candidato por nombre o correo"
+          placeholder="Buscar por nombre o correo"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          className="flex-1 min-w-[16rem] bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600"
+        />
+        <select
+          aria-label="Proceso a analizar"
           value={procesoSeleccionado}
           onChange={(e) => setProcesoSeleccionado(e.target.value)}
-          className="px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-white shadow-sm hover:border-slate-300 outline-none transition-all"
+          className="bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600 max-w-[16rem]"
         >
           <option value="todos">Todos los procesos</option>
           {procesos.map(p => (
             <option key={p.id} value={p.id}>{nombreDeProcesoLegible(p.nombre)}</option>
           ))}
         </select>
+        <select
+          aria-label="Ordenar por"
+          value={ordenCriterio}
+          onChange={(e) => setOrdenCriterio(e.target.value as Orden)}
+          className="bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600"
+        >
+          <option value="match">Mayor encaje primero</option>
+          <option value="progreso">Mayor avance primero</option>
+          <option value="alertas">Más alertas primero</option>
+          <option value="nombre">Nombre</option>
+        </select>
       </div>
 
-      {/* Tarjetas de Indicadores */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center gap-5">
-          <div className="p-4 bg-indigo-50 rounded-2xl text-indigo-600"><Users className="w-6 h-6" /></div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Postulantes en Proceso</span>
-            <span className="text-2xl font-bold text-slate-900 block mt-1">{totalCandidatosProc}</span>
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center gap-5">
-          <div className="p-4 bg-emerald-50 rounded-2xl text-emerald-600"><TrendingUp className="w-6 h-6" /></div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Calce (Match) Promedio</span>
-            <span className="text-2xl font-bold text-slate-900 block mt-1">{calcePromedioProc}%</span>
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center gap-5">
-          <div className="p-4 bg-purple-50 rounded-2xl text-purple-600"><CheckCircle2 className="w-6 h-6" /></div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Baterías Finalizadas</span>
-            <span className="text-2xl font-bold text-slate-900 block mt-1">{completadosProc} <span className="text-xs font-medium text-slate-400">candidatos</span></span>
-          </div>
-        </div>
-      </div>
-
-      {/* Barra de Filtros de la Tabla */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
-        {/* Buscador */}
-        <div className="relative w-full md:max-w-md">
-          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
-          <input aria-label="Buscar candidato por nombre o correo"
-            type="text"
-            placeholder="Buscar por nombre o correo..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm outline-none placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 transition-all"
-          />
-        </div>
-
-        {/* Criterio de Orden */}
-        <div className="flex items-center gap-2 self-stretch md:self-auto justify-end">
-          <span className="text-xs font-bold text-slate-450 uppercase tracking-wider flex items-center gap-1.5"><ArrowUpDown className="w-3.5 h-3.5" /> Ordenar por:</span>
-          <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-            {[
-              { id: 'match', label: 'Match %' },
-              { id: 'progreso', label: 'Progreso' },
-              { id: 'alertas', label: 'Fraudes' },
-              { id: 'nombre', label: 'Nombre' }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setOrdenCriterio(tab.id as any)}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  ordenCriterio === tab.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Tabla de Ranking de Candidatos */}
-      <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden mb-8">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[900px]">
+          <table className="w-full text-left border-collapse min-w-[860px] text-sm">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Posición</th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Candidato</th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Progreso Batería</th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Match Encaje</th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Simulación Role Play</th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Videoentrevista</th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Alertas Integridad</th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Acción</th>
+              <tr className="border-b border-slate-200 text-slate-500">
+                <th scope="col" className="pl-5 pr-2 py-3 font-medium w-12"><span className="sr-only">Posición</span></th>
+                <th scope="col" className="px-3 py-3 font-medium">Candidato</th>
+                <th scope="col" className="px-3 py-3 font-medium">Avance</th>
+                <th scope="col" className="px-3 py-3 font-medium">Encaje</th>
+                <th scope="col" className="px-3 py-3 font-medium">Role play</th>
+                <th scope="col" className="px-3 py-3 font-medium">Video</th>
+                <th scope="col" className="px-3 py-3 font-medium">Alertas</th>
+                <th scope="col" className="pl-3 pr-5 py-3 font-medium"><span className="sr-only">Ficha</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {listaOrdenada.map((item, idx) => {
-                const esMatchAlto = item.matchScore && item.matchScore >= 75
-                const esMatchBajo = item.matchScore && item.matchScore < 50
-                const esAlertaCritica = item.totalAlertas >= 10
+              {listaOrdenada.map((item, idx) => (
+                <tr key={`${item.id}-${item.procesoId}`}>
+                  <td className="pl-5 pr-2 py-4 tabular-nums text-slate-500" style={SERIF}>{idx + 1}</td>
 
-                return (
-                  <tr key={item.id} className="hover:bg-slate-50/40 transition-colors group">
-                    {/* Puesto / Ranking */}
-                    <td className="px-6 py-4.5">
-                      <span className="font-mono text-xs font-bold text-slate-400 bg-slate-100 w-6 h-6 rounded-full flex items-center justify-center">
-                        #{idx + 1}
+                  <td className="px-3 py-4">
+                    <div className="font-semibold text-slate-900">{item.nombre} {item.apellido}</div>
+                    <div className="text-slate-500">{item.email}</div>
+                    <div className="text-slate-600 mt-0.5">{item.procesoNombre}</div>
+                  </td>
+
+                  <td className="px-3 py-4">
+                    <div className="tabular-nums text-slate-800">{item.completadosCount} de {item.totalBateria}</div>
+                    <div className="w-24 h-1.5 mt-1.5 bg-slate-200 rounded-full overflow-hidden" aria-hidden="true">
+                      <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${item.progresoPct}%` }} />
+                    </div>
+                  </td>
+
+                  <td className="px-3 py-4">
+                    {item.matchScore !== null ? (
+                      <>
+                        <div className="text-xl font-semibold leading-none tabular-nums text-slate-900" style={SERIF}>{item.matchScore} %</div>
+                        <div className="w-20 h-1.5 mt-1.5 bg-slate-200 rounded-full overflow-hidden" aria-hidden="true">
+                          <div className={`h-full rounded-full ${colorEncaje(item.matchScore)}`} style={{ width: `${Math.min(100, item.matchScore)}%` }} />
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-slate-500">Sin Big Five</span>
+                    )}
+                  </td>
+
+                  <td className="px-3 py-4 tabular-nums whitespace-nowrap">
+                    {item.scoreRP === null ? <span className="text-slate-500">—</span>
+                      : item.scoreRP === 'Pendiente' ? <span className="text-slate-500">Pendiente</span>
+                      : <span className="text-slate-800">{item.scoreRP}</span>}
+                  </td>
+
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    {item.estadoVideo === 'no aplica' ? <span className="text-slate-500">—</span>
+                      : item.estadoVideo === 'completada' ? <span className="text-slate-800">Completada</span>
+                      : item.estadoVideo === 'en curso' ? <span className="text-slate-800">En curso</span>
+                      : <span className="text-slate-500">Pendiente</span>}
+                  </td>
+
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    {item.totalAlertas > 0 ? (
+                      <span className={`px-2 py-0.5 rounded tabular-nums font-semibold ${item.totalAlertas >= 10 ? 'bg-red-50 text-red-700 border border-red-200' : 'text-amber-700'}`}>
+                        {item.totalAlertas}
                       </span>
-                    </td>
+                    ) : (
+                      <span className="text-slate-500">Sin alertas</span>
+                    )}
+                  </td>
 
-                    {/* Candidato Info */}
-                    <td className="px-6 py-4.5">
-                      <div className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                        {item.nombre} {item.apellido}
-                      </div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">{item.email}</div>
-                      <div className="text-[9px] text-indigo-600 font-bold mt-1 uppercase tracking-wider bg-indigo-50/50 px-2 py-0.5 rounded w-fit border border-indigo-100/30 flex items-center gap-1">
-                        <span>💼</span> {item.procesoNombre}
-                      </div>
-                    </td>
-
-                    {/* Progreso de la Batería */}
-                    <td className="px-6 py-4.5 text-center">
-                      <div className="flex flex-col items-center gap-1.5">
-                        <span className="text-xs font-bold text-slate-800">{item.progresoTexto} tests</span>
-                        <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-indigo-600 rounded-full transition-all duration-500" 
-                            style={{ width: `${item.progresoPct}%` }}
-                          />
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Match Encaje */}
-                    <td className="px-6 py-4.5 text-center">
-                      {item.matchScore !== null ? (
-                        <div className={`inline-flex items-center justify-center w-11 h-11 rounded-full border-4 font-bold text-xs ${
-                          esMatchAlto ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 
-                          esMatchBajo ? 'border-amber-400 bg-amber-50 text-amber-700' : 
-                          'border-indigo-400 bg-indigo-50 text-indigo-700'
-                        }`}>
-                          {item.matchScore}%
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-400 font-bold">—</span>
-                      )}
-                    </td>
-
-                    {/* Simulación Role Play */}
-                    <td className="px-6 py-4.5 text-center">
-                      {item.scoreRP !== 'Pendiente' ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-xl">
-                          <Award className="w-3.5 h-3.5 text-indigo-600" /> {item.scoreRP}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-slate-350 italic font-bold">Pendiente</span>
-                      )}
-                    </td>
-
-                    {/* Videoentrevista */}
-                    <td className="px-6 py-4.5 text-center">
-                      {item.tieneVideo ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl uppercase tracking-wider">
-                          <Video className="w-3.5 h-3.5" /> Completada
-                        </span>
-                      ) : (
-                        <span className="text-xs text-slate-350 italic font-bold">Pendiente</span>
-                      )}
-                    </td>
-
-                    {/* Alertas Integridad */}
-                    <td className="px-6 py-4.5 text-center">
-                      {item.totalAlertas > 0 ? (
-                        <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-xl ${
-                          esAlertaCritica ? 'bg-red-50 text-red-700 border border-red-100 animate-pulse' : 'bg-amber-50 text-amber-700'
-                        }`}>
-                          <AlertTriangle className="w-3.5 h-3.5" /> {item.totalAlertas}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-100">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></div>
-                          Seguro
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Acciones */}
-                    <td className="px-6 py-4.5 text-right">
-                      <button
-                        onClick={() => router.push(`/panel?candidato=${item.id}`)}
-                        className="p-2 bg-slate-50 border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 text-slate-500 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1 text-xs font-bold ml-auto"
-                        title="Ver Ficha y descargar PDF"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        Ver Ficha
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })}
+                  <td className="pl-3 pr-5 py-4 text-right whitespace-nowrap">
+                    <Link
+                      href={`/panel?candidato=${item.id}&proceso=${item.procesoId}`}
+                      className="text-indigo-600 font-semibold underline underline-offset-4 hover:text-indigo-700"
+                      aria-label={`Ver la ficha de ${item.nombre} ${item.apellido}`}
+                    >
+                      Ver ficha
+                    </Link>
+                  </td>
+                </tr>
+              ))}
               {listaOrdenada.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-sm text-slate-500">
-                    No se encontraron candidatos que coincidan con la búsqueda o proceso seleccionado.
+                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                    No hay candidatos que coincidan con la búsqueda o el proceso elegido.
                   </td>
                 </tr>
               )}
@@ -509,6 +418,11 @@ export default function EstadisticasPage() {
           </table>
         </div>
       </div>
+
+      <p className="mt-4 text-sm text-slate-500">
+        El encaje se calcula con el Big Five frente a las competencias del cargo y baja si la batería está incompleta.
+        {sinProceso > 0 && ` ${sinProceso} candidatos sin proceso asignado no aparecen en el ranking.`}
+      </p>
     </AppLayout>
   )
 }
