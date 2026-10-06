@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 
-const { construirCsp, generarNonce, resumirInformeCsp, RUTA_INFORMES_CSP } = await import('../lib/server/csp.ts')
+const { construirCsp, generarNonce, resumirInformeCsp, modoCsp, RUTA_INFORMES_CSP } = await import('../lib/server/csp.ts')
 
 const dir = (csp: string, nombre: string) => csp.split('; ').find(d => d.startsWith(nombre + ' ')) || ''
 
@@ -58,6 +58,14 @@ for (const malo of [null, undefined, 'texto', 42, [], {}, { 'csp-report': null }
   const l = String(resumirInformeCsp({ 'csp-report': { 'violated-directive': 'script-src\n[FALSO] linea inyectada', 'document-uri': 'https://x.test/' + 'a'.repeat(5000), 'blocked-uri': 'z'.repeat(5000) } }))
   assert.doesNotMatch(l, /\n|\r/)
   assert.ok(l.length < 300, `linea acotada (${l.length})`)
+}
+
+// ---- Modo: por defecto es el vigente; solo los valores exactos activan los otros ----
+assert.equal(modoCsp({}), 'vigente')
+assert.equal(modoCsp({ CSP_MODO: 'informe' }), 'informe')
+assert.equal(modoCsp({ CSP_MODO: 'estricta' }), 'estricta')
+for (const v of [undefined, '', 'vigente', 'INFORME', 'Estricta', 'true', '1', ' estricta', 'basura']) {
+  assert.equal(modoCsp({ CSP_MODO: v }), 'vigente', `un valor desconocido (${JSON.stringify(v)}) nunca endurece ni afloja: queda el vigente`)
 }
 
 console.log('✅ csp: la politica vigente es exactamente la de produccion, la estricta no permite scripts en linea sin nonce y conserva los mismos origenes, el nonce no se repite, y los informes se resumen sin parametros ni datos personales')

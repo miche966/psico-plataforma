@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { decidirAccesoApi } from '@/lib/server/rutasApi'
 import { mfaObligatorio } from '@/lib/server/mfa'
-import { construirCsp, generarNonce, RUTA_INFORMES_CSP } from '@/lib/server/csp'
+import { construirCsp, generarNonce, modoCsp, RUTA_INFORMES_CSP } from '@/lib/server/csp'
 
 /**
  * Denegar por defecto en /api: solo las rutas declaradas en lib/server/rutasApi.ts se pueden llamar sin
@@ -29,22 +29,20 @@ function protegerApi(request: NextRequest) {
 }
 
 /**
- * Paginas: genera el nonce de la visita y publica la CSP ESTRICTA solo como informe (Content-Security-Policy-Report-Only):
- * no bloquea nada (la politica vigente de next.config.ts sigue siendo la que aplica) pero Next toma el nonce de esta
- * cabecera para poner el atributo nonce en sus scripts, y los navegadores informan a /api/csp-report todo lo que la
- * politica estricta bloquearia. Ver lib/server/csp.ts.
+ * Paginas: segun CSP_MODO (ver lib/server/csp.ts). En 'vigente' no hace nada. Con nonce, genera uno por visita, se lo pasa
+ * a Next (cabecera de PETICION Content-Security-Policy: de ahi lo lee para poner el atributo nonce en sus scripts) y publica
+ * la politica estricta en la RESPUESTA: bloqueando en 'estricta', solo como informe en 'informe'.
  */
 function politicaDeContenido(request: NextRequest) {
+  const modo = modoCsp()
+  if (modo === 'vigente') return NextResponse.next()
   const nonce = generarNonce()
-  const csp = construirCsp({ dev: process.env.NODE_ENV !== 'production', nonce, reportUri: RUTA_INFORMES_CSP })
+  const estricta = construirCsp({ dev: process.env.NODE_ENV !== 'production', nonce, reportUri: RUTA_INFORMES_CSP })
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-nonce', nonce)
-  // Solo para que Next extraiga el nonce y lo ponga en sus scripts: un encabezado de PETICION no es una politica para el
-  // navegador. Se usa el nombre estandar porque en Vercel el nombre "-Report-Only" no llegaba al renderizador (los scripts
-  // salian sin nonce). Lo que ve el navegador es el encabezado de RESPUESTA, que sigue siendo solo informe.
-  requestHeaders.set('Content-Security-Policy', csp)
+  requestHeaders.set('Content-Security-Policy', estricta)
   const response = NextResponse.next({ request: { headers: requestHeaders } })
-  response.headers.set('Content-Security-Policy-Report-Only', csp)
+  response.headers.set(modo === 'estricta' ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only', estricta)
   return response
 }
 

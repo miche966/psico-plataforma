@@ -7,15 +7,17 @@ export const metadata: Metadata = {
 };
 
 import { Suspense } from "react";
+import { connection } from 'next/server'
+import { modoCsp } from '@/lib/server/csp'
 
-// Los scripts de Next llevan un nonce distinto por visita (lo genera proxy.ts): las paginas se renderizan en cada pedido
-export const dynamic = 'force-dynamic'
 
-export default function RootLayout({
+// Con nonce (CSP_MODO distinto de 'vigente') los scripts de Next llevan uno distinto por visita y las paginas se renderizan en cada pedido
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  if (modoCsp() !== 'vigente') await connection()
   return (
     <html
       lang="es"

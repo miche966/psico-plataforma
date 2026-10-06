@@ -18,6 +18,19 @@ export const TURNSTILE_ORIGIN = 'https://challenges.cloudflare.com'
 
 export const RUTA_INFORMES_CSP = '/api/csp-report'
 
+/**
+ * Modo de la CSP, segun la variable de entorno CSP_MODO:
+ *  - vigente (por defecto): la politica de siempre, con 'unsafe-inline', desde next.config.ts. Paginas estaticas.
+ *  - informe: la vigente BLOQUEA y la estricta (con nonce) solo informa a /api/csp-report. Sirve para observar en local
+ *    (`next start`) que se rompería. En Vercel NO funciona: alli toda cabecera Content-Security-Policy se mezcla con la
+ *    peticion y le tapa el nonce a Next.
+ *  - estricta: la estricta (nonce + strict-dynamic) es la unica que bloquea; next.config.ts ya no define CSP.
+ */
+export type ModoCsp = 'vigente' | 'informe' | 'estricta'
+export function modoCsp(env: Record<string, string | undefined> = process.env): ModoCsp {
+  return env.CSP_MODO === 'informe' ? 'informe' : env.CSP_MODO === 'estricta' ? 'estricta' : 'vigente'
+}
+
 /** Nonce aleatorio de un solo uso (16 bytes, base64). Usa Web Crypto: sirve en el proxy y en Node. */
 export function generarNonce(): string {
   const bytes = new Uint8Array(16)
