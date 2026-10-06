@@ -64,6 +64,13 @@ meses entienda que no fue un olvido.
   repositorio, seguía público con una versión antigua sin las protecciones (rutas de IA y de R2 sin sesión) y con los
   secretos de la plataforma. Se borró y se rotó la clave de Gemini (la anterior estuvo en ese proyecto). Sin señales de
   abuso en R2. Los despliegues antiguos del proyecto vivo están protegidos por la autenticación de Vercel.
+- **`braces` sin parche, solo en herramientas de desarrollo** (2026-10-06): `npm audit` marca 5 avisos altos en la cadena
+  `eslint-config-next` → `fast-glob` → `micromatch` → `braces` (agotamiento de pila con patrones de archivo anidados,
+  GHSA-vfj7-8cjw-p6xm). No existe versión corregida de `braces`, es código que solo corre al analizar el estilo del código en
+  desarrollo y necesitaría un patrón malicioso que aquí nunca se recibe. El control de CI (`npm run audit:dependencias`)
+  audita solo las dependencias de producción (`--omit=dev`) y falla ante cualquier aviso alto; `npm audit` completo sigue
+  disponible para revisarlo. Reabrir si aparece versión corregida (Dependabot lo avisará) o si `braces` pasa a procesar
+  entradas externas.
 - Rate limiting en los endpoints públicos y de IA; bloqueo de intentos de login; Turnstile en `/unirse`.
 - Cabeceras de seguridad HTTP (CSP, HSTS, etc.), validación de entradas con zod y auditoría de dependencias en CI.
 

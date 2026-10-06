@@ -17,7 +17,7 @@
     "verify": "npm run validate:repository && npm run typecheck && npm test && npm run build",
     "audit:integrity": "node scripts/audit-integrity-readonly.cjs",
     "audit:encoding": "node scripts/audit-encoding.cjs",
-    "audit:dependencias": "npm audit --audit-level=high",
+    "audit:dependencias": "npm audit --omit=dev --audit-level=high",
     "audit:puntajes": "node --experimental-strip-types scripts/audit-puntajes.ts"
   },
   "dependencies": {
