@@ -3,6 +3,7 @@ import { requireAdminSession } from '@/lib/server/adminAuth'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { readAll } from '@/lib/server/readAll'
 import { candidatoIdsEnProcesos } from '@/lib/server/procesoScope'
+import { leerResumenes } from '@/lib/server/resumenesIa'
 
 export async function GET(req: Request) {
   try {
@@ -25,11 +26,14 @@ export async function GET(req: Request) {
       progresoOperativo = []
     }
 
+    let resumenesIa = await leerResumenes(db)
+
     if (auth.role === 'viewer') {
       const procesosPermitidos = new Set(auth.allowedProcesoIds)
       procesos = (procesos || []).filter((p: any) => procesosPermitidos.has(p.id))
       sesiones = (sesiones || []).filter((s: any) => s.proceso_id && procesosPermitidos.has(s.proceso_id))
       progresoOperativo = (progresoOperativo || []).filter((p: any) => p.proceso_id && procesosPermitidos.has(p.proceso_id))
+      resumenesIa = resumenesIa.filter(r => r.proceso_id && procesosPermitidos.has(r.proceso_id))
       const idsCandidatos = await candidatoIdsEnProcesos(db, auth.allowedProcesoIds)
       candidatos = (candidatos || []).filter((c: any) => idsCandidatos.has(c.id))
       respuestasVideo = (respuestasVideo || []).filter((r: any) => idsCandidatos.has(r.candidato_id))
@@ -42,7 +46,8 @@ export async function GET(req: Request) {
       // El panel solo usa quien respondio que y cuando: la URL del video se pide aparte (ya firmada) al abrir al candidato
       respuestasVideo: (respuestasVideo || []).map((r: any) => { const { url_video, ...resto } = r; return resto }),
       preguntasVideo,
-      progresoOperativo
+      progresoOperativo,
+      resumenesIa
     })
   } catch (error: any) {
     console.error('Error cargando datos administrativos del panel:', error)

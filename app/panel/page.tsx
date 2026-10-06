@@ -208,6 +208,7 @@ interface CandidatoAgrupado {
   }
   matchScore?: number | null
   resumen_ia?: string | null
+  resumen_ia_fecha?: string | null
   estado_operativo?: 'pendiente' | 'en curso' | 'completada'
   progreso_detallado?: Array<{ evaluacion_key: string; estado: string; pregunta_actual?: number; total_preguntas?: number; respuestas_completadas?: number }>
   ultima_actividad_operativa?: string | null
@@ -243,7 +244,7 @@ async function generarResumenIA(candidato: CandidatoAgrupado) {
     const response = await fetch('/api/ia-summary', {
       method: 'POST',
       headers: await getAdminHeaders(),
-      body: JSON.stringify({ prompt })
+      body: JSON.stringify({ prompt, candidato_id: candidato.id, proceso_id: candidato.proceso_id })
     })
     if (response.status === 429) return { error: 'Se alcanzó el límite de consultas a la IA. Probá de nuevo en unos minutos.' }
     if (response.status === 403) return { error: 'Tu rol no permite generar resúmenes con IA.' }
@@ -251,7 +252,7 @@ async function generarResumenIA(candidato: CandidatoAgrupado) {
     if (!response.ok || typeof data?.summary !== 'string' || !data.summary.trim()) {
       return { error: 'No se pudo generar el resumen. Probá de nuevo en un momento.' }
     }
-    return { resumen: data.summary as string }
+    return { resumen: data.summary as string, guardado: data.guardado === true }
   } catch (err) {
     console.error("Error generando resumen:", err)
     return { error: 'No se pudo generar el resumen. Revisá tu conexión y probá de nuevo.' }
@@ -283,7 +284,11 @@ export default function PanelEvaluador() {
     const res = await generarResumenIA(objetivo)
     setResumenEnCurso(null)
     if ('resumen' in res) {
-      setAgrupadoSeleccionado(actual => actual && claveFila(actual) === clave ? { ...actual, resumen_ia: res.resumen } : actual)
+      const ahora = new Date().toISOString()
+      setAgrupadoSeleccionado(actual => actual && claveFila(actual) === clave ? { ...actual, resumen_ia: res.resumen, resumen_ia_fecha: ahora } : actual)
+      // La lista de candidatos tambien guarda el resumen: asi sigue ahi al cambiar de candidato sin recargar
+      setCandidatos(lista => lista.map(c => claveFila(c) === clave ? { ...c, resumen_ia: res.resumen, resumen_ia_fecha: ahora } : c))
+      if (!res.guardado) setErrorResumen({ clave, mensaje: 'El resumen se generó, pero no se pudo guardar: se perderá al recargar la página.' })
     } else {
       setErrorResumen({ clave, mensaje: res.error })
     }
@@ -477,6 +482,7 @@ export default function PanelEvaluador() {
     const respuestasVideo: any[] = payload.respuestasVideo || []
     const preguntasVideo: any[] = payload.preguntasVideo || []
     const progresoOperativo: any[] = payload.progresoOperativo || []
+    const resumenesIa: any[] = payload.resumenesIa || []
 
     if (sesionesData.length > 0) setSesionesGlobales(sesionesData)
 
@@ -546,6 +552,8 @@ export default function PanelEvaluador() {
       const estadoOperativo: 'pendiente' | 'en curso' | 'completada' = progresoCalculado.total > 0 && progresoCalculado.completados >= progresoCalculado.total ? 'completada' : (tieneActividad || progresoCalculado.completados > 0 ? 'en curso' : 'pendiente')
       const ultimaActividadOperativa = progresoCandidato.map(item => item.ultima_actividad_en).filter(Boolean).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] || null
 
+      const resumenIa = resumenesIa.find(x => x.candidato_id === c.id && (x.proceso_id || null) === (procesoId || null))
+
       let ultimaFecha = c.creado_en
       sesionesDeEsteProceso.forEach((s: any) => {
         const f = s.finalizada_en || s.creado_en
@@ -568,6 +576,8 @@ export default function PanelEvaluador() {
         fecha_postulacion: c.creado_en || '',
         ultima_fecha: ultimaFecha,
         proceso_id: procesoId,
+        resumen_ia: resumenIa?.resumen ?? null,
+        resumen_ia_fecha: resumenIa?.generado_en ?? null,
         proceso_nombre: procesoNombre,
         proceso_cargo: procesoCargo,
         competencias_requeridas: competenciasReq,
@@ -880,7 +890,12 @@ export default function PanelEvaluador() {
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
               <h3 className="font-bold text-slate-900 text-sm mb-2">{agrupadoSeleccionado.nombre} {agrupadoSeleccionado.apellido}</h3>
               {agrupadoSeleccionado.resumen_ia ? (
-                <p className="text-sm text-slate-700 leading-relaxed">{agrupadoSeleccionado.resumen_ia}</p>
+                <>
+                  <p className="text-sm text-slate-700 leading-relaxed">{agrupadoSeleccionado.resumen_ia}</p>
+                  {agrupadoSeleccionado.resumen_ia_fecha && (
+                    <p className="mt-2 text-xs text-slate-500">Generado el {new Date(agrupadoSeleccionado.resumen_ia_fecha).toLocaleDateString('es-UY')}</p>
+                  )}
+                </>
               ) : (
                 <p className="text-sm text-slate-500">Todavía no se generó el diagnóstico de este candidato.</p>
               )}
