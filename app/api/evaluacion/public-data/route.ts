@@ -3,6 +3,7 @@ import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { z, validar, lenient } from '@/lib/server/validacion'
 import { compararPuntajeEnSombra } from '@/lib/server/puntajeSombra'
+import { bancoDeItems, esIcar, esPuntuable, puntuarCrudo, resumenDePuntaje, testsEstrictos, type ItemPuntuable } from '@/lib/server/puntuacion'
 
 // sesion_id viene del estado del cliente (puede faltar o venir vacio): si no es un uuid valido se trata
 // como "sin sesion" y se busca por candidato/proceso/test, igual que antes, en vez de rechazar y
@@ -11,10 +12,16 @@ const sesionIdOVacio = (v: unknown): string => (z.guid().safeParse(v).success ? 
 
 // puntaje_bruto lo calcula el navegador y su forma cambia por test, asi que no se puede fijar un
 // schema por test aca; se acota el tamano (el mayor legitimo, Frases Incompletas, ronda los 70 KB).
+// formato 'crudo' (etapa 3 de docs/PUNTAJE_EN_SERVIDOR.md): el navegador manda solo la eleccion del candidato (`opcion`: indice
+// de la opcion, o null si se agoto el tiempo; `valor`: el valor crudo en los Likert) y el servidor calcula el puntaje.
+// Sin `formato` es el protocolo anterior (el navegador manda su puntaje y su 0/1), que sigue valido hasta activar el
+// modo estricto (PUNTAJE_ESTRICTO) para ese test.
 const finalizarSchema = z.object({
+  formato: z.enum(['crudo']).optional(),
   respuestas: z.array(z.object({
     item_id: z.guid('Una respuesta tiene un identificador de ítem inválido.'),
-    valor: z.coerce.number().int('Una respuesta tiene un valor inválido.'),
+    valor: lenient(v => (typeof v === 'number' || (typeof v === 'string' && v.trim() !== '')) && Number.isInteger(Number(v)) ? Number(v) : undefined),
+    opcion: lenient(v => (v === null ? null : typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < 50 ? v : undefined)),
     tiempo_respuesta: lenient(v => {
       const n = Number(v || 0)
       return Number.isFinite(n) && n >= 0 ? Math.round(n) : 0
@@ -70,7 +77,9 @@ export async function GET(request: Request) {
     const contexto = await validarContexto(request)
     if ('error' in contexto) return contexto.error
     const { db, candidato, proceso, testId } = contexto
-    let query = db.from('items').select('id, orden, contenido, opciones, factor, inverso, respuesta_correcta, nivel_dificultad, subtipo').eq('test_id', testId)
+    // En modo estricto (PUNTAJE_ESTRICTO) el servidor corrige: la clave de correccion y los flags de inversion ya no viajan al navegador
+    const columnas = testsEstrictos().has(testId) ? 'id, orden, contenido, opciones, factor, nivel_dificultad, subtipo' : 'id, orden, contenido, opciones, factor, inverso, respuesta_correcta, nivel_dificultad, subtipo'
+    let query = db.from('items').select(columnas).eq('test_id', testId)
     if (testId === ICAR_ID) {
       const url = new URL(request.url)
       const nivelMax = Number(url.searchParams.get('nivel_max')) || 3
@@ -140,17 +149,25 @@ export async function POST(request: Request) {
       const entrada = validar(finalizarSchema, body, 'Los datos de la evaluación no son válidos.')
       if (!entrada.ok) return entrada.response
       const { respuestas, puntaje_bruto: puntaje } = entrada.data
+      if (entrada.data.formato === 'crudo') {
+        // ICAR queda para su fase: su universo de items depende del nivel maximo y de la rotacion, que hoy viajan en la URL sin firma
+        if (!esPuntuable(testId) || esIcar(testId)) return NextResponse.json({ error: 'Este test todavía no admite ese formato.' }, { status: 400 })
+      } else {
+        // Protocolo anterior: cada respuesta trae el valor que calculo el navegador. En modo estricto ya no se acepta.
+        if (testsEstrictos().has(testId)) return NextResponse.json({ error: 'Esta evaluación se actualizó. Recargá la página para continuar.', recargar: true }, { status: 400 })
+        if (respuestas.some(r => r.valor === undefined)) return NextResponse.json({ error: 'Una respuesta tiene un valor inválido.' }, { status: 400 })
+      }
       let sesionId = sesionIdOVacio(body.sesion_id)
       if (sesionId) {
-        const { data: sesion, error } = await db.from('sesiones').select('id, estado').eq('id', sesionId).eq('candidato_id', ids.candidatoId).eq('proceso_id', ids.procesoId).eq('test_id', testId).maybeSingle()
+        const { data: sesion, error } = await db.from('sesiones').select('id, estado, puntaje_bruto').eq('id', sesionId).eq('candidato_id', ids.candidatoId).eq('proceso_id', ids.procesoId).eq('test_id', testId).maybeSingle()
         if (error) throw error
         if (!sesion) return NextResponse.json({ error: 'Sesión no válida' }, { status: 404 })
-        if (sesion.estado === 'finalizado') return NextResponse.json({ sesion, alreadyCompleted: true })
+        if (sesion.estado === 'finalizado') return NextResponse.json({ sesion, alreadyCompleted: true, resumen: resumenDePuntaje(sesion.puntaje_bruto) })
       } else {
-        const { data: existentes, error } = await db.from('sesiones').select('id, estado').eq('candidato_id', ids.candidatoId).eq('proceso_id', ids.procesoId).eq('test_id', testId).order('iniciada_en', { ascending: false }).limit(1)
+        const { data: existentes, error } = await db.from('sesiones').select('id, estado, puntaje_bruto').eq('candidato_id', ids.candidatoId).eq('proceso_id', ids.procesoId).eq('test_id', testId).order('iniciada_en', { ascending: false }).limit(1)
         if (error) throw error
         const previa = existentes?.[0]
-        if (previa?.estado === 'finalizado') return NextResponse.json({ sesion: previa, alreadyCompleted: true })
+        if (previa?.estado === 'finalizado') return NextResponse.json({ sesion: previa, alreadyCompleted: true, resumen: resumenDePuntaje(previa.puntaje_bruto) })
         if (previa) sesionId = previa.id
         else {
           const { data: nueva, error: insertError } = await db.from('sesiones').insert({ test_id: testId, candidato_id: ids.candidatoId, proceso_id: ids.procesoId, estado: 'iniciado', iniciada_en: new Date().toISOString() }).select('id, estado').single()
@@ -158,17 +175,31 @@ export async function POST(request: Request) {
           sesionId = nueva.id
         }
       }
-      // Modo paralelo: el servidor recalcula y compara en silencio; lo que se guarda sigue siendo lo del navegador
-      await compararPuntajeEnSombra(db, testId, respuestas, puntaje, sesionId)
-      const { data: actualizada, error: updateError } = await db.from('sesiones').update({ estado: 'finalizado', finalizada_en: new Date().toISOString(), puntaje_bruto: puntaje }).eq('id', sesionId).eq('estado', 'iniciado').select('id, estado, puntaje_bruto').maybeSingle()
+      let puntajeAGuardar: unknown = puntaje
+      let respuestasAGuardar: Array<{ item_id: string; valor: number; tiempo_respuesta: number }> = respuestas.map(r => ({ item_id: r.item_id, valor: r.valor as number, tiempo_respuesta: r.tiempo_respuesta }))
+      let resumen: Record<string, unknown> | undefined
+      if (entrada.data.formato === 'crudo') {
+        // El servidor decide el puntaje: lo que el navegador mande como `puntaje_bruto` se IGNORA (salvo la telemetria saneada)
+        const { data: bancoItems, error: bancoError } = await db.from('items').select('id, factor, inverso, respuesta_correcta, opciones, subtipo, nivel_dificultad').eq('test_id', bancoDeItems(testId))
+        if (bancoError) throw bancoError
+        const calculo = puntuarCrudo(testId, (bancoItems || []) as ItemPuntuable[], respuestas, (puntaje as Record<string, unknown>).metricas_fraude)
+        if (!calculo.ok) return NextResponse.json({ error: calculo.error }, { status: 400 })
+        puntajeAGuardar = calculo.puntaje
+        resumen = calculo.resumen
+        respuestasAGuardar = calculo.respuestas.map(r => ({ ...r, tiempo_respuesta: 0 }))
+      } else {
+        // Protocolo anterior: lo que se guarda sigue siendo lo del navegador; el servidor recalcula y compara en silencio
+        await compararPuntajeEnSombra(db, testId, respuestas.map(r => ({ item_id: r.item_id, valor: r.valor as number })), puntaje, sesionId)
+      }
+      const { data: actualizada, error: updateError } = await db.from('sesiones').update({ estado: 'finalizado', finalizada_en: new Date().toISOString(), puntaje_bruto: puntajeAGuardar }).eq('id', sesionId).eq('estado', 'iniciado').select('id, estado, puntaje_bruto').maybeSingle()
       if (updateError) throw updateError
       if (!actualizada) return NextResponse.json({ error: 'La sesión cambió de estado; no se duplicaron respuestas' }, { status: 409 })
       try {
-        if (respuestas.length) {
+        if (respuestasAGuardar.length) {
           const { data: existentes, error: existingError } = await db.from('respuestas').select('item_id').eq('sesion_id', sesionId)
           if (existingError) throw existingError
           if (!existentes?.length) {
-            const filas = respuestas.map(r => ({ sesion_id: sesionId, item_id: r.item_id, valor: r.valor, tiempo_respuesta: r.tiempo_respuesta }))
+            const filas = respuestasAGuardar.map(r => ({ sesion_id: sesionId, item_id: r.item_id, valor: r.valor, tiempo_respuesta: r.tiempo_respuesta }))
             const { error: insertError } = await db.from('respuestas').insert(filas)
             if (insertError) throw insertError
           }
@@ -180,7 +211,7 @@ export async function POST(request: Request) {
         if (reversionError) console.error('[evaluacion/public-data] No se pudo revertir la sesion tras fallar el guardado de respuestas:', reversionError)
         throw errorRespuestas
       }
-      return NextResponse.json({ sesion: actualizada, alreadyCompleted: false })
+      return NextResponse.json({ sesion: actualizada, alreadyCompleted: false, ...(resumen ? { resumen } : {}) })
     }
     return NextResponse.json({ error: 'Acción no soportada' }, { status: 400 })
   } catch (error) {

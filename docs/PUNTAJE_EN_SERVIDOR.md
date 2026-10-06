@@ -52,3 +52,14 @@ firmarlo en el token en la Etapa 3) y los tests sin puntaje (Frases, Role Play).
   diferencias nuevas.
 - `finalize` ahora revierte la sesión a `iniciado` si falla el guardado de las respuestas (antes quedaba finalizada y el
   reintento del candidato recibía "ya completada", perdiendo las respuestas).
+
+## Etapa 3 (plan aprobado 2026-10-06): protocolo crudo, grupo por grupo
+- **Fase A (servidor, 2026-10-06)**: `finalize` acepta `formato: 'crudo'`: el navegador manda solo la elección (`opcion` = índice de la
+  opción, o `null` si se agotó el tiempo; en Likert/DASS, `valor` crudo con una respuesta por ítem) y el servidor calcula el
+  `puntaje_bruto` (`puntuarCrudo` en `lib/server/puntuacion.ts`), guarda las `respuestas` y devuelve un `resumen` para la pantalla de
+  fin. Lo que el pedido traiga como `puntaje_bruto` se ignora salvo `metricas_fraude`, saneada (`lib/server/metricasFraude.ts`; solo
+  Big Five, DASS-21 e ICAR). ICAR todavía no admite el formato crudo (su universo de ítems depende de parámetros de la URL sin firma).
+- **Modo estricto**: la variable `PUNTAJE_ESTRICTO` (ids o slugs separados por comas, se lee en ejecución) hace que para esos tests el
+  servidor rechace el protocolo anterior (400, "recargá la página") y que el GET deje de enviar `respuesta_correcta` e `inverso`.
+- Las pantallas siguen usando el protocolo anterior hasta que se migre cada grupo (B: Verbal y Numérico; C: Atención al detalle,
+  Tolerancia y SJT; D: Likert y Estrés; E: DASS-21 y Big Five; F: ICAR). El estricto se activa horas después de desplegar cada grupo.

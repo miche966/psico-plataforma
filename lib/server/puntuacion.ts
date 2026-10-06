@@ -7,6 +7,8 @@
  * La forma de `puntaje_bruto` NO puede cambiar: informe, panel, estadisticas y PDF clasifican por nombre
  * de clave. Modulo puro (sin next/server) para poder testearlo con los datos reales.
  */
+import { sanearMetricasFraude } from './metricasFraude.ts'
+import { SLUG_TO_ID } from './catalogoTests.ts'
 
 export interface ItemPuntuable {
   id: string
@@ -26,6 +28,12 @@ export interface RespuestaEntrada {
 }
 
 export interface OpcionesPuntaje {
+  /**
+   * Formato crudo: el navegador solo manda lo que el candidato eligio (indice de opcion o valor crudo) y el servidor decide
+   * todo lo demas. Por eso exige la eleccion explicita (`opcion`, o null si se agoto el tiempo) y NO acepta el 0/1 que
+   * calculaba el navegador, y en Likert/DASS exige una respuesta para cada item (omitir items no puede mover el puntaje).
+   */
+  soloEleccion?: boolean
   /**
    * Likert: true (formato actual) = el navegador ya invirtio el valor de los items inversos;
    * false = manda la eleccion cruda y el servidor invierte.
@@ -155,7 +163,10 @@ function puntuarLikert(cfg: Extract<Config, { estrategia: 'likert' }>, items: It
   const guardar: Array<{ item_id: string; valor: number }> = []
   for (const item of items) {
     const r = porItem.get(item.id)
-    if (!r) continue
+    if (!r) {
+      if (opciones.soloEleccion) return { ok: false, error: 'Faltan respuestas de la evaluación.' }
+      continue
+    }
     if (!esEnteroEnRango(r.valor, 1, 5)) return { ok: false, error: 'Una respuesta tiene un valor fuera de rango.' }
     // Con valores ya invertidos (formato actual) se toma tal cual; con eleccion cruda se invierte aca
     const valor = !invertidos && item.inverso ? 6 - r.valor : r.valor
@@ -179,12 +190,15 @@ function puntuarLikert(cfg: Extract<Config, { estrategia: 'likert' }>, items: It
 }
 
 /** DASS-21: suma de los valores (0-3) de cada subescala, por 2. */
-function puntuarDass21(cfg: Extract<Config, { estrategia: 'dass21' }>, items: ItemPuntuable[], porItem: Map<string, RespuestaEntrada>): ResultadoPuntaje {
+function puntuarDass21(cfg: Extract<Config, { estrategia: 'dass21' }>, items: ItemPuntuable[], porItem: Map<string, RespuestaEntrada>, opciones: OpcionesPuntaje): ResultadoPuntaje {
   const sumas: Record<string, number> = Object.fromEntries(cfg.factores.map(f => [f, 0]))
   const guardar: Array<{ item_id: string; valor: number }> = []
   for (const item of items) {
     const r = porItem.get(item.id)
-    if (!r) continue
+    if (!r) {
+      if (opciones.soloEleccion) return { ok: false, error: 'Faltan respuestas de la evaluación.' }
+      continue
+    }
     if (!esEnteroEnRango(r.valor, 0, 3)) return { ok: false, error: 'Una respuesta tiene un valor fuera de rango.' }
     guardar.push({ item_id: item.id, valor: r.valor })
     if (item.factor && sumas[item.factor] !== undefined) sumas[item.factor] += r.valor
@@ -193,8 +207,13 @@ function puntuarDass21(cfg: Extract<Config, { estrategia: 'dass21' }>, items: It
 }
 
 /** Una respuesta de test con clave es correcta si la opcion elegida es la `respuesta_correcta` del item. */
-function esCorrecta(item: ItemPuntuable, r: RespuestaEntrada | undefined): boolean | { error: string } {
+function esCorrecta(item: ItemPuntuable, r: RespuestaEntrada | undefined, soloEleccion: boolean): boolean | { error: string } {
   if (!r) return false // sin respuesta (se agoto el tiempo): cuenta como incorrecta, igual que en el navegador
+  if (soloEleccion) {
+    if (r.opcion === null) return false // se agoto el tiempo sin elegir
+    if (r.opcion === undefined) return { error: 'Falta la opción elegida en una respuesta.' }
+    if (typeof r.opcion !== 'number') return { error: 'Una respuesta tiene una opción inválida.' }
+  }
   if (r.opcion !== undefined && r.opcion !== null) {
     // Eleccion cruda: por indice dentro de items.opciones, o por el texto de la opcion
     const opciones = item.opciones || []
@@ -208,12 +227,12 @@ function esCorrecta(item: ItemPuntuable, r: RespuestaEntrada | undefined): boole
 }
 
 /** Tests con clave: correctas / total / porcentaje, y desglose por factor o subtipo segun el test. */
-function puntuarClave(cfg: Extract<Config, { estrategia: 'clave' }>, items: ItemPuntuable[], porItem: Map<string, RespuestaEntrada>): ResultadoPuntaje {
+function puntuarClave(cfg: Extract<Config, { estrategia: 'clave' }>, items: ItemPuntuable[], porItem: Map<string, RespuestaEntrada>, opciones: OpcionesPuntaje): ResultadoPuntaje {
   let correctas = 0
   const desglose: Record<string, { correctas: number; total: number }> = {}
   const guardar: Array<{ item_id: string; valor: number }> = []
   for (const item of items) {
-    const ok = esCorrecta(item, porItem.get(item.id))
+    const ok = esCorrecta(item, porItem.get(item.id), opciones.soloEleccion === true)
     if (typeof ok === 'object') return { ok: false, error: ok.error }
     if (ok) correctas++
     guardar.push({ item_id: item.id, valor: ok ? 1 : 0 })
@@ -244,6 +263,50 @@ export function calcularPuntaje(testId: string, items: ItemPuntuable[], respuest
   const indexadas = indexarRespuestas(items, respuestas)
   if (!indexadas.ok) return indexadas
   if (cfg.estrategia === 'likert') return puntuarLikert(cfg, items, indexadas.porItem, opciones)
-  if (cfg.estrategia === 'dass21') return puntuarDass21(cfg, items, indexadas.porItem)
-  return puntuarClave(cfg, items, indexadas.porItem)
+  if (cfg.estrategia === 'dass21') return puntuarDass21(cfg, items, indexadas.porItem, opciones)
+  return puntuarClave(cfg, items, indexadas.porItem, opciones)
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Formato crudo (etapa 3): el navegador solo manda lo que el candidato eligio y el servidor decide el puntaje.
+// ---------------------------------------------------------------------------------------------------------------
+
+/** Tests cuyo `puntaje_bruto` incluye `metricas_fraude` (telemetria del navegador, no recalculable): Big Five, DASS-21 e ICAR. */
+const TESTS_CON_METRICAS = new Set<string>([ID.bigfive, ID.dass21, ID.icar])
+
+export type ResultadoCrudo =
+  | { ok: true; puntaje: Record<string, unknown>; resumen: Record<string, unknown>; respuestas: Array<{ item_id: string; valor: number }> }
+  | { ok: false; error: string }
+
+/**
+ * Puntaje de un test a partir de la eleccion cruda del candidato. `puntaje` es lo que se guarda en
+ * `sesiones.puntaje_bruto` (con `metricas_fraude` saneada donde corresponde); `resumen` es lo que ve la pantalla de fin
+ * (el puntaje sin la telemetria); `respuestas` son las filas de `respuestas` (con la misma semantica de siempre:
+ * 0/1 en los tests con clave y el valor ya invertido en los Likert).
+ */
+export function puntuarCrudo(testId: string, items: ItemPuntuable[], respuestas: RespuestaEntrada[], metricasFraude?: unknown): ResultadoCrudo {
+  const calculo = calcularPuntaje(testId, items, respuestas, { valoresInvertidos: false, soloEleccion: true })
+  if (!calculo.ok) return calculo
+  const metricas = TESTS_CON_METRICAS.has(testId) ? sanearMetricasFraude(metricasFraude) : undefined
+  return { ok: true, puntaje: metricas ? { ...calculo.puntaje, metricas_fraude: metricas } : calculo.puntaje, resumen: calculo.puntaje, respuestas: calculo.respuestas }
+}
+
+/** Resumen para mostrar al candidato a partir de un `puntaje_bruto` ya guardado (sin la telemetria). */
+export function resumenDePuntaje(puntajeBruto: unknown): Record<string, unknown> {
+  if (!puntajeBruto || typeof puntajeBruto !== 'object' || Array.isArray(puntajeBruto)) return {}
+  const { metricas_fraude: _omitido, ...resto } = puntajeBruto as Record<string, unknown>
+  return resto
+}
+
+/**
+ * Tests en modo estricto (variable PUNTAJE_ESTRICTO, lista separada por comas de id de test o slug): para ellos el
+ * servidor rechaza el formato viejo y deja de enviar la clave de correccion al navegador.
+ */
+export function testsEstrictos(env: Record<string, string | undefined> = process.env): Set<string> {
+  const ids = new Set<string>()
+  for (const t of String(env.PUNTAJE_ESTRICTO || '').split(',').map(x => x.trim()).filter(Boolean)) {
+    const id = SLUG_TO_ID[t] ?? t
+    if (id in CONFIG) ids.add(id)
+  }
+  return ids
 }
