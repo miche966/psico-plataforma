@@ -115,6 +115,24 @@ const azar = (n: number) => { semilla = (semilla * 1103515245 + 12345) & 0x7ffff
   assert.equal('metricas_fraude' in ok(puntuarCrudo(ID.bigfive, items, resp)).puntaje, false, 'sin telemetria no se inventa')
 }
 
+// ============ ICAR: el universo es el examen que fija el token (items ya filtrados), con desglose por subtipo ============
+{
+  const ICAR = 'f6a7b8c9-d0e1-2345-fabc-456789012345'
+  const sub = ['matrices', 'series', 'rotacion']
+  const items = Array.from({ length: 9 }, (_, i) => it(i + 1, { subtipo: sub[i % 3], opciones: ['A', 'B', 'C', 'D'], respuesta_correcta: 'B', nivel_dificultad: 1 + (i % 3) }))
+  // Acierta los 4 primeros (indice 1 = 'B'), falla 2, deja 3 sin responder (tiempo agotado)
+  const resp = items.map((x, i) => ({ item_id: x.id, opcion: i < 4 ? 1 : i < 6 ? 0 : null }))
+  const r = ok(puntuarCrudo(ICAR, items, resp, { tabSwitches: 1, copyPasteAttempts: 0, timeOutOfFocus: 3, events: [] }))
+  assert.equal(r.puntaje.correctas, 4)
+  assert.equal(r.puntaje.total, 9)
+  assert.equal(r.puntaje.porcentaje, 44)
+  assert.deepEqual(r.puntaje.por_subtipo, { matrices: { correctas: 2, total: 3 }, series: { correctas: 1, total: 3 }, rotacion: { correctas: 1, total: 3 } })
+  assert.deepEqual(r.puntaje.metricas_fraude, { tabSwitches: 1, copyPasteAttempts: 0, timeOutOfFocus: 3, events: [] }, 'ICAR conserva la telemetria saneada')
+  assert.equal('metricas_fraude' in r.resumen, false)
+  // Un item fuera del examen del candidato (por ejemplo uno de otro nivel) se rechaza como ajeno
+  assert.equal(puntuarCrudo(ICAR, items.slice(0, 3), resp.slice(0, 4)).ok, false, 'respuesta a un item que no pertenece al examen')
+}
+
 // ---- resumenDePuntaje: lo que se muestra al candidato de una sesion ya guardada ----
 assert.deepEqual(resumenDePuntaje({ correctas: 3, total: 5, porcentaje: 60, metricas_fraude: { tabSwitches: 1 } }), { correctas: 3, total: 5, porcentaje: 60 })
 for (const malo of [null, undefined, 'x', 5, []]) assert.deepEqual(resumenDePuntaje(malo), {})

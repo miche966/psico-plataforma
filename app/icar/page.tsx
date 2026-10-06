@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { useProctoring } from '@/hooks/useProctoring'
-import { finalizarTest, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
+import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
 
 const ICAR_ID = 'f6a7b8c9-d0e1-2345-fabc-456789012345'
 
@@ -14,7 +14,6 @@ interface Item {
   contenido: string
   opciones: string[]
   factor: string
-  respuesta_correcta: string
   nivel_dificultad: number
   subtipo: string
 }
@@ -78,8 +77,8 @@ function MatrizVisual({ codigo }: { codigo: string }) {
   )
 }
 
-function OpcionMatriz({ texto, seleccionada, correcta, onClick }: {
-  texto: string, seleccionada: boolean, correcta: boolean, onClick: () => void
+function OpcionMatriz({ texto, seleccionada, onClick }: {
+  texto: string, seleccionada: boolean, onClick: () => void
 }) {
   const renderForma = (desc: string) => {
     const d = desc.toLowerCase()
@@ -227,34 +226,19 @@ export default function IcarPage() {
   }, [items, finalizado, avanzar])
 
   async function terminarTest(todasLasRespuestas: Record<string, string>, todosLosItems: Item[]) {
-    let correctas = 0
-    const porSubtipo: Record<string, { correctas: number, total: number }> = {}
-
-    todosLosItems.forEach(item => {
-      if (!porSubtipo[item.subtipo]) porSubtipo[item.subtipo] = { correctas: 0, total: 0 }
-      porSubtipo[item.subtipo].total++
-      if (todasLasRespuestas[item.id] === item.respuesta_correcta) {
-        correctas++
-        porSubtipo[item.subtipo].correctas++
-      }
-    })
-
-    const resultado = {
-      correctas,
-      total: todosLosItems.length,
-      porcentaje: Math.round((correctas / todosLosItems.length) * 100),
-      por_subtipo: porSubtipo,
-      nivel_maximo: nivelMax,
-      metricas_fraude: metricasFraude
-    }
-
     if (!sesionIdActual || !candidatoId || !procesoId) return
     setErrorGuardado(null)
     const token = searchParams.get('token') || ''
-    const resultadoGuardado = await finalizarTest({
-      candidatoId, procesoId, token, testId: ICAR_ID, sesionId: sesionIdActual,
-      puntajeBruto: resultado,
-      respuestas: todosLosItems.map(item => ({ item_id: item.id, valor: todasLasRespuestas[item.id] === item.respuesta_correcta ? 1 : 0, tiempo_respuesta: 0 })),
+    // El navegador solo informa lo que el candidato eligio (indice de la opcion; null si se agoto el tiempo) y la telemetria:
+    // el puntaje lo calcula el servidor. El nivel maximo y la rotacion los fija el token firmado; los de la URL solo se informan
+    // para los enlaces emitidos antes de esa firma.
+    const resultadoGuardado = await finalizarTestCrudo({
+      candidatoId, procesoId, token, testId: ICAR_ID, sesionId: sesionIdActual, metricasFraude,
+      configIcar: { nivelMax, sinRotacion },
+      respuestas: todosLosItems.map(item => {
+        const indice = item.opciones.indexOf(todasLasRespuestas[item.id])
+        return { item_id: item.id, opcion: indice >= 0 ? indice : null }
+      }),
     })
     if (resultadoGuardado.ok) setFinalizado(true)
     else setErrorGuardado(resultadoGuardado.error)
@@ -364,7 +348,6 @@ export default function IcarPage() {
                 key={index}
                 texto={opcion}
                 seleccionada={seleccionada === opcion}
-                correcta={opcion === item.respuesta_correcta}
                 onClick={() => { if (!seleccionada) responder(opcion) }}
               />
             ))}

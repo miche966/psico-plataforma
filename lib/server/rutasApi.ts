@@ -27,7 +27,7 @@ export const RUTAS_API_PUBLICAS: Record<string, RutaPublica> = {
   '/api/unirse': { metodos: ['GET', 'POST'], mecanismo: 'POST: Cloudflare Turnstile verificado en el servidor + limite de intentos; GET: lista publica a proposito de las busquedas activas (id, nombre, cargo)', marcador: 'verificarTurnstile' },
   '/api/csp-report': { metodos: ['POST'], mecanismo: 'informes de violacion de CSP que mandan los navegadores sin sesion: solo se escribe una linea de log sanitizada (sin datos personales), con limite por IP y tamano acotado', marcador: 'rlCsp' },
   '/api/evaluacion-access': { metodos: ['POST'], mecanismo: 'token HMAC del enlace del candidato', marcador: 'validarTokenEvaluacion' },
-  '/api/evaluacion/public-data': { metodos: ['GET', 'POST'], mecanismo: 'token HMAC del enlace del candidato', marcador: 'validarTokenEvaluacion' },
+  '/api/evaluacion/public-data': { metodos: ['GET', 'POST'], mecanismo: 'token HMAC del enlace del candidato (leerTokenEvaluacion: valida la firma y devuelve lo firmado, p. ej. la configuracion de ICAR)', marcador: 'leerTokenEvaluacion' },
   '/api/entrevista-video/candidato': { metodos: ['GET', 'POST'], mecanismo: 'token HMAC del enlace del candidato', marcador: 'validarTokenEvaluacion' },
   '/api/r2-presigned': { metodos: ['POST'], mecanismo: 'token HMAC del enlace del candidato', marcador: 'validarTokenEvaluacion' },
   '/api/supabase-presigned': { metodos: ['POST'], mecanismo: 'token HMAC del enlace del candidato', marcador: 'validarTokenEvaluacion' },

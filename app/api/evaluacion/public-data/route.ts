@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { validarTokenEvaluacion } from '@/lib/server/evaluacionToken'
+import { leerTokenEvaluacion } from '@/lib/server/evaluacionToken'
+import { itemsDelExamenIcar, resolverConfigIcar } from '@/lib/server/icarConfig'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { z, validar, lenient } from '@/lib/server/validacion'
 import { compararPuntajeEnSombra } from '@/lib/server/puntajeSombra'
@@ -18,6 +19,9 @@ const sesionIdOVacio = (v: unknown): string => (z.guid().safeParse(v).success ? 
 // modo estricto (PUNTAJE_ESTRICTO) para ese test.
 const finalizarSchema = z.object({
   formato: z.enum(['crudo']).optional(),
+  // ICAR: lo que el navegador dice haber visto (nivel maximo y rotacion de su URL). Solo se tiene en cuenta mientras ICAR no este en modo estricto y el token no fije la configuracion.
+  nivel_max: lenient(v => (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 10 ? v : undefined)),
+  sin_rotacion: lenient(v => (v === true ? true : undefined)),
   respuestas: z.array(z.object({
     item_id: z.guid('Una respuesta tiene un identificador de ítem inválido.'),
     valor: lenient(v => (typeof v === 'number' || (typeof v === 'string' && v.trim() !== '')) && Number.isInteger(Number(v)) ? Number(v) : undefined),
@@ -58,7 +62,8 @@ function idsFrom(request: Request, body?: any) {
 
 async function validarContexto(request: Request, body?: any) {
   const ids = idsFrom(request, body)
-  if (!ids.candidatoId || !ids.procesoId || !ids.token || !TEST_IDS.has(ids.testId) || !validarTokenEvaluacion(ids.token, ids.candidatoId, ids.procesoId)) return { error: NextResponse.json({ error: 'Enlace de evaluación inválido o vencido' }, { status: 401 }) }
+  let datosToken: ReturnType<typeof leerTokenEvaluacion> = null
+  if (!ids.candidatoId || !ids.procesoId || !ids.token || !TEST_IDS.has(ids.testId) || !(datosToken = leerTokenEvaluacion(ids.token, ids.candidatoId, ids.procesoId))) return { error: NextResponse.json({ error: 'Enlace de evaluación inválido o vencido' }, { status: 401 }) }
   const db = createSupabaseAdmin()
   const [{ data: candidato, error: candidatoError }, { data: proceso, error: procesoError }, { data: vinculo, error: vinculoError }] = await Promise.all([
     db.from('candidatos').select('id, nombre, apellido').eq('id', ids.candidatoId).maybeSingle(),
@@ -67,7 +72,7 @@ async function validarContexto(request: Request, body?: any) {
   ])
   if (candidatoError || procesoError || vinculoError) throw candidatoError || procesoError || vinculoError
   if (!candidato || !proceso || !vinculo) return { error: NextResponse.json({ error: 'Candidato o proceso no encontrado' }, { status: 404 }) }
-  return { ids, candidato, proceso, db, testId: ids.testId }
+  return { ids, candidato, proceso, db, testId: ids.testId, datosToken: datosToken ?? {} }
 }
 
 const ICAR_ID = 'f6a7b8c9-d0e1-2345-fabc-456789012345'
@@ -76,16 +81,17 @@ export async function GET(request: Request) {
   try {
     const contexto = await validarContexto(request)
     if ('error' in contexto) return contexto.error
-    const { db, candidato, proceso, testId } = contexto
+    const { db, candidato, proceso, testId, datosToken } = contexto
     // En modo estricto (PUNTAJE_ESTRICTO) el servidor corrige: la clave de correccion y los flags de inversion ya no viajan al navegador
     const columnas = testsEstrictos().has(testId) ? 'id, orden, contenido, opciones, factor, nivel_dificultad, subtipo' : 'id, orden, contenido, opciones, factor, inverso, respuesta_correcta, nivel_dificultad, subtipo'
     // SJT Cobranzas no tiene items propios: usa el banco de Tolerancia (igual que finalize)
     let query = db.from('items').select(columnas).eq('test_id', bancoDeItems(testId))
     if (testId === ICAR_ID) {
       const url = new URL(request.url)
-      const nivelMax = Number(url.searchParams.get('nivel_max')) || 3
-      query = query.lte('nivel_dificultad', nivelMax)
-      if (url.searchParams.get('sin_rotacion') === '1') query = query.neq('subtipo', 'rotacion')
+      // Nivel maximo y rotacion: manda el token firmado; la URL solo vale mientras ICAR no este en modo estricto (enlaces ya emitidos)
+      const cfg = resolverConfigIcar({ token: datosToken.icar, estricto: testsEstrictos().has(ICAR_ID), max: url.searchParams.get('nivel_max'), sinRotacion: url.searchParams.get('sin_rotacion') })
+      query = query.lte('nivel_dificultad', cfg.max)
+      if (cfg.sinRotacion) query = query.neq('subtipo', 'rotacion')
       query = query.order('subtipo').order('nivel_dificultad').order('orden')
     } else {
       query = query.order('orden')
@@ -104,7 +110,7 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}))
     const contexto = await validarContexto(request, body)
     if ('error' in contexto) return contexto.error
-    const { db, ids, testId } = contexto
+    const { db, ids, testId, datosToken } = contexto
     const action = String(body.action || '')
     if (action === 'start') {
       const requestedId = sesionIdOVacio(body.sesion_id)
@@ -151,8 +157,7 @@ export async function POST(request: Request) {
       if (!entrada.ok) return entrada.response
       const { respuestas, puntaje_bruto: puntaje } = entrada.data
       if (entrada.data.formato === 'crudo') {
-        // ICAR queda para su fase: su universo de items depende del nivel maximo y de la rotacion, que hoy viajan en la URL sin firma
-        if (!esPuntuable(testId) || esIcar(testId)) return NextResponse.json({ error: 'Este test todavía no admite ese formato.' }, { status: 400 })
+        if (!esPuntuable(testId)) return NextResponse.json({ error: 'Este test todavía no admite ese formato.' }, { status: 400 })
       } else {
         // Protocolo anterior: cada respuesta trae el valor que calculo el navegador. En modo estricto ya no se acepta.
         if (testsEstrictos().has(testId)) return NextResponse.json({ error: 'Esta evaluación se actualizó. Recargá la página para continuar.', recargar: true }, { status: 400 })
@@ -183,10 +188,18 @@ export async function POST(request: Request) {
         // El servidor decide el puntaje: lo que el navegador mande como `puntaje_bruto` se IGNORA (salvo la telemetria saneada)
         const { data: bancoItems, error: bancoError } = await db.from('items').select('id, factor, inverso, respuesta_correcta, opciones, subtipo, nivel_dificultad').eq('test_id', bancoDeItems(testId))
         if (bancoError) throw bancoError
-        const calculo = puntuarCrudo(testId, (bancoItems || []) as ItemPuntuable[], respuestas, (puntaje as Record<string, unknown>).metricas_fraude)
+        let universo = (bancoItems || []) as ItemPuntuable[]
+        let extras: Record<string, unknown> = {}
+        if (esIcar(testId)) {
+          // El examen que debia responder el candidato lo fija el token firmado (nivel maximo y rotacion), no el navegador
+          const cfg = resolverConfigIcar({ token: datosToken.icar, estricto: testsEstrictos().has(testId), max: entrada.data.nivel_max, sinRotacion: entrada.data.sin_rotacion })
+          universo = itemsDelExamenIcar(universo, cfg)
+          extras = { nivel_maximo: cfg.max }
+        }
+        const calculo = puntuarCrudo(testId, universo, respuestas, (puntaje as Record<string, unknown>).metricas_fraude)
         if (!calculo.ok) return NextResponse.json({ error: calculo.error }, { status: 400 })
-        puntajeAGuardar = calculo.puntaje
-        resumen = calculo.resumen
+        puntajeAGuardar = { ...calculo.puntaje, ...extras }
+        resumen = { ...calculo.resumen, ...extras }
         respuestasAGuardar = calculo.respuestas.map(r => ({ ...r, tiempo_respuesta: 0 }))
       } else {
         // Protocolo anterior: lo que se guarda sigue siendo lo del navegador; el servidor recalcula y compara en silencio

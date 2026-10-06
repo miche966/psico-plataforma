@@ -67,6 +67,8 @@ export async function finalizarTestCrudo(params: {
   sesionId?: string
   respuestas: RespuestaCruda[]
   metricasFraude?: unknown
+  /** ICAR: nivel maximo y rotacion de la URL. El servidor solo los tiene en cuenta si el token no los fija (enlaces ya emitidos). */
+  configIcar?: { nivelMax: number; sinRotacion: boolean }
   intentos?: number
 }): Promise<ResultadoFinalizarTestCrudo> {
   const intentos = params.intentos ?? 3
@@ -85,6 +87,7 @@ export async function finalizarTestCrudo(params: {
           token: params.token,
           test_id: params.testId,
           sesion_id: params.sesionId,
+          ...(params.configIcar ? { nivel_max: params.configIcar.nivelMax, sin_rotacion: params.configIcar.sinRotacion || undefined } : {}),
           puntaje_bruto: params.metricasFraude ? { metricas_fraude: params.metricasFraude } : {},
           respuestas: params.respuestas.map(r => ({ ...r, tiempo_respuesta: 0 })),
         }),

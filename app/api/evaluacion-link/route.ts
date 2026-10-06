@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { generarTokenEvaluacion } from '@/lib/server/evaluacionToken'
+import { configIcarDeRuta } from '@/lib/server/icarConfig'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 
 export async function POST(req: Request) {
@@ -21,7 +22,8 @@ export async function POST(req: Request) {
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(req.url).origin
-    const token = generarTokenEvaluacion(candidatoId, procesoId)
+    // El nivel maximo y la rotacion de ICAR (?max= y ?norot= de la ruta) se firman dentro del token: el candidato no puede cambiarlos
+    const token = generarTokenEvaluacion(candidatoId, procesoId, undefined, { icar: configIcarDeRuta(ruta) })
     const separador = ruta.includes('?') ? '&' : '?'
     const evaluacionParam = ruta === '/evaluacion' ? '' : '&evaluacion=1'
     const link = `${baseUrl.replace(/\/$/, '')}${ruta}${separador}candidato=${encodeURIComponent(candidatoId)}&proceso=${encodeURIComponent(procesoId)}&token=${encodeURIComponent(token)}${evaluacionParam}`

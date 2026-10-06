@@ -79,3 +79,12 @@ firmarlo en el token en la Etapa 3) y los tests sin puntaje (Frases, Role Play).
   `useProctoring`; el servidor calcula (DASS: suma por subescala x 2; Big Five: inversión y medias, 0 si un factor no tiene ítems) y guarda
   `metricas_fraude` **saneada** (`lib/server/metricasFraude.ts`: solo los números y tipos de evento conocidos, hasta 200 eventos). La
   telemetría sigue siendo un dato informado por el navegador (el servidor no puede recalcularla); la pantalla de fin no la recibe.
+- **Fase F (2026-10-06)**: ICAR en formato crudo. El nivel máximo y la rotación (`?max=` y `?norot=`), que antes viajaban en la URL sin
+  firma, ahora van **firmados dentro del token** (`icar: { max, norot }` en `lib/server/evaluacionToken.ts`; `/api/evaluacion-link` los toma
+  de la ruta `/icar?max=2&norot=1` que ya arma el panel, sin cambios en pantalla). El servidor arma el examen con esa configuración
+  (`lib/server/icarConfig.ts`), usa el mismo filtro en el GET y en `finalize`, calcula `correctas/total/porcentaje/por_subtipo`, agrega
+  `nivel_maximo` y guarda la telemetría saneada. Un token que no la fija (batería de `/evaluacion`, enlaces anteriores) cae a esto:
+  en transición vale la URL, como siempre (los enlaces ya emitidos duran 30 días); con `icar` en `PUNTAJE_ESTRICTO` la URL se ignora y
+  vale el examen completo (nivel 3 con rotación). Cambiar a mano la configuración del token invalida la firma. **Antes de activar el
+  estricto de ICAR**: un enlace con `?max=1` emitido antes de esta fase pasaría a nivel 3; conviene activarlo cuando no queden enlaces
+  ICAR anteriores en uso (30 días de vigencia como máximo) o aceptar ese cambio.
