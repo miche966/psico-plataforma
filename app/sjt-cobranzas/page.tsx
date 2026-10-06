@@ -3,9 +3,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
-import { finalizarTest, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
+import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
 
-const TEST_ID = 'c3d4e5f6-a7b8-9012-cdef-333333333333'
+const TEST_ID = 'e9b2c3d4-f5a6-7890-bcde-999999999999'
 
 interface Item {
   id: string
@@ -13,7 +13,6 @@ interface Item {
   contenido: string
   opciones: string[]
   factor: string
-  respuesta_correcta: string
 }
 
 export default function SjtCobranzasPage() {
@@ -79,24 +78,16 @@ export default function SjtCobranzasPage() {
   }, [items, finalizado, avanzar])
 
   async function terminarTest(todasLasRespuestas: Record<string, string>, todosLosItems: Item[]) {
-    let correctas = 0
-    const porFactor: Record<string, { correctas: number, total: number }> = {}
-    todosLosItems.forEach(item => {
-      if (!porFactor[item.factor]) porFactor[item.factor] = { correctas: 0, total: 0 }
-      porFactor[item.factor].total++
-      if (todasLasRespuestas[item.id] === item.respuesta_correcta) {
-        correctas++
-        porFactor[item.factor].correctas++
-      }
-    })
-    const resultado = { correctas, total: todosLosItems.length, porcentaje: Math.round((correctas / todosLosItems.length) * 100), por_factor: porFactor }
     if (!candidatoId || !procesoId) return
     setErrorGuardado(null)
     const token = searchParams.get('token') || ''
-    const resultadoGuardado = await finalizarTest({
+    // El navegador solo informa lo que el candidato eligio (indice de la opcion; null si se agoto el tiempo): el puntaje lo calcula el servidor
+    const resultadoGuardado = await finalizarTestCrudo({
       candidatoId, procesoId, token, testId: TEST_ID,
-      puntajeBruto: resultado,
-      respuestas: todosLosItems.map(item => ({ item_id: item.id, valor: todasLasRespuestas[item.id] === item.respuesta_correcta ? 1 : 0, tiempo_respuesta: 0 })),
+      respuestas: todosLosItems.map(item => {
+        const indice = item.opciones.indexOf(todasLasRespuestas[item.id])
+        return { item_id: item.id, opcion: indice >= 0 ? indice : null }
+      }),
     })
     if (resultadoGuardado.ok) setFinalizado(true)
     else setErrorGuardado(resultadoGuardado.error)

@@ -79,7 +79,8 @@ export async function GET(request: Request) {
     const { db, candidato, proceso, testId } = contexto
     // En modo estricto (PUNTAJE_ESTRICTO) el servidor corrige: la clave de correccion y los flags de inversion ya no viajan al navegador
     const columnas = testsEstrictos().has(testId) ? 'id, orden, contenido, opciones, factor, nivel_dificultad, subtipo' : 'id, orden, contenido, opciones, factor, inverso, respuesta_correcta, nivel_dificultad, subtipo'
-    let query = db.from('items').select(columnas).eq('test_id', testId)
+    // SJT Cobranzas no tiene items propios: usa el banco de Tolerancia (igual que finalize)
+    let query = db.from('items').select(columnas).eq('test_id', bancoDeItems(testId))
     if (testId === ICAR_ID) {
       const url = new URL(request.url)
       const nivelMax = Number(url.searchParams.get('nivel_max')) || 3

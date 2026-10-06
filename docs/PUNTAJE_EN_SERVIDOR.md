@@ -63,3 +63,11 @@ firmarlo en el token en la Etapa 3) y los tests sin puntaje (Frases, Role Play).
   servidor rechace el protocolo anterior (400, "recargá la página") y que el GET deje de enviar `respuesta_correcta` e `inverso`.
 - Las pantallas siguen usando el protocolo anterior hasta que se migre cada grupo (B: Verbal y Numérico; C: Atención al detalle,
   Tolerancia y SJT; D: Likert y Estrés; E: DASS-21 y Big Five; F: ICAR). El estricto se activa horas después de desplegar cada grupo.
+- **Fase B (2026-10-06, 58cd90a)**: Verbal y Numérico mandan solo la opción elegida (`finalizarTestCrudo` en `lib/finalizarTest.ts`) y la
+  pantalla de fin usa el `resumen` del servidor. Nota: la pantalla de fin de Numérico nunca mostró el nivel (la variable `nivel` no se usa).
+- **Fase C (2026-10-06)**: Atención al detalle, Tolerancia a la frustración y los 6 SJT (atención, cobranzas, comercial, legal, problemas,
+  ventas) pasan al formato crudo; las 8 páginas pierden `respuesta_correcta` y todo el cálculo local. **SJT Cobranzas estaba roto desde
+  la consolidación de agosto (7a18d01)**: la página pedía los ítems con el id `c3d4…3333`, que no tiene ítems ni sesiones; la última
+  sesión guardada es del 29/07 y ningún proceso lo usa hoy. Ahora usa el id del catálogo (`e9b2…9999`) y el GET lee los ítems con
+  `bancoDeItems()` (los del banco de Tolerancia), igual que `finalize`. El id `c3d4…3333` sigue en la lista de ids aceptados de la ruta
+  (inofensivo; sin datos).
