@@ -53,5 +53,55 @@ export async function finalizarTest(params: {
   return { ok: false, error: ultimoError }
 }
 
+// Formato crudo (etapa 3 de docs/PUNTAJE_EN_SERVIDOR.md): el navegador manda SOLO lo que el candidato eligio y el servidor
+// calcula el puntaje. `opcion` es el indice de la opcion elegida (null si se agoto el tiempo); en los Likert, `valor` es el
+// valor crudo (sin invertir). `resumen` es lo que el servidor calculo, para mostrarlo en la pantalla de fin.
+export type RespuestaCruda = { item_id: string; opcion?: number | null; valor?: number }
+export type ResultadoFinalizarTestCrudo = { ok: true; resumen: Record<string, unknown> } | { ok: false; error: string }
+
+export async function finalizarTestCrudo(params: {
+  candidatoId: string | null | undefined
+  procesoId: string | null | undefined
+  token: string
+  testId: string
+  sesionId?: string
+  respuestas: RespuestaCruda[]
+  metricasFraude?: unknown
+  intentos?: number
+}): Promise<ResultadoFinalizarTestCrudo> {
+  const intentos = params.intentos ?? 3
+  let ultimoError = 'No se pudo guardar la evaluación.'
+
+  for (let intento = 0; intento < intentos; intento++) {
+    try {
+      const response = await fetch('/api/evaluacion/public-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'finalize',
+          formato: 'crudo',
+          candidato_id: params.candidatoId,
+          proceso_id: params.procesoId,
+          token: params.token,
+          test_id: params.testId,
+          sesion_id: params.sesionId,
+          puntaje_bruto: params.metricasFraude ? { metricas_fraude: params.metricasFraude } : {},
+          respuestas: params.respuestas.map(r => ({ ...r, tiempo_respuesta: 0 })),
+        }),
+      })
+      const payload = await response.json().catch(() => ({}))
+      // Si la sesion ya estaba finalizada (un intento anterior si llego a guardarse) el servidor devuelve igual el resumen
+      if (response.ok || payload.alreadyCompleted) return { ok: true, resumen: payload.resumen || {} }
+      ultimoError = payload.error || ultimoError
+      if (response.status === 400) break // pedido invalido: reintentar no lo arregla
+    } catch (err: any) {
+      ultimoError = err?.message || 'Error de conexión al guardar la evaluación.'
+    }
+    if (intento < intentos - 1) await new Promise(r => setTimeout(r, 1000 * (intento + 1)))
+  }
+
+  return { ok: false, error: ultimoError }
+}
+
 export const MENSAJE_ERROR_GUARDADO =
   'No pudimos guardar tus respuestas por un problema de conexión. No cierres esta ventana — presioná "Reintentar".'

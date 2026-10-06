@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { useProctoring } from '@/hooks/useProctoring'
-import { finalizarTest, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
+import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
 
 const TEST_ID = 'd4e5f6a7-b8c9-0123-defa-234567890123'
 
@@ -14,7 +14,6 @@ interface Item {
   contenido: string
   opciones: string[]
   factor: string
-  respuesta_correcta: string
 }
 
 export default function VerbalPage() {
@@ -87,29 +86,21 @@ export default function VerbalPage() {
   }, [items, finalizado, avanzar])
 
   async function terminarTest(todasLasRespuestas: Record<string, string>, todosLosItems: Item[]) {
-    let correctas = 0
-    todosLosItems.forEach(item => {
-      if (todasLasRespuestas[item.id] === item.respuesta_correcta) correctas++
-    })
-
-    setPuntaje({ correctas, total: todosLosItems.length })
-
-    const resultado = {
-      correctas,
-      total: todosLosItems.length,
-      porcentaje: Math.round((correctas / todosLosItems.length) * 100)
-    }
-
     if (!candidatoId || !procesoId) return
     setErrorGuardado(null)
     const token = searchParams.get('token') || ''
-    const resultadoGuardado = await finalizarTest({
+    // El navegador solo informa lo que el candidato eligio (indice de la opcion; null si se agoto el tiempo): el puntaje lo calcula el servidor
+    const resultadoGuardado = await finalizarTestCrudo({
       candidatoId, procesoId, token, testId: TEST_ID,
-      puntajeBruto: resultado,
-      respuestas: todosLosItems.map(item => ({ item_id: item.id, valor: todasLasRespuestas[item.id] === item.respuesta_correcta ? 1 : 0, tiempo_respuesta: 0 })),
+      respuestas: todosLosItems.map(item => {
+        const indice = item.opciones.indexOf(todasLasRespuestas[item.id])
+        return { item_id: item.id, opcion: indice >= 0 ? indice : null }
+      }),
     })
-    if (resultadoGuardado.ok) setFinalizado(true)
-    else setErrorGuardado(resultadoGuardado.error)
+    if (resultadoGuardado.ok) {
+      setPuntaje({ correctas: Number(resultadoGuardado.resumen.correctas) || 0, total: Number(resultadoGuardado.resumen.total) || todosLosItems.length })
+      setFinalizado(true)
+    } else setErrorGuardado(resultadoGuardado.error)
   }
 
   function responder(opcion: string) {
