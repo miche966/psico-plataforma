@@ -75,3 +75,7 @@ firmarlo en el token en la Etapa 3) y los tests sin puntaje (Frases, Role Play).
   sin invertir) y el servidor invierte los ítems inversos (según `items.inverso`, que en modo estricto ya no viaja al navegador), calcula
   las medias por factor, `promedio_general` y `nivel_estres`. Se conserva el comportamiento con factores vacíos (Iniciativa guarda 0, el resto
   null). `respuestas.valor` sigue guardando el valor ya invertido, como en todo el histórico. Esas pantallas no muestran resultados al candidato.
+- **Fase E (2026-10-06)**: DASS-21 y Big Five (`app/dass21`, `app/test`) mandan el valor crudo (0 a 3 / 1 a 5) y la telemetría del hook
+  `useProctoring`; el servidor calcula (DASS: suma por subescala x 2; Big Five: inversión y medias, 0 si un factor no tiene ítems) y guarda
+  `metricas_fraude` **saneada** (`lib/server/metricasFraude.ts`: solo los números y tipos de evento conocidos, hasta 200 eventos). La
+  telemetría sigue siendo un dato informado por el navegador (el servidor no puede recalcularla); la pantalla de fin no la recibe.

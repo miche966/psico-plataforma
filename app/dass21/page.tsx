@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { useProctoring } from '@/hooks/useProctoring'
-import { finalizarTest, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
+import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
 
 interface Item {
   id: string
@@ -84,28 +84,13 @@ export default function Dass21Page() {
   }
 
   async function terminarTest(todasLasRespuestas: Respuesta[]) {
-    // Cálculo DASS-21: Suma de cada factor * 2
-    const factoresSum: Record<string, number> = { depresion: 0, ansiedad: 0, estres: 0 }
-    
-    todasLasRespuestas.forEach(r => {
-      if (factoresSum[r.factor] !== undefined) {
-        factoresSum[r.factor] += r.valor
-      }
-    })
-
-    const resultadoFinal: Record<string, number> = {
-      depresion: factoresSum.depresion * 2,
-      ansiedad: factoresSum.ansiedad * 2,
-      estres: factoresSum.estres * 2
-    }
-
     if (!candidatoId || !procesoId) return
     setErrorGuardado(null)
     const token = searchParams.get('token') || ''
-    const resultadoGuardado = await finalizarTest({
-      candidatoId, procesoId, token, testId: DASS21_TEST_ID,
-      puntajeBruto: { ...resultadoFinal, metricas_fraude: metricasFraude },
-      respuestas: todasLasRespuestas.map(r => ({ ...r, tiempo_respuesta: 0 })),
+    // El navegador solo informa el valor elegido (0 a 3) y la telemetria: el servidor suma por subescala y multiplica por 2
+    const resultadoGuardado = await finalizarTestCrudo({
+      candidatoId, procesoId, token, testId: DASS21_TEST_ID, metricasFraude,
+      respuestas: todasLasRespuestas.map(r => ({ item_id: r.item_id, valor: r.valor })),
     })
     if (resultadoGuardado.ok) setFinalizado(true)
     else setErrorGuardado(resultadoGuardado.error)

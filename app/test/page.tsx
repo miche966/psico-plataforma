@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { useProctoring } from '@/hooks/useProctoring'
-import { finalizarTest, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
+import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
 
 interface Item {
   id: string
@@ -12,14 +12,12 @@ interface Item {
   contenido: string
   opciones: string[]
   factor: string
-  inverso: boolean
 }
 
 interface Respuesta {
   item_id: string
   valor: number
   factor: string
-  inverso: boolean
 }
 
 export default function TestPage() {
@@ -41,7 +39,6 @@ export default function TestPage() {
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null)
   const enEvaluacion = useEvaluacionRedirect(finalizado)
   const [sesionIdActual, setSesionIdActual] = useState<string | null>(null)
-  const [resultado, setResultado] = useState<Record<string, number>>({})
   const BIG_FIVE_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
 
   useEffect(() => {
@@ -101,8 +98,7 @@ export default function TestPage() {
 
   function responder(valor: number) {
     const item = items[itemActual]
-    const valorFinal = item.inverso ? 6 - valor : valor
-    const nuevaRespuesta: Respuesta = { item_id: item.id, valor: valorFinal, factor: item.factor, inverso: item.inverso }
+    const nuevaRespuesta: Respuesta = { item_id: item.id, valor, factor: item.factor }
     const nuevasRespuestas = [...respuestas, nuevaRespuesta]
     setRespuestas(nuevasRespuestas)
 
@@ -114,33 +110,13 @@ export default function TestPage() {
   }
 
   async function calcularResultado(todasLasRespuestas: Respuesta[]) {
-    const factoresData: Record<string, number[]> = {
-      extraversion: [], amabilidad: [], responsabilidad: [], neuroticismo: [], apertura: []
-    }
-
-    todasLasRespuestas.forEach(r => {
-      if (factoresData[r.factor]) factoresData[r.factor].push(r.valor)
-    })
-
-    const promedios: Record<string, number> = {}
-    Object.entries(factoresData).forEach(([factor, valores]) => {
-      if (valores.length > 0) {
-        const suma = valores.reduce((a, b) => a + b, 0)
-        promedios[factor] = Math.round((suma / valores.length) * 10) / 10
-      } else {
-        promedios[factor] = 0
-      }
-    })
-
-    setResultado(promedios)
-
     if (sesionIdActual && candidatoId && procesoId) {
       setErrorGuardado(null)
       const token = searchParams.get('token') || ''
-      const resultadoGuardado = await finalizarTest({
-        candidatoId, procesoId, token, testId: BIG_FIVE_ID, sesionId: sesionIdActual,
-        puntajeBruto: { ...promedios, metricas_fraude: metricasFraude },
-        respuestas: todasLasRespuestas.map(r => ({ ...r, tiempo_respuesta: 0 })),
+      // El navegador solo informa el valor elegido (1 a 5, sin invertir) y la telemetria: el servidor invierte los items inversos y promedia
+      const resultadoGuardado = await finalizarTestCrudo({
+        candidatoId, procesoId, token, testId: BIG_FIVE_ID, sesionId: sesionIdActual, metricasFraude,
+        respuestas: todasLasRespuestas.map(r => ({ item_id: r.item_id, valor: r.valor })),
       })
       if (resultadoGuardado.ok) setFinalizado(true)
       else setErrorGuardado(resultadoGuardado.error)
