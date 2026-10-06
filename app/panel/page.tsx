@@ -288,7 +288,11 @@ export default function PanelEvaluador() {
     // vinculado al mismo candidato.
     const entrevistaKey = (c.bateria_tests || []).find((k: string) => k.startsWith('entrevista:'))
     const entrevistaId = entrevistaKey ? entrevistaKey.replace('entrevista:', '') : null
-    setVideosCandidato(entrevistaId ? todosLosVideos.filter(v => v.entrevista_id === entrevistaId) : [])
+    // Primero los de la entrevista de ESTE proceso. Los de otras entrevistas del mismo candidato (de otro proceso, o de una
+    // entrevista que ya no esta en la bateria) antes se escondian; ahora se muestran despues, rotulados con su entrevista.
+    const delProceso = entrevistaId ? todosLosVideos.filter(v => v.entrevista_id === entrevistaId) : []
+    const deOtras = todosLosVideos.filter(v => !entrevistaId || v.entrevista_id !== entrevistaId).map(v => ({ ...v, deOtraEntrevista: true }))
+    setVideosCandidato([...delProceso, ...deOtras])
   }
 
   // Las URLs de los videos son firmadas y vencen (2 h): si un video falla se piden de nuevo, una vez por
@@ -1291,6 +1295,11 @@ export default function PanelEvaluador() {
                       <div className="space-y-4">
                         {videosCandidato.map((v, i) => (
                           <div key={i} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                            {v.deOtraEntrevista && (
+                              <p className="mb-2 inline-block rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                                Otra entrevista: {v.entrevista_nombre || 'sin nombre'}
+                              </p>
+                            )}
                             <h5 className="text-sm font-bold text-slate-800 mb-3">Pregunta {i + 1}: {v.preguntas_video?.pregunta || 'Presentación y Evaluación Competencial de Entrada'}</h5>
                             <video
                               id={`video-entrevista-${i}`}

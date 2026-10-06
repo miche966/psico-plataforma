@@ -60,6 +60,17 @@ export async function GET(req: Request) {
       vids = vids.filter(v => candidatosPermitidos.has(v.candidato_id) && entrevistasPermitidas.has(v.entrevista_id))
     }
 
+    // Nombre de la entrevista de cada video: el panel muestra tambien los videos de otras entrevistas del candidato y los rotula
+    if (vids && vids.length > 0) {
+      const entrevistaIds = Array.from(new Set(vids.map(x => x.entrevista_id).filter(Boolean)))
+      if (entrevistaIds.length > 0) {
+        const { data: entrevistasData, error: entrevistasError } = await db.from('entrevistas_video').select('id, nombre').in('id', entrevistaIds)
+        if (entrevistasError) throw entrevistasError
+        const nombres = new Map((entrevistasData || []).map(e => [e.id, e.nombre]))
+        vids.forEach(v => { v.entrevista_nombre = nombres.get(v.entrevista_id) || null })
+      }
+    }
+
     const ordenMap = new Map<string, number>()
     if (vids && vids.length > 0) {
       const pregIds = Array.from(new Set(vids.map(x => x.pregunta_id).filter(Boolean)))
