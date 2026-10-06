@@ -119,8 +119,8 @@ export default function AccesosPage() {
         </h2>
 
         <div className="mb-4">
-          <label className="block text-xs font-medium text-slate-600 mb-1">Email</label>
-          <input
+          <label htmlFor="acceso-email" className="block text-xs font-medium text-slate-600 mb-1">Email</label>
+          <input id="acceso-email"
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}

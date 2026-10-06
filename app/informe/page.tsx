@@ -1005,7 +1005,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       <span style={{ ...s.factLvl, color: clr }}>{Number(normVal.toFixed(1))}/5</span>
                     </div>
                     <div style={s.barBg}><div style={{ ...s.barFill, width: `${(normVal / 5) * 100}%`, background: clr }} /></div>
-                    <textarea style={s.taFact} rows={4} value={textoInterpretacion(fk, factor, descSugerida)} onChange={(e) => updFactor(fk, e.target.value)} />
+                    <textarea aria-label={`Interpretación de ${ETQ[factor.toLowerCase()] || factor}`} style={s.taFact} rows={4} value={textoInterpretacion(fk, factor, descSugerida)} onChange={(e) => updFactor(fk, e.target.value)} />
                   </div>
                 )
               })}
@@ -1023,27 +1023,27 @@ PsicoPlataforma - Gestión Inteligente de Talento
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
               <div style={{ background: '#f5f3ff', padding: '1rem', borderRadius: '16px', border: '1px solid #ddd6fe', textAlign: 'center' }}>
                 <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#7c3aed', textTransform: 'uppercase', marginBottom: '0.4rem' }}>{labelLiderazgo}</div>
-                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#7c3aed', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.liderazgo} onChange={e => upd('liderazgo', Number(e.target.value))} />
+                <input aria-label={labelLiderazgo} type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#7c3aed', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.liderazgo} onChange={e => upd('liderazgo', Number(e.target.value))} />
                 <div style={{ fontSize: '0.6rem', color: '#9333ea', marginTop: '2px' }}>{descLiderazgo}</div>
               </div>
               <div style={{ background: '#fff7ed', padding: '1rem', borderRadius: '16px', border: '1px solid #ffedd5', textAlign: 'center' }}>
                 <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#ea580c', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Adaptabilidad</div>
-                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#ea580c', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.adaptabilidad} onChange={e => upd('adaptabilidad', Number(e.target.value))} />
+                <input aria-label="Adaptabilidad" type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#ea580c', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.adaptabilidad} onChange={e => upd('adaptabilidad', Number(e.target.value))} />
                 <div style={{ fontSize: '0.6rem', color: '#c2410c', marginTop: '2px' }}>Flexibilidad al Cambio</div>
               </div>
               <div style={{ background: '#fef2f2', padding: '1rem', borderRadius: '16px', border: '1px solid #fee2e2', textAlign: 'center' }}>
                 <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#dc2626', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Resiliencia</div>
-                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#dc2626', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.resiliencia} onChange={e => upd('resiliencia', Number(e.target.value))} />
+                <input aria-label="Resiliencia" type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#dc2626', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.resiliencia} onChange={e => upd('resiliencia', Number(e.target.value))} />
                 <div style={{ fontSize: '0.6rem', color: '#b91c1c', marginTop: '2px' }}>Tolerancia a la Presión</div>
               </div>
               <div style={{ background: '#ecfdf5', padding: '1rem', borderRadius: '16px', border: '1px solid #d1fae5', textAlign: 'center' }}>
                 <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#059669', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Colaboración</div>
-                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#059669', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.colaboracion} onChange={e => upd('colaboracion', Number(e.target.value))} />
+                <input aria-label="Colaboración" type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#059669', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.colaboracion} onChange={e => upd('colaboracion', Number(e.target.value))} />
                 <div style={{ fontSize: '0.6rem', color: '#047857', marginTop: '2px' }}>Sintonía Grupal</div>
               </div>
               <div style={{ background: '#f0f9ff', padding: '1rem', borderRadius: '16px', border: '1px solid #e0f2fe', textAlign: 'center' }}>
                 <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#0284c7', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Comunicación</div>
-                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#0284c7', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.comunicacion} onChange={e => upd('comunicacion', Number(e.target.value))} />
+                <input aria-label="Comunicación" type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#0284c7', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.comunicacion} onChange={e => upd('comunicacion', Number(e.target.value))} />
                 <div style={{ fontSize: '0.6rem', color: '#0369a1', marginTop: '2px' }}>Claridad y Discurso</div>
               </div>
             </div>
@@ -1076,8 +1076,8 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       {mbtiDesc}
                     </p>
                     <div style={{ marginTop: '1rem' }}>
-                      <label style={s.commentLabel}>Como podria desempenarse en el puesto</label>
-                      <textarea
+                      <label htmlFor="informe-desempeno" style={s.commentLabel}>Como podria desempenarse en el puesto</label>
+                      <textarea id="informe-desempeno"
                         style={{ ...s.ta, fontSize: '0.85rem' }}
                         rows={3}
                         value={inf.ajusteMbti || ''}
@@ -1142,7 +1142,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                         <span style={{...s.factLvl, color:clr}}>{Number(vNorm.toFixed(1))}/5</span>
                       </div>
                         <div style={s.barBg}><div style={{...s.barFill, width:`${(vNorm/5)*100}%`, background:clr}} /></div>
-                        <textarea
+                        <textarea aria-label={`Interpretación de ${ETQ[factor.toLowerCase()] || factor}`}
                           style={s.taFact}
                           rows={4}
                           value={textoInterpretacion(fk, factor, descSugerida)}
@@ -1181,7 +1181,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       <span style={{ ...s.factLvl, color: clr }}>{Number(normVal.toFixed(1))}/5</span>
                     </div>
                     <div style={s.barBg}><div style={{ ...s.barFill, width: `${(normVal / 5) * 100}%`, background: clr }} /></div>
-                    <textarea style={s.taFact} rows={4} value={textoInterpretacion(fk, factor, descSugerida)} onChange={(e) => updFactor(fk, e.target.value)} />
+                    <textarea aria-label={`Interpretación de ${ETQ[factor.toLowerCase()] || factor}`} style={s.taFact} rows={4} value={textoInterpretacion(fk, factor, descSugerida)} onChange={(e) => updFactor(fk, e.target.value)} />
                   </div>
                 )
               })}
@@ -1214,7 +1214,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       <span style={{...s.factLvl, color:clr}}>{Number(normVal.toFixed(1))}/5</span>
                     </div>
                     <div style={s.barBg}><div style={{...s.barFill, width:`${(normVal/5)*100}%`, background:clr}} /></div>
-                    <textarea
+                    <textarea aria-label={`Interpretación de ${ETQ[factor.toLowerCase()] || factor}`}
                       style={s.taFact}
                       rows={4}
                       value={textoInterpretacion(fk, factor, descSugerida)}
@@ -1249,7 +1249,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       <span style={{...s.factLvl, color:clr}}>{Number(normVal.toFixed(1))}/5</span>
                     </div>
                     <div style={s.barBg}><div style={{...s.barFill, width:`${(normVal/5)*100}%`, background:clr}} /></div>
-                    <textarea
+                    <textarea aria-label={`Interpretación de ${ETQ[factor.toLowerCase()] || factor}`}
                       style={s.taFact}
                       rows={4}
                       value={textoInterpretacion(fk, factor, descSugerida)}
@@ -1307,7 +1307,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                     />
                   </svg>
                   <div style={{ position: 'absolute', display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
-                    <input
+                    <input aria-label="Ajuste al cargo, en porcentaje"
                       type="number"
                       min="0"
                       max="100"
@@ -1323,8 +1323,8 @@ PsicoPlataforma - Gestión Inteligente de Talento
                 </span>
               </div>
               <div>
-                <label style={s.commentLabel}>Por que se recomienda</label>
-                <textarea
+                <label htmlFor="informe-recomendacion" style={s.commentLabel}>Por que se recomienda</label>
+                <textarea id="informe-recomendacion"
                   style={{ ...s.ta, minHeight: '120px' }}
                   value={inf.ajusteCargo?.analisis || ''}
                   onChange={e => setInf(p => ({ ...p, ajusteCargo: { ...p.ajusteCargo, analisis: e.target.value } }))}
@@ -1340,7 +1340,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                   {(inf.fortalezas || []).map((f: NarrativeItem, i: number) => (
                     <div key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
                       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a' }} />
-                      <textarea
+                      <textarea aria-label={`Fortaleza ${i + 1}`}
                         rows={2} style={{ background: 'transparent', border: '1px solid #dcfce7', borderRadius: '6px', width: '100%', fontSize: '0.9rem', lineHeight: '1.35', color: '#14532d', padding: '5px', resize: 'vertical', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
                         value={typeof f === 'object' ? `${f.tendencia || f.competencia} - ${f.mecanismo}` : f}
                         onChange={e => {
@@ -1363,7 +1363,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                   {(inf.oportunidadesMejora || []).map((f: NarrativeItem, i: number) => (
                     <div key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
                       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ea580c' }} />
-                      <textarea
+                      <textarea aria-label={`Oportunidad de mejora ${i + 1}`}
                         rows={2} style={{ background: 'transparent', border: '1px solid #ffedd5', borderRadius: '6px', width: '100%', fontSize: '0.9rem', lineHeight: '1.35', color: '#7c2d12', padding: '5px', resize: 'vertical', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
                         value={typeof f === 'object' ? `${f.tendencia || f.competencia} - ${f.mecanismo}` : f}
                         onChange={e => {
@@ -1390,7 +1390,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
             <span style={s.cardHeadTxt}>IV. Perfil Integrado</span>
             <span style={s.badge}>Editable</span>
           </div>
-          <textarea
+          <textarea aria-label="Perfil integrado: síntesis"
             style={s.ta}
             rows={6}
             placeholder="Síntesis profunda del perfil..."
@@ -1413,8 +1413,8 @@ PsicoPlataforma - Gestión Inteligente de Talento
             {REC_LABELS[inf.recomendacion].toUpperCase()}
           </div>
           <div style={{ padding: '0 1.25rem 1.25rem' }}>
-            <label style={s.commentLabel}>Argumentación Técnica del Dictamen</label>
-            <textarea style={{ ...s.ta, minHeight: '120px' }} value={inf.fundamentacion || ''} onChange={e => upd('fundamentacion', e.target.value)} placeholder="Fundamente su recomendación basándose en las evidencias psicométricas..." />
+            <label htmlFor="informe-fundamentacion" style={s.commentLabel}>Argumentación Técnica del Dictamen</label>
+            <textarea id="informe-fundamentacion" style={{ ...s.ta, minHeight: '120px' }} value={inf.fundamentacion || ''} onChange={e => upd('fundamentacion', e.target.value)} placeholder="Fundamente su recomendación basándose en las evidencias psicométricas..." />
           </div>
         </div>
 
@@ -1422,8 +1422,8 @@ PsicoPlataforma - Gestión Inteligente de Talento
         <div style={s.card}>
           <div style={s.cardHead}><span style={s.cardHeadTxt}>Validación del Informe</span></div>
           <div style={{ padding: '1.25rem' }}>
-            <label style={s.commentLabel}>Nombre del Evaluador Responsable</label>
-            <input style={{ ...s.ta, padding: '0.75rem' }} value={inf.nombreEvaluador || ''} onChange={e => upd('nombreEvaluador', e.target.value)} />
+            <label htmlFor="informe-evaluador" style={s.commentLabel}>Nombre del Evaluador Responsable</label>
+            <input id="informe-evaluador" style={{ ...s.ta, padding: '0.75rem' }} value={inf.nombreEvaluador || ''} onChange={e => upd('nombreEvaluador', e.target.value)} />
           </div>
         </div>
         {/* ── PIE DE INFORME (AUDITORÍA) ────────────────────────────────── */}

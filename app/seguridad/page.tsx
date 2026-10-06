@@ -126,7 +126,7 @@ export default function SeguridadPage() {
             <img src={enrolando.qr} alt="Código QR para la app autenticadora" style={{ width: 180, height: 180, alignSelf: 'center' }} />
             <p style={s.chico}>¿No podés escanearlo? Ingresá esta clave a mano: <code style={s.codigo}>{enrolando.secret}</code></p>
             <p style={s.texto}><strong>2.</strong> Escribí el código de 6 dígitos que muestra la app:</p>
-            <input style={s.input} inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={codigo} onChange={e => setCodigo(e.target.value.replace(/\D/g, ''))} placeholder="000000" onKeyDown={e => e.key === 'Enter' && codigo.length === 6 && confirmar()} />
+            <input aria-label="Código de 6 dígitos de la app autenticadora" style={s.input} inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={codigo} onChange={e => setCodigo(e.target.value.replace(/\D/g, ''))} placeholder="000000" onKeyDown={e => e.key === 'Enter' && codigo.length === 6 && confirmar()} />
             <div style={s.botones}>
               <button style={s.boton} onClick={confirmar} disabled={ocupado || codigo.length !== 6}>Confirmar dispositivo</button>
               <button style={s.botonSecundario} onClick={cancelar} disabled={ocupado}>Cancelar</button>
@@ -134,8 +134,8 @@ export default function SeguridadPage() {
           </div>
         ) : (
           <div style={s.panel}>
-            <label style={s.label}>Nombre del dispositivo (opcional)</label>
-            <input style={s.input} value={nombre} onChange={e => setNombre(e.target.value)} placeholder={verificados.length === 0 ? 'Teléfono' : 'Respaldo'} maxLength={30} />
+            <label htmlFor="seguridad-nombre-dispositivo" style={s.label}>Nombre del dispositivo (opcional)</label>
+            <input id="seguridad-nombre-dispositivo" style={s.input} value={nombre} onChange={e => setNombre(e.target.value)} placeholder={verificados.length === 0 ? 'Teléfono' : 'Respaldo'} maxLength={30} />
             <button style={s.boton} onClick={empezar} disabled={ocupado}>{verificados.length === 0 ? 'Activar verificación en dos pasos' : 'Agregar otro dispositivo'}</button>
           </div>
         )}

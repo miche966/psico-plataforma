@@ -526,8 +526,8 @@ export default function GestionProcesos() {
           <h2 className="text-lg font-bold text-slate-900 mb-6">{modoEdicion ? 'Editar Proceso' : 'Nuevo Proceso de Selección'}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nombre del proceso</label>
-              <input
+              <label htmlFor="gestion-nombre" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nombre del proceso</label>
+              <input id="gestion-nombre"
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none"
                 value={form.nombre}
                 onChange={e => setForm({ ...form, nombre: e.target.value })}
@@ -535,8 +535,8 @@ export default function GestionProcesos() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cargo / Vacante</label>
-              <input
+              <label htmlFor="gestion-cargo" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cargo / Vacante</label>
+              <input id="gestion-cargo"
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none"
                 value={form.cargo}
                 onChange={e => setForm({ ...form, cargo: e.target.value })}
@@ -608,7 +608,7 @@ export default function GestionProcesos() {
         <div className="lg:col-span-4 space-y-3">
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input 
+            <input aria-label="Buscar proceso" 
               className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none"
               placeholder="Buscar..."
               value={filtro}
@@ -759,7 +759,7 @@ export default function GestionProcesos() {
                       Participantes en este proceso
                     </h4>
                     <div className="flex items-center gap-2">
-                      <input
+                      <input aria-label="Buscar participante por nombre o correo"
                         type="text"
                         placeholder="Buscar por nombre o email..."
                         value={busquedaParticipante}
@@ -1020,7 +1020,7 @@ export default function GestionProcesos() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <textarea
+                  <textarea aria-label="Participantes a cargar: una persona por línea, con nombre, apellido y correo"
                     className="w-full h-48 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none font-mono"
                     placeholder="Juan, Perez, juan@email.com&#10;Maria, Lopez, maria@email.com"
                     value={textoMasivo}

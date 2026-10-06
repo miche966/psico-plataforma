@@ -299,7 +299,7 @@ export default function EstadisticasPage() {
           </p>
         </div>
 
-        <select
+        <select aria-label="Proceso a analizar"
           value={procesoSeleccionado}
           onChange={(e) => setProcesoSeleccionado(e.target.value)}
           className="px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-white shadow-sm hover:border-slate-300 outline-none transition-all"
@@ -343,7 +343,7 @@ export default function EstadisticasPage() {
         {/* Buscador */}
         <div className="relative w-full md:max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
-          <input
+          <input aria-label="Buscar candidato por nombre o correo"
             type="text"
             placeholder="Buscar por nombre o correo..."
             value={busqueda}

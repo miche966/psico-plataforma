@@ -852,8 +852,7 @@ export default function PanelEvaluador() {
       ) : tab === 'diagnostico' ? (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm animate-in fade-in duration-300">
           <div className="mb-6">
-            <h2 className="text-lg font-bold text-slate-900">Diagnóstico Cualitativo e IA</h2>
-            <p className="text-xs text-slate-500">Evaluación consolidada de discurso, perfil MBTI y ajuste competencial</p>
+            <h2 className="text-lg font-bold text-slate-900">Diagnóstico cualitativo e IA</h2>
           </div>
           {agrupadoSeleccionado ? (
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
@@ -862,7 +861,7 @@ export default function PanelEvaluador() {
             </div>
           ) : (
             <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
-              <p className="text-xs text-slate-500">Selecciona un candidato en la pestaña ANÁLISIS para visualizar su diagnóstico detallado.</p>
+              <p className="text-xs text-slate-500">Elegí un candidato en Análisis para ver su diagnóstico.</p>
             </div>
           )}
         </div>
@@ -870,8 +869,7 @@ export default function PanelEvaluador() {
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-220px)]">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Bitácora Global</h2>
-              <p className="text-xs text-slate-500">Registro cronológico de todas las evaluaciones finalizadas</p>
+              <h2 className="text-lg font-bold text-slate-900">Historial de evaluaciones</h2>
             </div>
           </div>
           
@@ -1208,7 +1206,6 @@ export default function PanelEvaluador() {
                     <h3 id="pruebas-realizadas" className="text-lg font-semibold text-slate-900 mb-3" style={{ fontFamily: 'var(--font-lectura), Georgia, serif' }}>
                       Pruebas realizadas{agrupadoSeleccionado.progreso ? `: ${agrupadoSeleccionado.progreso.completados} de ${agrupadoSeleccionado.progreso.total}` : ''}
                     </h3>
-                    <p className="text-sm text-slate-500 mb-3">Elegí una para ver su resultado más abajo.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {(() => {
                         const vtos = new Set()
