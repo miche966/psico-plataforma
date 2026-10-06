@@ -1162,14 +1162,19 @@ export default function PanelEvaluador() {
           {/* DETALLE DEL CANDIDATO SELECCIONADO CON SCROLL INDEPENDIENTE */}
           <div className="sticky top-0 h-[calc(100vh-220px)] flex flex-col">
             {agrupadoSeleccionado ? (
-              <div className="bg-white border border-slate-200 rounded-2xl shadow-xl flex flex-col h-full overflow-hidden border-indigo-100">
+              <div className="bg-white border border-slate-200 rounded-xl flex flex-col h-full overflow-hidden">
                 {/* CABEZAL FIJO */}
-                <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-white z-20 shrink-0">
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-900">{agrupadoSeleccionado.nombre} {agrupadoSeleccionado.apellido}</h2>
-                    <p className="text-sm text-slate-500">{agrupadoSeleccionado.email}</p>
+                <div className="px-6 py-5 border-b border-slate-200 flex justify-between items-start gap-4 bg-white z-20 shrink-0">
+                  <div className="min-w-0">
+                    <h2 className="text-2xl font-semibold text-slate-900 break-words">{agrupadoSeleccionado.nombre} {agrupadoSeleccionado.apellido}</h2>
+                    <p className="text-slate-500 break-all">{agrupadoSeleccionado.email}</p>
                   </div>
-                  <button onClick={() => setAgrupadoSeleccionado(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setAgrupadoSeleccionado(null)}
+                    className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                    aria-label="Cerrar el detalle del candidato"
+                  >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -1177,34 +1182,35 @@ export default function PanelEvaluador() {
                 {/* CONTENIDO DESPLAZABLE */}
                 <div className="flex-1 overflow-y-scroll p-6 custom-scrollbar-visible">
                   {/* RESUMEN EJECUTIVO IA */}
-                  <div className="mb-8 p-5 bg-gradient-to-br from-indigo-50/50 to-white rounded-2xl border border-indigo-100 shadow-sm relative">
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-pulse" />
-                        <h3 className="text-[10px] font-bold text-indigo-900 uppercase tracking-widest">Resumen Ejecutivo IA</h3>
-                      </div>
+                  <section className="mb-8 pl-5 pr-4 py-4 border-l-4 border-[#f5d547] bg-slate-100 rounded-r-lg" aria-labelledby="resumen-ia">
+                    <div className="flex justify-between items-center gap-3 mb-2">
+                      <h3 id="resumen-ia" className="text-lg font-semibold text-slate-900" style={{ fontFamily: 'var(--font-lectura), Georgia, serif' }}>Resumen ejecutivo con IA</h3>
                       {!esViewer && (
                         <button
+                          type="button"
                           onClick={async () => {
                             const res = await generarResumenIA(agrupadoSeleccionado)
                             setAgrupadoSeleccionado({ ...agrupadoSeleccionado, resumen_ia: res })
                           }}
-                          className="text-[9px] font-bold bg-indigo-600 text-white px-2 py-1 rounded-lg hover:bg-indigo-700 transition-all"
+                          className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors whitespace-nowrap"
                         >
-                          {agrupadoSeleccionado.resumen_ia ? 'Regenerar' : 'Generar Informe'}
+                          {agrupadoSeleccionado.resumen_ia ? 'Regenerar' : 'Generar informe'}
                         </button>
                       )}
                     </div>
                     {agrupadoSeleccionado.resumen_ia ? (
-                      <div className="text-xs text-slate-600 leading-relaxed space-y-2">{agrupadoSeleccionado.resumen_ia}</div>
+                      <div className="text-sm text-slate-700 leading-relaxed space-y-2">{agrupadoSeleccionado.resumen_ia}</div>
                     ) : (
-                      <p className="text-[10px] text-slate-400 italic">Analiza todos los tests y videos para generar un resumen profesional.</p>
+                      <p className="text-sm text-slate-500">Analiza todas las pruebas y los videos para armar un resumen profesional del candidato.</p>
                     )}
-                  </div>
+                  </section>
 
-                  <div className="mb-6">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tests realizados</p>
-                    <div className="flex flex-wrap gap-2">
+                  <section className="mb-8" aria-labelledby="pruebas-realizadas">
+                    <h3 id="pruebas-realizadas" className="text-lg font-semibold text-slate-900 mb-3" style={{ fontFamily: 'var(--font-lectura), Georgia, serif' }}>
+                      Pruebas realizadas{agrupadoSeleccionado.progreso ? `: ${agrupadoSeleccionado.progreso.completados} de ${agrupadoSeleccionado.progreso.total}` : ''}
+                    </h3>
+                    <p className="text-sm text-slate-500 mb-3">Elegí una para ver su resultado más abajo.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {(() => {
                         const vtos = new Set()
                         return agrupadoSeleccionado.sesiones
@@ -1228,35 +1234,40 @@ export default function PanelEvaluador() {
                             }
                             const isActive = sesionSeleccionada?.id === s.id
                             return (
-                              <button 
-                                key={s.id} 
+                              <button
+                                key={s.id}
+                                type="button"
+                                aria-pressed={isActive}
                                 onClick={() => {
                                   setSesionSeleccionada(s)
                                   cargarAuditoriaSesion(s)
-                                }} 
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                                  isActive 
-                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' 
-                                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                                }}
+                                className={`flex items-center gap-2.5 text-left px-3 py-2.5 rounded-lg border text-sm transition-colors ${
+                                  isActive
+                                    ? 'border-indigo-600 bg-slate-100 font-bold text-slate-900 shadow-[inset_4px_0_0_#f5d547]'
+                                    : 'border-slate-200 text-slate-700 hover:bg-slate-50'
                                 }`}
                               >
-                                {label}
-                                {agrupadoSeleccionado.sesiones.filter(x => x.test_id === s.test_id).length > 1 && (
-                                  <span className="ml-1 opacity-50 text-[10px]">(Reciente)</span>
-                                )}
+                                <span className="shrink-0 grid place-items-center w-5 h-5 rounded-full bg-slate-900 text-white" aria-hidden="true">
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                                </span>
+                                <span>
+                                  {label}
+                                  {agrupadoSeleccionado.sesiones.filter(x => x.test_id === s.test_id).length > 1 && (
+                                    <span className="ml-1 text-xs font-normal text-slate-500">(más reciente)</span>
+                                  )}
+                                </span>
                               </button>
                             )
                           })
                       })()}
                     </div>
-                  </div>
+                  </section>
 
                   {/* VIDEO ENTREVISTAS */}
                   {videosCandidato.length > 0 && (
                     <div className="mb-8">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <Video className="w-3 h-3" /> Video Entrevistas
-                      </p>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-3" style={{ fontFamily: 'var(--font-lectura), Georgia, serif' }}>Video entrevistas</h3>
                       <div className="space-y-4">
                         {videosCandidato.map((v, i) => (
                           <div key={i} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
@@ -1321,10 +1332,12 @@ export default function PanelEvaluador() {
 
                   {/* RESULTADOS DETALLADOS DEL TEST */}
                   {sesionSeleccionada && (
-                    <div className="mt-8 pt-8 border-t border-slate-100 animate-in fade-in duration-500">
-                      <div className="flex items-center justify-between mb-6">
-                        <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Resultados del Test</h4>
-                        <a href={`/informe?candidato=${agrupadoSeleccionado.id}`} target="_blank" className="text-[10px] font-bold text-indigo-600 hover:underline">Ver Informe Completo →</a>
+                    <div className="mt-8 pt-8 border-t border-slate-200">
+                      <div className="flex items-center justify-between gap-3 mb-5">
+                        <h3 className="text-lg font-semibold text-slate-900" style={{ fontFamily: 'var(--font-lectura), Georgia, serif' }}>
+                          Resultados: {TEST_NAMES[sesionSeleccionada.test_id] || 'prueba seleccionada'}
+                        </h3>
+                        <a href={`/informe?candidato=${agrupadoSeleccionado.id}`} target="_blank" className="text-sm font-bold text-indigo-600 underline underline-offset-4 whitespace-nowrap">Ver informe completo</a>
                       </div>
 
                       {sesionSeleccionada.puntaje_bruto && (() => {
@@ -1334,92 +1347,73 @@ export default function PanelEvaluador() {
                           <div className="space-y-6">
                             {/* MÉTRICAS DE FRAUDE */}
                             {metricas && (
-                              <div className="grid grid-cols-2 gap-3 mb-6">
-                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                  <p className="text-[8px] font-bold text-slate-400 uppercase">Fugas de Foco</p>
-                                  <p className="text-lg font-bold text-slate-800">{metricas.tabSwitches || 0}</p>
+                              <dl className="flex gap-8 pb-5 border-b border-slate-200">
+                                <div>
+                                  <dt className="text-sm text-slate-500">Fugas de foco</dt>
+                                  <dd className="text-2xl font-semibold tabular-nums text-slate-900">{metricas.tabSwitches || 0}</dd>
                                 </div>
-                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                  <p className="text-[8px] font-bold text-slate-400 uppercase">Copia/Pega</p>
-                                  <p className="text-lg font-bold text-slate-800">{metricas.copyPasteAttempts || 0}</p>
+                                <div>
+                                  <dt className="text-sm text-slate-500">Copia y pega</dt>
+                                  <dd className="text-2xl font-semibold tabular-nums text-slate-900">{metricas.copyPasteAttempts || 0}</dd>
                                 </div>
-                              </div>
+                              </dl>
                             )}
 
-                            {/* GRÁFICOS BIG FIVE */}
-                            {esBigFive(pb) ? valoresNumericos(pb).map(([factor, valor]) => (
-                              <div key={factor}>
-                                <div className="flex justify-between mb-1">
-                                  <span className="text-xs font-bold text-slate-700">{etiquetas[factor] || factor}</span>
-                                  <span className="text-xs font-bold text-indigo-600">{valor} / 5</span>
-                                </div>
-                                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                  <div className={`h-full ${colores[factor] || 'bg-indigo-500'}`} style={{ width: `${(valor / 5) * 100}%` }} />
-                                </div>
+                            {/* FACTORES (Big Five, Iniciativa y dinamismo) */}
+                            {(esBigFive(pb) || esIniciativaDinamismo(pb)) ? (
+                              <div className="space-y-4">
+                                {valoresNumericos(pb).map(([factor, valor]) => (
+                                  <div key={factor}>
+                                    <div className="flex justify-between mb-1.5 text-sm">
+                                      <span className="font-bold text-slate-800">{etiquetas[factor] || factor}</span>
+                                      <span className="tabular-nums text-slate-700">{valor} / 5</span>
+                                    </div>
+                                    <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                                      <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${(valor / 5) * 100}%` }} />
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
-                            )) : esIniciativaDinamismo(pb) ? valoresNumericos(pb).map(([factor, valor]) => (
-                              <div key={factor}>
-                                <div className="flex justify-between mb-1">
-                                  <span className="text-xs font-bold text-slate-700">{etiquetas[factor] || factor}</span>
-                                  <span className="text-xs font-bold text-indigo-600">{valor} / 5</span>
-                                </div>
-                                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                  <div className={`h-full ${colores[factor] || 'bg-indigo-500'}`} style={{ width: `${(valor / 5) * 100}%` }} />
-                                </div>
-                              </div>
-                            )) : esCognitivo(pb) ? (
-                              <div className="bg-slate-50 p-4 rounded-xl text-center">
-                                <p className="text-xs text-slate-500">
-                                  Puntaje General: <span className="font-bold text-slate-800">{datosCognitivos(pb).correctas} / {datosCognitivos(pb).total} correctas ({datosCognitivos(pb).pct}%)</span>
-                                </p>
-                              </div>
+                            ) : esCognitivo(pb) ? (
+                              <p className="text-slate-700">
+                                Puntaje general: <strong className="text-slate-900">{datosCognitivos(pb).correctas} / {datosCognitivos(pb).total} correctas ({datosCognitivos(pb).pct}%)</strong>
+                              </p>
                             ) : (
-                              <div className="bg-slate-50 p-4 rounded-xl text-center">
-                                <p className="text-xs text-slate-500">
-                                  Puntaje General: <span className="font-bold text-slate-800">{(pb as any)?.porcentaje != null ? `${(pb as any).porcentaje}%` : `${promedioPuntaje(pb)} / 5`}</span>
-                                </p>
-                              </div>
+                              <p className="text-slate-700">
+                                Puntaje general: <strong className="text-slate-900">{(pb as any)?.porcentaje != null ? `${(pb as any).porcentaje}%` : `${promedioPuntaje(pb)} / 5`}</strong>
+                              </p>
                             )}
 
-                            {/* RENDERIZADO ESPECIAL DE ROLEPLAY IA (TRANSCRIPCIÓN CHAT EN VIVO) */}
+                            {/* TRANSCRIPCIÓN DEL ROLEPLAY IA */}
                             {(() => {
                               const pbRoleplay = sesionSeleccionada.puntaje_bruto as any
                               const transcripcion = pbRoleplay?.transcripcion || pbRoleplay?.mensajes || pbRoleplay?.historial
                               const esRoleplayAtencion = sesionSeleccionada.test_id === 'd8e9f0a1-b2c3-4567-defa-777777777777'
-                              const nombreClienteIA = esRoleplayAtencion ? 'Cliente (Laura Benítez - IA)' : 'Cliente Moroso (Carlos Gómez - IA)'
+                              const nombreClienteIA = esRoleplayAtencion ? 'Cliente (Laura Benítez - IA)' : 'Cliente moroso (Carlos Gómez - IA)'
                               if (Array.isArray(transcripcion) && transcripcion.length > 0) {
                                 return (
-                                  <div className="mt-6 bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 shadow-xl space-y-4">
-                                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                                      <div className="flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                                        <h4 className="font-bold text-sm text-emerald-400 uppercase tracking-wider">
-                                          Transcripción del Roleplay IA (Simulación en Vivo)
-                                        </h4>
-                                      </div>
+                                  <div className="mt-6 border border-slate-200 rounded-xl overflow-hidden">
+                                    <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 bg-slate-100">
+                                      <h4 className="font-semibold text-slate-900" style={{ fontFamily: 'var(--font-lectura), Georgia, serif' }}>
+                                        Transcripción del Role Play con IA
+                                      </h4>
                                       {pbRoleplay.acuerdo_alcanzado !== undefined && (
-                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                                          pbRoleplay.acuerdo_alcanzado ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                          pbRoleplay.acuerdo_alcanzado ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
                                         }`}>
-                                          {pbRoleplay.acuerdo_alcanzado ? '✅ Acuerdo Alcanzado' : '❌ Sin Acuerdo'}
+                                          {pbRoleplay.acuerdo_alcanzado ? 'Acuerdo alcanzado' : 'Sin acuerdo'}
                                         </span>
                                       )}
                                     </div>
 
-                                    {/* Retroalimentación de la IA con texto oscuro hiperlegible */}
                                     {pbRoleplay.retroalimentacion && (
-                                       <div className="p-4 bg-slate-100 rounded-xl border border-slate-300 text-xs text-slate-900 leading-relaxed shadow-sm font-medium">
-                                         <span className="font-extrabold text-indigo-700 block mb-1.5 uppercase tracking-wider text-[11px]">
-                                           Análisis Cualitativo de IA:
-                                         </span>
-                                         <p className="text-slate-900 font-medium">
-                                           {pbRoleplay.retroalimentacion}
-                                         </p>
-                                       </div>
-                                     )}
+                                      <div className="m-4 pl-4 py-2 border-l-4 border-[#f5d547]">
+                                        <p className="text-sm font-bold text-slate-900 mb-1">Análisis cualitativo de la IA</p>
+                                        <p className="text-sm text-slate-700 leading-relaxed">{pbRoleplay.retroalimentacion}</p>
+                                      </div>
+                                    )}
 
-                                    {/* Burbujas del Diálogo Estilizadas de Alto Contraste */}
-                                    <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar-visible p-3 bg-slate-950 rounded-xl border border-slate-800">
+                                    <div className="space-y-4 max-h-[450px] overflow-y-auto p-4 custom-scrollbar-visible">
                                       {transcripcion.map((msg: any, mIdx: number) => {
                                         const r = String(msg.rol || msg.role || msg.sender || '').toLowerCase()
                                         // Discriminación estricta de roles: user/candidato vs assistant/model/bot
@@ -1429,21 +1423,15 @@ export default function PanelEvaluador() {
                                         const texto = msg.contenido || msg.texto || msg.content || (typeof msg === 'string' ? msg : JSON.stringify(msg))
 
                                         return (
-                                          <div
-                                            key={mIdx}
-                                            className={`flex flex-col ${esCandidato ? 'items-end' : 'items-start'} space-y-1`}
-                                          >
-                                            <div className="flex items-center gap-1.5 px-1">
-                                              <span className={`text-[11px] font-extrabold tracking-wide ${esCandidato ? 'text-indigo-400' : 'text-amber-400'}`}>
-                                                {esCandidato ? `Evaluado (${agrupadoSeleccionado.nombre} ${agrupadoSeleccionado.apellido})` : nombreClienteIA}
-                                              </span>
-                                            </div>
-
+                                          <div key={mIdx} className={`flex flex-col ${esCandidato ? 'items-end' : 'items-start'} gap-1`}>
+                                            <span className="text-xs text-slate-500 px-1">
+                                              {esCandidato ? `Evaluado (${agrupadoSeleccionado.nombre} ${agrupadoSeleccionado.apellido})` : nombreClienteIA}
+                                            </span>
                                             <div
-                                              className={`p-4 rounded-2xl max-w-[88%] text-xs md:text-sm leading-relaxed shadow-sm font-semibold ${
+                                              className={`px-4 py-2.5 max-w-[88%] text-sm leading-relaxed ${
                                                 esCandidato
-                                                  ? 'bg-indigo-100 text-indigo-950 rounded-tr-none border border-indigo-300'
-                                                  : 'bg-slate-100 text-slate-950 rounded-tl-none border border-slate-300'
+                                                  ? 'bg-indigo-600 text-white rounded-2xl rounded-br-sm'
+                                                  : 'bg-slate-100 text-slate-900 border border-slate-200 rounded-2xl rounded-bl-sm'
                                               }`}
                                             >
                                               {texto}
@@ -1477,7 +1465,7 @@ export default function PanelEvaluador() {
                         </div>
                       )}
 
-                      <button onClick={() => generarPDF(sesionSeleccionada)} className="w-full mt-8 flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all">
+                      <button type="button" onClick={() => generarPDF(sesionSeleccionada)} className="w-full mt-8 flex items-center justify-center gap-2 py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors">
                         <Download className="w-4 h-4" /> Descargar PDF
                       </button>
                     </div>
@@ -1485,9 +1473,9 @@ export default function PanelEvaluador() {
                 </div>
               </div>
             ) : (
-              <div className="bg-slate-50 border border-slate-200 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center h-full">
-                <Search className="w-8 h-8 text-slate-300 mb-2" />
-                <p className="text-xs text-slate-500">Selecciona un candidato para analizar</p>
+              <div className="border border-slate-300 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center h-full">
+                <Search className="w-8 h-8 text-slate-400 mb-2" />
+                <p className="text-slate-500">Elegí un candidato de la lista para ver su detalle.</p>
               </div>
             )}
           </div>
