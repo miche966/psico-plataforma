@@ -39,7 +39,10 @@ function politicaDeContenido(request: NextRequest) {
   const csp = construirCsp({ dev: process.env.NODE_ENV !== 'production', nonce, reportUri: RUTA_INFORMES_CSP })
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-nonce', nonce)
-  requestHeaders.set('Content-Security-Policy-Report-Only', csp)
+  // Solo para que Next extraiga el nonce y lo ponga en sus scripts: un encabezado de PETICION no es una politica para el
+  // navegador. Se usa el nombre estandar porque en Vercel el nombre "-Report-Only" no llegaba al renderizador (los scripts
+  // salian sin nonce). Lo que ve el navegador es el encabezado de RESPUESTA, que sigue siendo solo informe.
+  requestHeaders.set('Content-Security-Policy', csp)
   const response = NextResponse.next({ request: { headers: requestHeaders } })
   response.headers.set('Content-Security-Policy-Report-Only', csp)
   return response
