@@ -4,6 +4,7 @@ import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { readAll } from '@/lib/server/readAll'
 import { candidatoIdsEnProcesos } from '@/lib/server/procesoScope'
 import { SLUG_TO_ID } from '@/lib/server/catalogoTests'
+import { asegurarVinculos, quitarVinculo } from '@/lib/server/vinculos'
 import { z, validar, lenient } from '@/lib/server/validacion'
 import { mensajeParaCliente } from '@/lib/server/mensajesError'
 import { procesoCamposSchema, procesoIdSchema, vinculoSchema, filaCandidatoSchema, cargaMasivaSchema } from '@/lib/server/esquemasProcesos'
@@ -145,6 +146,8 @@ export async function POST(request: Request) {
         })
         if (error) throw error
       }
+      // Sin el vinculo candidatos_procesos, public-data rechaza el enlace ("Candidato o proceso no encontrado")
+      await asegurarVinculos(db, [{ candidatoId, procesoId }])
       return NextResponse.json({ success: true })
     }
 
@@ -154,6 +157,7 @@ export async function POST(request: Request) {
       const { candidatoId, procesoId } = campos.data
       const { error } = await db.from('sesiones').update({ proceso_id: null }).eq('candidato_id', candidatoId).eq('proceso_id', procesoId)
       if (error) throw error
+      await quitarVinculo(db, candidatoId, procesoId)
       return NextResponse.json({ success: true })
     }
 
@@ -174,6 +178,7 @@ export async function POST(request: Request) {
       }))
       const { error } = await db.from('sesiones').upsert(sesionesNuevas, { onConflict: 'candidato_id,proceso_id' })
       if (error) throw error
+      await asegurarVinculos(db, (candidatos || []).map((c: any) => ({ candidatoId: c.id, procesoId })))
       return NextResponse.json({ success: true })
     }
 
@@ -227,6 +232,7 @@ export async function POST(request: Request) {
           const { error: sesionesError } = await db.from('sesiones').insert(sesionesNuevas)
           if (sesionesError) throw sesionesError
         }
+        await asegurarVinculos(db, todosLosCandidatos.map((c: any) => ({ candidatoId: c.id, procesoId })))
       }
 
       return NextResponse.json({ success: true, total: todosLosCandidatos.length, omitidos })
