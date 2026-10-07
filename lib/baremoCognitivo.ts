@@ -56,6 +56,20 @@ export const COLOR_VALORACION: Record<Valoracion, string> = {
   Alto: '#059669',
 }
 
+/** Una prueba cognitiva de la persona: su porcentaje de aciertos, su rango percentil y la mediana de aciertos del grupo. */
+export type DetallePrueba = { testId: string; nombre: string; porcentaje: number; percentil: number | null; mediana: number | null }
+
+/** Mediana de aciertos (en %) del grupo de referencia de una prueba. Null si no hay baremo o es muy chico. */
+export function medianaDelBaremo(baremo: Baremo | undefined): number | null {
+  if (!baremo || !(baremo.n >= MUESTRA_MINIMA)) return null
+  let acumulado = 0
+  for (const valor of Object.keys(baremo.histograma).map(Number).sort((a, b) => a - b)) {
+    acumulado += baremo.histograma[String(valor)]
+    if (acumulado / baremo.n >= 0.5) return valor
+  }
+  return null
+}
+
 export type ResumenCognitivo = {
   /** Aciertos y total sumados en las pruebas cognitivas. */
   correctas: number
@@ -68,6 +82,8 @@ export type ResumenCognitivo = {
   /** Cuantas pruebas cognitivas se consideraron y cuantas de ellas tenian baremo. */
   pruebas: number
   pruebasConBaremo: number
+  /** Una fila por prueba cognitiva considerada. */
+  detalle: DetallePrueba[]
 }
 
 const marca = (s: any) => new Date(s?.finalizada_en || 0).getTime() || 0
@@ -90,13 +106,16 @@ export function resumenCognitivo(sesiones: any[], baremos: Baremos = BAREMOS_VIG
   let correctas = 0
   let total = 0
   const percentiles: number[] = []
+  const detalle: DetallePrueba[] = []
   for (const [testId, s] of ultima) {
     const c = Number(s.puntaje_bruto.correctas)
     const t = Number(s.puntaje_bruto.total)
     correctas += c
     total += t
-    const p = percentilEnBaremo(baremos[testId], porcentajeDeAciertos(c, t) as number)
+    const porcentaje = porcentajeDeAciertos(c, t) as number
+    const p = percentilEnBaremo(baremos[testId], porcentaje)
     if (p !== null) percentiles.push(p)
+    detalle.push({ testId, nombre: TESTS_COGNITIVOS[testId], porcentaje, percentil: p, mediana: medianaDelBaremo(baremos[testId]) })
   }
 
   const percentil = percentiles.length ? Math.round(percentiles.reduce((a, b) => a + b, 0) / percentiles.length) : null
@@ -108,5 +127,6 @@ export function resumenCognitivo(sesiones: any[], baremos: Baremos = BAREMOS_VIG
     valoracion: percentil === null ? null : valoracionDePercentil(percentil),
     pruebas: ultima.size,
     pruebasConBaremo: percentiles.length,
+    detalle,
   }
 }

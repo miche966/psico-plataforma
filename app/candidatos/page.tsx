@@ -10,6 +10,7 @@ import EliminarCandidatoModal from '@/components/EliminarCandidatoModal'
 import { Plus, Check, Copy, FileText, Search, UserPlus, RotateCcw, BarChart3, Users, Sparkles, BellRing, AlertCircle, Info, LayoutDashboard, Award, Briefcase, X, Target, PieChart, ShieldAlert, Trash2 } from 'lucide-react'
 import { normalizarContextoInterpretacion, obtenerInterpretacion } from '@/lib/interpretaciones/resolver'
 import { useAdminRole } from '@/lib/useAdminRole'
+import { resumenCognitivo, valoracionDePercentil } from '@/lib/baremoCognitivo'
 import { normalizarTestId } from '@/lib/progresoEvaluacion'
 
 interface Candidato {
@@ -1026,34 +1027,16 @@ export default function CandidatosPage() {
                   return "Compromiso y Confiabilidad"
                 })();
 
-                const cog = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (tid(s.test_id).includes('icar') || tid(s.test_id).includes('razonamiento') || tid(s.test_id).includes('detalle') || tid(s.test_id).includes('numerico') || tid(s.test_id).includes('verbal')))
-                
+                // Solo pruebas cognitivas y percentil con el baremo propio (ver docs/BAREMO_COGNITIVO.md)
+                const resumenCog = simularDatos ? null : resumenCognitivo(sesionesData.filter(s => s.candidato_id === candidatoParaDashboard.id))
+
                 const score = (() => {
                   if (simularDatos) {
-                    const seed = datosSimulados.seed
-                    const pct = 70 + (seed % 21)
-                    if (pct >= 75) return "Baremo Superior"
-                    if (pct >= 50) return "Baremo Promedio"
-                    return "Baremo Operativo"
+                    const percentilEjemplo = 60 + (datosSimulados.seed % 30)
+                    return `P${percentilEjemplo} · ${valoracionDePercentil(percentilEjemplo)}`
                   }
-                  if (!cog) return null
-                  const diag = extraerDiagnostico(cog.puntaje_bruto || cog.puntajes || cog.resultados || cog, cog.test_id)
-                  if (diag.length === 0) return null
-                  const correctasMatch = diag.find(([k]) => k.includes('correctas') || k.includes('fluidez') || k.includes('aptitud') || k.includes('matrices') || k.includes('analogias'))
-                  const pctMatch = diag.find(([k]) => k.includes('porcentaje') || k.includes('pct') || k.includes('analisis'))
-                  
-                  let pct = 50
-                  if (pctMatch) {
-                    pct = pctMatch[1] <= 5 ? (pctMatch[1] / 5) * 100 : pctMatch[1]
-                  } else if (correctasMatch) {
-                    pct = (correctasMatch[1] / 16) * 100
-                  } else if (diag.length > 0) {
-                    pct = (diag[0][1] / 5) * 100
-                  }
-                  
-                  if (pct >= 75) return "Baremo Superior"
-                  if (pct >= 50) return "Baremo Promedio"
-                  return "Baremo Operativo"
+                  if (!resumenCog || resumenCog.percentil === null) return null
+                  return `P${resumenCog.percentil} · ${resumenCog.valoracion}`
                 })();
 
                 const valIntegrity = (() => {
@@ -1074,21 +1057,18 @@ export default function CandidatosPage() {
                   return "Conformidad Bajo Supervisión"
                 })();
 
-                const cognitiveTests = (() => {
-                  if (simularDatos) {
-                    const seed = datosSimulados.seed
-                    return [
-                      { test_id: 'icar', puntaje_bruto: { porcentaje: 70 + (seed % 21) } },
-                      { test_id: 'numerico', puntaje_bruto: { porcentaje: 60 + ((seed + 4) % 31) } },
-                      { test_id: 'verbal', puntaje_bruto: { porcentaje: 65 + ((seed + 9) % 26) } },
-                      { test_id: 'detalle', puntaje_bruto: { porcentaje: 75 + ((seed + 2) % 21) } }
-                    ]
-                  }
-                  return sesionesData.filter(s => 
-                    s.candidato_id === candidatoParaDashboard.id && 
-                    (tid(s.test_id).includes('icar') || tid(s.test_id).includes('razonamiento') || tid(s.test_id).includes('detalle') || tid(s.test_id).includes('numerico') || tid(s.test_id).includes('verbal'))
-                  )
-                })();
+                const nombreCorto = (n: string) => n.replace('Razonamiento ', 'R. ')
+                const barrasCognitivas: Array<{ name: string; Rendimiento: number; Referencia: number | null }> = simularDatos
+                  ? (() => {
+                      const seed = datosSimulados.seed
+                      return [
+                        { name: 'R. abstracto', Rendimiento: 70 + (seed % 21), Referencia: 65 },
+                        { name: 'R. numérico', Rendimiento: 60 + ((seed + 4) % 31), Referencia: 65 },
+                        { name: 'R. verbal', Rendimiento: 65 + ((seed + 9) % 26), Referencia: 65 },
+                        { name: 'Atención al detalle', Rendimiento: 75 + ((seed + 2) % 21), Referencia: 65 },
+                      ]
+                    })()
+                  : (resumenCog?.detalle || []).map(d => ({ name: nombreCorto(d.nombre), Rendimiento: d.porcentaje, Referencia: d.mediana }))
                 const hayBF = diagnosticoBF.length > 0
                 const SIN_DATOS = 'Sin datos'
 
@@ -1105,7 +1085,7 @@ export default function CandidatosPage() {
                       </div>
                       <div>
                         <div className="text-2xl font-semibold leading-tight text-slate-900" style={SERIF}>{score ?? SIN_DATOS}</div>
-                        <div className="text-sm text-slate-500 mt-1">Índice cognitivo</div>
+                        <div className="text-sm text-slate-500 mt-1">Rango percentil cognitivo</div>
                       </div>
                       <div>
                         <div className="text-2xl font-semibold leading-tight text-slate-900" style={SERIF}>{valIntegrity ?? SIN_DATOS}</div>
@@ -1154,27 +1134,10 @@ export default function CandidatosPage() {
 
                       <section aria-labelledby="resumen-cognitivo">
                         <h4 id="resumen-cognitivo" className="text-lg font-semibold text-slate-900" style={SERIF}>Pruebas cognitivas</h4>
-                        <p className="text-sm text-slate-500 mb-4">Porcentaje de aciertos en razonamiento y atención.</p>
+                        <p className="text-sm text-slate-500 mb-4">Porcentaje de aciertos de cada prueba, frente a la mediana de las personas evaluadas en esa misma prueba.</p>
 
                         {(() => {
-                          const barData = cognitiveTests
-                            .map(t => {
-                              const name = tid(t.test_id).includes('icar') ? 'ICAR' :
-                                           tid(t.test_id).includes('numerico') ? 'R. numérico' :
-                                           tid(t.test_id).includes('verbal') ? 'R. verbal' :
-                                           tid(t.test_id).includes('detalle') ? 'Atención al detalle' : 'Prueba cognitiva'
-
-                              const diag = extraerDiagnostico(t.puntaje_bruto || t.puntajes || t.resultados || t, t.test_id)
-                              if (diag.length === 0) return null
-                              const pctMatch = diag.find(([k]) => k.toLowerCase().includes('porcentaje') || k.toLowerCase().includes('pct') || k.toLowerCase().includes('analisis_datos') || k.toLowerCase().includes('analisis_semantico'))
-                              const valor = pctMatch
-                                ? Math.round(pctMatch[1] <= 5 ? (pctMatch[1] / 5) * 100 : pctMatch[1])
-                                : Math.round((diag.reduce((acc, [, v]) => acc + v, 0) / diag.length / 5) * 100)
-
-                              return { name, Rendimiento: valor, Referencia: 65 }
-                            })
-                            .filter((d): d is { name: string; Rendimiento: number; Referencia: number } => d !== null)
-
+                          const barData = barrasCognitivas
                           if (barData.length === 0) return (
                             <p className="py-12 text-center text-slate-500 border border-dashed border-slate-300 rounded-xl">Todavía no hay pruebas cognitivas completadas.</p>
                           )
@@ -1192,7 +1155,7 @@ export default function CandidatosPage() {
                                   />
                                   <Legend wrapperStyle={{ fontSize: '13px', paddingTop: '10px' }} />
                                   <Bar dataKey="Rendimiento" name="Rendimiento (%)" fill="var(--indigo-600)" radius={[6, 6, 0, 0]} maxBarSize={45} />
-                                  <Bar dataKey="Referencia" name="Referencia (65 %)" fill="var(--slate-300)" radius={[6, 6, 0, 0]} maxBarSize={45} />
+                                  <Bar dataKey="Referencia" name="Mediana del grupo (%)" fill="var(--slate-300)" radius={[6, 6, 0, 0]} maxBarSize={45} />
                                 </RechartsBarChart>
                               </ResponsiveContainer>
                             </div>

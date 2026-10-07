@@ -12,6 +12,7 @@ import { AuditoriaRespuestasDetallada } from '@/components/AuditoriaRespuestasDe
 import { mapperAuditoriaUniversal } from '@/lib/auditoriaMapper'
 import { formatearFecha, ordenarPorPostulacionDescendente, ordenarPorPostulacionAscendente } from '@/lib/postulaciones/ordenamiento'
 import { TEST_IDS, calcularProgresoEvaluacion } from '@/lib/progresoEvaluacion'
+import { resumenCognitivo } from '@/lib/baremoCognitivo'
 import SaludOperativa from '@/components/SaludOperativa'
 import { FRASES_INCOMPLETAS_ID, FRASES_ESTIMULO } from '@/lib/frasesIncompletas'
 import { useAdminRole } from '@/lib/useAdminRole'
@@ -661,10 +662,10 @@ export default function PanelEvaluador() {
       "Nombre", "Apellido", "Email", "Documento", "Edad", "Sexo", "Formacion", "Profesion",
       "Proceso", "Cargo", "Avance (Completados/Totales)", "Progreso %", "Match Score (Ajuste) %",
       "Alertas Proctoring (Fraude)", "Índice de Probidad (Integridad) (1-5)", "Sinceridad Laboral (1-5)",
-      "Perfil de Personalidad (Big Five)", "Tipo de Personalidad (MBTI)", "Aptitud Cognitiva % (Efectividad)",
+      "Perfil de Personalidad (Big Five)", "Tipo de Personalidad (MBTI)", "Aciertos en pruebas cognitivas %",
       "Competencia: Comunicación %", "Competencia: Negociación %", "Competencia: Tolerancia Presión %",
       "Riesgo de Agotamiento (Burnout) (1-5)", "Equilibrio Vida-Trabajo (1-5)", "Fecha de Evaluación (Última Actividad)",
-      "Dictamen Final"
+      "Dictamen Final", "Rango Percentil Cognitivo"
     ]
 
     const cleanQuotes = (val: any) => {
@@ -706,18 +707,11 @@ export default function PanelEvaluador() {
       const probidadVal = pi.promedio_general != null ? pi.promedio_general.toFixed(1) : "-"
       const sinceridadVal = pi.honestidad != null ? pi.honestidad.toFixed(1) : "-"
 
-      let correctasCognitivo = 0
-      let totalCognitivo = 0
-      c.sesiones.forEach(s => {
-        const slug = TEST_IDS[s.test_id]
-        if (s.estado === 'finalizado' && (slug === 'icar' || slug === 'numerico' || slug === 'verbal' || slug === 'comercial' || slug === 'atencion-detalle')) {
-          const correctas = s.puntaje_bruto?.correctas || s.puntaje_bruto?.puntaje || 0
-          const total = s.puntaje_bruto?.total || 10
-          correctasCognitivo += Number(correctas)
-          totalCognitivo += Number(total)
-        }
-      })
-      const efectividadCognitiva = totalCognitivo > 0 ? `${Math.round((correctasCognitivo / totalCognitivo) * 100)}%` : "-"
+      // Solo pruebas cognitivas (no las situacionales ni Comercial) y sin las sesiones importadas por CSV; el percentil sale
+      // del baremo propio (ver docs/BAREMO_COGNITIVO.md)
+      const cog = resumenCognitivo(c.sesiones)
+      const aciertosCognitivo = cog.total > 0 ? `${Math.round((cog.correctas / cog.total) * 100)}%` : "-"
+      const percentilCognitivo = cog.percentil === null ? "-" : `P${cog.percentil} (${cog.valoracion})`
 
       const sesionBien = c.sesiones.find(s => TEST_IDS[s.test_id] === 'estres-laboral')
       const bien = (sesionBien?.puntaje_bruto || {}) as any
@@ -745,12 +739,13 @@ export default function PanelEvaluador() {
         sinceridadVal,
         bigFiveConsolidado,
         mbtiVal,
-        efectividadCognitiva,
+        aciertosCognitivo,
         "-", "-", "-",
         burnoutVal,
         equilibrioVal,
         formatearFecha(c.ultima_fecha),
-        "Recomendado"
+        "Recomendado",
+        percentilCognitivo
       ]
     })
 
