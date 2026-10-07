@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <Marco titulo="Recuperar contraseña">
+    <Marco titulo="Recuperar contraseña" centrado>
       <div className="pp-acceso">
         <h1 className="pp-titulo">Recuperar contraseña</h1>
         <p className="pp-lead">Ingresá tu email y te enviaremos un enlace de recuperación.</p>

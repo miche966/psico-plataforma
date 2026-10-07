@@ -17,10 +17,11 @@ export function Marca() {
 /**
  * Marco comun de las pantallas del candidato: papel de fondo, marca arriba y una columna de lectura.
  * `titulo` pone el titulo de la pestana (React 19 lo lleva al <head>).
+ * `centrado` es para las pantallas de acceso (ingreso, 2FA, contrasena): la marca y el formulario van al centro de la ventana.
  */
-export function Marco({ titulo, children }: { titulo?: string; children: ReactNode }) {
+export function Marco({ titulo, centrado = false, children }: { titulo?: string; centrado?: boolean; children: ReactNode }) {
   return (
-    <div className="pp">
+    <div className={centrado ? 'pp pp-centrado' : 'pp'}>
       {titulo ? <title>{`${titulo} · PsicoPlataforma`}</title> : null}
       <header className="pp-cabecera"><Marca /></header>
       <main className="pp-columna">{children}</main>

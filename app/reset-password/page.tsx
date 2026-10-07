@@ -28,7 +28,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <Marco titulo="Crear nueva contraseña">
+    <Marco titulo="Crear nueva contraseña" centrado>
       <div className="pp-acceso">
         <h1 className="pp-titulo">Crear nueva contraseña</h1>
         <p className="pp-lead">Elegí una contraseña segura para tu cuenta.</p>

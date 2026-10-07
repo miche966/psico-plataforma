@@ -58,7 +58,7 @@ export default function Login2faPage() {
   if (cargando) return <PantallaCarga texto="Cargando…" />
 
   return (
-    <Marco titulo="Verificación en dos pasos">
+    <Marco titulo="Verificación en dos pasos" centrado>
       <div className="pp-acceso">
         <h1 className="pp-titulo">Verificación en dos pasos</h1>
         <p className="pp-lead">Ingresá el código de 6 dígitos de tu app autenticadora.</p>

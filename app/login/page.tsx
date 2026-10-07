@@ -35,7 +35,7 @@ export default function LoginPage() {
   }
 
   return (
-    <Marco titulo="Acceso de evaluadores">
+    <Marco titulo="Acceso de evaluadores" centrado>
       <div className="pp-acceso">
         <h1 className="pp-titulo">Acceso de evaluadores</h1>
         <p className="pp-lead">Ingresá con tu cuenta para ver las evaluaciones y los informes.</p>
