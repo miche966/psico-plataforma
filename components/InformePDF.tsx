@@ -404,7 +404,7 @@ export const InformePDF = ({ data }: any) => {
                     <>
                       <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#7c2d12' }}>• {f.tendencia || f.competencia || 'Área de mejora'}</Text>
                       <Text style={{ fontSize: 6, color: '#9a3412', marginLeft: 6 }}>Qué se observa: {f.mecanismo || f.descripcion || f.queSeObserva || f.observacion || 'No especificado'}</Text>
-                      <Text style={{ fontSize: 6, color: '#9a3412', marginLeft: 6 }}>Qué puede aportar: {f.impacto_organizacional || f.impacto || f.valor || f.consecuencia || f.quePuedeAportar || 'No especificado'}</Text>
+                      <Text style={{ fontSize: 6, color: '#9a3412', marginLeft: 6 }}>Qué puede implicar: {f.impacto_organizacional || f.impacto || f.valor || f.consecuencia || f.quePuedeAportar || 'No especificado'}</Text>
                     </>
                   ) : (
                     <Text style={{ fontSize: 7, color: '#7c2d12' }}>• {f}</Text>

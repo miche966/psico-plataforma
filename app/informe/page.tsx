@@ -823,10 +823,10 @@ MATRIZ DE POTENCIAL CONDUCTUAL:
 • Comunicación: ${inf.comunicacion}/100
 
 FORTALEZAS CLAVE:
-${(inf.fortalezas || []).map((f: NarrativeItem) => typeof f === 'object' ? `• ${f.tendencia || f.competencia}: ${f.mecanismo}. Que puede aportar: ${f.impacto_organizacional}` : `• ${f}`).join('\n') || 'No definidas'}
+${(inf.fortalezas || []).map((f: NarrativeItem) => typeof f === 'object' ? `• ${f.tendencia || f.competencia}: ${f.mecanismo}. Qué puede aportar: ${f.impacto_organizacional}` : `• ${f}`).join('\n') || 'No definidas'}
 
 OPORTUNIDADES DE MEJORA:
-${(inf.oportunidadesMejora || []).map((o: NarrativeItem) => typeof o === 'object' ? `• ${o.tendencia || o.competencia}: ${o.mecanismo}. Que puede aportar: ${o.impacto_organizacional}` : `• ${o}`).join('\n') || 'No definidas'}
+${(inf.oportunidadesMejora || []).map((o: NarrativeItem) => typeof o === 'object' ? `• ${o.tendencia || o.competencia}: ${o.mecanismo}. Qué puede implicar: ${o.impacto_organizacional}` : `• ${o}`).join('\n') || 'No definidas'}
 
 --------------------------------------------------
 3. FUNDAMENTACIÓN TÉCNICA
