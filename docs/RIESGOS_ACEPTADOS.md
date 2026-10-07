@@ -183,9 +183,10 @@ Alcance recomendado, de menor a mayor costo:
 ### Controles compensatorios vigentes
 - 2FA obligatorio en el panel (`MFA_OBLIGATORIO=true`, desde 2026-10-02; ver `docs/DOBLE_FACTOR.md`).
 - Límites de contraseña en `/api/login` y límite por IP de Supabase para el código.
-- Recomendado (sin código): contraseñas únicas y largas, con administrador de contraseñas, y activar en Supabase la
-  protección contra contraseñas filtradas (Authentication → Attack Protection) si el plan lo incluye. No se confirmó que
-  esté disponible ni activada.
+- Protección contra contraseñas filtradas de Supabase (Authentication → Attack Protection): **activada el 2026-10-07**
+  (estaba disponible en el plan del proyecto). Solo controla las contraseñas nuevas o cambiadas desde esa fecha: no obliga
+  a cambiar las que ya existen, así que conviene que quien administre una cuenta renueve su contraseña si no es única y larga.
+- Recomendado (sin código): contraseñas únicas y largas, con administrador de contraseñas.
 
 ### Cuándo hay que reabrir esta decisión
 - Se suman muchas cuentas de administrador o de solo lectura, o el panel pasa a guardar datos mucho más sensibles.
