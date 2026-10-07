@@ -129,6 +129,18 @@ const DOMINIOS = {
   BIENESTAR: ['burnout', 'equilibrio', 'relaciones', 'claridad_rol', 'nivel_estres', 'carga_laboral', 'resiliencia', 'manejo_estres', 'autoestima', 'inteligencia_emocional']
 }
 
+// Una tarjeta de la seccion I del informe: titulo, valor y una linea que explica que significa.
+// Sin datos (nunca se registro la señal) se muestra "Sin datos" en gris, no un 100 % ni un 0 que parezcan reales.
+function TarjetaControl({ titulo, valor, color, ayuda }: { titulo: string; valor: string; color: string; ayuda: string }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #e2e8f0' }}>
+      <Text style={{ fontSize: 6, color: '#64748b', fontWeight: 'bold', marginBottom: 4 }}>{titulo}</Text>
+      <Text style={{ fontSize: valor === 'Sin datos' ? 11 : 16, fontWeight: 'bold', color }}>{valor}</Text>
+      <Text style={{ fontSize: 6, color: '#94a3b8', marginTop: 4, textAlign: 'center' }}>{ayuda}</Text>
+    </View>
+  )
+}
+
 export const InformePDF = ({ data }: any) => {
   const { candidato, proceso, sesiones, videos, inf, helpers } = data;
 
@@ -256,23 +268,38 @@ export const InformePDF = ({ data }: any) => {
         </View>
 
         <View style={styles.section}>
-          <Text minPresenceAhead={110} style={styles.sectionTitle}>I. Controles del proceso</Text>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #e2e8f0' }}>
-              <Text style={{ fontSize: 6, color: '#64748b', fontWeight: 'bold', marginBottom: 4 }}>ÍNDICE DE CONFIANZA</Text>
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: inf.confianza > 80 ? '#059669' : '#dc2626' }}>{inf.confianza || 0}%</Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #e2e8f0' }}>
-              <Text style={{ fontSize: 6, color: '#64748b', fontWeight: 'bold', marginBottom: 4 }}>ALERTAS PROCTORING</Text>
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#334155' }}>{(inf.alertasTab || 0) + (inf.alertasCopia || 0)}</Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #e2e8f0' }}>
-              <Text style={{ fontSize: 6, color: '#64748b', fontWeight: 'bold', marginBottom: 4 }}>TIEMPO PROMEDIO</Text>
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#334155' }}>{inf.tiempoPromedio || 0} min</Text>
-            </View>
-          </View>
+          <Text minPresenceAhead={110} style={styles.sectionTitle}>I. Cómo se realizó la evaluación</Text>
+          {(() => {
+            const hayConfianza = typeof inf.confianza === 'number'
+            const hayAlertas = typeof inf.alertasTab === 'number' && typeof inf.alertasCopia === 'number'
+            const hayTiempo = typeof inf.tiempoPromedio === 'number' && inf.tiempoPromedio > 0
+            const SIN_DATOS = 'Sin datos'
+            const SIN_SENALES = 'Ninguna prueba registró este control'
+            return (
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TarjetaControl
+                  titulo="CONFIABILIDAD DE LAS PRUEBAS"
+                  valor={hayConfianza ? `${inf.confianza}%` : SIN_DATOS}
+                  color={!hayConfianza ? '#64748b' : inf.confianza > 80 ? '#059669' : '#dc2626'}
+                  ayuda={hayConfianza ? '100 % = sin salidas de la pantalla ni copiar y pegar' : SIN_SENALES}
+                />
+                <TarjetaControl
+                  titulo="ALERTA DE IRREGULARIDAD"
+                  valor={hayAlertas ? String(inf.alertasTab + inf.alertasCopia) : SIN_DATOS}
+                  color={hayAlertas ? '#334155' : '#64748b'}
+                  ayuda={hayAlertas ? 'Veces que salió de la prueba o copió y pegó' : SIN_SENALES}
+                />
+                <TarjetaControl
+                  titulo="TIEMPO POR PRUEBA"
+                  valor={hayTiempo ? `${inf.tiempoPromedio} min` : SIN_DATOS}
+                  color={hayTiempo ? '#334155' : '#64748b'}
+                  ayuda={hayTiempo ? 'Minutos que tardó en promedio en cada una' : 'No hay tiempos medibles'}
+                />
+              </View>
+            )
+          })()}
           <Text style={{ fontSize: 7, color: '#64748b', marginTop: 8 }}>
-            Estos controles validan la confiabilidad del proceso de evaluación antes de interpretar cualquier resultado.
+            Estos datos muestran cómo se hicieron las pruebas: si la persona salió de la pantalla, si copió y pegó y cuánto tardó. Sirven para dar contexto a los resultados y no evalúan a la persona. Solo algunas pruebas registran estas señales.
           </Text>
         </View>
 
