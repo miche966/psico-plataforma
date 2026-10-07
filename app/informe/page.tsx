@@ -78,6 +78,7 @@ interface InformeState {
 import { ETQ } from '@/lib/labels'
 import { sanearFraseAlineamiento } from '@/lib/informeSaneador'
 import { estimarMBTI, estimarMBTIDesdeSesiones } from '@/lib/baremos'
+import { resumenCognitivo, COLOR_VALORACION } from '@/lib/baremoCognitivo'
 import { obtenerNarrativaFactor } from '@/lib/interpretaciones/narrativasFactor'
 import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
 
@@ -518,24 +519,6 @@ function InformePageContent() {
     return tid.includes('bienestar') || tid.includes('estres') || tid.includes('dass21') || (s.puntaje_bruto && (Object.keys(s.puntaje_bruto).some(k => DOMINIOS.BIENESTAR.includes(k.toLowerCase())) || (s.puntaje_bruto.por_factor && Object.keys(s.puntaje_bruto.por_factor).some(k => DOMINIOS.BIENESTAR.includes(k.toLowerCase())))))
   })
 
-  function cogData(pb: any) {
-    if (!pb) return { correctas: 0, total: 1, percentil: 0 }
-    const corr = Number(pb.correctas || 0)
-    const tot = Number(pb.total || 1)
-    let perc = Number(pb.percentil)
-    if (isNaN(perc) || !pb.hasOwnProperty('percentil')) {
-      perc = Math.round((corr / tot) * 100)
-    }
-    return { correctas: corr, total: tot, percentil: perc }
-  }
-
-  function nivelPercentil(p: number) {
-    if (p >= 85) return 'Muy Superior'
-    if (p >= 70) return 'Superior'
-    if (p >= 40) return 'Promedio'
-    return 'Bajo'
-  }
-
   function getFactoresUnicos(dominio: string[]) {
     const mapa = new Map<string, { valor: any, sesionId: string, testId: string, acc: number }>()
 
@@ -909,7 +892,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
             </button>
             <Suspense fallback={<div style={{ padding: '12px', fontSize: '0.9rem' }}>Preparando el PDF…</div>}>
               <PDFDownloadLink
-                document={<InformePDF data={{ candidato, proceso, sesiones, videos, inf, helpers: { hoy: () => new Date().toLocaleDateString(), clrOf: (v: number) => colorPuntaje(v), hasP, hasC, hasK, hasV, sesBF, sesHX, sesCog, sesComp, sesBien, cogData, estimarMBTI, MBTI_DESC, ETQ, DOMINIOS } }} />}
+                document={<InformePDF data={{ candidato, proceso, sesiones, videos, inf, helpers: { hoy: () => new Date().toLocaleDateString(), clrOf: (v: number) => colorPuntaje(v), hasP, hasC, hasK, hasV, sesBF, sesHX, sesCog, sesComp, sesBien, estimarMBTI, MBTI_DESC, ETQ, DOMINIOS } }} />}
                 fileName={`Informe_${candidato.nombre}_${candidato.apellido}.pdf`}
                 style={s.btnSec}
               >
@@ -1089,40 +1072,33 @@ PsicoPlataforma - Gestión Inteligente de Talento
         )}
 
         {/* ── II.B ATENCIÓN Y TAREAS ───────────────────────────────────────── */}
-        {hasC && (
+        {hasC && resumenCognitivo(sesiones).pruebas > 0 && (
           <div style={s.card}>
             <div style={s.cardHead}>
               <span style={s.cardHeadTxt}>II.B — Atención y Tareas</span>
               <span style={s.badge}>Métricas de aptitud</span>
             </div>
             {sesCog.length > 0 && (() => {
-              // Calculamos el promedio de todos los tests cognitivos/aptitud
-              let sumaCorrectas = 0
-              let sumaTotal = 0
-              let sumaPercentil = 0
-
-              sesCog.forEach(s => {
-                const { correctas, total, percentil } = cogData(s.puntaje_bruto)
-                sumaCorrectas += correctas
-                sumaTotal += total
-                sumaPercentil += percentil
-              })
-
-              const normVal = sumaTotal > 0 ? Math.round((sumaCorrectas / sumaTotal) * 5 * 10) / 10 : 0
-              const percentil = Math.round(sumaPercentil / sesCog.length)
-              const nivel = nivelPercentil(percentil)
+              // Solo cuentan las pruebas cognitivas (no las situacionales) y el percentil sale del baremo de cada prueba
+              const cog = resumenCognitivo(sesiones)
+              const colorValoracion = cog.valoracion ? COLOR_VALORACION[cog.valoracion] : 'var(--slate-500)'
+              const caja: React.CSSProperties = { background: 'var(--slate-50)', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--slate-200)' }
 
               return (
                 <div key="cog-agregado" style={{ padding: '1.25rem' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-                    <div style={{ background: 'var(--slate-50)', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--slate-200)' }}>
-                      <div style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--indigo-700)' }}>{Number(normVal.toFixed(1))}/5</div>
-                      <div style={{ fontSize: '0.9rem', color: 'var(--indigo-700)', fontWeight: '600' }}>Efectividad Cognitiva</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '0.75rem' }}>
+                    <div style={caja}>
+                      <div style={{ fontSize: cog.rendimiento === null ? '1.5rem' : '2.5rem', fontWeight: '900', color: 'var(--indigo-700)' }}>{cog.rendimiento === null ? 'Sin datos' : `${cog.rendimiento}/5`}</div>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--indigo-700)', fontWeight: '600' }}>Rendimiento en las pruebas</div>
                     </div>
-                    <div style={{ background: 'var(--slate-50)', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--slate-200)' }}>
-                      <div style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--indigo-700)' }}>P{percentil}</div>
-                      <div style={{ fontSize: '0.9rem', color: 'var(--indigo-700)', fontWeight: '600' }}>{nivel}</div>
+                    <div style={caja}>
+                      <div style={{ fontSize: cog.percentil === null ? '1.5rem' : '2.5rem', fontWeight: '900', color: 'var(--indigo-700)' }}>{cog.percentil === null ? 'Sin referencia' : `P${cog.percentil}`}</div>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--indigo-700)', fontWeight: '600' }}>Rango percentil</div>
+                      {cog.valoracion && <div style={{ fontSize: '1.1rem', fontWeight: '700', color: colorValoracion, marginTop: '4px' }}>{cog.valoracion}</div>}
                     </div>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--slate-500)', lineHeight: '1.5', marginBottom: '1.5rem' }}>
+                    Rendimiento: aciertos en las pruebas de razonamiento y atención, en escala de 5. Rango percentil: posición respecto de las personas evaluadas en la plataforma en cada una de esas pruebas (Bajo: cuarto inferior del grupo; Alto: cuarto superior).
                   </div>
                   {getFactoresUnicos(DOMINIOS.COGNITIVO).filter(([k]) => !['correctas', 'total', 'score', 'percentil'].includes(k)).map(([factor, { valor, sesionId }]) => {
                     const vNorm = parseVal(valor, factor)
