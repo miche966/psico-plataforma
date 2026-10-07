@@ -76,7 +76,7 @@ interface InformeState {
 }
 
 import { ETQ } from '@/lib/labels'
-import { sanearFraseAlineamiento } from '@/lib/informeSaneador'
+import { humanizarTexto } from '@/lib/humanizarTexto'
 import { estimarMBTI, estimarMBTIDesdeSesiones } from '@/lib/baremos'
 import { resumenCognitivo, COLOR_VALORACION } from '@/lib/baremoCognitivo'
 import { obtenerNarrativaFactor } from '@/lib/interpretaciones/narrativasFactor'
@@ -608,93 +608,8 @@ function InformePageContent() {
 
       if (rawRes && !data.error) {
         // Humanizador de factores técnicos y tono profesional (Consultoría)
-        const humanizar = (t: string) => {
-          if (!t || typeof t !== 'string') return t
-          let limpio = t.replace(/\*\*/g, '')
-
-          // 1. Filtro de nombre: reemplaza el nombre del evaluado por "El candidato"
-          if (candidato?.nombre) {
-            const nombreEscaped = candidato.nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-            const regexNombre = new RegExp(nombreEscaped, 'gi')
-            limpio = limpio.replace(regexNombre, 'El candidato')
-          }
-
-          // 2. Normalización de factores técnicos (ETQ)
-          Object.entries(ETQ).forEach(([key, label]) => {
-            const variant = key.replace(/_/g, '[\\s\\-_]')
-            // Usamos límites de palabra (\b) para evitar reemplazar subcadenas dentro de otras palabras
-            const regex = new RegExp(`\\b${variant}\\b`, 'gi')
-            // Integramos la etiqueta en minúsculas para que fluya mejor en la oración
-            limpio = limpio.replace(regex, label.toLowerCase())
-          })
-
-          // 3. Eliminación de maximalismos y lenguaje informal
-          const prohibidas: Record<string, string> = {
-            'arquitectura conductual': 'estilo de trabajo',
-            'arquitectura mental': 'estilo de pensamiento',
-            'arquitectura': 'estilo de comportamiento',
-            'eficiencia cognitiva': 'efectividad operativa',
-            'recurso': 'profesional',
-            'un recurso': 'un perfil',
-            'como recurso': 'como profesional',
-            'profunda adherencia': 'adherencia consistente',
-            'manejo excepcional': 'manejo efectivo',
-            'inteligencia emocional': 'estabilidad emocional',
-            'IE aplicada': 'gestión de emociones',
-            'apego a normas y ética': 'sentido ético',
-            'solvencia': 'adecuación',
-            'destacada': 'notable',
-            'consistente': 'clara',
-            'excepcional': 'destacada',
-            'sobresaliente': 'notable',
-            'superior': 'destacado',
-            'dominio superior': 'manejo adecuado',
-            'capacidad superior': 'capacidad clara',
-            'resiliencia excepcional': 'resiliencia consistente',
-            'adherencia inquebrantable': 'adherencia consistente',
-            'decisiones objetiva': 'decisiones objetivas',
-            'DASS-21': 'bienestar emocional',
-            'DASS21': 'bienestar emocional',
-            'MBTI': 'perfil conductual',
-            'ICAR': 'capacidad cognitiva',
-            'SJT': 'juicio situacional',
-            'discurso inferido': 'comunicación observada',
-            'magnífico': 'adecuado',
-            'maravilloso': 'positivo',
-            'increíble': 'relevante',
-            'proclive': 'tiende a',
-            'deficitario': 'con áreas de mejora',
-            'óptimo': 'adecuado',
-            'máximo': 'alto',
-            'esenciales': 'importantes',
-            'esencial': 'importante',
-            'cruciales': 'relevantes',
-            'crucial': 'relevante'
-          }
-
-          Object.entries(prohibidas).forEach(([mal, bien]) => {
-            const regex = new RegExp(`\\b${mal}\\b`, 'gi')
-            limpio = limpio.replace(regex, bien)
-          })
-
-          // 4. Limpieza final de artefactos técnicos y normalización gramatical
-          limpio = limpio
-            .replace(/NaN/g, 'adecuado')
-            .replace(/PUNTAJE DE AJUSTE/gi, 'nivel de adecuación')
-            .trim()
-
-          // 5. Autocorrección de capitalización (Mayúscula al inicio de cada oración)
-          limpio = limpio.replace(/(^\s*\w|[\.\!\?]\s+\w)/g, c => c.toUpperCase())
-
-          // 6. La normalización ETQ del paso 2 puede reconstruir "alineamiento de expectativas"
-          // al reemplazar la palabra suelta "expectativas" por la etiqueta completa del factor
-          // (ver lib/labels.ts) — el mismo texto que el servidor ya había limpiado con este mismo
-          // saneador antes de responder. Se vuelve a aplicar acá, al final, para no depender de
-          // en qué paso se reintrodujo.
-          limpio = sanearFraseAlineamiento(limpio)
-
-          return limpio
-        }
+        // La limpieza del texto de la IA vive en lib/humanizarTexto.ts (con sus tests)
+        const humanizar = (t: string) => humanizarTexto(t, candidato?.nombre)
 
         const normalizarNarrativa = (item: unknown): NarrativeItem => {
           if (typeof item === 'string') return humanizar(item)
