@@ -117,6 +117,7 @@ const styles = StyleSheet.create({
 
 import { ETQ } from '@/lib/labels';
 import { MarcaPDF } from '@/components/MarcaPDF';
+import { resumenCognitivo, COLOR_VALORACION } from '@/lib/baremoCognitivo';
 
 
 const DOMINIOS = {
@@ -288,42 +289,30 @@ export const InformePDF = ({ data }: any) => {
             </View>
           )}
 
-          {hasC && (
+          {hasC && resumenCognitivo(sesiones).pruebas > 0 && (
             <View wrap={false} style={{ marginBottom: 14 }}>
               <Text minPresenceAhead={110} style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 6 }}>II.B — Atención y Tareas</Text>
               {sesCog.length > 0 && (() => {
-                let sumaCorrectas = 0
-                let sumaTotal = 0
-                let sumaPercentil = 0
-
-                sesCog.forEach((s: any) => {
-                  const pb = s.puntaje_bruto || {};
-                  const corr = Number(pb.correctas || 0);
-                  const tot = Number(pb.total || 1);
-                  let perc = Number(pb.percentil);
-                  if (isNaN(perc) || !pb.hasOwnProperty('percentil')) {
-                    perc = Math.round((corr / tot) * 100);
-                  }
-                  sumaCorrectas += corr;
-                  sumaTotal += tot;
-                  sumaPercentil += perc;
-                });
-
-                const normVal = sumaTotal > 0 ? Math.round((sumaCorrectas / sumaTotal) * 5 * 10) / 10 : 0;
-                const perc = Math.round(sumaPercentil / sesCog.length);
-
+                // Solo cuentan las pruebas cognitivas (no las situacionales) y el percentil sale del baremo de cada prueba
+                const cog = resumenCognitivo(sesiones)
+                const colorValoracion = cog.valoracion ? COLOR_VALORACION[cog.valoracion] : '#64748b'
+                const caja = { flex: 1, backgroundColor: '#f0f9ff', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #bae6fd' } as const
                 return (
                   <View>
-                    <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
-                      <View style={{ flex: 1, backgroundColor: '#f0f9ff', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #bae6fd' }}>
-                        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#0369a1' }}>{normVal}/5</Text>
-                        <Text style={{ fontSize: 6, color: '#0369a1', fontWeight: 'bold', textTransform: 'uppercase' }}>Efectividad Cognitiva</Text>
+                    <View style={{ flexDirection: 'row', gap: 10, marginBottom: 6 }}>
+                      <View style={caja}>
+                        <Text style={{ fontSize: cog.rendimiento === null ? 11 : 16, fontWeight: 'bold', color: '#0369a1' }}>{cog.rendimiento === null ? 'Sin datos' : `${cog.rendimiento}/5`}</Text>
+                        <Text style={{ fontSize: 6, color: '#0369a1', fontWeight: 'bold', textTransform: 'uppercase' }}>Rendimiento en las pruebas</Text>
                       </View>
-                      <View style={{ flex: 1, backgroundColor: '#f0f9ff', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #bae6fd' }}>
-                        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#0369a1' }}>P{perc}</Text>
-                        <Text style={{ fontSize: 6, color: '#0369a1', fontWeight: 'bold', textTransform: 'uppercase' }}>Rango Percentil</Text>
+                      <View style={caja}>
+                        <Text style={{ fontSize: cog.percentil === null ? 11 : 16, fontWeight: 'bold', color: '#0369a1' }}>{cog.percentil === null ? 'Sin referencia' : `P${cog.percentil}`}</Text>
+                        <Text style={{ fontSize: 6, color: '#0369a1', fontWeight: 'bold', textTransform: 'uppercase' }}>Rango percentil</Text>
+                        {cog.valoracion && <Text style={{ fontSize: 9, fontWeight: 'bold', color: colorValoracion, marginTop: 3 }}>{cog.valoracion}</Text>}
                       </View>
                     </View>
+                    <Text style={{ fontSize: 6, color: '#64748b', marginBottom: 12 }}>
+                      Rendimiento: aciertos en las pruebas de razonamiento y atención, en escala de 5. Rango percentil: posición respecto de las personas evaluadas en la plataforma en cada una de esas pruebas (Bajo: cuarto inferior del grupo; Alto: cuarto superior).
+                    </Text>
                     {renderFactores(DOMINIOS.COGNITIVO.filter(f => !['correctas', 'total', 'score', 'percentil'].includes(f)), sesCog)}
                   </View>
                 );
