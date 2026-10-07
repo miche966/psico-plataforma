@@ -31,12 +31,13 @@
 /* El panel anima los colores de todo; aca solo las cosas que cambian por una accion del candidato */
 .pp, .pp div, .pp p, .pp span, .pp button, .pp a, .pp h1, .pp h2, .pp h3 { transition: none; }
 
-.pp-cabecera { max-width: 40rem; margin: 0 auto; padding: 1.25rem 1.25rem 0; }
-.pp-columna { max-width: 40rem; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+.pp-cabecera { max-width: 40rem; margin: 0 auto; padding: 1.1rem 1.25rem 0; }
+.pp-columna { max-width: 40rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
 
 .pp-columna > p { margin: 0 0 1rem; }
 
-.pp-marca { display: inline-block; font-family: var(--font-lectura), Georgia, serif; font-weight: 600; font-size: 1.3rem; line-height: 1.2; color: var(--pp-tinta); text-decoration: none; }
+/* La marca va dentro de una burbuja (como las de la hoja de respuestas) */
+.pp-marca { display: inline-block; font-family: var(--font-lectura), Georgia, serif; font-weight: 600; font-size: 1.2rem; line-height: 1.2; color: var(--pp-tinta); text-decoration: none; padding: 0.45rem 1.1rem 0.5rem; background: var(--pp-hoja); border: 1px solid var(--pp-linea); border-radius: 999px; }
 
 /* Las cifras que cambian a la vista (tiempo, avance) van en Literata: tienen mas presencia que en la fuente de interfaz */
 .pp-tiempo-num, .pp-prueba-avance, .pp-tiempo-total, .pp-contactos dd { font-family: var(--font-lectura), Georgia, serif; }
@@ -244,16 +245,17 @@
 .pp-paso[data-estado="completada"] .pp-paso-estado { color: var(--pp-pino); font-weight: 700; }
 /* Comprobacion de camara: en computadora el texto y las acciones van a la izquierda y la camara a la derecha, para que todo entre sin scroll */
 .pp-ancho .pp-cabecera, .pp-ancho .pp-columna { max-width: 60rem; }
-.pp-preparacion { display: grid; gap: 0.5rem 3rem; grid-template-areas: "intro" "camara" "accion"; }
-.pp-prep-intro { grid-area: intro; }
-.pp-prep-camara { grid-area: camara; max-width: none; margin-bottom: 0.5rem; }
+.pp-preparacion { display: grid; gap: 0 3rem; grid-template-areas: "titulo" "texto" "camara" "accion"; }
+.pp-prep-titulo { grid-area: titulo; }
+.pp-prep-texto { grid-area: texto; }
+.pp-camara.pp-prep-camara { grid-area: camara; max-width: none; justify-items: center; margin: 0 0 1rem; }
 .pp-prep-accion { grid-area: accion; }
 .pp-prep-accion .pp-chequeo { margin: 0 0 1rem; }
 .pp-prep-accion .pp-muted { margin: 0 0 1.25rem; }
-.pp-prep-intro .pp-lead { margin-bottom: 1rem; }
+.pp-prep-texto .pp-lead { margin-bottom: 1rem; }
 @media (min-width: 56rem) {
-  .pp-preparacion { grid-template-columns: minmax(0, 1fr) 26rem; grid-template-areas: "intro camara" "accion camara"; align-items: start; }
-  .pp-prep-camara { margin-top: 0.4rem; }
+  .pp-preparacion { grid-template-columns: minmax(0, 1fr) 26rem; grid-template-areas: "titulo ." "texto camara" "accion camara"; align-items: start; }
+  .pp-camara.pp-prep-camara { margin: 0.35rem 0 0; }
 }
 .pp-camara { display: grid; gap: 0.9rem; justify-items: start; margin: 0 0 1.5rem; max-width: 30rem; }
 .pp-camara-vista { width: 100%; aspect-ratio: 16 / 9; display: grid; place-items: center; text-align: center; padding: 1rem; background: var(--pp-tinta); color: #cfdcd7; border-radius: var(--pp-radio); overflow: hidden; }
@@ -279,5 +281,5 @@
 }
 @media (max-width: 30rem) {
   .pp-enunciado { font-size: 1.25rem; }
-  .pp-columna { padding-top: 1.25rem; }
+  .pp-columna { padding-top: 1.5rem; }
 }

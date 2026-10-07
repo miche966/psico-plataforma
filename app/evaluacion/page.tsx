@@ -193,8 +193,8 @@ export default function PortalCandidatoPage() {
     return (
       <Marco titulo="Antes de empezar" ancho>
         <div className="pp-preparacion">
-          <div className="pp-prep-intro">
-            <h1 className="pp-titulo">Hola, {candidato?.nombre}</h1>
+          <h1 className="pp-titulo pp-prep-titulo">Hola, {candidato?.nombre}</h1>
+          <div className="pp-prep-texto">
             <p className="pp-lead">Antes de empezar, comprobemos que tu equipo esté listo. Para las video-entrevistas conviene que tu rostro esté bien iluminado y centrado, y que estés en un lugar tranquilo.</p>
           </div>
 
@@ -206,7 +206,7 @@ export default function PortalCandidatoPage() {
                 <p>Activá la cámara para ver tu imagen</p>
               )}
             </div>
-            {!stream && <button type="button" className="pp-boton pp-boton-secundario" onClick={activarCamara}>Activar cámara y micrófono</button>}
+            {!stream && <button type="button" className="pp-boton" onClick={activarCamara}>Activar cámara y micrófono</button>}
           </section>
 
           <div className="pp-prep-accion">
@@ -215,9 +215,10 @@ export default function PortalCandidatoPage() {
               <li data-listo={hayMicrofono}>{hayMicrofono ? 'Micrófono detectado' : 'Micrófono sin activar'}</li>
             </ul>
             <p className="pp-muted">Al continuar, confirmás que tu equipo funciona bien y que estás en un lugar tranquilo para hacer las pruebas.</p>
+            {/* El botón principal es el que falta apretar: activar la cámara mientras no esté activa, y continuar cuando está lista */}
             <button
               type="button"
-              className="pp-boton"
+              className={stream ? 'pp-boton' : 'pp-boton pp-boton-secundario'}
               onClick={() => {
                 localStorage.setItem(`setup_done_${candidatoId}`, '1')
                 detenerCamara()
