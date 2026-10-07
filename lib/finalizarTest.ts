@@ -9,50 +9,6 @@
 // marcar "finalizado" cuando esta función confirma éxito, nunca antes.
 export type ResultadoFinalizarTest = { ok: true } | { ok: false; error: string }
 
-export async function finalizarTest(params: {
-  candidatoId: string | null | undefined
-  procesoId: string | null | undefined
-  token: string
-  testId: string
-  sesionId?: string
-  puntajeBruto: unknown
-  respuestas?: unknown[]
-  intentos?: number
-}): Promise<ResultadoFinalizarTest> {
-  const intentos = params.intentos ?? 3
-  let ultimoError = 'No se pudo guardar la evaluación.'
-
-  for (let intento = 0; intento < intentos; intento++) {
-    try {
-      const response = await fetch('/api/evaluacion/public-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'finalize',
-          candidato_id: params.candidatoId,
-          proceso_id: params.procesoId,
-          token: params.token,
-          test_id: params.testId,
-          sesion_id: params.sesionId,
-          puntaje_bruto: params.puntajeBruto,
-          respuestas: params.respuestas || [],
-        }),
-      })
-      const payload = await response.json().catch(() => ({}))
-      if (response.ok) return { ok: true }
-      // Si la sesión ya estaba finalizada (otro intento anterior sí llegó a guardarse),
-      // no es un error real — no hay nada más que guardar.
-      if (payload.alreadyCompleted) return { ok: true }
-      ultimoError = payload.error || ultimoError
-    } catch (err: any) {
-      ultimoError = err?.message || 'Error de conexión al guardar la evaluación.'
-    }
-    if (intento < intentos - 1) await new Promise(r => setTimeout(r, 1000 * (intento + 1)))
-  }
-
-  return { ok: false, error: ultimoError }
-}
-
 // Formato crudo (etapa 3 de docs/PUNTAJE_EN_SERVIDOR.md): el navegador manda SOLO lo que el candidato eligio y el servidor
 // calcula el puntaje. `opcion` es el indice de la opcion elegida (null si se agoto el tiempo); en los Likert, `valor` es el
 // valor crudo (sin invertir). `resumen` es lo que el servidor calculo, para mostrarlo en la pantalla de fin.
@@ -68,7 +24,6 @@ export async function finalizarTestCrudo(params: {
   respuestas: RespuestaCruda[]
   metricasFraude?: unknown
   /** ICAR: nivel maximo y rotacion de la URL. El servidor solo los tiene en cuenta si el token no los fija (enlaces ya emitidos). */
-  configIcar?: { nivelMax: number; sinRotacion: boolean }
   intentos?: number
 }): Promise<ResultadoFinalizarTestCrudo> {
   const intentos = params.intentos ?? 3
@@ -87,7 +42,6 @@ export async function finalizarTestCrudo(params: {
           token: params.token,
           test_id: params.testId,
           sesion_id: params.sesionId,
-          ...(params.configIcar ? { nivel_max: params.configIcar.nivelMax, sin_rotacion: params.configIcar.sinRotacion || undefined } : {}),
           puntaje_bruto: params.metricasFraude ? { metricas_fraude: params.metricasFraude } : {},
           respuestas: params.respuestas.map(r => ({ ...r, tiempo_respuesta: 0 })),
         }),

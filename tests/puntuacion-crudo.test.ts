@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 
-const { puntuarCrudo, resumenDePuntaje, testsEstrictos, calcularPuntaje } = await import('../lib/server/puntuacion.ts')
+const { puntuarCrudo, resumenDePuntaje, calcularPuntaje } = await import('../lib/server/puntuacion.ts')
 
 const ID = {
   verbal: 'd4e5f6a7-b8c9-0123-defa-234567890123', numerico: 'c3d4e5f6-a7b8-9012-cdef-123456789012', atencion: 'b8c9d0e1-f2a3-4567-bcde-888888888888',
@@ -136,11 +136,5 @@ const azar = (n: number) => { semilla = (semilla * 1103515245 + 12345) & 0x7ffff
 // ---- resumenDePuntaje: lo que se muestra al candidato de una sesion ya guardada ----
 assert.deepEqual(resumenDePuntaje({ correctas: 3, total: 5, porcentaje: 60, metricas_fraude: { tabSwitches: 1 } }), { correctas: 3, total: 5, porcentaje: 60 })
 for (const malo of [null, undefined, 'x', 5, []]) assert.deepEqual(resumenDePuntaje(malo), {})
-
-// ---- PUNTAJE_ESTRICTO: ids o slugs, solo tests que el servidor sabe puntuar ----
-assert.deepEqual([...testsEstrictos({})], [])
-assert.deepEqual([...testsEstrictos({ PUNTAJE_ESTRICTO: 'verbal, numerico' })].sort(), [ID.verbal, ID.numerico].sort())
-assert.deepEqual([...testsEstrictos({ PUNTAJE_ESTRICTO: ID.verbal })], [ID.verbal])
-assert.deepEqual([...testsEstrictos({ PUNTAJE_ESTRICTO: 'roleplay,frases-incompletas,no-existe,,' })], [], 'lo que no se puntua en el servidor no entra')
 
 console.log('✅ puntuacion-crudo: el servidor reproduce las formulas de las paginas desde la eleccion cruda (con clave, Likert, estres, DASS-21), exige respuestas completas y opciones validas, ignora el 0/1 del navegador y sanea la telemetria')
