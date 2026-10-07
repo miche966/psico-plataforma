@@ -144,19 +144,6 @@ function TarjetaControl({ titulo, valor, color, ayuda }: { titulo: string; valor
 export const InformePDF = ({ data }: any) => {
   const { candidato, proceso, sesiones, videos, inf, helpers } = data;
 
-  const esCargoLiderazgo = proceso?.cargo ? (
-    proceso.cargo.toLowerCase().includes('jefe') ||
-    proceso.cargo.toLowerCase().includes('jefa') ||
-    proceso.cargo.toLowerCase().includes('gerente') ||
-    proceso.cargo.toLowerCase().includes('lider') ||
-    proceso.cargo.toLowerCase().includes('líder') ||
-    proceso.cargo.toLowerCase().includes('director') ||
-    proceso.cargo.toLowerCase().includes('coordinador') ||
-    proceso.cargo.toLowerCase().includes('supervisor') ||
-    proceso.cargo.toLowerCase().includes('responsable')
-  ) : false;
-
-  const labelLiderazgo = esCargoLiderazgo ? 'LIDERAZGO' : 'AUTOGESTIÓN';
 
   // Detección robusta de dominios e inclusión de sesiones
   const { hasP, hasC, hasK, hasV, sesBF, sesCog, sesComp, sesBien } = (() => {
@@ -201,7 +188,7 @@ export const InformePDF = ({ data }: any) => {
   const sesionFrases = sesiones.find((s: any) => s.test_id === 'f7a8b9c0-d1e2-4356-abcd-888888888888');
   const analisisFrases = sesionFrases?.puntaje_bruto?.analisis_ia;
 
-  const renderFactores = (dominio: string[], sesionesFilt: any[], anotaciones?: Record<string, string>) => {
+  const renderFactores = (dominio: string[], sesionesFilt: any[]) => {
     const mapa = new Map<string, any>();
     [...sesionesFilt].sort((a, b) => new Date(b.finalizada_en || 0).getTime() - new Date(a.finalizada_en || 0).getTime()).forEach(s => {
       const scan = (obj: any) => {
@@ -226,7 +213,6 @@ export const InformePDF = ({ data }: any) => {
       const desc = interpretacionVigente(inf)
         ? (inf.interpretacionPorFactor?.[fk] || inf.interpretacionPorFactor?.[factor.toLowerCase()] || obtenerInterpretacionLocal(factor, vNorm))
         : obtenerInterpretacionLocal(factor, vNorm);
-      const anotacion = anotaciones?.[factor];
 
       return (
         <View key={factor} wrap={false} style={styles.factorBlock}>
@@ -236,22 +222,11 @@ export const InformePDF = ({ data }: any) => {
           </View>
           <View style={styles.barBg}><View style={[styles.barFill, { width: `${(vNorm/5)*100}%`, backgroundColor: clr }]} /></View>
           <Text style={styles.factorDesc}>{desc}</Text>
-          {anotacion && <Text style={[styles.factorDesc, { color: '#7c3aed', marginTop: 2 }]}>→ {anotacion}</Text>}
         </View>
       );
     });
   };
 
-  // "Habilidades para el Trabajo" ya no se muestran como bloque aparte (Sección III anterior):
-  // se anotan junto al factor de Personalidad del que se derivan (ver lib/metaCompetencias.ts),
-  // para no repetir el mismo dato dos veces bajo nombres distintos.
-  const anotacionesPersonalidad: Record<string, string> = {
-    extraversion: `Comunicación funcional estimada: ${inf.comunicacion ?? 0}/100`,
-    amabilidad: `Colaboración funcional estimada: ${inf.colaboracion ?? 0}/100`,
-    apertura: `Adaptabilidad funcional estimada: ${inf.adaptabilidad ?? 0}/100`,
-    responsabilidad: `${labelLiderazgo === 'LIDERAZGO' ? 'Liderazgo' : 'Autogestión'} funcional estimada: ${inf.liderazgo ?? 0}/100`,
-    neuroticismo: `Resiliencia funcional estimada: ${inf.resiliencia ?? 0}/100`,
-  };
 
   return (
     <Document title={`Informe - ${candidato.nombre}`}>
@@ -309,7 +284,7 @@ export const InformePDF = ({ data }: any) => {
           {hasP && (
             <View wrap={false} style={{ marginBottom: 14 }}>
               <Text minPresenceAhead={110} style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 6 }}>II.A — Personalidad</Text>
-              {renderFactores(DOMINIOS.PERSONALIDAD.filter(f => !['normas', 'promedio_general'].includes(f)), sesBF, anotacionesPersonalidad)}
+              {renderFactores(DOMINIOS.PERSONALIDAD.filter(f => !['normas', 'promedio_general'].includes(f)), sesBF)}
             </View>
           )}
 
