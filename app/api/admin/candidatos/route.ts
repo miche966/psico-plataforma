@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { candidatoIdsEnProcesos } from '@/lib/server/procesoScope'
+import { eliminarCandidato, resumenDeEliminacion } from '@/lib/server/eliminarCandidato'
+import { registrarAcceso } from '@/lib/server/registroAccesos'
+
+const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function GET(request: Request) {
   const auth = await requireAdminSession(request)
@@ -143,6 +147,21 @@ export async function POST(request: Request) {
       const gruposDocumento = Array.from(porDocumento.entries()).filter(([, rows]) => rows.length > 1).map(([documento, rows]) => ({ documento, candidatos: rows }))
 
       return NextResponse.json({ gruposEmail, gruposDocumento })
+    }
+
+    // Eliminar un candidato: primero se pide el resumen de lo que se borraria y despues se confirma escribiendo su nombre
+    if (action === 'resumen_eliminacion' || action === 'eliminar_candidato') {
+      const candidatoId = String(body.candidatoId || '')
+      if (!ES_UUID.test(candidatoId)) return NextResponse.json({ error: 'Falta candidatoId' }, { status: 400 })
+      if (action === 'resumen_eliminacion') {
+        const resumen = await resumenDeEliminacion(db, candidatoId)
+        if (!resumen) return NextResponse.json({ error: 'El candidato no existe' }, { status: 404 })
+        return NextResponse.json({ resumen })
+      }
+      const resultado = await eliminarCandidato(db, candidatoId, body.confirmacion)
+      if (!resultado.ok) return NextResponse.json({ error: resultado.error }, { status: resultado.status })
+      await registrarAcceso(db, auth, { accion: 'eliminar_candidato', candidatoId }, request)
+      return NextResponse.json({ success: true, eliminado: resultado.resumen })
     }
 
     return NextResponse.json({ error: 'Acción no soportada' }, { status: 400 })
