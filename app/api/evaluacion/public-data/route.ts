@@ -3,8 +3,7 @@ import { leerTokenEvaluacion } from '@/lib/server/evaluacionToken'
 import { itemsDelExamenIcar, resolverConfigIcar } from '@/lib/server/icarConfig'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { z, validar, lenient } from '@/lib/server/validacion'
-import { compararPuntajeEnSombra } from '@/lib/server/puntajeSombra'
-import { bancoDeItems, esIcar, esPuntuable, puntuarCrudo, resumenDePuntaje, testsEstrictos, type ItemPuntuable } from '@/lib/server/puntuacion'
+import { bancoDeItems, esIcar, esPuntuable, puntuarCrudo, resumenDePuntaje, type ItemPuntuable } from '@/lib/server/puntuacion'
 
 // sesion_id viene del estado del cliente (puede faltar o venir vacio): si no es un uuid valido se trata
 // como "sin sesion" y se busca por candidato/proceso/test, igual que antes, en vez de rechazar y
@@ -15,13 +14,10 @@ const sesionIdOVacio = (v: unknown): string => (z.guid().safeParse(v).success ? 
 // schema por test aca; se acota el tamano (el mayor legitimo, Frases Incompletas, ronda los 70 KB).
 // formato 'crudo' (etapa 3 de docs/PUNTAJE_EN_SERVIDOR.md): el navegador manda solo la eleccion del candidato (`opcion`: indice
 // de la opcion, o null si se agoto el tiempo; `valor`: el valor crudo en los Likert) y el servidor calcula el puntaje.
-// Sin `formato` es el protocolo anterior (el navegador manda su puntaje y su 0/1), que sigue valido hasta activar el
-// modo estricto (PUNTAJE_ESTRICTO) para ese test.
+// Sin `formato` es el protocolo anterior (el navegador manda su puntaje), que solo queda para los tests que el servidor no puntua
+// (hoy Frases Incompletas, de texto libre): los tests puntuables lo rechazan.
 const finalizarSchema = z.object({
   formato: z.enum(['crudo']).optional(),
-  // ICAR: lo que el navegador dice haber visto (nivel maximo y rotacion de su URL). Solo se tiene en cuenta mientras ICAR no este en modo estricto y el token no fije la configuracion.
-  nivel_max: lenient(v => (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 10 ? v : undefined)),
-  sin_rotacion: lenient(v => (v === true ? true : undefined)),
   respuestas: z.array(z.object({
     item_id: z.guid('Una respuesta tiene un identificador de ítem inválido.'),
     valor: lenient(v => (typeof v === 'number' || (typeof v === 'string' && v.trim() !== '')) && Number.isInteger(Number(v)) ? Number(v) : undefined),
@@ -82,14 +78,13 @@ export async function GET(request: Request) {
     const contexto = await validarContexto(request)
     if ('error' in contexto) return contexto.error
     const { db, candidato, proceso, testId, datosToken } = contexto
-    // En modo estricto (PUNTAJE_ESTRICTO) el servidor corrige: la clave de correccion y los flags de inversion ya no viajan al navegador
-    const columnas = testsEstrictos().has(testId) ? 'id, orden, contenido, opciones, factor, nivel_dificultad, subtipo' : 'id, orden, contenido, opciones, factor, inverso, respuesta_correcta, nivel_dificultad, subtipo'
+    // El servidor corrige: la clave de correccion y los flags de inversion nunca viajan al navegador
+    const columnas = 'id, orden, contenido, opciones, factor, nivel_dificultad, subtipo'
     // SJT Cobranzas no tiene items propios: usa el banco de Tolerancia (igual que finalize)
     let query = db.from('items').select(columnas).eq('test_id', bancoDeItems(testId))
     if (testId === ICAR_ID) {
-      const url = new URL(request.url)
-      // Nivel maximo y rotacion: manda el token firmado; la URL solo vale mientras ICAR no este en modo estricto (enlaces ya emitidos)
-      const cfg = resolverConfigIcar({ token: datosToken.icar, estricto: testsEstrictos().has(ICAR_ID), max: url.searchParams.get('nivel_max'), sinRotacion: url.searchParams.get('sin_rotacion') })
+      // Nivel maximo y rotacion: los fija el token firmado; sin eso, el examen completo (la URL del candidato no cuenta)
+      const cfg = resolverConfigIcar({ token: datosToken.icar })
       query = query.lte('nivel_dificultad', cfg.max)
       if (cfg.sinRotacion) query = query.neq('subtipo', 'rotacion')
       query = query.order('subtipo').order('nivel_dificultad').order('orden')
@@ -159,8 +154,8 @@ export async function POST(request: Request) {
       if (entrada.data.formato === 'crudo') {
         if (!esPuntuable(testId)) return NextResponse.json({ error: 'Este test todavía no admite ese formato.' }, { status: 400 })
       } else {
-        // Protocolo anterior: cada respuesta trae el valor que calculo el navegador. En modo estricto ya no se acepta.
-        if (testsEstrictos().has(testId)) return NextResponse.json({ error: 'Esta evaluación se actualizó. Recargá la página para continuar.', recargar: true }, { status: 400 })
+        // Protocolo anterior: solo para tests que el servidor no puntua; un test puntuable debe mandar el formato crudo
+        if (esPuntuable(testId)) return NextResponse.json({ error: 'Esta evaluación se actualizó. Recargá la página para continuar.', recargar: true }, { status: 400 })
         if (respuestas.some(r => r.valor === undefined)) return NextResponse.json({ error: 'Una respuesta tiene un valor inválido.' }, { status: 400 })
       }
       let sesionId = sesionIdOVacio(body.sesion_id)
@@ -192,7 +187,7 @@ export async function POST(request: Request) {
         let extras: Record<string, unknown> = {}
         if (esIcar(testId)) {
           // El examen que debia responder el candidato lo fija el token firmado (nivel maximo y rotacion), no el navegador
-          const cfg = resolverConfigIcar({ token: datosToken.icar, estricto: testsEstrictos().has(testId), max: entrada.data.nivel_max, sinRotacion: entrada.data.sin_rotacion })
+          const cfg = resolverConfigIcar({ token: datosToken.icar })
           universo = itemsDelExamenIcar(universo, cfg)
           extras = { nivel_maximo: cfg.max }
         }
@@ -201,9 +196,6 @@ export async function POST(request: Request) {
         puntajeAGuardar = { ...calculo.puntaje, ...extras }
         resumen = { ...calculo.resumen, ...extras }
         respuestasAGuardar = calculo.respuestas.map(r => ({ ...r, tiempo_respuesta: 0 }))
-      } else {
-        // Protocolo anterior: lo que se guarda sigue siendo lo del navegador; el servidor recalcula y compara en silencio
-        await compararPuntajeEnSombra(db, testId, respuestas.map(r => ({ item_id: r.item_id, valor: r.valor as number })), puntaje, sesionId)
       }
       // Una sesion 'pendiente' (asignada desde el panel y nunca abierta por una pagina que avise el inicio) tambien se puede cerrar; solo se excluye la que ya esta finalizada
       const { data: actualizada, error: updateError } = await db.from('sesiones').update({ estado: 'finalizado', finalizada_en: new Date().toISOString(), puntaje_bruto: puntajeAGuardar }).eq('id', sesionId).in('estado', ['iniciado', 'pendiente']).select('id, estado, puntaje_bruto').maybeSingle()

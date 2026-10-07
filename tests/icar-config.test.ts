@@ -2,21 +2,14 @@ import assert from 'node:assert/strict'
 
 const { resolverConfigIcar, itemsDelExamenIcar, NIVEL_ICAR_POR_DEFECTO } = await import('../lib/server/icarConfig.ts')
 
-// ---- 1. El token manda sobre todo lo demas (URL, pedido y modo estricto) ----
-assert.deepEqual(resolverConfigIcar({ token: { max: 2, sinRotacion: true }, estricto: false, max: 3, sinRotacion: false }), { max: 2, sinRotacion: true, origen: 'token' })
-assert.deepEqual(resolverConfigIcar({ token: { max: 1, sinRotacion: false }, estricto: true, max: 3, sinRotacion: true }), { max: 1, sinRotacion: false, origen: 'token' }, 'el candidato no puede cambiarlo desde la URL')
+// ---- 1. El token manda: el candidato no lo puede cambiar desde la URL ni el pedido ----
+assert.deepEqual(resolverConfigIcar({ token: { max: 2, sinRotacion: true } }), { max: 2, sinRotacion: true, origen: 'token' })
+assert.deepEqual(resolverConfigIcar({ token: { max: 1, sinRotacion: false } }), { max: 1, sinRotacion: false, origen: 'token' })
 
-// ---- 2. Sin token y en modo estricto: valores por omision; la URL se ignora ----
-assert.deepEqual(resolverConfigIcar({ estricto: true, max: 1, sinRotacion: '1' }), { max: NIVEL_ICAR_POR_DEFECTO, sinRotacion: false, origen: 'defecto' })
+// ---- 2. Sin token: el examen completo (nivel 3, con rotacion); la URL y el pedido no cuentan ----
+assert.deepEqual(resolverConfigIcar({}), { max: NIVEL_ICAR_POR_DEFECTO, sinRotacion: false, origen: 'defecto' })
+assert.deepEqual(resolverConfigIcar({ token: undefined, max: 1, sinRotacion: '1' } as any), { max: NIVEL_ICAR_POR_DEFECTO, sinRotacion: false, origen: 'defecto' }, 'un enlace viejo con ?max=1&norot=1 ya no baja el examen')
 assert.equal(NIVEL_ICAR_POR_DEFECTO, 3)
-
-// ---- 3. Transicion (sin token y sin estricto): vale la URL, como siempre, para no romper enlaces ya emitidos ----
-assert.deepEqual(resolverConfigIcar({ estricto: false, max: '2', sinRotacion: '1' }), { max: 2, sinRotacion: true, origen: 'url' })
-assert.deepEqual(resolverConfigIcar({ estricto: false, max: 1, sinRotacion: true }), { max: 1, sinRotacion: true, origen: 'url' }, 'tambien del cuerpo del pedido (numero y booleano)')
-assert.deepEqual(resolverConfigIcar({ estricto: false }), { max: 3, sinRotacion: false, origen: 'url' })
-for (const malo of [null, undefined, '', 'x', 0, -4, NaN]) assert.equal(resolverConfigIcar({ estricto: false, max: malo }).max, 3, `nivel ${String(malo)} cae al defecto`)
-assert.equal(resolverConfigIcar({ estricto: false, max: 99 }).max, 3, 'no pasa del nivel 3')
-assert.equal(resolverConfigIcar({ estricto: false, sinRotacion: 'si' }).sinRotacion, false, 'solo "1" o true apagan la rotacion')
 
 // ---- 4. Los items del examen: mismo criterio que el filtro del GET ----
 const it = (nivel: number | null, subtipo: string | null, id = `${nivel}-${subtipo}`) => ({ id, nivel_dificultad: nivel, subtipo })
@@ -37,4 +30,4 @@ assert.equal(itemsDelExamenIcar([], { max: 3, sinRotacion: false }).length, 0)
   for (const otra of ['/test', '/evaluacion', '/verbal?max=1', '/icarx?max=1', '//malo.example/icar?max=1']) assert.equal(configIcarDeRuta(otra), undefined, `${otra} no es ICAR`)
 }
 
-console.log('✅ icar-config: el token firmado manda sobre la URL, en modo estricto la URL se ignora, en la transición se respeta el enlace anterior, y los ítems del examen salen con el mismo criterio que el filtro del GET')
+console.log('✅ icar-config: el token firmado fija el examen, sin token es el completo (la URL no cuenta), y los ítems del examen salen con el mismo criterio que el filtro del GET')

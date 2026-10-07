@@ -151,8 +151,6 @@ export default function IcarPage() {
   const searchParams = useSearchParams()
   const candidatoId = searchParams.get('candidato')
   const procesoId = searchParams.get('proceso')
-  const nivelMax = Number(searchParams.get('max')) || 3
-  const sinRotacion = searchParams.get('norot') === '1'
 
   const metricasFraude = useProctoring()
   const [sesionIdActual, setSesionIdActual] = useState<string | null>(null)
@@ -168,8 +166,7 @@ export default function IcarPage() {
         const payload = await response.json().catch(() => ({}))
         if (!response.ok) { setError(payload.error || 'No se pudo iniciar el test.'); setCargando(false); return }
         if (payload.sesion?.id) setSesionIdActual(payload.sesion.id)
-        const params = new URLSearchParams({ candidato: candidatoId, proceso: procesoId, token, test_id: ICAR_ID, nivel_max: String(nivelMax) })
-        if (sinRotacion) params.set('sin_rotacion', '1')
+        const params = new URLSearchParams({ candidato: candidatoId, proceso: procesoId, token, test_id: ICAR_ID })
         const datos = await fetch(`/api/evaluacion/public-data?${params.toString()}`, { cache: 'no-store' })
         const info = await datos.json().catch(() => ({}))
         if (!datos.ok) { setError(info.error || 'No se pudo cargar el test.'); setCargando(false); return }
@@ -183,7 +180,7 @@ export default function IcarPage() {
     }
     setCargando(true)
     iniciar()
-  }, [candidatoId, procesoId, searchParams, nivelMax, sinRotacion, intentoCarga])
+  }, [candidatoId, procesoId, searchParams, intentoCarga])
 
   const avanzar = useCallback((respuestaActual?: string) => {
     const item = items[itemActual]
@@ -216,11 +213,9 @@ export default function IcarPage() {
     setErrorGuardado(null)
     const token = searchParams.get('token') || ''
     // El navegador solo informa lo que el candidato eligio (indice de la opcion; null si se agoto el tiempo) y la telemetria:
-    // el puntaje lo calcula el servidor. El nivel maximo y la rotacion los fija el token firmado; los de la URL solo se informan
-    // para los enlaces emitidos antes de esa firma.
+    // el puntaje lo calcula el servidor. El nivel maximo y la rotacion los fija el token firmado, no la URL.
     const resultadoGuardado = await finalizarTestCrudo({
       candidatoId, procesoId, token, testId: ICAR_ID, sesionId: sesionIdActual, metricasFraude,
-      configIcar: { nivelMax, sinRotacion },
       respuestas: todosLosItems.map(item => {
         const indice = item.opciones.indexOf(todasLasRespuestas[item.id])
         return { item_id: item.id, opcion: indice >= 0 ? indice : null }

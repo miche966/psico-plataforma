@@ -4,25 +4,20 @@ import type { ConfigIcarToken } from './evaluacionToken.ts'
 
 export const NIVEL_ICAR_POR_DEFECTO = 3
 
-export type ConfigIcar = { max: number; sinRotacion: boolean; origen: 'token' | 'defecto' | 'url' }
+export type ConfigIcar = { max: number; sinRotacion: boolean; origen: 'token' | 'defecto' }
 
 const comoNivel = (v: unknown): number => {
   const n = Math.trunc(Number(v))
   return Number.isFinite(n) && n >= 1 ? Math.min(n, NIVEL_ICAR_POR_DEFECTO) : NIVEL_ICAR_POR_DEFECTO
 }
 
-const comoBandera = (v: unknown): boolean => v === true || v === 1 || v === '1' || v === 'true'
-
 /**
- * Decide la configuracion del examen:
- *  1. Si el token la fija, manda el token (el administrador la firmo; el candidato no la puede cambiar).
- *  2. Si no y ICAR esta en modo estricto (PUNTAJE_ESTRICTO), valen los valores por omision (3, con rotacion): la URL se ignora.
- *  3. Si no (transicion), vale lo que traiga la URL o el pedido, como antes: asi siguen funcionando los enlaces ya emitidos.
+ * Decide la configuracion del examen: si el token la fija, manda el token (el administrador la firmo y el candidato no la puede
+ * cambiar); si no, el examen completo (nivel 3, con rotacion). Lo que traiga la URL o el pedido del navegador no cuenta.
  */
-export function resolverConfigIcar(p: { token?: ConfigIcarToken; estricto: boolean; max?: unknown; sinRotacion?: unknown }): ConfigIcar {
+export function resolverConfigIcar(p: { token?: ConfigIcarToken }): ConfigIcar {
   if (p.token) return { max: p.token.max, sinRotacion: p.token.sinRotacion, origen: 'token' }
-  if (p.estricto) return { max: NIVEL_ICAR_POR_DEFECTO, sinRotacion: false, origen: 'defecto' }
-  return { max: comoNivel(p.max), sinRotacion: comoBandera(p.sinRotacion), origen: 'url' }
+  return { max: NIVEL_ICAR_POR_DEFECTO, sinRotacion: false, origen: 'defecto' }
 }
 
 /** Los items que el candidato debe responder: mismo criterio que el filtro del GET (nivel <= max y, si se pide, sin rotacion). */

@@ -298,15 +298,3 @@ export function resumenDePuntaje(puntajeBruto: unknown): Record<string, unknown>
   return resto
 }
 
-/**
- * Tests en modo estricto (variable PUNTAJE_ESTRICTO, lista separada por comas de id de test o slug): para ellos el
- * servidor rechaza el formato viejo y deja de enviar la clave de correccion al navegador.
- */
-export function testsEstrictos(env: Record<string, string | undefined> = process.env): Set<string> {
-  const ids = new Set<string>()
-  for (const t of String(env.PUNTAJE_ESTRICTO || '').split(',').map(x => x.trim()).filter(Boolean)) {
-    const id = SLUG_TO_ID[t] ?? t
-    if (id in CONFIG) ids.add(id)
-  }
-  return ids
-}
