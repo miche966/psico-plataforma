@@ -61,10 +61,11 @@ interface InformeState {
   resiliencia: number
   colaboracion: number
   comunicacion: number
-  confianza: number
-  alertasTab: number
-  alertasCopia: number
-  tiempoPromedio: number
+  // null = ninguna prueba registró la señal (se muestra "Sin datos", no un 100 % ni un 0 que parezcan reales)
+  confianza: number | null
+  alertasTab: number | null
+  alertasCopia: number | null
+  tiempoPromedio: number | null
   analisisEntrevista?: {
     trayectoriaMotivacion: string
     estiloTrabajoAutoridad: string
@@ -304,10 +305,10 @@ function InformePageContent() {
     resiliencia: 0,
     colaboracion: 0,
     comunicacion: 0,
-    confianza: 100,
-    alertasTab: 0,
-    alertasCopia: 0,
-    tiempoPromedio: 0,
+    confianza: null,
+    alertasTab: null,
+    alertasCopia: null,
+    tiempoPromedio: null,
     analisisEntrevista: null
   })
 
@@ -336,10 +337,11 @@ function InformePageContent() {
 
       const mappedVids = Array.isArray(payload.videos) ? payload.videos : []
       setVideos(mappedVids)
-      let aTab = 0, aCopia = 0, tDur = 0, sTime = 0
+      let aTab = 0, aCopia = 0, tDur = 0, sTime = 0, conSenales = 0
 
       lista.forEach(s => {
         const pb = s.puntaje_bruto || {}
+        if (pb.metricas_fraude && typeof pb.metricas_fraude === 'object') conSenales++
         aTab += Number(pb.metricas_fraude?.tabSwitches || 0)
         aCopia += Number(pb.metricas_fraude?.copyPasteAttempts || 0)
 
@@ -352,8 +354,10 @@ function InformePageContent() {
 
       const totalAlertas = aTab + aCopia
       const avgAlertas = lista.length ? totalAlertas / lista.length : 0
-      const confianza = totalAlertas > 0 ? Math.max(0, 100 - Math.round(avgAlertas * 10)) : 100
-      const tiempoFinal = sTime > 0 ? Math.round(tDur / sTime) : 15
+      // Sin ninguna sesion que registre señales no se puede decir 100 % ni 0 alertas: queda sin datos
+      const hayDatosSenales = conSenales > 0
+      const confianza = !hayDatosSenales ? null : totalAlertas > 0 ? Math.max(0, 100 - Math.round(avgAlertas * 10)) : 100
+      const tiempoFinal = sTime > 0 ? Math.round(tDur / sTime) : null
 
       // Cálculo automático de ajuste inicial con fallback si no hay datos de proceso
       let autoAjuste = 0
@@ -405,8 +409,8 @@ function InformePageContent() {
         const finalScore = autoAjuste > 0 ? autoAjuste : prev.ajusteCargo?.score || 0;
         return {
           ...prev,
-          alertasTab: aTab,
-          alertasCopia: aCopia,
+          alertasTab: hayDatosSenales ? aTab : null,
+          alertasCopia: hayDatosSenales ? aCopia : null,
           confianza,
           tiempoPromedio: tiempoFinal,
           ajusteCargo: {
@@ -942,29 +946,47 @@ PsicoPlataforma - Gestión Inteligente de Talento
         {/* ── I. CONTROLES DEL PROCESO (movido primero: gate de validez) ───── */}
         <div style={s.card}>
           <div style={s.cardHead}>
-            <span style={s.cardHeadTxt}>I. Controles del proceso</span>
+            <span style={s.cardHeadTxt}>I. Cómo se realizó la evaluación</span>
             <span style={s.badge}>Control de calidad</span>
           </div>
-          <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
-            <div style={{ background: 'var(--slate-50)', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--slate-200)' }}>
-              <div style={{ fontSize: '0.9rem', color: 'var(--slate-500)', marginBottom: '4px' }}>Índice de Confianza</div>
-              <div style={{ fontFamily: SERIF, fontSize: '1.9rem', fontWeight: '600', fontVariantNumeric: 'tabular-nums', color: inf.confianza > 80 ? '#059669' : inf.confianza > 60 ? '#d97706' : '#dc2626' }}>{inf.confianza}%</div>
-            </div>
-            <div style={{ background: 'var(--slate-50)', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--slate-200)' }}>
-              <div style={{ fontSize: '0.9rem', color: 'var(--slate-500)', marginBottom: '4px' }}>Cambios de Pestaña</div>
-              <div style={{ fontFamily: SERIF, fontSize: '1.9rem', fontWeight: '600', fontVariantNumeric: 'tabular-nums', color: 'var(--slate-700)' }}>{inf.alertasTab}</div>
-            </div>
-            <div style={{ background: 'var(--slate-50)', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--slate-200)' }}>
-              <div style={{ fontSize: '0.9rem', color: 'var(--slate-500)', marginBottom: '4px' }}>Intentos de Copia</div>
-              <div style={{ fontFamily: SERIF, fontSize: '1.9rem', fontWeight: '600', fontVariantNumeric: 'tabular-nums', color: 'var(--slate-700)' }}>{inf.alertasCopia}</div>
-            </div>
-            <div style={{ background: 'var(--slate-50)', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--slate-200)' }}>
-              <div style={{ fontSize: '0.9rem', color: 'var(--slate-500)', marginBottom: '4px' }}>Tiempo Promedio</div>
-              <div style={{ fontFamily: SERIF, fontSize: '1.9rem', fontWeight: '600', fontVariantNumeric: 'tabular-nums', color: 'var(--slate-700)' }}>{inf.tiempoPromedio} min</div>
-            </div>
-          </div>
+          {(() => {
+            const SIN_DATOS = 'Sin datos'
+            const sinSenales = 'Ninguna prueba registró este control'
+            const caja: React.CSSProperties = { background: 'var(--slate-50)', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--slate-200)' }
+            const rotulo: React.CSSProperties = { fontSize: '0.9rem', color: 'var(--slate-500)', marginBottom: '4px' }
+            const numero = (color: string, sinDatos: boolean): React.CSSProperties => ({ fontFamily: SERIF, fontSize: sinDatos ? '1.3rem' : '1.9rem', fontWeight: '600', fontVariantNumeric: 'tabular-nums', color: sinDatos ? 'var(--slate-500)' : color })
+            const ayuda: React.CSSProperties = { fontSize: '0.8rem', color: 'var(--slate-500)', marginTop: '4px', lineHeight: '1.3' }
+            const hayConfianza = typeof inf.confianza === 'number'
+            const hayTab = typeof inf.alertasTab === 'number'
+            const hayCopia = typeof inf.alertasCopia === 'number'
+            const hayTiempo = typeof inf.tiempoPromedio === 'number' && inf.tiempoPromedio > 0
+            return (
+              <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+                <div style={caja}>
+                  <div style={rotulo}>Confiabilidad de las pruebas</div>
+                  <div style={numero(inf.confianza! > 80 ? '#059669' : inf.confianza! > 60 ? '#d97706' : '#dc2626', !hayConfianza)}>{hayConfianza ? `${inf.confianza}%` : SIN_DATOS}</div>
+                  <div style={ayuda}>{hayConfianza ? '100 % = sin salidas de la pantalla ni copiar y pegar' : sinSenales}</div>
+                </div>
+                <div style={caja}>
+                  <div style={rotulo}>Salidas de la pantalla</div>
+                  <div style={numero('var(--slate-700)', !hayTab)}>{hayTab ? inf.alertasTab : SIN_DATOS}</div>
+                  <div style={ayuda}>{hayTab ? 'Veces que cambió de pestaña o de ventana' : sinSenales}</div>
+                </div>
+                <div style={caja}>
+                  <div style={rotulo}>Intentos de copiar y pegar</div>
+                  <div style={numero('var(--slate-700)', !hayCopia)}>{hayCopia ? inf.alertasCopia : SIN_DATOS}</div>
+                  <div style={ayuda}>{hayCopia ? 'Veces que intentó copiar o pegar' : sinSenales}</div>
+                </div>
+                <div style={caja}>
+                  <div style={rotulo}>Tiempo por prueba</div>
+                  <div style={numero('var(--slate-700)', !hayTiempo)}>{hayTiempo ? `${inf.tiempoPromedio} min` : SIN_DATOS}</div>
+                  <div style={ayuda}>{hayTiempo ? 'Minutos que tardó en promedio en cada una' : 'No hay tiempos medibles'}</div>
+                </div>
+              </div>
+            )
+          })()}
           <div style={{ padding: '0 1.25rem 1.25rem', fontSize: '0.9rem', color: 'var(--slate-500)', lineHeight: '1.5' }}>
-            El índice de confianza evalúa la integridad del proceso mediante el monitoreo de eventos proctoring en tiempo real. Estos controles validan el proceso antes de interpretar cualquier resultado a continuación.
+            Estos datos muestran cómo se hicieron las pruebas: si la persona salió de la pantalla, si copió y pegó y cuánto tardó. Sirven para dar contexto a los resultados y no evalúan a la persona. Solo algunas pruebas registran estas señales.
           </div>
         </div>
 
