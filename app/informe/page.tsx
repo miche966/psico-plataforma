@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { normalizarPuntaje, colorPuntaje, PUNTAJES_VERSION, interpretacionVigente } from '@/lib/puntajes'
+import { aplicarInformeGuardado } from '@/lib/informeGuardado'
 import { detectarInconsistenciasNumericas } from '@/lib/informeConsistencia'
 import { getAdminHeaders } from '@/lib/evaluacionLink'
 import { useAdminRole } from '@/lib/useAdminRole'
@@ -290,6 +291,8 @@ function InformePageContent() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [saving, setSaving] = useState(false)
+  // Cuando se guardo por ultima vez el informe de esta persona (null = nunca)
+  const [guardadoEn, setGuardadoEn] = useState<string | null>(null)
 
   const [inf, setInf] = useState<InformeState>({
     recomendacion: 'con_reservas',
@@ -405,8 +408,12 @@ function InformePageContent() {
         }
       }
 
+      // Texto que el evaluador dejo guardado (solo campos editoriales; lo calculado con las sesiones de hoy se recalcula)
+      setGuardadoEn(payload.informe?.contenido ? (payload.informe.actualizado_en || null) : null)
+
       // ACTUALIZACIÓN CRÍTICA: Forzar el valor en el estado y asegurar persistencia
-      setInf(prev => {
+      setInf(base => {
+        const prev = aplicarInformeGuardado(base, payload.informe?.contenido)
         const finalScore = autoAjuste > 0 ? autoAjuste : prev.ajusteCargo?.score || 0;
         return {
           ...prev,
@@ -682,7 +689,7 @@ function InformePageContent() {
         body: JSON.stringify({ candidato_id: id, contenido: inf })
       })
       const data = await response.json().catch(() => ({}))
-      if (response.ok) alert('Informe guardado correctamente')
+      if (response.ok) { setGuardadoEn(new Date().toISOString()); alert('Informe guardado correctamente') }
       else alert(data.error || 'No se pudo guardar el informe')
     } catch (e) {
       console.error(e)
@@ -789,6 +796,9 @@ PsicoPlataforma - Gestión Inteligente de Talento
             <div>
               <h1 style={s.title}>Informe Psicolaboral Final</h1>
               <p style={s.subtitle}>Candidato: <span style={{ color: 'var(--slate-900)', fontWeight: '600' }}>{candidato.nombre} {candidato.apellido}</span></p>
+              {guardadoEn && !Number.isNaN(new Date(guardadoEn).getTime()) && (
+                <p style={s.subtitle}>Informe guardado el {new Date(guardadoEn).toLocaleDateString('es-UY')}</p>
+              )}
             </div>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>

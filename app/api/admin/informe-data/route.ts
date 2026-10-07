@@ -4,6 +4,7 @@ import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { entrevistaIdsEnProcesos } from '@/lib/server/procesoScope'
 import { registrarAcceso } from '@/lib/server/registroAccesos'
 import { firmarVideos } from '@/lib/server/firmarVideos'
+import { leerInformeGuardado } from '@/lib/server/informeGuardado'
 
 export async function GET(req: Request) {
   try {
@@ -54,8 +55,11 @@ export async function GET(req: Request) {
       listaVideos.forEach(v => { v.preguntas_video = { pregunta: pregMap.get(v.pregunta_id) } })
     }
 
+    // Informe que el evaluador dejo guardado (null si no hay): la pagina lo vuelve a cargar al abrir
+    const informe = await leerInformeGuardado(db, id)
+
     await registrarAcceso(db, auth, { accion: 'ver_informe', candidatoId: id, procesoId }, req)
-    return NextResponse.json({ candidato, sesiones: lista, proceso, videos: await firmarVideos(listaVideos, db) })
+    return NextResponse.json({ candidato, sesiones: lista, proceso, videos: await firmarVideos(listaVideos, db), informe })
   } catch (error) {
     console.error('Error cargando datos administrativos del informe:', error)
     return NextResponse.json({ error: 'No se pudieron cargar los datos del informe' }, { status: 500 })
