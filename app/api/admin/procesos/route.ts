@@ -4,7 +4,7 @@ import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { readAll } from '@/lib/server/readAll'
 import { candidatoIdsEnProcesos } from '@/lib/server/procesoScope'
 import { SLUG_TO_ID } from '@/lib/server/catalogoTests'
-import { asegurarVinculos, quitarVinculo } from '@/lib/server/vinculos'
+import { asegurarVinculos, desvincularCandidato } from '@/lib/server/vinculos'
 import { z, validar, lenient } from '@/lib/server/validacion'
 import { mensajeParaCliente } from '@/lib/server/mensajesError'
 import { procesoCamposSchema, procesoIdSchema, vinculoSchema, filaCandidatoSchema, cargaMasivaSchema } from '@/lib/server/esquemasProcesos'
@@ -155,9 +155,7 @@ export async function POST(request: Request) {
       const campos = validar(vinculoSchema, body, 'Faltan parámetros')
       if (!campos.ok) return campos.response
       const { candidatoId, procesoId } = campos.data
-      const { error } = await db.from('sesiones').update({ proceso_id: null }).eq('candidato_id', candidatoId).eq('proceso_id', procesoId)
-      if (error) throw error
-      await quitarVinculo(db, candidatoId, procesoId)
+      await desvincularCandidato(db, candidatoId, procesoId)
       return NextResponse.json({ success: true })
     }
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 
-const { asegurarVinculos, quitarVinculo } = await import('../lib/server/vinculos.ts')
+const { asegurarVinculos, quitarVinculo, desvincularCandidato } = await import('../lib/server/vinculos.ts')
 
 const dbQueGraba = (errorEn?: number) => {
   const llamadas: any[] = []
@@ -44,4 +44,35 @@ const db5 = dbQueGraba()
 await quitarVinculo(db5, 'c1', 'p1')
 assert.deepEqual(db5.llamadas, [{ op: 'delete', tabla: 'candidatos_procesos', candidato_id: 'c1', proceso_id: 'p1' }])
 
-console.log('✅ vinculos: crea el vinculo candidato-proceso de forma idempotente, sin repetidos ni filas incompletas, en tandas, lanza si la base falla y desvincular borra solo ese par')
+// Desvincular un candidato borra solo sus sesiones pendientes de ese proceso, deja el resto sin proceso (no pierde resultados) y quita el vinculo
+const llamadasDesvincular: any[] = []
+const dbDesvincular = (falla?: 'delete' | 'update' | 'vinculo') => ({
+  from: (tabla: string) => {
+    const filtros: Record<string, string> = {}
+    const q: any = {
+      eq: (c: string, v: string) => { filtros[c] = v; return q },
+      delete: () => { q.op = 'delete'; return q },
+      update: (valores: any) => { q.op = 'update'; q.valores = valores; return q },
+      then: (res: any, rej: any) => {
+        llamadasDesvincular.push({ op: q.op, tabla, ...(q.valores ? { valores: q.valores } : {}), ...filtros })
+        const clave = tabla === 'candidatos_procesos' ? 'vinculo' : q.op
+        return Promise.resolve({ error: falla === clave ? { message: 'fallo' } : null }).then(res, rej)
+      },
+    }
+    return q
+  },
+})
+await desvincularCandidato(dbDesvincular(), 'c1', 'p1')
+assert.deepEqual(llamadasDesvincular, [
+  { op: 'delete', tabla: 'sesiones', candidato_id: 'c1', proceso_id: 'p1', estado: 'pendiente' },
+  { op: 'update', tabla: 'sesiones', valores: { proceso_id: null }, candidato_id: 'c1', proceso_id: 'p1' },
+  { op: 'delete', tabla: 'candidatos_procesos', candidato_id: 'c1', proceso_id: 'p1' },
+])
+// Si una etapa falla, lanza y no sigue con las siguientes
+for (const etapa of ['delete', 'update', 'vinculo'] as const) {
+  llamadasDesvincular.length = 0
+  await assert.rejects(desvincularCandidato(dbDesvincular(etapa), 'c1', 'p1'), { message: 'fallo' })
+  assert.equal(llamadasDesvincular.length, etapa === 'delete' ? 1 : etapa === 'update' ? 2 : 3)
+}
+
+console.log('✅ vinculos: crea el vinculo candidato-proceso de forma idempotente, sin repetidos ni filas incompletas, en tandas, lanza si la base falla; desvincular borra solo ese par y, al sacar a un candidato, borra sus sesiones pendientes y deja el resto sin proceso')
