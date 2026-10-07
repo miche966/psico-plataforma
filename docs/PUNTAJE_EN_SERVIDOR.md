@@ -15,8 +15,8 @@ Pendiente abierto en `docs/RIESGOS_ACEPTADOS.md`.
 | 0 | Datos y auditoría de solo lectura (`npm run audit:puntajes`) | hecha (2026-10-02) |
 | 1 | Módulo puro `lib/server/puntuacion.ts` + `tests/puntuacion.test.ts` | hecha (2026-10-02) |
 | 2 | Modo paralelo en `finalize` (`lib/server/puntajeSombra.ts`: el servidor recalcula y compara, sigue guardando lo del navegador) y reversión de la sesión si falla el guardado de respuestas | hecha (2026-10-02) |
-| 3 | Protocolo nuevo: el navegador manda la elección cruda y el servidor corrige, test por test | pendiente |
-| 4 | El GET deja de devolver `respuesta_correcta` e `inverso`; se borra el cálculo de las páginas | pendiente |
+| 3 | Protocolo nuevo: el navegador manda la elección cruda y el servidor corrige, test por test | **hecha** (Fases A a F, 2026-10-06) |
+| 4 | El GET deja de devolver `respuesta_correcta` e `inverso`; se borra el cálculo de las páginas | **activa en 18 de 19 tests** (2026-10-06); falta ICAR y la limpieza final (Fase G) |
 
 ## Reglas que no se pueden romper
 - La forma de `puntaje_bruto` no cambia (nombres y anidación de claves): informe, panel, estadísticas, PDF y
@@ -88,3 +88,43 @@ firmarlo en el token en la Etapa 3) y los tests sin puntaje (Frases, Role Play).
   vale el examen completo (nivel 3 con rotación). Cambiar a mano la configuración del token invalida la firma. **Antes de activar el
   estricto de ICAR**: un enlace con `?max=1` emitido antes de esta fase pasaría a nivel 3; conviene activarlo cuando no queden enlaces
   ICAR anteriores en uso (30 días de vigencia como máximo) o aceptar ese cambio.
+
+## Estado actual (2026-10-07)
+
+**Modo estricto en producción desde el 2026-10-06** (`PUNTAJE_ESTRICTO` en Vercel Production) para 18 de los 19 tests puntuables: verbal, numerico,
+atencion-detalle, tolerancia-frustracion, sjt-atencion, sjt-cobranzas, sjt-comercial, sjt-legal, sjt-problemas, sjt-ventas, creatividad, hexaco,
+comercial, iniciativa-dinamismo, integridad, estres-laboral, bigfive y dass21 (la lista exacta se confirma abriendo la variable en el panel de
+Vercel: es un secreto y no se puede leer desde la línea de comandos). **Falta solo ICAR.**
+
+Controles del 2026-10-07:
+- `npm run audit:puntajes`: 3243 sesiones finalizadas, **18 difieren, las mismas 18 históricas** de la auditoría original (datos viejos explicados arriba).
+  Ninguna sesión posterior al 2026-10-02 difiere.
+- Los registros de Vercel solo se conservan unas horas, así que no sirven para revisar días atrás: el control sólido es la auditoría de la base.
+- **Primera prueba completa en modo estricto (2026-10-07):** un candidato descartable completó Verbal desde el navegador con un enlace firmado de
+  producción. Quedó guardado 17/20 (85 %) con las 20 respuestas, igual al recálculo; el GET ya no envía `respuesta_correcta` ni `inverso` y el formato
+  viejo recibe 400. Ningún candidato **real** cerró todavía una prueba en estricto (la actividad es esporádica: las últimas sesiones reales finalizadas son
+  del 29/9); la auditoría de la base seguirá siendo el control a revisar cuando haya tráfico real.
+- **Error encontrado en esa prueba y corregido (PR #14):** `finalize` solo cerraba sesiones en estado `iniciado`. Una sesión `pendiente` (la deja
+  la asignación desde el panel o /unirse y la página del test no avisa el inicio) respondía 409 y no guardaba nada. Ahora acepta `iniciado` y `pendiente`;
+  las ya finalizadas siguen excluidas. Verificado en producción con una sesión pendiente (12/20 guardado por el servidor, ignorando un puntaje inflado del
+  pedido, y un segundo envío no duplica respuestas).
+
+### Cómo activar ICAR en el modo estricto
+Condición: que no queden enlaces ICAR anteriores a la Fase F en uso. Esos enlaces pueden llevar `?max=` y `?norot=` **sin firma** y, con el estricto, la
+URL se ignora: un enlace de nivel básico pasaría a nivel 3. Vigencia máxima de los enlaces: 30 días, o sea los emitidos hasta el 2026-10-06 vencen el
+**2026-11-05**. Antes de activarlo: revisar que no haya sesiones ICAR sin finalizar de candidatos a quienes se les dio un nivel distinto del completo
+(al 2026-10-07 hay 3 sesiones ICAR sin finalizar).
+
+```bash
+npx vercel@62.7.0 env rm PUNTAJE_ESTRICTO production --yes
+printf '%s' "<los 18 slugs separados por comas>,icar" | npx vercel@62.7.0 env add PUNTAJE_ESTRICTO production
+npx vercel@62.7.0 redeploy psico-plataforma.vercel.app
+```
+
+Verificación: el formato viejo de ICAR recibe 400 ("recargá la página"), el GET deja de enviar `respuesta_correcta` y se completa una prueba ICAR con un
+candidato descartable (que se borra al terminar). Marcha atrás: volver a cargar la variable sin `icar` y redesplegar.
+
+### Fase G (cierre), después de ICAR estricto
+Con los 19 tests en estricto: quitar la rama del protocolo viejo de `finalize` y `compararPuntajeEnSombra` (`lib/server/puntajeSombra.ts`), borrar el
+cálculo y los campos `respuesta_correcta`/`inverso` que queden en las páginas, actualizar este documento y cerrar la fila de
+`docs/RIESGOS_ACEPTADOS.md`. Hacerlo recién cuando haya al menos una semana de tráfico real en estricto sin diferencias en `npm run audit:puntajes`.
