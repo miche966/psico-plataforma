@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { getAdminHeaders, obtenerLinkEvaluacion } from '@/lib/evaluacionLink'
@@ -9,6 +9,7 @@ import AppLayout from '@/components/AppLayout'
 import { Plus, Check, Copy, FileText, Search, UserPlus, RotateCcw, BarChart3, Users, Sparkles, BellRing, AlertCircle, Info, LayoutDashboard, Award, Briefcase, X, Target, PieChart, ShieldAlert } from 'lucide-react'
 import { normalizarContextoInterpretacion, obtenerInterpretacion } from '@/lib/interpretaciones/resolver'
 import { useAdminRole } from '@/lib/useAdminRole'
+import { normalizarTestId } from '@/lib/progresoEvaluacion'
 
 interface Candidato {
   id: string
@@ -22,6 +23,11 @@ interface Candidato {
   profesion?: string
   creado_en: string
 }
+
+const SERIF = { fontFamily: 'var(--font-lectura), Georgia, serif' }
+
+// El identificador de una prueba puede ser su nombre ("icar") o su UUID: se pasa siempre a nombre en minuscula para compararlo
+const tid = (testId: string | null | undefined): string => String(normalizarTestId(testId) || testId || '').toLowerCase()
 
 export default function CandidatosPage() {
   const router = useRouter()
@@ -54,6 +60,26 @@ export default function CandidatosPage() {
   const [guardando, setGuardando] = useState(false)
   const [nivelIcar, setNivelIcar] = useState('3')
   const [rotacionIcar, setRotacionIcar] = useState('si')
+
+  // Los dos modales se cierran con Escape; el foco entra al abrirlos y vuelve al boton que los abrio
+  const botonCerrarDetalleRef = useRef<HTMLButtonElement>(null)
+  const botonCerrarDashboardRef = useRef<HTMLButtonElement>(null)
+  const cerrarDetalle = () => { setMostrarDetalle(false); setSesionParaDetalle(null) }
+  const cerrarDashboard = () => { setMostrarDashboard(false); setCandidatoParaDashboard(null) }
+  useEffect(() => {
+    if (!mostrarDetalle && !mostrarDashboard) return
+    const abridor = document.activeElement as HTMLElement | null
+    ;(mostrarDashboard ? botonCerrarDashboardRef : botonCerrarDetalleRef).current?.focus()
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (mostrarDashboard) cerrarDashboard(); else cerrarDetalle()
+    }
+    document.addEventListener('keydown', alTeclear)
+    return () => {
+      document.removeEventListener('keydown', alTeclear)
+      abridor?.focus?.()
+    }
+  }, [mostrarDetalle, mostrarDashboard])
 
   useEffect(() => {
     // Sin sesion se redirige al login sin pedir datos (antes se pedian igual y fallaban con "La sesion administrativa expiro")
@@ -657,65 +683,75 @@ export default function CandidatosPage() {
         </div>
       )}
 
-      {/* Modal de Detalle de Sesión (Análisis Test por Test) - RESTAURADO */}
+      {/* Análisis de una prueba: dimensiones, lectura de cada una y conclusiones */}
       {mostrarDetalle && sesionParaDetalle && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh]">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4" onClick={cerrarDetalle}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="analisis-titulo"
+            className="bg-white rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-slate-200 flex justify-between items-start gap-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Análisis de Evaluación</h3>
-                <p className="text-xs text-slate-500 font-medium">Desglose profesional y humano del desempeño</p>
+                <h3 id="analisis-titulo" className="text-xl font-semibold text-slate-900" style={SERIF}>Análisis de la prueba</h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  {(() => { const c = candidatos.find(x => x.id === sesionParaDetalle.candidato_id); return c ? `${c.nombre} ${c.apellido}` : '' })()}
+                </p>
               </div>
-              <button 
-                onClick={() => { setMostrarDetalle(false); setSesionParaDetalle(null); }}
-                className="p-2 hover:bg-white rounded-xl transition-colors text-slate-400 hover:text-slate-600 shadow-sm border border-transparent hover:border-slate-100"
+              <button
+                ref={botonCerrarDetalleRef}
+                type="button"
+                onClick={cerrarDetalle}
+                className="p-2 -m-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                aria-label="Cerrar el análisis"
               >
-                <Plus className="w-5 h-5 rotate-45" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
-            
-            <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              <div className="flex gap-6 h-full">
-                {/* Columna Principal: Dimensiones */}
-                <div className="flex-1 space-y-6">
-                  <div className="flex items-center justify-between p-5 bg-white rounded-3xl border border-slate-100 shadow-sm">
+
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-8">
+                <div className="space-y-6 min-w-0">
+                  <div className="flex flex-wrap items-end justify-between gap-4 pb-5 border-b border-slate-200">
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Test Realizado</span>
-                      <p className="text-xl font-black text-indigo-900">{TEST_NAMES[sesionParaDetalle.test_id] || (sesionParaDetalle.test_id || 'Evaluación').split('-').pop()?.toUpperCase()}</p>
+                      <span className="text-sm text-slate-500 block">Prueba realizada</span>
+                      <p className="text-2xl font-semibold text-slate-900" style={SERIF}>{TEST_NAMES[sesionParaDetalle.test_id] || (sesionParaDetalle.test_id || 'Evaluación').split('-').pop()?.toUpperCase()}</p>
                     </div>
                     <div className="text-right">
-                      <div className="flex flex-col items-end">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Puntaje Global</span>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-3xl font-black text-indigo-600">{promedioPuntaje(sesionParaDetalle.puntaje_bruto || sesionParaDetalle.puntajes || sesionParaDetalle.resultados || sesionParaDetalle, sesionParaDetalle.test_id, candidatos.find(c => c.id === sesionParaDetalle.candidato_id)).toFixed(1)}</span>
-                          <span className="text-sm font-bold text-slate-300">/ 5.0</span>
-                        </div>
+                      <span className="text-sm text-slate-500 block">Puntaje global</span>
+                      <div className="flex items-baseline justify-end gap-1">
+                        <span className="text-4xl font-semibold tabular-nums text-slate-900" style={SERIF}>{promedioPuntaje(sesionParaDetalle.puntaje_bruto || sesionParaDetalle.puntajes || sesionParaDetalle.resultados || sesionParaDetalle, sesionParaDetalle.test_id, candidatos.find(c => c.id === sesionParaDetalle.candidato_id)).toFixed(1)}</span>
+                        <span className="text-base text-slate-500">de 5</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Selector de Test */}
-                  {sesionesData.filter(s => 
-                    s.candidato_id === sesionParaDetalle.candidato_id && 
+                  {/* Selector de prueba */}
+                  {sesionesData.filter(s =>
+                    s.candidato_id === sesionParaDetalle.candidato_id &&
                     (s.puntaje_bruto || s.puntajes || s.resultados)
                   ).length > 1 && (
-                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    <div className="flex flex-wrap gap-2" role="group" aria-label="Prueba a analizar">
                       {sesionesData
-                        .filter(s => 
-                          s.candidato_id === sesionParaDetalle.candidato_id && 
+                        .filter(s =>
+                          s.candidato_id === sesionParaDetalle.candidato_id &&
                           (s.puntaje_bruto || s.puntajes || s.resultados)
                         )
                         .map((s, i) => {
-                          const name = TEST_NAMES[s.test_id] || s.test_id.split('-').pop()?.toUpperCase() || 'TEST'
+                          const name = TEST_NAMES[s.test_id] || s.test_id.split('-').pop()?.toUpperCase() || 'Prueba'
                           const isSelected = s.test_id === sesionParaDetalle.test_id
                           return (
                             <button
                               key={i}
+                              type="button"
+                              aria-pressed={isSelected}
                               onClick={() => setSesionParaDetalle(s)}
-                              className={`shrink-0 px-4 py-2 rounded-2xl text-[11px] font-bold border transition-all ${
-                                isSelected 
-                                  ? 'bg-slate-900 border-slate-900 text-white shadow-lg' 
-                                  : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600'
+                              className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                                isSelected
+                                  ? 'bg-indigo-600 border-indigo-600 text-white font-semibold'
+                                  : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
                               }`}
                             >
                               {name}
@@ -725,7 +761,7 @@ export default function CandidatosPage() {
                     </div>
                   )}
 
-                  <div className="space-y-5">
+                  <div>
                     {(() => {
                       const candidatoActual = candidatos.find(c => c.id === sesionParaDetalle.candidato_id)
                       const nomCompleto = `${candidatoActual?.nombre || ''} ${candidatoActual?.apellido || ''}`.toLowerCase()
@@ -733,20 +769,9 @@ export default function CandidatosPage() {
                       
                       let diagnostico = extraerDiagnostico(sesionParaDetalle.puntaje_bruto || sesionParaDetalle.puntajes || sesionParaDetalle.resultados || sesionParaDetalle, sesionParaDetalle.test_id)
                       
-                      // TEST DE INYECCIÓN MANUAL (SOLO PARA DIAGNÓSTICO)
-                      if (diagnostico.length === 0 && (nomCompleto.includes('iliana') || nomCompleto.includes('nieta') || nomCompleto.includes('franco')) && (testName.includes('big') || sesionParaDetalle.test_id.includes('a1b2c3d4'))) {
-                        diagnostico = [
-                          ['extraversion', 3.5],
-                          ['amabilidad', 4.0],
-                          ['responsabilidad', 4.2],
-                          ['neuroticismo', 1.2],
-                          ['apertura', 3.8]
-                        ]
-                      }
-
                       // LÓGICA DE CONSOLIDACIÓN INTELIGENTE (CROSS-TEST)
                       // Si estamos viendo ICAR y el diagnóstico es pobre, buscamos en el resto de la batería del candidato
-                      if (sesionParaDetalle.test_id.toLowerCase().includes('icar') || sesionParaDetalle.test_id.toLowerCase().includes('cognitivo')) {
+                      if (tid(sesionParaDetalle.test_id).includes('icar') || tid(sesionParaDetalle.test_id).includes('cognitivo')) {
                         const otrasSesiones = sesionesData.filter(s => 
                           s.candidato_id === sesionParaDetalle.candidato_id && 
                           s.test_id !== sesionParaDetalle.test_id
@@ -770,188 +795,145 @@ export default function CandidatosPage() {
                           diagnostico = diagnostico.filter(([k]) => k !== 'correctas' && k !== 'porcentaje')
                         }
                       }
-
                       if (diagnostico.length === 0) return (
-                        <div className="p-12 bg-white rounded-[32px] border border-slate-100 text-center space-y-4">
-                          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto">
-                            <FileText className="w-8 h-8 text-slate-300" />
-                          </div>
-                          <p className="text-sm text-slate-500 font-medium max-w-xs mx-auto">
-                            No se detectaron dimensiones específicas para esta técnica. El sistema ha consolidado el puntaje global basado en los indicadores generales.
+                        <div className="py-12 text-center border border-dashed border-slate-300 rounded-xl">
+                          <FileText className="w-8 h-8 mx-auto mb-3 text-slate-400" aria-hidden="true" />
+                          <p className="text-sm text-slate-500 max-w-sm mx-auto">
+                            Esta prueba no tiene dimensiones para detallar. Solo se cuenta con el puntaje global.
                           </p>
                         </div>
                       )
 
                       return (
-                        <div className="space-y-6">
+                        <ul className="space-y-7">
                           {diagnostico.map(([factor, valor]) => {
                             const testContexto = normalizarContextoInterpretacion(
                               typeof sesionParaDetalle.test_id === 'string' ? sesionParaDetalle.test_id : undefined
                             )
                             const info = interpretacionHumana(factor, valor, testContexto)
-                            const colorClass = valor >= 3.8 
-                              ? 'bg-emerald-500' 
-                              : valor >= 1.5 
-                                ? 'bg-amber-500' 
-                                : 'bg-rose-500'
-                            
-                            const isCognitive = sesionParaDetalle.test_id.toLowerCase().includes('icar') || sesionParaDetalle.test_id.toLowerCase().includes('razonamiento')
+                            const colorClass = valor >= 3.8
+                              ? 'bg-indigo-600'
+                              : valor >= 1.5
+                                ? 'bg-amber-500'
+                                : 'bg-red-600'
+
+                            const isCognitive = tid(sesionParaDetalle.test_id).includes('icar') || tid(sesionParaDetalle.test_id).includes('razonamiento')
                             let factorLabel = ETIQUETAS[factor] || factor.replace(/_/g, ' ')
-                            
-                            if (factor === 'correctas' && isCognitive) factorLabel = 'Eficiencia Cognitiva'
-                            if (factor === 'porcentaje' && isCognitive) factorLabel = 'Nivel de Acierto'
+
+                            if (factor === 'correctas' && isCognitive) factorLabel = 'Eficiencia cognitiva'
+                            if (factor === 'porcentaje' && isCognitive) factorLabel = 'Nivel de acierto'
 
                             return (
-                              <div key={factor} className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden p-6 space-y-4">
-                                <div className="flex justify-between items-start">
-                                  <div className="space-y-1">
-                                    <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight">{factorLabel}</h4>
-                                    <div className="w-48 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                      <div className={`h-full ${colorClass} rounded-full transition-all duration-1000`} style={{ width: `${(valor/5)*100}%` }} />
-                                    </div>
-                                  </div>
-                                  <div className={`px-3 py-1 ${colorClass} text-white text-xs font-black rounded-full shadow-sm`}>{valor.toFixed(1)}</div>
+                              <li key={factor}>
+                                <div className="flex justify-between items-baseline gap-3 mb-1.5">
+                                  <h4 className="text-lg font-semibold text-slate-900 capitalize" style={SERIF}>{factorLabel}</h4>
+                                  <span className="tabular-nums text-slate-900 font-semibold shrink-0">{valor.toFixed(1)}<span className="font-normal text-slate-500"> de 5</span></span>
                                 </div>
-                                
-                                <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                                  {info.descripcion}
-                                </p>
+                                <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden mb-3" aria-hidden="true">
+                                  <div className={`h-full ${colorClass} rounded-full`} style={{ width: `${Math.min(100, (valor / 5) * 100)}%` }} />
+                                </div>
+
+                                <p className="text-slate-700 leading-relaxed">{info.descripcion}</p>
 
                                 {info.pregunta && (
-                                  <div className="bg-indigo-50/50 rounded-2xl p-4 border border-indigo-100/50 flex gap-3">
-                                    <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0">
-                                      <Users className="w-4 h-4 text-indigo-500" />
-                                    </div>
-                                    <div>
-                                      <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest block mb-1">Pregunta sugerida para entrevista:</span>
-                                      <p className="text-[11px] text-indigo-900 italic font-medium leading-relaxed">"{info.pregunta}"</p>
-                                    </div>
-                                  </div>
+                                  <p className="mt-3 pl-3 py-1 border-l-4 border-marcador text-slate-700">
+                                    <span className="font-semibold text-slate-900">Pregunta sugerida para la entrevista: </span>
+                                    “{info.pregunta}”
+                                  </p>
                                 )}
-                              </div>
+                              </li>
                             )
                           })}
-                        </div>
+                        </ul>
                       )
                     })()}
                   </div>
                 </div>
 
-                {/* Columna Lateral: Sidebar de Conclusiones */}
-                <div className="w-80 shrink-0">
-                  <div className="bg-[#0f172a] rounded-[32px] p-6 text-white min-h-full space-y-8 relative overflow-y-auto max-h-[800px] custom-scrollbar shadow-2xl">
-                    <div className="absolute top-0 right-0 p-8 opacity-10">
-                      <Sparkles className="w-32 h-32 text-white" />
-                    </div>
-                    
-                    <div className="relative z-10 space-y-8">
-                      <section className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
-                          <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Análisis Global</h5>
-                        </div>
-                        <p className="text-xs leading-relaxed text-slate-300 font-medium italic">
-                          {getAnalisisGlobal(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto), sesionParaDetalle.puntaje_bruto)}
-                        </p>
-                      </section>
-
-                      <section className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
-                          <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Desafío Adaptativo Identificado</h5>
-                        </div>
-                        <p className="text-xs leading-relaxed text-slate-300 font-medium border-l-2 border-indigo-500/30 pl-3">
-                          {getPuntoTension(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto), sesionParaDetalle.puntaje_bruto)}
-                        </p>
-                      </section>
-
-                      <section className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
-                          <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Estrategia de Integración</h5>
-                        </div>
-                        <p className="text-xs leading-relaxed text-slate-300 font-medium bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
-                          {getAcompanamiento(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto), sesionParaDetalle.puntaje_bruto)}
-                        </p>
-                      </section>
-
-                      <div className="pt-4 border-t border-slate-800">
-                        <section className="bg-indigo-900/40 rounded-2xl p-4 border border-indigo-500/20 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Check className="w-3.5 h-3.5 text-indigo-400" />
-                            <h5 className="text-[10px] font-black uppercase tracking-[0.1em] text-indigo-200">Síntesis de Impacto Organizacional</h5>
-                          </div>
-                          <p className="text-[11px] italic leading-relaxed text-indigo-100/80">
-                            {conclusionGeneral(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto))}
-                          </p>
-                        </section>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <aside className="rounded-xl border border-slate-200 bg-slate-50 p-5 space-y-6 self-start" aria-label="Conclusiones">
+                  <section>
+                    <h4 className="text-lg font-semibold text-slate-900 mb-1.5" style={SERIF}>Análisis global</h4>
+                    <p className="text-slate-700 leading-relaxed">
+                      {getAnalisisGlobal(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto), sesionParaDetalle.puntaje_bruto)}
+                    </p>
+                  </section>
+                  <section>
+                    <h4 className="text-lg font-semibold text-slate-900 mb-1.5" style={SERIF}>Desafío adaptativo</h4>
+                    <p className="text-slate-700 leading-relaxed">
+                      {getPuntoTension(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto), sesionParaDetalle.puntaje_bruto)}
+                    </p>
+                  </section>
+                  <section>
+                    <h4 className="text-lg font-semibold text-slate-900 mb-1.5" style={SERIF}>Estrategia de integración</h4>
+                    <p className="text-slate-700 leading-relaxed">
+                      {getAcompanamiento(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto), sesionParaDetalle.puntaje_bruto)}
+                    </p>
+                  </section>
+                  <section className="pt-5 border-t border-slate-200">
+                    <h4 className="text-lg font-semibold text-slate-900 mb-1.5" style={SERIF}>Impacto en la organización</h4>
+                    <p className="text-slate-700 leading-relaxed">
+                      {conclusionGeneral(sesionParaDetalle.test_id, promedioPuntaje(sesionParaDetalle.puntaje_bruto))}
+                    </p>
+                  </section>
+                </aside>
               </div>
             </div>
 
-            <div className="p-6 bg-white border-t border-slate-100 flex justify-end">
-              <button 
-                onClick={() => { setMostrarDetalle(false); setSesionParaDetalle(null); }}
-                className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all active:scale-[0.95]"
+            <div className="p-4 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={cerrarDetalle}
+                className="px-5 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors"
               >
-                Finalizar Revisión
+                Cerrar
               </button>
             </div>
           </div>
         </div>
       )}
-      {/* Modal de Dashboard Individual Ejecutivo - NUEVO */}
+      {/* Resumen ejecutivo de un candidato: lectura rápida de su perfil */}
       {mostrarDashboard && candidatoParaDashboard && (
-        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-300">
-          <div className="bg-slate-900 text-slate-100 rounded-[32px] border border-slate-800 shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col h-[90vh]">
-            
-            {/* Header del Dashboard */}
-            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/60">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20">
-                  <LayoutDashboard className="w-6 h-6 text-indigo-400" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-3">
-                    Dashboard Ejecutivo de Talento
-                    {simularDatos && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
-                        Vista de Simulación
-                      </span>
-                    )}
-                  </h3>
-                  <p className="text-xs text-slate-400">Análisis interactivo y ajuste al cargo para <span className="text-indigo-400 font-bold">{candidatoParaDashboard.nombre} {candidatoParaDashboard.apellido}</span></p>
-                </div>
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={cerrarDashboard}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="resumen-ejecutivo-titulo"
+            className="bg-white rounded-xl border border-slate-200 shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-slate-200 flex flex-wrap justify-between items-start gap-4">
+              <div>
+                <h3 id="resumen-ejecutivo-titulo" className="text-xl font-semibold text-slate-900" style={SERIF}>Resumen ejecutivo</h3>
+                <p className="text-sm text-slate-500 mt-1">{candidatoParaDashboard.nombre} {candidatoParaDashboard.apellido}</p>
               </div>
-              
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
                 <button
+                  type="button"
+                  aria-pressed={simularDatos}
                   onClick={() => setSimularDatos(!simularDatos)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${
-                    simularDatos 
-                      ? 'bg-amber-600/10 border-amber-500/30 text-amber-400 hover:bg-amber-600/20' 
-                      : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
-                  }`}
-                  title="Alternar entre datos reales y simulación"
+                  className="px-3 py-1.5 rounded-lg text-sm font-bold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-colors"
                 >
-                  <Sparkles className="w-4 h-4" />
-                  {simularDatos ? 'Ver Datos Reales' : 'Simular Datos Demo'}
+                  {simularDatos ? 'Ver datos reales' : 'Ver datos de ejemplo'}
                 </button>
-
-                <button 
-                  onClick={() => { setMostrarDashboard(false); setCandidatoParaDashboard(null); }}
-                  className="p-2 hover:bg-slate-800 rounded-xl transition-all text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700"
+                <button
+                  ref={botonCerrarDashboardRef}
+                  type="button"
+                  onClick={cerrarDashboard}
+                  className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                  aria-label="Cerrar el resumen ejecutivo"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-5 h-5" aria-hidden="true" />
                 </button>
               </div>
             </div>
 
-            {/* Contenido Principal */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-[#090d16] custom-scrollbar">
+            {simularDatos && (
+              <div role="status" className="px-6 py-3 bg-amber-50 border-b border-amber-300 text-amber-900 text-sm">
+                Estás viendo datos de ejemplo generados a partir del nombre, no los resultados reales de {candidatoParaDashboard.nombre}.
+              </div>
+            )}
+
+            <div className="p-6 overflow-y-auto flex-1">
               {(() => {
                 // Deterministic mock data generator based on candidate's name
                 const getSimulatedData = (nombre: string, apellido: string) => {
@@ -989,7 +971,7 @@ export default function CandidatosPage() {
                       ['apertura', datosSimulados.apertura]
                     ]
                   }
-                  const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.toLowerCase().includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
+                  const bf = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (tid(s.test_id).includes('bigfive') || s.test_id === 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'))
                   return bf ? extraerDiagnostico(bf.puntaje_bruto || bf.puntajes || bf.resultados || bf, bf.test_id) : []
                 })()
                 
@@ -999,13 +981,14 @@ export default function CandidatosPage() {
                 };
 
                 const matchVal = (() => {
-                  if (diagnosticoBF.length === 0) return 75
-                  const avg = diagnosticoBF.reduce((acc, [, v]) => acc + (Number(v) || 0), 0) / diagnosticoBF.length
+                  if (diagnosticoBF.length === 0) return null
+                  // El neuroticismo suma al reves: mas neuroticismo es menos estabilidad emocional
+                  const avg = diagnosticoBF.reduce((acc, [k, v]) => acc + (String(k).toLowerCase() === 'neuroticismo' ? 6 - (Number(v) || 0) : (Number(v) || 0)), 0) / diagnosticoBF.length
                   return Math.round((avg / 5) * 100)
                 })();
 
                 const pilar = (() => {
-                  if (diagnosticoBF.length === 0) return "Compromiso"
+                  if (diagnosticoBF.length === 0) return null
                   let maxK = ""
                   let maxV = -1
                   diagnosticoBF.forEach(([k, v]) => {
@@ -1022,7 +1005,7 @@ export default function CandidatosPage() {
                   return "Compromiso y Confiabilidad"
                 })();
 
-                const cog = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (s.test_id.toLowerCase().includes('icar') || s.test_id.toLowerCase().includes('razonamiento') || s.test_id.toLowerCase().includes('detalle') || s.test_id.toLowerCase().includes('numerico') || s.test_id.toLowerCase().includes('verbal')))
+                const cog = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && (tid(s.test_id).includes('icar') || tid(s.test_id).includes('razonamiento') || tid(s.test_id).includes('detalle') || tid(s.test_id).includes('numerico') || tid(s.test_id).includes('verbal')))
                 
                 const score = (() => {
                   if (simularDatos) {
@@ -1032,8 +1015,9 @@ export default function CandidatosPage() {
                     if (pct >= 50) return "Baremo Promedio"
                     return "Baremo Operativo"
                   }
-                  if (!cog) return "Baremo Medio-Alto"
+                  if (!cog) return null
                   const diag = extraerDiagnostico(cog.puntaje_bruto || cog.puntajes || cog.resultados || cog, cog.test_id)
+                  if (diag.length === 0) return null
                   const correctasMatch = diag.find(([k]) => k.includes('correctas') || k.includes('fluidez') || k.includes('aptitud') || k.includes('matrices') || k.includes('analogias'))
                   const pctMatch = diag.find(([k]) => k.includes('porcentaje') || k.includes('pct') || k.includes('analisis'))
                   
@@ -1059,10 +1043,10 @@ export default function CandidatosPage() {
                     if (val >= 2.5) return "Conformidad Ética Media"
                     return "Conformidad Bajo Supervisión"
                   }
-                  const integrity = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && s.test_id.toLowerCase().includes('integridad'))
-                  if (!integrity) return "Alineamiento Óptimo"
+                  const integrity = sesionesData.find(s => s.candidato_id === candidatoParaDashboard.id && tid(s.test_id).includes('integridad'))
+                  if (!integrity) return null
                   const diag = extraerDiagnostico(integrity.puntaje_bruto || integrity.puntajes || integrity.resultados || integrity, integrity.test_id)
-                  if (diag.length === 0) return "Alineamiento Óptimo"
+                  if (diag.length === 0) return null
                   const avg = diag.reduce((acc, [, v]) => acc + v, 0) / diag.length
                   if (avg >= 4) return "Conformidad Ética Alta"
                   if (avg >= 2.5) return "Conformidad Ética Media"
@@ -1081,195 +1065,129 @@ export default function CandidatosPage() {
                   }
                   return sesionesData.filter(s => 
                     s.candidato_id === candidatoParaDashboard.id && 
-                    (s.test_id.toLowerCase().includes('icar') || s.test_id.toLowerCase().includes('razonamiento') || s.test_id.toLowerCase().includes('detalle') || s.test_id.toLowerCase().includes('numerico') || s.test_id.toLowerCase().includes('verbal'))
+                    (tid(s.test_id).includes('icar') || tid(s.test_id).includes('razonamiento') || tid(s.test_id).includes('detalle') || tid(s.test_id).includes('numerico') || tid(s.test_id).includes('verbal'))
                   )
                 })();
+                const hayBF = diagnosticoBF.length > 0
+                const SIN_DATOS = 'Sin datos'
 
                 return (
-                  <div className="space-y-6">
-                    {/* Bloque 1: Resumen de KPIs Generales */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      
-                      {/* Ajuste al Puesto */}
-                      <div className="bg-slate-950/50 border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-5">
-                          <Target className="w-16 h-16 text-indigo-400" />
-                        </div>
-                        <div className="w-16 h-16 rounded-full border-4 border-indigo-500/30 flex items-center justify-center shrink-0">
-                          <span className="text-lg font-black text-indigo-400">{matchVal}%</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Ajuste Estimado</span>
-                          <span className="text-sm font-bold text-white">Adecuación General</span>
-                        </div>
+                  <div className="space-y-8">
+                    <section aria-label="Indicadores generales" className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-5 pb-8 border-b border-slate-200">
+                      <div>
+                        <div className="text-2xl font-semibold leading-tight tabular-nums text-slate-900" style={SERIF}>{matchVal === null ? SIN_DATOS : `${matchVal} %`}</div>
+                        <div className="text-sm text-slate-500 mt-1">Ajuste estimado de personalidad</div>
                       </div>
-
-                      {/* Fortaleza Conductual */}
-                      <div className="bg-slate-950/50 border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-5">
-                          <Award className="w-16 h-16 text-emerald-400" />
-                        </div>
-                        <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center shrink-0 border border-emerald-500/20">
-                          <Award className="w-6 h-6 text-emerald-400" />
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Pilar Conductual</span>
-                          <span className="text-sm font-bold text-white">{pilar}</span>
-                        </div>
+                      <div>
+                        <div className="text-2xl font-semibold leading-tight text-slate-900" style={SERIF}>{pilar ?? SIN_DATOS}</div>
+                        <div className="text-sm text-slate-500 mt-1">Pilar conductual</div>
                       </div>
-
-                      {/* Eficiencia Cognitiva Baremo */}
-                      <div className="bg-slate-950/50 border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-5">
-                          <Briefcase className="w-16 h-16 text-amber-400" />
-                        </div>
-                        <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center shrink-0 border border-amber-500/20">
-                          <Sparkles className="w-6 h-6 text-amber-400" />
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Índice Cognitivo Baremo</span>
-                          <span className="text-sm font-bold text-white">{score}</span>
-                        </div>
+                      <div>
+                        <div className="text-2xl font-semibold leading-tight text-slate-900" style={SERIF}>{score ?? SIN_DATOS}</div>
+                        <div className="text-sm text-slate-500 mt-1">Índice cognitivo</div>
                       </div>
-
-                      {/* Ética y Cumplimiento */}
-                      <div className="bg-slate-950/50 border border-slate-800/80 rounded-3xl p-5 flex items-center gap-4 shadow-sm relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-5">
-                          <PieChart className="w-16 h-16 text-cyan-400" />
-                        </div>
-                        <div className="w-12 h-12 bg-cyan-500/10 rounded-2xl flex items-center justify-center shrink-0 border border-cyan-500/20">
-                          <PieChart className="w-6 h-6 text-cyan-400" />
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Confiabilidad</span>
-                          <span className="text-sm font-bold text-white">{valIntegrity}</span>
-                        </div>
+                      <div>
+                        <div className="text-2xl font-semibold leading-tight text-slate-900" style={SERIF}>{valIntegrity ?? SIN_DATOS}</div>
+                        <div className="text-sm text-slate-500 mt-1">Confiabilidad</div>
                       </div>
+                    </section>
 
-                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-8">
+                      <section aria-labelledby="resumen-perfil">
+                        <h4 id="resumen-perfil" className="text-lg font-semibold text-slate-900" style={SERIF}>Perfil conductual</h4>
+                        <p className="text-sm text-slate-500 mb-4">Comparado con un perfil de referencia general, no con el perfil del cargo.</p>
 
-                    {/* Bloque 2: Gráficos de Análisis */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      
-                      {/* Gráfico de Telaraña (Radar) - Big Five de Personalidad */}
-                      <div className="bg-slate-950/50 border border-slate-800/60 rounded-[32px] p-6 flex flex-col justify-between">
-                        <div>
-                          <h4 className="text-base font-bold text-white mb-1">Estructura Conductual Baremo vs. Candidato</h4>
-                          <p className="text-xs text-slate-400 mb-6">Contraste de dimensiones de personalidad contra Baremo Ideal del puesto</p>
-                        </div>
-                        
-                        {diagnosticoBF.length === 0 ? (
-                          <div className="flex-1 flex flex-col items-center justify-center py-16 text-center text-slate-500">
-                            <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
-                              <Info className="w-6 h-6 text-slate-400" />
-                            </div>
-                            <p className="text-sm font-medium">El evaluado no cuenta con registro de Big Five completado aún.</p>
-                          </div>
+                        {!hayBF ? (
+                          <p className="py-12 text-center text-slate-500 border border-dashed border-slate-300 rounded-xl">Todavía no hay un Big Five completado.</p>
                         ) : (
                           (() => {
                             const radarData = [
-                              { factor: 'Extraversión', Candidato: getValorOCEAN('extraversion'), Baremo: 4.0 },
-                              { factor: 'Amabilidad', Candidato: getValorOCEAN('amabilidad'), Baremo: 4.2 },
-                              { factor: 'Responsabilidad', Candidato: getValorOCEAN('responsabilidad'), Baremo: 4.5 },
-                              { factor: 'Estabilidad Emocional', Candidato: 6 - getValorOCEAN('neuroticismo'), Baremo: 4.0 },
-                              { factor: 'Apertura', Candidato: getValorOCEAN('apertura'), Baremo: 3.8 }
+                              { factor: 'Extraversión', Candidato: getValorOCEAN('extraversion'), Referencia: 4.0 },
+                              { factor: 'Amabilidad', Candidato: getValorOCEAN('amabilidad'), Referencia: 4.2 },
+                              { factor: 'Responsabilidad', Candidato: getValorOCEAN('responsabilidad'), Referencia: 4.5 },
+                              { factor: 'Estabilidad emocional', Candidato: 6 - getValorOCEAN('neuroticismo'), Referencia: 4.0 },
+                              { factor: 'Apertura', Candidato: getValorOCEAN('apertura'), Referencia: 3.8 }
                             ]
 
                             return (
-                              <div className="w-full h-[320px] flex items-center justify-center">
+                              <div className="w-full h-[320px]">
                                 <ResponsiveContainer width="100%" height="100%">
-                                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                                    <PolarGrid stroke="#1e293b" />
-                                    <PolarAngleAxis dataKey="factor" stroke="#94a3b8" fontSize={11} fontWeight="bold" />
-                                    <PolarRadiusAxis angle={30} domain={[0, 5]} stroke="#475569" fontSize={9} />
+                                  <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
+                                    <PolarGrid stroke="var(--slate-300)" />
+                                    <PolarAngleAxis dataKey="factor" tick={{ fill: 'var(--slate-700)', fontSize: 12 }} />
+                                    <PolarRadiusAxis angle={30} domain={[0, 5]} tick={{ fill: 'var(--slate-500)', fontSize: 11 }} stroke="var(--slate-300)" />
                                     <ChartTooltip
-                                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px' }}
-                                      labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                                      contentStyle={{ backgroundColor: 'var(--white-bg)', borderColor: 'var(--slate-200)', borderRadius: '8px', color: 'var(--slate-900)' }}
+                                      labelStyle={{ color: 'var(--slate-900)', fontWeight: 'bold' }}
                                     />
-                                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                                    <Radar name="Baremo Ideal" dataKey="Baremo" stroke="#475569" fill="#475569" fillOpacity={0.1} />
-                                    <Radar name="Candidato" dataKey="Candidato" stroke="#6366f1" fill="#6366f1" fillOpacity={0.4} />
+                                    <Legend wrapperStyle={{ fontSize: '13px', paddingTop: '10px' }} />
+                                    <Radar name="Referencia general" dataKey="Referencia" stroke="var(--slate-500)" fill="var(--slate-500)" fillOpacity={0.12} />
+                                    <Radar name="Candidato" dataKey="Candidato" stroke="var(--indigo-600)" fill="var(--indigo-600)" fillOpacity={0.35} />
                                   </RadarChart>
                                 </ResponsiveContainer>
                               </div>
                             )
                           })()
                         )}
-                      </div>
+                      </section>
 
-                      {/* Gráfico de Barras - Rendimiento Cognitivo baremado */}
-                      <div className="bg-slate-950/50 border border-slate-800/60 rounded-[32px] p-6 flex flex-col justify-between">
-                        <div>
-                          <h4 className="text-base font-bold text-white mb-1">Rendimiento en Baremos Cognitivos</h4>
-                          <p className="text-xs text-slate-400 mb-6">Comparación en porcentaje de aciertos de razonamiento y atención</p>
-                        </div>
+                      <section aria-labelledby="resumen-cognitivo">
+                        <h4 id="resumen-cognitivo" className="text-lg font-semibold text-slate-900" style={SERIF}>Pruebas cognitivas</h4>
+                        <p className="text-sm text-slate-500 mb-4">Porcentaje de aciertos en razonamiento y atención.</p>
 
-                        {cognitiveTests.length === 0 ? (
-                          <div className="flex-1 flex flex-col items-center justify-center py-16 text-center text-slate-500">
-                            <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
-                              <Info className="w-6 h-6 text-slate-400" />
-                            </div>
-                            <p className="text-sm font-medium">El evaluado no cuenta con registro de tests cognitivos completados.</p>
-                          </div>
-                        ) : (
-                          (() => {
-                            const barData = cognitiveTests.map(t => {
-                              const name = t.test_id.includes('icar') ? 'ICAR' :
-                                           t.test_id.includes('numerico') ? 'R. Numérico' :
-                                           t.test_id.includes('verbal') ? 'R. Verbal' :
-                                           t.test_id.includes('detalle') ? 'Atención Detalle' : 'Test Cognitivo'
-                              
-                              let valor = 70
+                        {(() => {
+                          const barData = cognitiveTests
+                            .map(t => {
+                              const name = tid(t.test_id).includes('icar') ? 'ICAR' :
+                                           tid(t.test_id).includes('numerico') ? 'R. numérico' :
+                                           tid(t.test_id).includes('verbal') ? 'R. verbal' :
+                                           tid(t.test_id).includes('detalle') ? 'Atención al detalle' : 'Prueba cognitiva'
+
                               const diag = extraerDiagnostico(t.puntaje_bruto || t.puntajes || t.resultados || t, t.test_id)
-                              if (diag.length > 0) {
-                                const pctMatch = diag.find(([k]) => k.toLowerCase().includes('porcentaje') || k.toLowerCase().includes('pct') || k.toLowerCase().includes('analisis_datos') || k.toLowerCase().includes('analisis_semantico'))
-                                if (pctMatch) {
-                                  valor = Math.round(pctMatch[1] <= 5 ? (pctMatch[1] / 5) * 100 : pctMatch[1])
-                                } else {
-                                  const avg = diag.reduce((acc, [, v]) => acc + v, 0) / diag.length
-                                  valor = Math.round((avg / 5) * 100)
-                                }
-                              }
+                              if (diag.length === 0) return null
+                              const pctMatch = diag.find(([k]) => k.toLowerCase().includes('porcentaje') || k.toLowerCase().includes('pct') || k.toLowerCase().includes('analisis_datos') || k.toLowerCase().includes('analisis_semantico'))
+                              const valor = pctMatch
+                                ? Math.round(pctMatch[1] <= 5 ? (pctMatch[1] / 5) * 100 : pctMatch[1])
+                                : Math.round((diag.reduce((acc, [, v]) => acc + v, 0) / diag.length / 5) * 100)
 
-                              return {
-                                name,
-                                Rendimiento: valor,
-                                'Baremo de Referencia': 65
-                              }
+                              return { name, Rendimiento: valor, Referencia: 65 }
                             })
+                            .filter((d): d is { name: string; Rendimiento: number; Referencia: number } => d !== null)
 
-                            return (
-                              <div className="w-full h-[320px] flex items-center justify-center">
-                                <ResponsiveContainer width="100%" height="100%">
-                                  <RechartsBarChart data={barData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} />
-                                    <YAxis stroke="#94a3b8" fontSize={11} domain={[0, 100]} />
-                                    <ChartTooltip
-                                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px' }}
-                                      labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
-                                    />
-                                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                                    <Bar dataKey="Rendimiento" fill="#10b981" radius={[8, 8, 0, 0]} maxBarSize={45} />
-                                    <Bar dataKey="Baremo de Referencia" fill="#475569" radius={[8, 8, 0, 0]} maxBarSize={45} />
-                                  </RechartsBarChart>
-                                </ResponsiveContainer>
-                              </div>
-                            )
-                          })()
-                        )}
-                      </div>
+                          if (barData.length === 0) return (
+                            <p className="py-12 text-center text-slate-500 border border-dashed border-slate-300 rounded-xl">Todavía no hay pruebas cognitivas completadas.</p>
+                          )
 
+                          return (
+                            <div className="w-full h-[320px]">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <RechartsBarChart data={barData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="var(--slate-200)" />
+                                  <XAxis dataKey="name" tick={{ fill: 'var(--slate-700)', fontSize: 12 }} stroke="var(--slate-300)" />
+                                  <YAxis tick={{ fill: 'var(--slate-500)', fontSize: 12 }} domain={[0, 100]} stroke="var(--slate-300)" />
+                                  <ChartTooltip
+                                    contentStyle={{ backgroundColor: 'var(--white-bg)', borderColor: 'var(--slate-200)', borderRadius: '8px', color: 'var(--slate-900)' }}
+                                    labelStyle={{ color: 'var(--slate-900)', fontWeight: 'bold' }}
+                                  />
+                                  <Legend wrapperStyle={{ fontSize: '13px', paddingTop: '10px' }} />
+                                  <Bar dataKey="Rendimiento" name="Rendimiento (%)" fill="var(--indigo-600)" radius={[6, 6, 0, 0]} maxBarSize={45} />
+                                  <Bar dataKey="Referencia" name="Referencia (65 %)" fill="var(--slate-300)" radius={[6, 6, 0, 0]} maxBarSize={45} />
+                                </RechartsBarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          )
+                        })()}
+                      </section>
                     </div>
 
-                    {/* Bloque 3: Resumen de Re recomendaciones y Ajuste */}
+                    <section aria-label="Lectura orientativa" className="pt-8 border-t border-slate-200">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       
                       {/* Fortaleza Clave */}
-                      <div className="bg-slate-950/40 border border-slate-800/80 rounded-3xl p-5 relative overflow-hidden">
+                      <div className="border border-slate-200 rounded-xl p-5">
                         <div className="flex items-center gap-2 mb-3">
-                          <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full" />
-                          <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fortaleza Clave Identificada</h5>
+                          <div className="w-2.5 h-2.5 bg-indigo-600 rounded-full" />
+                          <h5 style={SERIF} className="text-lg font-semibold text-slate-900">Fortaleza clave</h5>
                         </div>
                         {(() => {
                           let text = "El evaluado demuestra un excelente equilibrio conductual y adaptabilidad a las demandas estándar. Se perfila como una persona propicia para roles dinámicos de soporte corporativo."
@@ -1281,15 +1199,15 @@ export default function CandidatosPage() {
                           else if (ext >= 4.0) text = "Gran solvencia comunicativa y dinamismo social. Muestra una actitud proactiva en relaciones interpersonales, ideal para liderazgo, negociación o comercialización."
                           else if (amab >= 4.0) text = "Alta disposición al trabajo colaborativo, empatía activa y gestión constructiva de conflictos. Favorece la cohesión del equipo y mantiene altos niveles de sinergia grupal."
                           
-                          return <p className="text-xs text-slate-300 leading-relaxed font-medium">{text}</p>
+                          return <p className="text-slate-700 leading-relaxed">{hayBF ? text : 'Sin datos de personalidad para esta lectura.'}</p>
                         })()}
                       </div>
 
                       {/* Desafío o Punto de Atención */}
-                      <div className="bg-slate-950/40 border border-slate-800/80 rounded-3xl p-5 relative overflow-hidden">
+                      <div className="border border-slate-200 rounded-xl p-5">
                         <div className="flex items-center gap-2 mb-3">
-                          <div className="w-2.5 h-2.5 bg-amber-500 rounded-full" />
-                          <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Desafío Adaptativo</h5>
+                          <div className="w-2.5 h-2.5 bg-marcador rounded-full" />
+                          <h5 style={SERIF} className="text-lg font-semibold text-slate-900">Desafío adaptativo</h5>
                         </div>
                         {(() => {
                           let text = "En entornos de extrema imprevisibilidad o sin metas explícitas, el evaluado se beneficiará de contar con directrices claras y metas a corto plazo para sostener su eficiencia."
@@ -1299,15 +1217,15 @@ export default function CandidatosPage() {
                           if (neur >= 3.5) text = "Se observan indicadores de vulnerabilidad ante picos extremos de presión o ambigüedad excesiva. Responderá de manera óptima en contextos ordenados con soporte directo."
                           else if (resp < 3.0) text = "Tiende a enfocarse más en la visión general antes que en el micro-detalle formal. Se sugiere reforzar el uso de herramientas metodológicas de seguimiento."
                           
-                          return <p className="text-xs text-slate-300 leading-relaxed font-medium">{text}</p>
+                          return <p className="text-slate-700 leading-relaxed">{hayBF ? text : 'Sin datos de personalidad para esta lectura.'}</p>
                         })()}
                       </div>
 
                       {/* Plan de Acompañamiento */}
-                      <div className="bg-slate-950/40 border border-slate-800/80 rounded-3xl p-5 relative overflow-hidden">
+                      <div className="border border-slate-200 rounded-xl p-5">
                         <div className="flex items-center gap-2 mb-3">
-                          <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full" />
-                          <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Plan de Onboarding Sugerido</h5>
+                          <div className="w-2.5 h-2.5 bg-slate-500 rounded-full" />
+                          <h5 style={SERIF} className="text-lg font-semibold text-slate-900">Plan de incorporación sugerido</h5>
                         </div>
                         {(() => {
                           let text = "Implementar un plan de inducción técnica enfocado en la asimilación del Baremo Ideal del puesto. Programar revisiones de desempeño mensuales durante el primer trimestre."
@@ -1316,27 +1234,27 @@ export default function CandidatosPage() {
                           if (apert >= 4.0) text = "Favorecer su integración mediante asignación a proyectos transversales de diseño estratégico. Brindarle libertad para proponer soluciones a problemáticas existentes."
                           else text = "Acompañarlo de un tutor con experiencia que actúe como validador al inicio. Ofrecer retroalimentación positiva periódica para apuntalar su asimilación del rol."
                           
-                          return <p className="text-xs text-slate-300 leading-relaxed font-medium">{text}</p>
+                          return <p className="text-slate-700 leading-relaxed">{hayBF ? text : 'Sin datos de personalidad para esta lectura.'}</p>
                         })()}
                       </div>
 
                     </div>
+                    </section>
                   </div>
                 )
               })()}
             </div>
 
-            {/* Footer */}
-            <div className="p-6 bg-slate-950/80 border-t border-slate-800 flex justify-between items-center shrink-0">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Generado automáticamente por Motor Psicométrico PsicoPlataforma</span>
-              <button 
-                onClick={() => { setMostrarDashboard(false); setCandidatoParaDashboard(null); }}
-                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-lg transition-all active:scale-[0.95]"
+            <div className="p-4 border-t border-slate-200 flex flex-wrap justify-between items-center gap-3">
+              <span className="text-sm text-slate-500">Lectura orientativa: no reemplaza el juicio del evaluador.</span>
+              <button
+                type="button"
+                onClick={cerrarDashboard}
+                className="px-5 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors"
               >
-                Cerrar Dashboard
+                Cerrar
               </button>
             </div>
-            
           </div>
         </div>
       )}
@@ -1626,18 +1544,11 @@ function extraerDiagnostico(pb: any, testId?: string): [string, number][] {
   return results
 }
 
-function promedioPuntaje(pb: any, testId?: string, candidato?: any): number {
+function promedioPuntaje(pb: any, testId?: string, _candidato?: any): number {
   if (!pb) return 0
   
   // Capturamos el diagnóstico usando la lógica resiliente
-  let diag = extraerDiagnostico(pb, testId)
-  
-  // Si no hay datos pero es Iliana/Franco (Caso Especial Reportado), inyectamos para el promedio
-  const nomCompleto = `${candidato?.nombre || ''} ${candidato?.apellido || ''}`.toLowerCase()
-  const testName = (TEST_NAMES[testId || ''] || '').toLowerCase()
-  if (diag.length === 0 && (nomCompleto.includes('iliana') || nomCompleto.includes('nieta') || nomCompleto.includes('franco')) && (testName.includes('big') || (testId || '').includes('a1b2c3d4'))) {
-    diag = [['e', 3.5], ['a', 4.0], ['c', 4.2], ['n', 1.2], ['o', 3.8]]
-  }
+  const diag = extraerDiagnostico(pb, testId)
 
   if (diag.length > 0) {
     const sum = diag.reduce((acc, [_, v]) => acc + v, 0)
