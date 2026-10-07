@@ -97,12 +97,17 @@ comercial, iniciativa-dinamismo, integridad, estres-laboral, bigfive y dass21 (l
 Vercel: es un secreto y no se puede leer desde la línea de comandos). **Falta solo ICAR.**
 
 Controles del 2026-10-07:
-- `npm run audit:puntajes`: 3242 sesiones finalizadas, **18 difieren, las mismas 18 históricas** de la auditoría original (datos viejos explicados arriba).
+- `npm run audit:puntajes`: 3243 sesiones finalizadas, **18 difieren, las mismas 18 históricas** de la auditoría original (datos viejos explicados arriba).
   Ninguna sesión posterior al 2026-10-02 difiere.
 - Los registros de Vercel solo se conservan unas horas, así que no sirven para revisar días atrás: el control sólido es la auditoría de la base.
-- **Todavía ningún candidato real cerró una prueba en modo estricto** (la actividad es esporádica: las últimas sesiones reales finalizadas son del 29/9). Lo que
-  respalda hoy el modo estricto en producción son las pruebas con candidatos descartables del 2026-10-06. La primera confirmación real conviene hacerla
-  completando una prueba con un enlace de candidato y revisando el puntaje guardado.
+- **Primera prueba completa en modo estricto (2026-10-07):** un candidato descartable completó Verbal desde el navegador con un enlace firmado de
+  producción. Quedó guardado 17/20 (85 %) con las 20 respuestas, igual al recálculo; el GET ya no envía `respuesta_correcta` ni `inverso` y el formato
+  viejo recibe 400. Ningún candidato **real** cerró todavía una prueba en estricto (la actividad es esporádica: las últimas sesiones reales finalizadas son
+  del 29/9); la auditoría de la base seguirá siendo el control a revisar cuando haya tráfico real.
+- **Error encontrado en esa prueba y corregido (PR #14):** `finalize` solo cerraba sesiones en estado `iniciado`. Una sesión `pendiente` (la deja
+  la asignación desde el panel o /unirse y la página del test no avisa el inicio) respondía 409 y no guardaba nada. Ahora acepta `iniciado` y `pendiente`;
+  las ya finalizadas siguen excluidas. Verificado en producción con una sesión pendiente (12/20 guardado por el servidor, ignorando un puntaje inflado del
+  pedido, y un segundo envío no duplica respuestas).
 
 ### Cómo activar ICAR en el modo estricto
 Condición: que no queden enlaces ICAR anteriores a la Fase F en uso. Esos enlaces pueden llevar `?max=` y `?norot=` **sin firma** y, con el estricto, la
