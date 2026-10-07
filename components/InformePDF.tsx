@@ -74,9 +74,8 @@ function obtenerTextoAnalisis(analisis: any): string {
 }
 
 const styles = StyleSheet.create({
-  page: { padding: 40, fontFamily: 'Roboto', backgroundColor: '#ffffff', fontSize: 9, color: '#1e293b' },
+  page: { paddingTop: 40, paddingHorizontal: 40, paddingBottom: 75, fontFamily: 'Roboto', backgroundColor: '#ffffff', fontSize: 9, color: '#1e293b' },
   header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, borderBottomWidth: 2, borderBottomColor: '#0f172a', paddingBottom: 10 },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#0f172a' },
   headerSubtitle: { fontSize: 9, color: '#64748b', marginTop: 2 },
   headerDate: { fontSize: 8, color: '#64748b' },
 
@@ -112,11 +111,12 @@ const styles = StyleSheet.create({
   barFill: { height: 4, borderRadius: 2 },
   factorDesc: { fontSize: 8, color: '#475569', lineHeight: 1.3 },
 
-  footer: { position: 'absolute', bottom: 30, left: 40, right: 40, borderTopWidth: 1, borderTopColor: '#e2e8f0', paddingTop: 10, flexDirection: 'row', justifyContent: 'space-between' },
+  footer: { position: 'absolute', bottom: 30, left: 40, right: 40, borderTopWidth: 1, borderTopColor: '#e2e8f0', paddingTop: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   footerText: { fontSize: 7, color: '#94a3b8' }
 });
 
 import { ETQ } from '@/lib/labels';
+import { MarcaPDF } from '@/components/MarcaPDF';
 
 
 const DOMINIOS = {
@@ -217,7 +217,7 @@ export const InformePDF = ({ data }: any) => {
       const anotacion = anotaciones?.[factor];
 
       return (
-        <View key={factor} style={styles.factorBlock}>
+        <View key={factor} wrap={false} style={styles.factorBlock}>
           <View style={styles.factorHeader}>
             <Text style={styles.factorName}>{ETQ[factor] || factor}</Text>
             <Text style={[styles.factorValue, { color: clr }]}>{vNorm}/5</Text>
@@ -245,7 +245,7 @@ export const InformePDF = ({ data }: any) => {
     <Document title={`Informe - ${candidato.nombre}`}>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <View><Text style={styles.headerTitle}>PSICO-PLATAFORMA 2.0</Text><Text style={styles.headerSubtitle}>Intelligence & Talent Analytics Report</Text></View>
+          <View><MarcaPDF fontSize={18} /><Text style={styles.headerSubtitle}>Informe de evaluación psicométrica</Text></View>
           <Text style={styles.headerDate}>{new Date().toLocaleDateString()}</Text>
         </View>
 
@@ -256,7 +256,7 @@ export const InformePDF = ({ data }: any) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>I. Controles del proceso</Text>
+          <Text minPresenceAhead={110} style={styles.sectionTitle}>I. Controles del proceso</Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={{ flex: 1, backgroundColor: '#f8fafc', padding: 10, borderRadius: 6, alignItems: 'center', border: '1px solid #e2e8f0' }}>
               <Text style={{ fontSize: 6, color: '#64748b', fontWeight: 'bold', marginBottom: 4 }}>ÍNDICE DE CONFIANZA</Text>
@@ -277,18 +277,18 @@ export const InformePDF = ({ data }: any) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>II. Resultados de la Evaluación</Text>
+          <Text minPresenceAhead={110} style={styles.sectionTitle}>II. Resultados de la Evaluación</Text>
 
           {hasP && (
-            <View style={{ marginBottom: 14 }}>
-              <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 6 }}>II.A — Personalidad</Text>
+            <View wrap={false} style={{ marginBottom: 14 }}>
+              <Text minPresenceAhead={110} style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 6 }}>II.A — Personalidad</Text>
               {renderFactores(DOMINIOS.PERSONALIDAD.filter(f => !['normas', 'promedio_general'].includes(f)), sesBF, anotacionesPersonalidad)}
             </View>
           )}
 
           {hasC && (
-            <View style={{ marginBottom: 14 }}>
-              <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 6 }}>II.B — Atención y Tareas</Text>
+            <View wrap={false} style={{ marginBottom: 14 }}>
+              <Text minPresenceAhead={110} style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 6 }}>II.B — Atención y Tareas</Text>
               {sesCog.length > 0 && (() => {
                 let sumaCorrectas = 0
                 let sumaTotal = 0
@@ -330,8 +330,8 @@ export const InformePDF = ({ data }: any) => {
           )}
 
           {(hasP || hasK) && (
-            <View style={{ marginBottom: 14 }}>
-              <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 4 }}>II.C — Integridad y Ética</Text>
+            <View wrap={false} style={{ marginBottom: 14 }}>
+              <Text minPresenceAhead={110} style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 4 }}>II.C — Integridad y Ética</Text>
               <Text style={{ fontSize: 7, color: '#64748b', marginBottom: 6, lineHeight: 1.3 }}>
                 Estas métricas miden ángulos distintos del mismo concepto (autopercepción vs. conducta situacional) — se agrupan para leerse juntas, no son el mismo dato repetido.
               </Text>
@@ -341,8 +341,8 @@ export const InformePDF = ({ data }: any) => {
           )}
 
           {hasK && (
-            <View style={{ marginBottom: 14 }}>
-              <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 4 }}>II.D — Competencias (Situacionales / SJT)</Text>
+            <View wrap={false} style={{ marginBottom: 14 }}>
+              <Text minPresenceAhead={110} style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 4 }}>II.D — Competencias (Situacionales / SJT)</Text>
               <Text style={{ fontSize: 7, color: '#b45309', marginBottom: 6, lineHeight: 1.3 }}>
                 ⚠ Estos valores provienen de pruebas situacionales con efecto techo documentado (la mayoría de los perfiles puntúa cerca del máximo) — interpretar con cautela.
               </Text>
@@ -351,8 +351,8 @@ export const InformePDF = ({ data }: any) => {
           )}
 
           {hasV && (
-            <View>
-              <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 6 }}>II.E — Bienestar</Text>
+            <View wrap={false}>
+              <Text minPresenceAhead={110} style={{ fontSize: 9, fontWeight: 'bold', color: '#334155', marginBottom: 6 }}>II.E — Bienestar</Text>
               {renderFactores(DOMINIOS.BIENESTAR, sesBien)}
               {hasK && (
                 <Text style={{ fontSize: 7, color: '#b45309', marginTop: 4, lineHeight: 1.3 }}>
@@ -366,7 +366,7 @@ export const InformePDF = ({ data }: any) => {
         <View break />
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>III. Evaluación General y Ajuste al Puesto</Text>
+          <Text minPresenceAhead={110} style={styles.sectionTitle}>III. Evaluación General y Ajuste al Puesto</Text>
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
             <View style={{ width: '25%', backgroundColor: '#f0f9ff', padding: 10, borderRadius: 6, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 20, fontWeight: 'bold', color: clrOf((inf.ajusteCargo?.score || 0)/20) }}>{inf.ajusteCargo?.score || 0}%</Text>
@@ -415,12 +415,12 @@ export const InformePDF = ({ data }: any) => {
 
         {inf.resumenEjecutivo && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>IV. Perfil Integrado</Text>
+            <Text minPresenceAhead={110} style={styles.sectionTitle}>IV. Perfil Integrado</Text>
             <Text style={[styles.cardText, { lineHeight: 1.5 }]}>{inf.resumenEjecutivo}</Text>
           </View>
         )}
 
-        <View style={{ marginTop: 20, padding: 15, borderTop: 1, borderTopColor: '#e2e8f0' }}>
+        <View wrap={false} style={{ marginTop: 20, padding: 15, borderTop: 1, borderTopColor: '#e2e8f0' }}>
           <Text style={{ fontSize: 10, fontWeight: 'bold', color: clrOf(inf.recomendacion === 'recomendado' ? 5 : inf.recomendacion === 'con_reservas' ? 3 : 1) }}>
             V. DICTAMEN FINAL: {inf.recomendacion?.replace('_', ' ').toUpperCase()}
           </Text>
@@ -428,8 +428,12 @@ export const InformePDF = ({ data }: any) => {
           <Text style={{ fontSize: 8, color: '#64748b', marginTop: 15 }}>Evaluador: {inf.nombreEvaluador || 'Equipo de Consultoría'}</Text>
         </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Psico-Plataforma 2.0 - Confidencial</Text>
+        {/* Pie en todas las carillas: la marca a escala chica, la leyenda de confidencialidad y el numero de pagina */}
+        <View style={styles.footer} fixed>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <MarcaPDF fontSize={8} color="#475569" />
+            <Text style={[styles.footerText, { marginLeft: 8 }]}>Documento confidencial</Text>
+          </View>
           <Text style={styles.footerText} render={({ pageNumber, totalPages }: { pageNumber: number, totalPages: number }) => `Página ${pageNumber} de ${totalPages}`} fixed />
         </View>
       </Page>
