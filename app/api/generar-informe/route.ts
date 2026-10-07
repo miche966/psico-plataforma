@@ -237,6 +237,7 @@ REGLAS DE ORO DE REDACCIÓN (OBLIGATORIAS E INFLEXIBLES):
 11. PROHIBIDA LA CONSTRUCCIÓN "ALINEAMIENTO DE EXPECTATIVAS": nunca uses la combinación "alineamiento de expectativas" en ninguna forma (ej: "las alineamiento de expectativas", "la alineamiento de expectativas del cliente/rol") — es gramaticalmente incorrecta y no depende de ningún dato puntual, es solo una muletilla a evitar. Para esa idea usa en cambio "las expectativas del cliente/rol", "lo que espera" o "se ajusta a lo que necesita", sin combinar la palabra "alineamiento" con "expectativas".
    - "ajusteCargo.analisis": 2-3 frases, ÚNICAMENTE sobre el encaje entre el perfil y las demandas concretas del puesto (${proceso?.cargo || 'N/A'}). No listes fortalezas ni menciones el bienestar.
    - "fortalezas" / "oportunidadesMejora": cada ítem debe combinar DOS O MÁS factores de los DATOS PARA ANÁLISIS de abajo (según la guía de interpretación) en una sola observación de comportamiento integrada (ej: responsabilidad alta + energía baja → "sostiene el cumplimiento incluso cuando el desgaste podría hacerle bajar el ritmo"). Prohibido describir un solo factor de forma aislada.
+   - Campo "impacto_organizacional" de cada ítem (en el informe se muestra como "Qué puede aportar" en fortalezas y "Qué puede implicar" en áreas de desarrollo): habla del trabajo en general y de cómo se desempeña o se relaciona la persona con otras y con sus tareas, SIN dar por sentado cómo sería en el puesto ni en la organización, porque la persona todavía no fue seleccionada. PROHIBIDO nombrar en ese campo el puesto, sus tareas, clientes, ventas, cobranzas, cartera, metas, resultados del negocio o "la organización" como si la persona ya trabajara allí. Eso corresponde ÚNICAMENTE a "ajusteCargo.analisis". Redáctalo en condicional o con verbos atenuados ("puede ayudar a", "podría", "suele"), nunca como un hecho consumado.
 
 ESTILO DE REDACCIÓN OBLIGATORIO:
 - Utiliza un lenguaje claro, directo y profesional, pensado para responsables de selección y supervisores que no tienen formación en psicología.
@@ -262,8 +263,8 @@ ${guiaInterpretacion}
 
 Devuelve UNICAMENTE un objeto JSON con esta estructura:
 {
-  "fortalezas": [{"tendencia": "Comportamiento observado combinando 2+ factores, no uno aislado", "mecanismo": "Forma de actuar", "impacto_organizacional": "Valor para la empresa"}],
-  "oportunidadesMejora": [{"tendencia": "Punto de atención combinando 2+ factores, no uno aislado", "mecanismo": "Situación de riesgo", "impacto_organizacional": "Consecuencia operativa"}],
+  "fortalezas": [{"tendencia": "Comportamiento observado combinando 2+ factores, no uno aislado", "mecanismo": "Forma de actuar", "impacto_organizacional": "Qué puede aportar en el trabajo en general, en condicional y sin nombrar el puesto, sus tareas ni clientes"}],
+  "oportunidadesMejora": [{"tendencia": "Punto de atención combinando 2+ factores, no uno aislado", "mecanismo": "Situación de riesgo", "impacto_organizacional": "Qué podría implicar en el trabajo en general, en condicional y sin nombrar el puesto, sus tareas ni clientes"}],
   "ajusteCargo": { "score": ${scoreFinal}, "analisis": "2-3 frases, solo sobre el encaje con las demandas concretas del puesto (${proceso?.cargo || 'N/A'}). No listes fortalezas ni menciones el bienestar." },
   "recomendacion": "..."
 }
