@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export type AccionRegistrada = 'ver_informe' | 'ver_videos' | 'ver_respuestas_sesion' | 'generar_informe' | 'restablecer_2fa'
+export type AccionRegistrada = 'ver_informe' | 'ver_videos' | 'ver_respuestas_sesion' | 'generar_informe' | 'restablecer_2fa' | 'eliminar_candidato'
 
 const esUuid = (v: unknown): v is string => z.guid().safeParse(v).success
 

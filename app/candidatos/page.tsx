@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation'
 import { getAdminHeaders, obtenerLinkEvaluacion } from '@/lib/evaluacionLink'
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as ChartTooltip, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
 import AppLayout from '@/components/AppLayout'
-import { Plus, Check, Copy, FileText, Search, UserPlus, RotateCcw, BarChart3, Users, Sparkles, BellRing, AlertCircle, Info, LayoutDashboard, Award, Briefcase, X, Target, PieChart, ShieldAlert } from 'lucide-react'
+import EliminarCandidatoModal from '@/components/EliminarCandidatoModal'
+import { Plus, Check, Copy, FileText, Search, UserPlus, RotateCcw, BarChart3, Users, Sparkles, BellRing, AlertCircle, Info, LayoutDashboard, Award, Briefcase, X, Target, PieChart, ShieldAlert, Trash2 } from 'lucide-react'
 import { normalizarContextoInterpretacion, obtenerInterpretacion } from '@/lib/interpretaciones/resolver'
 import { useAdminRole } from '@/lib/useAdminRole'
 import { normalizarTestId } from '@/lib/progresoEvaluacion'
@@ -44,6 +45,7 @@ export default function CandidatosPage() {
   const [sesionParaDetalle, setSesionParaDetalle] = useState<any | null>(null)
   const [mostrarDetalle, setMostrarDetalle] = useState(false)
   const [reseteando, setReseteando] = useState<string | null>(null)
+  const [candidatoAEliminar, setCandidatoAEliminar] = useState<Candidato | null>(null)
   const [mostrarDashboard, setMostrarDashboard] = useState(false)
   const [candidatoParaDashboard, setCandidatoParaDashboard] = useState<Candidato | null>(null)
   const [simularDatos, setSimularDatos] = useState(false)
@@ -140,6 +142,14 @@ export default function CandidatosPage() {
     } finally {
       setReseteando(null)
     }
+  }
+
+  // El servidor ya borro al candidato: se lo saca de la lista sin recargar todo
+  function alEliminarCandidato(candidatoId: string) {
+    setCandidatos(prev => prev.filter(c => c.id !== candidatoId))
+    setSesionesData(prev => prev.filter(s => s.candidato_id !== candidatoId))
+    setSesionesCount(prev => { const { [candidatoId]: _quitado, ...resto } = prev; return resto })
+    setCandidatoAEliminar(null)
   }
 
   async function guardarCandidato() {
@@ -624,6 +634,17 @@ export default function CandidatosPage() {
                         >
                           <RotateCcw className={`w-4 h-4 ${reseteando === candidato.id ? 'animate-spin' : ''}`} />
                         </button>
+                        {!esViewer && (
+                          <button
+                            type="button"
+                            onClick={() => setCandidatoAEliminar(candidato)}
+                            className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 text-slate-600 hover:text-rose-700 hover:border-rose-300 hover:bg-rose-50 transition-colors"
+                            title="Eliminar candidato"
+                            aria-label={`Eliminar a ${candidato.nombre} ${candidato.apellido}`}
+                          >
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => {
@@ -1257,6 +1278,9 @@ export default function CandidatosPage() {
             </div>
           </div>
         </div>
+      )}
+      {candidatoAEliminar && (
+        <EliminarCandidatoModal candidato={candidatoAEliminar} onCerrar={() => setCandidatoAEliminar(null)} onEliminado={alEliminarCandidato} />
       )}
     </AppLayout>
   )
