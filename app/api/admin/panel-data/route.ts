@@ -4,6 +4,7 @@ import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { readAll } from '@/lib/server/readAll'
 import { candidatoIdsEnProcesos } from '@/lib/server/procesoScope'
 import { leerResumenes } from '@/lib/server/resumenesIa'
+import { leerDictamenes } from '@/lib/server/dictamenes'
 
 export async function GET(req: Request) {
   try {
@@ -27,6 +28,8 @@ export async function GET(req: Request) {
     }
 
     let resumenesIa = await leerResumenes(db)
+    // Dictamen guardado de cada informe (solo ese campo): lo usan las exportaciones a Excel
+    let dictamenes = await leerDictamenes(db)
 
     if (auth.role === 'viewer') {
       const procesosPermitidos = new Set(auth.allowedProcesoIds)
@@ -35,6 +38,7 @@ export async function GET(req: Request) {
       progresoOperativo = (progresoOperativo || []).filter((p: any) => p.proceso_id && procesosPermitidos.has(p.proceso_id))
       resumenesIa = resumenesIa.filter(r => r.proceso_id && procesosPermitidos.has(r.proceso_id))
       const idsCandidatos = await candidatoIdsEnProcesos(db, auth.allowedProcesoIds)
+      dictamenes = dictamenes.filter(d => idsCandidatos.has(d.candidato_id))
       candidatos = (candidatos || []).filter((c: any) => idsCandidatos.has(c.id))
       respuestasVideo = (respuestasVideo || []).filter((r: any) => idsCandidatos.has(r.candidato_id))
     }
@@ -47,7 +51,8 @@ export async function GET(req: Request) {
       respuestasVideo: (respuestasVideo || []).map((r: any) => { const { url_video, ...resto } = r; return resto }),
       preguntasVideo,
       progresoOperativo,
-      resumenesIa
+      resumenesIa,
+      dictamenes
     })
   } catch (error: any) {
     console.error('Error cargando datos administrativos del panel:', error)

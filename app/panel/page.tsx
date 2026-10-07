@@ -13,6 +13,8 @@ import { mapperAuditoriaUniversal } from '@/lib/auditoriaMapper'
 import { formatearFecha, ordenarPorPostulacionDescendente, ordenarPorPostulacionAscendente } from '@/lib/postulaciones/ordenamiento'
 import { TEST_IDS, calcularProgresoEvaluacion } from '@/lib/progresoEvaluacion'
 import { resumenCognitivo } from '@/lib/baremoCognitivo'
+import { etiquetaDictamen, resumenDictamenes } from '@/lib/dictamen'
+import { estimarMBTI } from '@/lib/baremos'
 import SaludOperativa from '@/components/SaludOperativa'
 import { FRASES_INCOMPLETAS_ID, FRASES_ESTIMULO } from '@/lib/frasesIncompletas'
 import { useAdminRole } from '@/lib/useAdminRole'
@@ -267,6 +269,8 @@ export default function PanelEvaluador() {
   const esViewer = role === 'viewer'
   const [tab, setTab] = useState<'evaluaciones' | 'gestion' | 'dashboard' | 'historial' | 'diagnostico' | 'salud'>('evaluaciones')
   const [candidatos, setCandidatos] = useState<CandidatoAgrupado[]>([])
+  // Dictamen guardado de cada informe (para las exportaciones a Excel)
+  const [dictamenes, setDictamenes] = useState<Array<{ candidato_id: string; recomendacion: string }>>([])
   const [procesos, setProcesos] = useState<any[]>([])
   const [procesoSeleccionadoId, setProcesoSeleccionadoId] = useState<string>('todos')
   const [agrupadoSeleccionado, setAgrupadoSeleccionado] = useState<CandidatoAgrupado | null>(null)
@@ -484,6 +488,7 @@ export default function PanelEvaluador() {
     const preguntasVideo: any[] = payload.preguntasVideo || []
     const progresoOperativo: any[] = payload.progresoOperativo || []
     const resumenesIa: any[] = payload.resumenesIa || []
+    setDictamenes(payload.dictamenes || [])
 
     if (sesionesData.length > 0) setSesionesGlobales(sesionesData)
 
@@ -679,6 +684,9 @@ export default function PanelEvaluador() {
       return s.split(/\s+/).map(w => w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : "").join(" ")
     }
 
+    // Dictamen guardado de cada persona (un guion si no hay informe guardado)
+    const dictamenPorCandidato = new Map(dictamenes.map(d => [d.candidato_id, d.recomendacion]))
+
     const rows = candidatosFiltrados.map(c => {
       let alertasFraude = 0
       c.sesiones.forEach(s => {
@@ -700,7 +708,8 @@ export default function PanelEvaluador() {
         bigFiveConsolidado = `Est: ${estabilidadVal} | Ama: ${amabilidadVal} | Ext: ${extraversionVal} | Res: ${responsabilidadVal} | Ape: ${aperturaVal}`
       }
 
-      const mbtiVal = sesionBigFive?.puntaje_bruto ? 'ENFJ' : (c.mbtiType || "-")
+      // Estimacion a partir del Big Five (la misma que usa el informe); sin Big Five, un guion
+      const mbtiVal = estimarMBTI(sesionBigFive?.puntaje_bruto) || "-"
 
       const sesionIntegridad = c.sesiones.find(s => TEST_IDS[s.test_id] === 'integridad')
       const pi = (sesionIntegridad?.puntaje_bruto || {}) as any
@@ -744,7 +753,7 @@ export default function PanelEvaluador() {
         burnoutVal,
         equilibrioVal,
         formatearFecha(c.ultima_fecha),
-        "Recomendado",
+        etiquetaDictamen(dictamenPorCandidato.get(c.id)),
         percentilCognitivo
       ]
     })
@@ -795,15 +804,34 @@ export default function PanelEvaluador() {
       cands.forEach(c => { if (c.matchScore != null) { sumMatch += c.matchScore; countMatch++ } })
       const matchPromedio = countMatch > 0 ? `${Math.round(sumMatch / countMatch)}%` : "-"
 
+      // Dictamenes guardados (sobre quienes tienen informe guardado) y alertas (solo de las pruebas que registran señales)
+      const porCandidato = new Map(dictamenes.map(d => [d.candidato_id, d.recomendacion]))
+      const dictamenesProceso = resumenDictamenes(cands.map(c => porCandidato.get(c.id)))
+      let alertasTotales = 0, conSenales = 0, ceroAlertas = 0, criticas = 0
+      cands.forEach(c => {
+        let tieneSenales = false
+        let alertas = 0
+        c.sesiones.forEach((s: any) => {
+          const m = s.puntaje_bruto?.metricas_fraude as any
+          if (m) { tieneSenales = true; alertas += (m.tabSwitches || 0) + (m.copyPasteAttempts || 0) }
+        })
+        if (!tieneSenales) return
+        conSenales++
+        alertasTotales += alertas
+        if (alertas === 0) ceroAlertas++
+        if (alertas > 15) criticas++
+      })
+      const pctSenales = (n: number) => conSenales > 0 ? `${Math.round((n / conSenales) * 100)}%` : "-"
+
       rows.push([
         primer.proceso_nombre || "Proceso de Selección",
         primer.proceso_cargo || "S/C",
         totalInscritos,
         `${tasaFinalizacion}%`,
         matchPromedio,
-        "80%", "15%", "5%",
-        0, "0.0", "100%", "0%",
-        "15m", "Ninguna", "-", "-"
+        dictamenesProceso.recomendado, dictamenesProceso.conReservas, dictamenesProceso.noRecomendado,
+        conSenales > 0 ? alertasTotales : "-", conSenales > 0 ? (alertasTotales / conSenales).toFixed(1) : "-", pctSenales(ceroAlertas), pctSenales(criticas),
+        "-", "-", "-", "-"
       ])
     })
 
