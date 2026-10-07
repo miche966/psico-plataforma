@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 
-const { porcentajeDeAciertos, percentilEnBaremo, valoracionDePercentil, resumenCognitivo, MUESTRA_MINIMA } = await import('../lib/baremoCognitivo.ts')
+const { porcentajeDeAciertos, percentilEnBaremo, valoracionDePercentil, resumenCognitivo, medianaDelBaremo, MUESTRA_MINIMA } = await import('../lib/baremoCognitivo.ts')
 const { TESTS_COGNITIVOS } = await import('../lib/testsCognitivos.ts')
 const { SLUG_TO_ID } = await import('../lib/server/catalogoTests.ts')
 
@@ -57,7 +57,7 @@ assert.equal(r2.correctas, 18, 'la mas reciente finalizada')
 
 // Sin pruebas cognitivas, o sin baremo, no se inventa nada
 const nada = resumenCognitivo([sesion(ID.sjt, 20)], baremos)
-assert.deepEqual({ ...nada }, { correctas: 0, total: 0, rendimiento: null, percentil: null, valoracion: null, pruebas: 0, pruebasConBaremo: 0 })
+assert.deepEqual({ ...nada }, { correctas: 0, total: 0, rendimiento: null, percentil: null, valoracion: null, pruebas: 0, pruebasConBaremo: 0, detalle: [] })
 const sinBaremo = resumenCognitivo([sesion(ID.icar, 13)], {})
 assert.equal(sinBaremo.percentil, null)
 assert.equal(sinBaremo.valoracion, null)
@@ -75,6 +75,18 @@ for (const id of Object.keys(TESTS_COGNITIVOS)) {
   assert.ok(b.n >= MUESTRA_MINIMA, `${TESTS_COGNITIVOS[id]}: muestra suficiente`)
   assert.equal(Object.values(b.histograma).reduce((a, c) => a + c, 0), b.n, `${TESTS_COGNITIVOS[id]}: el histograma suma n`)
 }
+
+// ---- Detalle por prueba y mediana del grupo ----
+assert.equal(medianaDelBaremo({ n: 100, histograma: { '40': 10, '60': 40, '80': 40, '100': 10 } }), 60, 'la mitad del grupo llega hasta 60 %')
+assert.equal(medianaDelBaremo({ n: 100, histograma: { '40': 50, '60': 50 } }), 40)
+assert.equal(medianaDelBaremo(undefined), null)
+assert.equal(medianaDelBaremo({ n: MUESTRA_MINIMA - 1, histograma: { '60': MUESTRA_MINIMA - 1 } }), null)
+const detalle = resumenCognitivo(brian, baremos).detalle
+assert.deepEqual(detalle.map(d => [d.nombre, d.porcentaje]).sort(), [['Atención al detalle', 60], ['Razonamiento abstracto', 65], ['Razonamiento numérico', 70], ['Razonamiento verbal', 65]].sort())
+const verbal = detalle.find(d => d.testId === ID.verbal)!
+assert.deepEqual({ percentil: verbal.percentil, mediana: verbal.mediana }, { percentil: 50, mediana: 65 })
+assert.equal(detalle.find(d => d.testId === ID.icar)!.percentil, null, 'sin baremo: sin percentil ni mediana')
+assert.equal(detalle.find(d => d.testId === ID.icar)!.mediana, null)
 
 // ---- Sesiones importadas por CSV: traen solo un "porcentaje" de relleno (siempre 80) y no cuentan ----
 const importada = { test_id: ID.verbal, estado: 'finalizado', finalizada_en: '2026-07-30T01:07:00Z', puntaje_bruto: { completado_csv: true, porcentaje: 80 } }

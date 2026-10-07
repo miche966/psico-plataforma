@@ -56,6 +56,11 @@ una prueba). Los informes ya guardados no guardan el percentil: se calcula al ab
   sección II.B no se muestra.
 - Es una orientación para la lectura del informe, no un diagnóstico.
 
+## Dónde se usa
+- Informe (pantalla y PDF), sección II.B.
+- "Resumen ejecutivo" de Base de candidatos: el rango percentil cognitivo y el gráfico de aciertos por prueba frente a la mediana del grupo.
+- Exportación a Excel del panel: columnas "Aciertos en pruebas cognitivas %" y "Rango Percentil Cognitivo".
+
 ## Código
 - `lib/baremoCognitivo.ts`: percentil, valoración y resumen (funciones puras).
 - `lib/baremoCognitivoDatos.ts`: datos generados.
