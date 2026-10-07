@@ -5,6 +5,9 @@ import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { useProctoring } from '@/hooks/useProctoring'
 import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
+import { PruebaEscala } from '@/components/candidato/Prueba'
+import { PantallaError, PantallaFin, PantallaGuardadoFallido, PantallaSiguiente } from '@/components/candidato/Estados'
+import { EsqueletoPrueba } from '@/components/candidato/Esqueleto'
 
 interface Item {
   id: string
@@ -124,76 +127,24 @@ export default function TestPage() {
   }
 
 
-  if (cargando) return <div style={estilos.centro}><p>Cargando test...</p></div>
-  if (error) return (
-    <div style={estilos.centro}>
-      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
-        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{error}</p>
-        <button onClick={() => { setError(null); setIntentoCarga(i => i + 1) }} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
-      </div>
-    </div>
-  )
-  if (errorGuardado) return (
-    <div style={estilos.centro}>
-      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
-        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{MENSAJE_ERROR_GUARDADO}</p>
-        <button onClick={() => calcularResultado(respuestas)} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
-      </div>
-    </div>
-  )
-  if (finalizado && enEvaluacion) return <div style={estilos.centro}><p>Guardando resultados...</p></div>
-
-  if (finalizado) {
-    return (
-      <div style={estilos.contenedor}>
-        <div style={estilos.checkCirculo}>✓</div>
-        <h1 style={estilos.titulo}>¡Evaluación completada!</h1>
-        {nombreCandidato && <p style={estilos.nombreCandidato}>Gracias, <strong>{nombreCandidato}</strong>.</p>}
-        <p style={estilos.mensajeConfirmacion}>Tu evaluación fue registrada correctamente.</p>
-      </div>
-    )
-  }
+  if (cargando) return <EsqueletoPrueba />
+  if (error) return <PantallaError mensaje={error} onReintentar={() => { setError(null); setIntentoCarga(i => i + 1) }} />
+  if (errorGuardado) return <PantallaGuardadoFallido mensaje={MENSAJE_ERROR_GUARDADO} onReintentar={() => calcularResultado(respuestas)} />
+  if (finalizado && enEvaluacion) return <PantallaSiguiente />
+  if (finalizado) return <PantallaFin nombre={nombreCandidato} />
 
   const item = items[itemActual]
-  const progreso = Math.round((itemActual / items.length) * 100)
+  if (!item) return <EsqueletoPrueba />
 
   return (
-    <div style={estilos.contenedor}>
-      <div style={estilos.encabezado}>
-         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-          <span style={estilos.progresotexto}>{itemActual + 1} de {items.length}</span>
-          <span style={{ fontSize: '0.75rem', color: tiempoTranscurrido > 900 ? '#dc2626' : '#94a3b8' }}>
-            {Math.floor(tiempoTranscurrido / 60)}:{String(tiempoTranscurrido % 60).padStart(2, '0')}
-          </span>
-        </div>
-        <div style={estilos.barraFondo}>
-          <div style={{ ...estilos.barraRelleno, width: `${progreso}%` }} />
-        </div>
-      </div>
-      <h2 style={estilos.pregunta}>{item?.contenido}</h2>
-      <div style={estilos.opciones}>
-        {item?.opciones.map((opcion: string, index: number) => (
-          <button key={index} style={estilos.opcionBoton} onClick={() => responder(index + 1)}>
-            {opcion}
-          </button>
-        ))}
-      </div>
-    </div>
+    <PruebaEscala
+      nombre="Cuestionario de personalidad"
+      actual={itemActual + 1}
+      total={items.length}
+      transcurrido={tiempoTranscurrido}
+      enunciado={item.contenido}
+      opciones={item.opciones}
+      onElegir={indice => responder(indice + 1)}
+    />
   )
-}
-
-const estilos = {
-  centro: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' } as React.CSSProperties,
-  contenedor: { maxWidth: '600px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' } as React.CSSProperties,
-  encabezado: { marginBottom: '2rem' } as React.CSSProperties,
-  titulo: { fontSize: '1.5rem', fontWeight: '600', marginBottom: '0.5rem', color: '#1e293b', textAlign: 'center' } as React.CSSProperties,
-  progresotexto: { fontSize: '0.875rem', color: '#64748b' } as React.CSSProperties,
-  barraFondo: { width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' } as React.CSSProperties,
-  barraRelleno: { height: '100%', background: '#2563eb', borderRadius: '4px', transition: 'width 0.3s ease' } as React.CSSProperties,
-  pregunta: { fontSize: '1.25rem', fontWeight: '500', color: '#1e293b', lineHeight: '1.6', marginBottom: '2rem' } as React.CSSProperties,
-  opciones: { display: 'flex', flexDirection: 'column' as const, gap: '0.75rem' } as React.CSSProperties,
-  opcionBoton: { padding: '0.875rem 1.25rem', border: '1.5px solid #e2e8f0', borderRadius: '8px', background: '#fff', color: '#1e293b', fontSize: '1rem', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s ease' } as React.CSSProperties,
-  checkCirculo: { width: '64px', height: '64px', borderRadius: '50%', background: '#16a34a', color: '#fff', fontSize: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' } as React.CSSProperties,
-  nombreCandidato: { fontSize: '1.125rem', color: '#1e293b', textAlign: 'center' as const, margin: '0 0 1rem' } as React.CSSProperties,
-  mensajeConfirmacion: { fontSize: '0.9rem', color: '#475569', lineHeight: '1.6', textAlign: 'center' as const, marginBottom: '2rem' } as React.CSSProperties,
 }

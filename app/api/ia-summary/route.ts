@@ -4,6 +4,8 @@ import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { GEMINI_MODEL } from '@/lib/server/geminiModel'
 import { rlAdmin, verificarLimite, respuestaLimiteExcedido } from '@/lib/server/rateLimit'
 import { mensajeParaCliente } from '@/lib/server/mensajesError'
+import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { guardarResumen } from '@/lib/server/resumenesIa'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
@@ -14,7 +16,7 @@ export async function POST(req: Request) {
     const bloqueado = requireFullAdmin(auth)
     if (bloqueado) return bloqueado
 
-    const { prompt } = await req.json()
+    const { prompt, candidato_id, proceso_id } = await req.json()
 
     if (typeof prompt !== 'string' || !prompt.trim()) {
       return NextResponse.json({ error: 'El contenido del resumen es obligatorio' }, { status: 400 })
@@ -74,7 +76,10 @@ export async function POST(req: Request) {
     const totalDuration = ((Date.now() - apiCallStartTime) / 1000).toFixed(2)
     console.log(`[INFO] [IA SUMMARY] Resumen generado exitosamente en ${totalDuration}s.`)
 
-    return NextResponse.json({ success: true, summary })
+    // Se conserva para que no se pierda al recargar; si no se puede guardar, igual se entrega lo generado
+    const guardado = await guardarResumen(createSupabaseAdmin(), { candidatoId: candidato_id, procesoId: proceso_id, resumen: summary, email: auth.user.email })
+
+    return NextResponse.json({ success: true, summary, guardado })
 
   } catch (error: any) {
     console.error('Error en ia-summary:', error)

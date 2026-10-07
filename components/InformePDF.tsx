@@ -3,12 +3,13 @@ import { Page, Text as PDFText, View, Document, StyleSheet, Font } from '@react-
 import { normalizarPuntaje, colorPuntaje, interpretacionVigente } from '@/lib/puntajes';
 import { obtenerNarrativaFactor } from '@/lib/interpretaciones/narrativasFactor';
 
-// Registro de fuentes para un look premium
+// Fuente del PDF: se sirve desde el propio sitio (public/fonts). Antes se pedia a fonts.gstatic.com, que la politica de
+// seguridad (CSP, connect-src) bloquea, y la generacion del PDF fallaba con "Failed to fetch".
 Font.register({
   family: 'Roboto',
   fonts: [
-    { src: 'https://fonts.gstatic.com/s/roboto/v20/KFOmCnqEu92Fr1Mu4mxP.ttf', fontWeight: 400 },
-    { src: 'https://fonts.gstatic.com/s/roboto/v20/KFOlCnqEu92Fr1MmWUlfBBc9.ttf', fontWeight: 700 },
+    { src: '/fonts/Roboto-Regular.ttf', fontWeight: 400 },
+    { src: '/fonts/Roboto-Bold.ttf', fontWeight: 700 },
   ],
 });
 

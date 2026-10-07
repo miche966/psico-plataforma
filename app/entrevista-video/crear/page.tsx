@@ -224,8 +224,8 @@ export default function CrearPreguntasPage() {
           <h1 style={{ ...s.titulo, marginBottom: '20px' }}>Nueva Entrevista en Video</h1>
           <div style={s.formulario}>
             <div style={s.campo}>
-              <label style={s.label}>Nombre de la entrevista *</label>
-              <input 
+              <label htmlFor="entrevista-nombre" style={s.label}>Nombre de la entrevista *</label>
+              <input id="entrevista-nombre" 
                 style={s.input} 
                 placeholder="Ej: Entrevista técnica Senior Dev"
                 value={nombreNuevaEntrevista}
@@ -251,7 +251,7 @@ export default function CrearPreguntasPage() {
         <div>
           <a href="/entrevista-video" style={s.volver}>← Volver a entrevistas</a>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <input 
+            <input aria-label="Nombre de la entrevista" 
               style={{ ...s.titulo, border: 'none', background: 'none', borderBottom: '1px dashed #cbd5e1', outline: 'none', padding: '2px 0' }}
               value={nombreNuevaEntrevista}
               onChange={e => setNombreNuevaEntrevista(e.target.value)}
@@ -490,8 +490,8 @@ export default function CrearPreguntasPage() {
           <div style={s.seccionTitulo}>{editandoPreguntaId ? 'Editando pregunta' : 'Agregar pregunta'}</div>
           <div style={s.formulario}>
             <div style={s.campo}>
-              <label style={s.label}>Pregunta *</label>
-              <textarea
+              <label htmlFor="entrevista-pregunta" style={s.label}>Pregunta *</label>
+              <textarea id="entrevista-pregunta"
                 style={{ ...s.input, minHeight: '100px', resize: 'vertical' as const }}
                 value={nuevaPregunta}
                 onChange={e => setNuevaPregunta(e.target.value)}
@@ -499,24 +499,24 @@ export default function CrearPreguntasPage() {
               />
             </div>
             <div style={s.campo}>
-              <label style={s.label}>Perfil del Candidato (Ramificación) *</label>
-              <select style={s.input} value={perfilCandidato} onChange={e => setPerfilCandidato(e.target.value as any)}>
+              <label htmlFor="entrevista-perfil" style={s.label}>Perfil del Candidato (Ramificación) *</label>
+              <select id="entrevista-perfil" style={s.input} value={perfilCandidato} onChange={e => setPerfilCandidato(e.target.value as any)}>
                 <option value="con_experiencia">💼 Con Experiencia Laboral</option>
                 <option value="sin_experiencia">🎓 Sin Experiencia Laboral</option>
               </select>
             </div>
             <div style={s.dosCols}>
               <div style={s.campo}>
-                <label style={s.label}>Tiempo de preparación</label>
-                <select style={s.input} value={tiempoPrep} onChange={e => setTiempoPrep(e.target.value)}>
+                <label htmlFor="entrevista-prep" style={s.label}>Tiempo de preparación</label>
+                <select id="entrevista-prep" style={s.input} value={tiempoPrep} onChange={e => setTiempoPrep(e.target.value)}>
                   <option value="15">15 segundos</option>
                   <option value="30">30 segundos</option>
                   <option value="60">1 minuto</option>
                 </select>
               </div>
               <div style={s.campo}>
-                <label style={s.label}>Tiempo de respuesta</label>
-                <select style={s.input} value={tiempoResp} onChange={e => setTiempoResp(e.target.value)}>
+                <label htmlFor="entrevista-resp" style={s.label}>Tiempo de respuesta</label>
+                <select id="entrevista-resp" style={s.input} value={tiempoResp} onChange={e => setTiempoResp(e.target.value)}>
                   <option value="30">30 segundos</option>
                   <option value="60">1 minuto</option>
                   <option value="90">1 min 30 seg</option>

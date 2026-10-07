@@ -34,12 +34,14 @@ export async function GET(req: Request) {
       return NextResponse.json({ sesiones: sesiones || [], candidatos: candidatosDelProceso, respuestasVideo: respuestasDelProceso, preguntasVideo: preguntasVideo || [] })
     }
 
-    const [{ data, error }, { data: candidatos, error: candidatosError }, { data: entrevistas, error: entrevistasError }, sesiones, respuestasVideo] = await Promise.all([
+    const [{ data, error }, { data: candidatos, error: candidatosError }, { data: entrevistas, error: entrevistasError }, sesiones, respuestasVideo, preguntasVideo] = await Promise.all([
       db.from('procesos').select('*').order('creado_en', { ascending: false }),
       db.from('candidatos').select('id, nombre, apellido, email').order('creado_en', { ascending: false }),
       db.from('entrevistas_video').select('*').order('creada_en', { ascending: false }),
       readAll(db, 'sesiones', '*'),
-      readAll(db, 'respuestas_video', 'candidato_id, entrevista_id')
+      // El avance de cada participante (video incluido) se calcula con estos campos, igual que en el panel
+      readAll(db, 'respuestas_video', 'candidato_id, entrevista_id, pregunta_id, estado'),
+      readAll(db, 'preguntas_video', 'id, entrevista_id, pregunta')
     ])
     if (error || candidatosError || entrevistasError) throw error || candidatosError || entrevistasError
 
@@ -50,10 +52,10 @@ export async function GET(req: Request) {
       const idsCandidatos = await candidatoIdsEnProcesos(db, auth.allowedProcesoIds)
       const candidatosFiltrados = (candidatos || []).filter(c => idsCandidatos.has(c.id))
       const respuestasFiltradas = (respuestasVideo || []).filter((r: any) => idsCandidatos.has(r.candidato_id))
-      return NextResponse.json({ data: procesosFiltrados, candidatos: candidatosFiltrados, entrevistas: entrevistas || [], sesiones: sesionesFiltradas, respuestasVideo: respuestasFiltradas })
+      return NextResponse.json({ data: procesosFiltrados, candidatos: candidatosFiltrados, entrevistas: entrevistas || [], sesiones: sesionesFiltradas, respuestasVideo: respuestasFiltradas, preguntasVideo })
     }
 
-    return NextResponse.json({ data: data || [], candidatos: candidatos || [], entrevistas: entrevistas || [], sesiones, respuestasVideo })
+    return NextResponse.json({ data: data || [], candidatos: candidatos || [], entrevistas: entrevistas || [], sesiones, respuestasVideo, preguntasVideo })
   } catch (error) {
     console.error('Error cargando procesos administrativos:', error)
     return NextResponse.json({ error: 'No se pudieron cargar los procesos' }, { status: 500 })

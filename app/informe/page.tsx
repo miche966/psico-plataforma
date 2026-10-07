@@ -78,6 +78,7 @@ import { ETQ } from '@/lib/labels'
 import { sanearFraseAlineamiento } from '@/lib/informeSaneador'
 import { estimarMBTI, estimarMBTIDesdeSesiones } from '@/lib/baremos'
 import { obtenerNarrativaFactor } from '@/lib/interpretaciones/narrativasFactor'
+import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
 
 
 const DOMINIOS = {
@@ -121,35 +122,43 @@ const MBTI_DESC: Record<string, string> = {
   ENTJ: 'Suele tomar decisiones con orientacion a resultados y organizar los recursos disponibles. Puede asumir responsabilidades de coordinacion cuando los objetivos estan definidos.'
 }
 
-// Estilos base de la UI
+// Estilos base de la UI: usan las variables del tema (paleta del panel, con modo oscuro)
+const SERIF = 'var(--font-lectura), Georgia, serif'
+const AVISO = 'color-mix(in srgb, #b45309 65%, var(--slate-900))'
+const tinte = (color: string, pct: number) => `color-mix(in srgb, ${color} ${pct}%, var(--white-bg))`
 const s = {
-  page: { minHeight: '100vh', background: '#f8fafc', padding: '2rem 1rem' },
-  container: { maxWidth: '1000px', margin: '0 auto' },
-  header: { marginBottom: '2.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' },
-  title: { fontSize: '1.875rem', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.025em' },
-  subtitle: { color: '#64748b', marginTop: '0.25rem', fontSize: '0.95rem' },
-  card: { background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)', marginBottom: '2.5rem', overflow: 'hidden', border: '1px solid #f1f5f9' },
-  cardHead: { padding: '1.25rem', borderBottom: '1px solid #f1f5f9', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  cardHeadTxt: { fontWeight: '700', color: '#1e293b', fontSize: '1.05rem' },
-  badge: { padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '600', background: '#f1f5f9', color: '#64748b', textTransform: 'uppercase' as const },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem', padding: '1.25rem' },
-  item: { padding: '1rem', borderRadius: '12px', background: '#f8fafc', border: '1px solid #f1f5f9' },
-  label: { fontSize: '0.75rem', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase' as const, marginBottom: '0.25rem', display: 'block' },
-  value: { fontSize: '1rem', fontWeight: '600', color: '#1e293b' },
-  ta: { width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '0.95rem', lineHeight: '1.6', color: '#334155', background: '#f8fafc', transition: 'all 0.2s', outline: 'none' },
-  factBlk: { marginBottom: '1.5rem' },
+  page: { minHeight: '100vh', background: 'var(--slate-50)', padding: '2rem 1rem 4rem', color: 'var(--slate-800)' },
+  container: { maxWidth: '980px', margin: '0 auto' },
+  header: { marginBottom: '2rem', borderBottom: '1px solid var(--slate-200)', paddingBottom: '1.5rem', display: 'flex', flexWrap: 'wrap' as const, gap: '1rem', justifyContent: 'space-between', alignItems: 'flex-start' },
+  title: { fontFamily: SERIF, fontSize: '1.875rem', fontWeight: '600', color: 'var(--slate-900)', margin: 0 },
+  subtitle: { color: 'var(--slate-500)', marginTop: '0.25rem', fontSize: '1rem' },
+  card: { background: 'var(--white-bg)', borderRadius: '12px', marginBottom: '1.75rem', overflow: 'hidden', border: '1px solid var(--slate-200)' },
+  cardHead: { padding: '1.1rem 1.25rem', borderBottom: '1px solid var(--slate-200)', display: 'flex', flexWrap: 'wrap' as const, gap: '0.5rem', justifyContent: 'space-between', alignItems: 'baseline' },
+  cardHeadTxt: { fontFamily: SERIF, fontWeight: '600', color: 'var(--slate-900)', fontSize: '1.2rem' },
+  badge: { fontSize: '0.875rem', color: 'var(--slate-500)' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem 1.5rem', padding: '1.25rem' },
+  item: { paddingBottom: '0.75rem', borderBottom: '1px solid var(--slate-100)' },
+  label: { fontSize: '0.875rem', color: 'var(--slate-500)', marginBottom: '0.15rem', display: 'block' },
+  value: { fontSize: '1rem', fontWeight: '600', color: 'var(--slate-900)' },
+  ta: { width: '100%', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid var(--slate-300)', fontSize: '1rem', lineHeight: '1.6', color: 'var(--slate-800)', background: 'var(--white-bg)', fontFamily: 'inherit' },
+  factBlk: { marginBottom: '1.75rem' },
   factRow: { display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', alignItems: 'flex-end' },
-  factName: { fontWeight: '600', color: '#334155', fontSize: '0.9rem' },
-  factLvl: { fontSize: '0.85rem', fontWeight: '700' },
-  barBg: { height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.75rem' },
-  barFill: { height: '100%', borderRadius: '4px', transition: 'width 0.6s ease-out' },
-  taFact: { width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #f1f5f9', fontSize: '0.875rem', color: '#475569', background: '#fafbfc', fontStyle: 'italic', lineHeight: '1.5' },
-  btnGen: { padding: '12px 24px', borderRadius: '12px', fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px', border: 'none', background: '#0f172a', color: '#fff' },
-  btnSave: { padding: '12px 24px', borderRadius: '12px', fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer', background: '#2563eb', color: '#fff', border: 'none' },
-  recBtns: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', padding: '1.25rem' },
-  recBtn: { padding: '1rem', borderRadius: '12px', border: '2px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', textAlign: 'center' as const },
-  sello: { margin: '0 1.25rem 1.25rem', padding: '1.5rem', borderRadius: '12px', textAlign: 'center' as const, fontSize: '1.25rem', fontWeight: '800', letterSpacing: '0.1em', border: '2px dashed' },
-  commentLabel: { fontSize: '0.8rem', fontWeight: '600', color: '#64748b', marginBottom: '4px' },
+  factName: { fontWeight: '600', color: 'var(--slate-900)', fontSize: '1rem' },
+  factLvl: { fontSize: '1rem', fontWeight: '600', fontVariantNumeric: 'tabular-nums' },
+  barBg: { height: '8px', background: 'var(--slate-200)', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.75rem' },
+  barFill: { height: '100%', borderRadius: '4px' },
+  taFact: { width: '100%', padding: '0.7rem 0.85rem', borderRadius: '8px', border: '1px solid var(--slate-300)', fontSize: '0.95rem', color: 'var(--slate-700)', background: 'var(--white-bg)', lineHeight: '1.55', fontFamily: 'inherit' },
+  btnGen: { padding: '0.65rem 1.1rem', borderRadius: '8px', fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--indigo-600)', background: 'var(--white-bg)', color: 'var(--indigo-700)' },
+  btnSave: { padding: '0.65rem 1.1rem', borderRadius: '8px', fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer', background: 'var(--indigo-600)', color: 'var(--white-bg)', border: '1px solid var(--indigo-600)' },
+  btnSec: { padding: '0.65rem 1.1rem', borderRadius: '8px', fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer', background: 'var(--white-bg)', color: 'var(--slate-700)', border: '1px solid var(--slate-300)', textDecoration: 'none', display: 'inline-block' },
+  recBtns: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', padding: '1.25rem' },
+  recBtn: { padding: '1rem', borderRadius: '10px', border: '2px solid var(--slate-200)', cursor: 'pointer', fontSize: '0.95rem', textAlign: 'center' as const, fontWeight: '600' },
+  sello: { margin: '0 1.25rem 1.25rem', padding: '1.25rem', borderRadius: '10px', textAlign: 'center' as const, fontFamily: SERIF, fontSize: '1.35rem', fontWeight: '600', border: '2px solid' },
+  commentLabel: { fontSize: '0.9rem', fontWeight: '600', color: 'var(--slate-700)', marginBottom: '6px', display: 'block' },
+  tile: { padding: '1rem', borderRadius: '10px', background: 'var(--slate-50)', border: '1px solid var(--slate-200)', textAlign: 'center' as const },
+  tileEtq: { display: 'block', fontSize: '0.9rem', fontWeight: '600', color: 'var(--slate-800)', marginBottom: '0.25rem' },
+  tileNum: { fontFamily: SERIF, fontSize: '2rem', fontWeight: '600', color: 'var(--slate-900)', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' as const, fontVariantNumeric: 'tabular-nums' },
+  tileDesc: { fontSize: '0.85rem', color: 'var(--slate-500)' },
 }
 
 // Helpers de lógica y cálculo
@@ -289,7 +298,7 @@ function InformePageContent() {
     ajusteCargo: { score: 0, analisis: '' },
     interpretacionPorFactor: {},
     interpretacionVersion: undefined,
-    nombreEvaluador: 'Antigravity AI',
+    nombreEvaluador: 'Michel Ochoa',
     liderazgo: 0,
     adaptabilidad: 0,
     resiliencia: 0,
@@ -847,83 +856,61 @@ PsicoPlataforma - Gestión Inteligente de Talento
     URL.revokeObjectURL(url);
   }
 
-  if (loading) return <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>Cargando datos del motor psicométrico...</div>
-  if (!candidato) return <div style={{ padding: '4rem', textAlign: 'center', color: '#ef4444' }}>Candidato no localizado.</div>
+  if (loading) return <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--slate-500)' }}>Cargando el informe…</div>
+  if (!candidato) return <div style={{ padding: '4rem', textAlign: 'center', color: '#ef4444' }}>No se encontró al candidato.</div>
 
   return (
     <div style={s.page}>
       <div style={s.container}>
         {/* Header Premium */}
         <header style={s.header}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem 1.5rem' }}>
             <Link
               href="/panel"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                color: '#64748b',
+                color: 'var(--slate-600)',
                 textDecoration: 'none',
-                fontSize: '0.85rem',
+                fontSize: '0.9rem',
                 fontWeight: '600',
                 padding: '8px 12px',
-                borderRadius: '10px',
-                backgroundColor: '#f1f5f9',
-                transition: 'all 0.2s'
+                borderRadius: '8px',
+                border: '1px solid var(--slate-300)',
+                backgroundColor: 'var(--white-bg)'
               }}
-              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#e2e8f0')}
-              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
             >
-              <ChevronLeft className="w-4 h-4" />
-              Volver al Panel
+              <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+              Volver al panel
             </Link>
             <div>
               <h1 style={s.title}>Informe Psicolaboral Final</h1>
-              <p style={s.subtitle}>Candidato: <span style={{ color: '#1e293b', fontWeight: '700' }}>{candidato.nombre} {candidato.apellido}</span></p>
+              <p style={s.subtitle}>Candidato: <span style={{ color: 'var(--slate-900)', fontWeight: '600' }}>{candidato.nombre} {candidato.apellido}</span></p>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
             {!esViewer && (
               <>
                 <button onClick={generarIA} disabled={generating} style={{ ...s.btnGen, opacity: generating ? 0.6 : 1 }}>
-                  {generating ? 'Analizando...' : '✦ Generar con IA'}
+                  {generating ? 'Analizando…' : 'Generar con IA'}
                 </button>
                 <button onClick={guardar} disabled={saving} style={{ ...s.btnSave, opacity: saving ? 0.6 : 1 }}>
-                  {saving ? 'Guardando...' : 'Guardar Cambios'}
+                  {saving ? 'Guardando…' : 'Guardar cambios'}
                 </button>
               </>
             )}
-            <button
-              onClick={descargarTXT}
-              style={{
-                background: '#475569',
-                color: '#fff',
-                padding: '12px 24px',
-                borderRadius: '12px',
-                fontWeight: '700',
-                fontSize: '0.9rem',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              📥 Descargar TXT
+            <button onClick={descargarTXT} style={s.btnSec}>
+              Descargar TXT
             </button>
-            <Suspense fallback={<div style={{ padding: '12px', fontSize: '0.8rem' }}>Cargando exportador...</div>}>
+            <Suspense fallback={<div style={{ padding: '12px', fontSize: '0.9rem' }}>Preparando el PDF…</div>}>
               <PDFDownloadLink
                 document={<InformePDF data={{ candidato, proceso, sesiones, videos, inf, helpers: { hoy: () => new Date().toLocaleDateString(), clrOf: (v: number) => colorPuntaje(v), hasP, hasC, hasK, hasV, sesBF, sesHX, sesCog, sesComp, sesBien, cogData, estimarMBTI, MBTI_DESC, ETQ, DOMINIOS } }} />}
                 fileName={`Informe_${candidato.nombre}_${candidato.apellido}.pdf`}
-                style={{
-                  background: '#10b981',
-                  color: '#fff',
-                  padding: '12px 24px',
-                  borderRadius: '12px',
-                  fontWeight: '700',
-                  textDecoration: 'none',
-                  fontSize: '0.9rem'
-                }}
+                style={s.btnSec}
               >
                 {/* @ts-ignore */}
-                {({ loading }) => (loading ? 'Preparando PDF...' : 'Descargar PDF Oficial')}
+                {({ loading }) => (loading ? 'Preparando PDF…' : 'Descargar PDF')}
               </PDFDownloadLink>
             </Suspense>
           </div>
@@ -933,7 +920,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
         <div style={s.card}>
           <div style={s.cardHead}>
             <span style={s.cardHeadTxt}>Información General</span>
-            <span style={s.badge}>Datos de Identidad</span>
+            <span style={s.badge}>Datos de identidad</span>
           </div>
           <div style={s.grid}>
             <div style={s.item}><span style={s.label}>Nombre Completo</span><div style={s.value}>{candidato.nombre} {candidato.apellido}</div></div>
@@ -943,7 +930,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
             <div style={s.item}><span style={s.label}>Email</span><div style={s.value}>{candidato.email}</div></div>
             {proceso && (
               <>
-                <div style={s.item}><span style={s.label}>Proceso</span><div style={s.value}>{proceso.nombre}</div></div>
+                <div style={s.item}><span style={s.label}>Proceso</span><div style={s.value}>{nombreDeProcesoLegible(proceso.nombre)}</div></div>
                 <div style={s.item}><span style={s.label}>Cargo</span><div style={s.value}>{proceso.cargo}</div></div>
               </>
             )}
@@ -956,28 +943,28 @@ PsicoPlataforma - Gestión Inteligente de Talento
         <div style={s.card}>
           <div style={s.cardHead}>
             <span style={s.cardHeadTxt}>I. Controles del proceso</span>
-            <span style={s.badge}>Control de Calidad</span>
+            <span style={s.badge}>Control de calidad</span>
           </div>
           <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
-            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>Índice de Confianza</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: '900', color: inf.confianza > 80 ? '#059669' : inf.confianza > 60 ? '#d97706' : '#dc2626' }}>{inf.confianza}%</div>
+            <div style={{ background: 'var(--slate-50)', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--slate-200)' }}>
+              <div style={{ fontSize: '0.9rem', color: 'var(--slate-500)', marginBottom: '4px' }}>Índice de Confianza</div>
+              <div style={{ fontFamily: SERIF, fontSize: '1.9rem', fontWeight: '600', fontVariantNumeric: 'tabular-nums', color: inf.confianza > 80 ? '#059669' : inf.confianza > 60 ? '#d97706' : '#dc2626' }}>{inf.confianza}%</div>
             </div>
-            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>Cambios de Pestaña</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: '900', color: '#334155' }}>{inf.alertasTab}</div>
+            <div style={{ background: 'var(--slate-50)', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--slate-200)' }}>
+              <div style={{ fontSize: '0.9rem', color: 'var(--slate-500)', marginBottom: '4px' }}>Cambios de Pestaña</div>
+              <div style={{ fontFamily: SERIF, fontSize: '1.9rem', fontWeight: '600', fontVariantNumeric: 'tabular-nums', color: 'var(--slate-700)' }}>{inf.alertasTab}</div>
             </div>
-            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>Intentos de Copia</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: '900', color: '#334155' }}>{inf.alertasCopia}</div>
+            <div style={{ background: 'var(--slate-50)', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--slate-200)' }}>
+              <div style={{ fontSize: '0.9rem', color: 'var(--slate-500)', marginBottom: '4px' }}>Intentos de Copia</div>
+              <div style={{ fontFamily: SERIF, fontSize: '1.9rem', fontWeight: '600', fontVariantNumeric: 'tabular-nums', color: 'var(--slate-700)' }}>{inf.alertasCopia}</div>
             </div>
-            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>Tiempo Promedio</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: '900', color: '#334155' }}>{inf.tiempoPromedio} min</div>
+            <div style={{ background: 'var(--slate-50)', padding: '1rem', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--slate-200)' }}>
+              <div style={{ fontSize: '0.9rem', color: 'var(--slate-500)', marginBottom: '4px' }}>Tiempo Promedio</div>
+              <div style={{ fontFamily: SERIF, fontSize: '1.9rem', fontWeight: '600', fontVariantNumeric: 'tabular-nums', color: 'var(--slate-700)' }}>{inf.tiempoPromedio} min</div>
             </div>
           </div>
-          <div style={{ padding: '0 1.25rem 1.25rem', fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic' }}>
-            * El Índice de Confianza evalúa la integridad del proceso mediante el monitoreo de eventos proctoring en tiempo real. Estos controles validan el proceso antes de interpretar cualquier resultado a continuación.
+          <div style={{ padding: '0 1.25rem 1.25rem', fontSize: '0.9rem', color: 'var(--slate-500)', lineHeight: '1.5' }}>
+            El índice de confianza evalúa la integridad del proceso mediante el monitoreo de eventos proctoring en tiempo real. Estos controles validan el proceso antes de interpretar cualquier resultado a continuación.
           </div>
         </div>
 
@@ -989,7 +976,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
               <span style={s.badge}>Dimensiones del Big Five</span>
             </div>
 
-            <div style={{ padding: '0 1.25rem' }}>
+            <div style={{ padding: '1.25rem 1.25rem 0' }}>
               {getFactoresUnicos(DOMINIOS.PERSONALIDAD.filter(f => !['normas', 'promedio_general'].includes(f))).map(([factor, { valor, sesionId }]) => {
 
                 const normVal = Math.min(5.0, Math.max(0, parseVal(valor, factor)))
@@ -1004,7 +991,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       <span style={{ ...s.factLvl, color: clr }}>{Number(normVal.toFixed(1))}/5</span>
                     </div>
                     <div style={s.barBg}><div style={{ ...s.barFill, width: `${(normVal / 5) * 100}%`, background: clr }} /></div>
-                    <textarea style={s.taFact} rows={4} value={textoInterpretacion(fk, factor, descSugerida)} onChange={(e) => updFactor(fk, e.target.value)} />
+                    <textarea aria-label={`Interpretación de ${ETQ[factor.toLowerCase()] || factor}`} style={s.taFact} rows={4} value={textoInterpretacion(fk, factor, descSugerida)} onChange={(e) => updFactor(fk, e.target.value)} />
                   </div>
                 )
               })}
@@ -1016,38 +1003,26 @@ PsicoPlataforma - Gestión Inteligente de Talento
         <div style={s.card}>
           <div style={s.cardHead}>
             <span style={s.cardHeadTxt}>Habilidades para el trabajo</span>
-            <span style={s.badge}>Derivadas de Personalidad y Bienestar</span>
+            <span style={s.badge}>Derivadas de personalidad y bienestar</span>
           </div>
           <div style={{ padding: '1.25rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
-              <div style={{ background: '#f5f3ff', padding: '1rem', borderRadius: '16px', border: '1px solid #ddd6fe', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#7c3aed', textTransform: 'uppercase', marginBottom: '0.4rem' }}>{labelLiderazgo}</div>
-                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#7c3aed', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.liderazgo} onChange={e => upd('liderazgo', Number(e.target.value))} />
-                <div style={{ fontSize: '0.6rem', color: '#9333ea', marginTop: '2px' }}>{descLiderazgo}</div>
-              </div>
-              <div style={{ background: '#fff7ed', padding: '1rem', borderRadius: '16px', border: '1px solid #ffedd5', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#ea580c', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Adaptabilidad</div>
-                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#ea580c', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.adaptabilidad} onChange={e => upd('adaptabilidad', Number(e.target.value))} />
-                <div style={{ fontSize: '0.6rem', color: '#c2410c', marginTop: '2px' }}>Flexibilidad al Cambio</div>
-              </div>
-              <div style={{ background: '#fef2f2', padding: '1rem', borderRadius: '16px', border: '1px solid #fee2e2', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#dc2626', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Resiliencia</div>
-                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#dc2626', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.resiliencia} onChange={e => upd('resiliencia', Number(e.target.value))} />
-                <div style={{ fontSize: '0.6rem', color: '#b91c1c', marginTop: '2px' }}>Tolerancia a la Presión</div>
-              </div>
-              <div style={{ background: '#ecfdf5', padding: '1rem', borderRadius: '16px', border: '1px solid #d1fae5', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#059669', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Colaboración</div>
-                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#059669', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.colaboracion} onChange={e => upd('colaboracion', Number(e.target.value))} />
-                <div style={{ fontSize: '0.6rem', color: '#047857', marginTop: '2px' }}>Sintonía Grupal</div>
-              </div>
-              <div style={{ background: '#f0f9ff', padding: '1rem', borderRadius: '16px', border: '1px solid #e0f2fe', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#0284c7', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Comunicación</div>
-                <input type="number" style={{ fontSize: '2rem', fontWeight: '900', color: '#0284c7', background: 'transparent', border: 'none', width: '100%', textAlign: 'center' }} value={inf.comunicacion} onChange={e => upd('comunicacion', Number(e.target.value))} />
-                <div style={{ fontSize: '0.6rem', color: '#0369a1', marginTop: '2px' }}>Claridad y Discurso</div>
-              </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
+              {([
+                ['liderazgo', labelLiderazgo, descLiderazgo],
+                ['adaptabilidad', 'Adaptabilidad', 'Flexibilidad al cambio'],
+                ['resiliencia', 'Resiliencia', 'Tolerancia a la presión'],
+                ['colaboracion', 'Colaboración', 'Sintonía grupal'],
+                ['comunicacion', 'Comunicación', 'Claridad y discurso'],
+              ] as const).map(([clave, etiqueta, desc]) => (
+                <div key={clave} style={s.tile}>
+                  <label htmlFor={`informe-hab-${clave}`} style={s.tileEtq}>{etiqueta}</label>
+                  <input id={`informe-hab-${clave}`} type="number" style={s.tileNum} value={inf[clave]} onChange={e => upd(clave, Number(e.target.value))} />
+                  <div style={s.tileDesc}>{desc}</div>
+                </div>
+              ))}
             </div>
-            <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '1.25rem', textAlign: 'center', lineHeight: '1.4' }}>
-              Se calculan a partir de los factores de Personalidad y Bienestar de arriba/abajo (ver lib/metaCompetencias.ts) — no son una estimación independiente, así que no deberían contradecirlos. Editables si el evaluador quiere ajustarlos manualmente.
+            <p style={{ fontSize: '0.9rem', color: 'var(--slate-500)', marginTop: '1.25rem', lineHeight: '1.5' }}>
+              Se calculan a partir de los factores de personalidad y bienestar de este informe, así que no los contradicen. Podés ajustarlas a mano si hace falta.
             </p>
           </div>
         </div>
@@ -1057,7 +1032,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
           <div style={s.card}>
             <div style={s.cardHead}>
               <span style={s.cardHeadTxt}>Estilo de trabajo estimado</span>
-              <span style={s.badge}>Estimacion orientativa</span>
+              <span style={s.badge}>Estimación orientativa</span>
             </div>
             {(() => {
               const mbtiCodigo = inf.mbtiType || estimarMBTIDesdeSesiones(sesiones) || 'N/A';
@@ -1065,18 +1040,18 @@ PsicoPlataforma - Gestión Inteligente de Talento
 
               return (
                 <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '1.5rem', alignItems: 'center' }}>
-                  <div style={{ background: '#f0f9ff', padding: '2rem', borderRadius: '16px', border: '1px solid #bae6fd', textAlign: 'center' }}>
-                    <div style={{ fontSize: '3rem', fontWeight: '900', color: '#0369a1' }}>{mbtiCodigo}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#0369a1', fontWeight: 'bold', textTransform: 'uppercase' }}>Estimacion orientativa</div>
+                  <div style={{ background: 'var(--slate-50)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--slate-200)', textAlign: 'center' }}>
+                    <div style={{ fontSize: '3rem', fontWeight: '900', color: 'var(--indigo-700)' }}>{mbtiCodigo}</div>
+                    <div style={{ fontSize: '0.9rem', color: 'var(--indigo-700)', fontWeight: 'bold', textTransform: 'none' }}>Tipo estimado</div>
                   </div>
-                  <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                    <h4 style={{ color: '#1e293b', margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 'bold' }}>Análisis Tipológico</h4>
-                    <p style={{ fontSize: '0.9rem', color: '#475569', lineHeight: '1.6', fontStyle: 'italic' }}>
+                  <div style={{ background: 'var(--slate-50)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--slate-200)' }}>
+                    <h4 style={{ color: 'var(--slate-800)', margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 'bold' }}>Análisis Tipológico</h4>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--slate-600)', lineHeight: '1.6', fontStyle: 'italic' }}>
                       {mbtiDesc}
                     </p>
                     <div style={{ marginTop: '1rem' }}>
-                      <label style={s.commentLabel}>Como podria desempenarse en el puesto</label>
-                      <textarea
+                      <label htmlFor="informe-desempeno" style={s.commentLabel}>Cómo podría desempeñarse en el puesto</label>
+                      <textarea id="informe-desempeno"
                         style={{ ...s.ta, fontSize: '0.85rem' }}
                         rows={3}
                         value={inf.ajusteMbti || ''}
@@ -1096,7 +1071,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
           <div style={s.card}>
             <div style={s.cardHead}>
               <span style={s.cardHeadTxt}>II.B — Atención y Tareas</span>
-              <span style={s.badge}>Métricas de Aptitud</span>
+              <span style={s.badge}>Métricas de aptitud</span>
             </div>
             {sesCog.length > 0 && (() => {
               // Calculamos el promedio de todos los tests cognitivos/aptitud
@@ -1118,13 +1093,13 @@ PsicoPlataforma - Gestión Inteligente de Talento
               return (
                 <div key="cog-agregado" style={{ padding: '1.25rem' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-                    <div style={{ background: '#f0f9ff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #bae6fd' }}>
-                      <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#0369a1' }}>{Number(normVal.toFixed(1))}/5</div>
-                      <div style={{ fontSize: '0.75rem', color: '#0369a1', textTransform: 'uppercase', fontWeight: '800' }}>Efectividad Cognitiva</div>
+                    <div style={{ background: 'var(--slate-50)', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--slate-200)' }}>
+                      <div style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--indigo-700)' }}>{Number(normVal.toFixed(1))}/5</div>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--indigo-700)', fontWeight: '600' }}>Efectividad Cognitiva</div>
                     </div>
-                    <div style={{ background: '#f0f9ff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #bae6fd' }}>
-                      <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#0369a1' }}>P{percentil}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#0369a1', textTransform: 'uppercase', fontWeight: '800' }}>{nivel}</div>
+                    <div style={{ background: 'var(--slate-50)', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--slate-200)' }}>
+                      <div style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--indigo-700)' }}>P{percentil}</div>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--indigo-700)', fontWeight: '600' }}>{nivel}</div>
                     </div>
                   </div>
                   {getFactoresUnicos(DOMINIOS.COGNITIVO).filter(([k]) => !['correctas', 'total', 'score', 'percentil'].includes(k)).map(([factor, { valor, sesionId }]) => {
@@ -1141,7 +1116,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                         <span style={{...s.factLvl, color:clr}}>{Number(vNorm.toFixed(1))}/5</span>
                       </div>
                         <div style={s.barBg}><div style={{...s.barFill, width:`${(vNorm/5)*100}%`, background:clr}} /></div>
-                        <textarea
+                        <textarea aria-label={`Interpretación de ${ETQ[factor.toLowerCase()] || factor}`}
                           style={s.taFact}
                           rows={4}
                           value={textoInterpretacion(fk, factor, descSugerida)}
@@ -1161,9 +1136,9 @@ PsicoPlataforma - Gestión Inteligente de Talento
           <div style={s.card}>
             <div style={s.cardHead}>
               <span style={s.cardHeadTxt}>II.C — Integridad y Ética</span>
-              <span style={s.badge}>Autopercepción + Conducta Situacional</span>
+              <span style={s.badge}>Autopercepción y conducta situacional</span>
             </div>
-            <div style={{ padding: '1rem 1.25rem 0', fontSize: '0.8rem', color: '#64748b', lineHeight: '1.4' }}>
+            <div style={{ padding: '1rem 1.25rem 0', fontSize: '0.8rem', color: 'var(--slate-500)', lineHeight: '1.4' }}>
               Estas métricas miden ángulos distintos del mismo concepto — se agrupan para leerse juntas, no son el mismo dato repetido.
             </div>
             <div style={{ padding: '0 1.25rem 1.25rem' }}>
@@ -1180,7 +1155,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       <span style={{ ...s.factLvl, color: clr }}>{Number(normVal.toFixed(1))}/5</span>
                     </div>
                     <div style={s.barBg}><div style={{ ...s.barFill, width: `${(normVal / 5) * 100}%`, background: clr }} /></div>
-                    <textarea style={s.taFact} rows={4} value={textoInterpretacion(fk, factor, descSugerida)} onChange={(e) => updFactor(fk, e.target.value)} />
+                    <textarea aria-label={`Interpretación de ${ETQ[factor.toLowerCase()] || factor}`} style={s.taFact} rows={4} value={textoInterpretacion(fk, factor, descSugerida)} onChange={(e) => updFactor(fk, e.target.value)} />
                   </div>
                 )
               })}
@@ -1193,12 +1168,12 @@ PsicoPlataforma - Gestión Inteligente de Talento
           <div style={s.card}>
             <div style={s.cardHead}>
               <span style={s.cardHeadTxt}>II.D — Competencias (Situacionales / SJT)</span>
-              <span style={s.badge}>Desempeño Situacional</span>
+              <span style={s.badge}>Desempeño situacional</span>
             </div>
-            <div style={{ padding: '1rem 1.25rem 0', fontSize: '0.8rem', color: '#b45309', lineHeight: '1.4' }}>
-              ⚠ Estos valores provienen de pruebas situacionales con efecto techo documentado (la mayoría de los perfiles puntúa cerca del máximo) — interpretar con cautela.
+            <div style={{ padding: '1rem 1.25rem 0', fontSize: '0.9rem', color: AVISO, lineHeight: '1.5' }}>
+              Atención: Estos valores provienen de pruebas situacionales con efecto techo documentado (la mayoría de los perfiles puntúa cerca del máximo) — interpretar con cautela.
             </div>
-            <div style={{ padding: '0 1.25rem' }}>
+            <div style={{ padding: '1.25rem 1.25rem 0' }}>
               {getFactoresUnicos(DOMINIOS.COMPETENCIAS.filter(f => f !== 'etica')).map(([factor, { valor, sesionId }]) => {
                 const normVal = parseVal(valor, factor)
                 const clr = clrOf(normVal)
@@ -1213,7 +1188,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       <span style={{...s.factLvl, color:clr}}>{Number(normVal.toFixed(1))}/5</span>
                     </div>
                     <div style={s.barBg}><div style={{...s.barFill, width:`${(normVal/5)*100}%`, background:clr}} /></div>
-                    <textarea
+                    <textarea aria-label={`Interpretación de ${ETQ[factor.toLowerCase()] || factor}`}
                       style={s.taFact}
                       rows={4}
                       value={textoInterpretacion(fk, factor, descSugerida)}
@@ -1231,9 +1206,9 @@ PsicoPlataforma - Gestión Inteligente de Talento
           <div style={s.card}>
             <div style={s.cardHead}>
               <span style={s.cardHeadTxt}>II.E — Bienestar</span>
-              <span style={s.badge}>Indicadores de Riesgo</span>
+              <span style={s.badge}>Indicadores de riesgo</span>
             </div>
-            <div style={{ padding: '0 1.25rem' }}>
+            <div style={{ padding: '1.25rem 1.25rem 0' }}>
               {getFactoresUnicos(DOMINIOS.BIENESTAR).map(([factor, { valor, sesionId }]) => {
                 const normVal = parseVal(valor, factor)
                 const clr = clrOf(normVal)
@@ -1248,7 +1223,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       <span style={{...s.factLvl, color:clr}}>{Number(normVal.toFixed(1))}/5</span>
                     </div>
                     <div style={s.barBg}><div style={{...s.barFill, width:`${(normVal/5)*100}%`, background:clr}} /></div>
-                    <textarea
+                    <textarea aria-label={`Interpretación de ${ETQ[factor.toLowerCase()] || factor}`}
                       style={s.taFact}
                       rows={4}
                       value={textoInterpretacion(fk, factor, descSugerida)}
@@ -1259,23 +1234,23 @@ PsicoPlataforma - Gestión Inteligente de Talento
               })}
             </div>
             {hasK && (
-              <div style={{ padding: '0 1.25rem 1.25rem', fontSize: '0.8rem', color: '#b45309', lineHeight: '1.4' }}>
-                ⚠ Si estos valores contrastan fuertemente con los de Competencias (II.D), es esperable mientras esa sección siga afectada por el efecto techo mencionado arriba.
+              <div style={{ padding: '0 1.25rem 1.25rem', fontSize: '0.9rem', color: AVISO, lineHeight: '1.5' }}>
+                Atención: Si estos valores contrastan fuertemente con los de Competencias (II.D), es esperable mientras esa sección siga afectada por el efecto techo mencionado arriba.
               </div>
             )}
           </div>
         )}
 
         {alertasConsistencia.length > 0 && (
-          <div style={{ ...s.card, borderColor: '#fde68a', background: '#fffbeb' }}>
+          <div style={{ ...s.card, borderColor: tinte('#d97706', 35), background: tinte('#d97706', 10) }}>
             <div style={{ padding: '1rem 1.25rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-              <ShieldAlert size={18} color="#b45309" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <ShieldAlert size={18} color="currentColor" aria-hidden="true" style={{ flexShrink: 0, marginTop: '2px' }} />
               <div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#92400e', marginBottom: '0.35rem' }}>
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: AVISO, marginBottom: '0.35rem' }}>
                   Revisar antes de publicar: valores que se contradicen dentro del mismo informe
                 </div>
                 {alertasConsistencia.map((a, i) => (
-                  <div key={i} style={{ fontSize: '0.8rem', color: '#92400e', marginBottom: '0.2rem' }}>• {a.detalle}</div>
+                  <div key={i} style={{ fontSize: '0.9rem', color: AVISO, marginBottom: '0.2rem' }}>• {a.detalle}</div>
                 ))}
               </div>
             </div>
@@ -1286,14 +1261,14 @@ PsicoPlataforma - Gestión Inteligente de Talento
         <div style={s.card}>
           <div style={s.cardHead}>
             <span style={s.cardHeadTxt}>III. Evaluación General y Ajuste al Puesto</span>
-            <span style={s.badge}>Ajuste Persona-Cargo</span>
+            <span style={s.badge}>Ajuste persona-cargo</span>
           </div>
           <div style={{ padding: '1.25rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '2rem', alignItems: 'center' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', padding: '1.25rem', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--slate-50)', padding: '1.25rem', borderRadius: '20px', border: '1px solid var(--slate-200)' }}>
                 <div style={{ position: 'relative', width: '110px', height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="110" height="110" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
-                    <circle cx="50" cy="50" r="42" stroke="#e2e8f0" strokeWidth="8" fill="transparent" />
+                    <circle cx="50" cy="50" r="42" stroke="var(--slate-200)" strokeWidth="8" fill="transparent" />
                     <circle
                       cx="50" cy="50" r="42"
                       stroke={clrOf((inf.ajusteCargo?.score || 0) / 20)}
@@ -1306,7 +1281,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
                     />
                   </svg>
                   <div style={{ position: 'absolute', display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
-                    <input
+                    <input aria-label="Ajuste al cargo, en porcentaje"
                       type="number"
                       min="0"
                       max="100"
@@ -1314,16 +1289,16 @@ PsicoPlataforma - Gestión Inteligente de Talento
                       value={inf.ajusteCargo?.score || 0}
                       onChange={e => setInf(p => ({ ...p, ajusteCargo: { ...p.ajusteCargo, score: Number(e.target.value) } }))}
                     />
-                    <span style={{ fontSize: '1rem', fontWeight: '800', color: '#94a3b8' }}>%</span>
+                    <span style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--slate-400)' }}>%</span>
                   </div>
                 </div>
-                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginTop: '0.5rem', letterSpacing: '0.05em' }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--slate-500)', textTransform: 'none', marginTop: '0.5rem', letterSpacing: '0.05em' }}>
                   Ajuste Global
                 </span>
               </div>
               <div>
-                <label style={s.commentLabel}>Por que se recomienda</label>
-                <textarea
+                <label htmlFor="informe-recomendacion" style={s.commentLabel}>Por qué se recomienda</label>
+                <textarea id="informe-recomendacion"
                   style={{ ...s.ta, minHeight: '120px' }}
                   value={inf.ajusteCargo?.analisis || ''}
                   onChange={e => setInf(p => ({ ...p, ajusteCargo: { ...p.ajusteCargo, analisis: e.target.value } }))}
@@ -1333,14 +1308,14 @@ PsicoPlataforma - Gestión Inteligente de Talento
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '2rem' }}>
-              <div style={{ background: '#f0fdf4', padding: '1.25rem', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
-                <h4 style={{ color: '#16a34a', margin: '0 0 1rem 0', fontSize: '0.9rem', fontWeight: 'bold' }}>Fortalezas principales</h4>
+              <div style={{ background: tinte('#059669', 8), padding: '1.25rem', borderRadius: '10px', border: `1px solid ${tinte('#059669', 30)}` }}>
+                <h4 style={{ color: 'var(--slate-900)', margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: '600', fontFamily: SERIF }}>Fortalezas principales</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {(inf.fortalezas || []).map((f: NarrativeItem, i: number) => (
                     <div key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a' }} />
-                      <textarea
-                        rows={2} style={{ background: 'transparent', border: '1px solid #dcfce7', borderRadius: '6px', width: '100%', fontSize: '0.9rem', lineHeight: '1.35', color: '#14532d', padding: '5px', resize: 'vertical', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
+                      <div aria-hidden="true" style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#059669', flexShrink: 0 }} />
+                      <textarea aria-label={`Fortaleza ${i + 1}`}
+                        rows={2} style={{ background: 'transparent', border: `1px solid ${tinte('#059669', 30)}`, borderRadius: '6px', width: '100%', fontSize: '0.95rem', lineHeight: '1.45', color: 'var(--slate-800)', padding: '6px', resize: 'vertical', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
                         value={typeof f === 'object' ? `${f.tendencia || f.competencia} - ${f.mecanismo}` : f}
                         onChange={e => {
                           const n = [...inf.fortalezas];
@@ -1356,14 +1331,14 @@ PsicoPlataforma - Gestión Inteligente de Talento
                   ))}
                 </div>
               </div>
-              <div style={{ background: '#fff7ed', padding: '1.25rem', borderRadius: '12px', border: '1px solid #ffedd5' }}>
-                <h4 style={{ color: '#ea580c', margin: '0 0 1rem 0', fontSize: '0.9rem', fontWeight: 'bold' }}>Aspectos a fortalecer</h4>
+              <div style={{ background: tinte('#d97706', 8), padding: '1.25rem', borderRadius: '10px', border: `1px solid ${tinte('#d97706', 30)}` }}>
+                <h4 style={{ color: 'var(--slate-900)', margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: '600', fontFamily: SERIF }}>Aspectos a fortalecer</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {(inf.oportunidadesMejora || []).map((f: NarrativeItem, i: number) => (
                     <div key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ea580c' }} />
-                      <textarea
-                        rows={2} style={{ background: 'transparent', border: '1px solid #ffedd5', borderRadius: '6px', width: '100%', fontSize: '0.9rem', lineHeight: '1.35', color: '#7c2d12', padding: '5px', resize: 'vertical', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
+                      <div aria-hidden="true" style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#d97706', flexShrink: 0 }} />
+                      <textarea aria-label={`Oportunidad de mejora ${i + 1}`}
+                        rows={2} style={{ background: 'transparent', border: `1px solid ${tinte('#d97706', 30)}`, borderRadius: '6px', width: '100%', fontSize: '0.95rem', lineHeight: '1.45', color: 'var(--slate-800)', padding: '6px', resize: 'vertical', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
                         value={typeof f === 'object' ? `${f.tendencia || f.competencia} - ${f.mecanismo}` : f}
                         onChange={e => {
                           const n = [...inf.oportunidadesMejora];
@@ -1389,8 +1364,8 @@ PsicoPlataforma - Gestión Inteligente de Talento
             <span style={s.cardHeadTxt}>IV. Perfil Integrado</span>
             <span style={s.badge}>Editable</span>
           </div>
-          <textarea
-            style={s.ta}
+          <textarea aria-label="Perfil integrado: síntesis"
+            style={{ ...s.ta, width: 'calc(100% - 2.5rem)', margin: '1.25rem' }}
             rows={6}
             placeholder="Síntesis profunda del perfil..."
             value={inf.resumenEjecutivo || ''}
@@ -1400,20 +1375,20 @@ PsicoPlataforma - Gestión Inteligente de Talento
 
         {/* ── V. DICTAMEN FINAL ──────────────────────────────────────────────── */}
         <div style={s.card}>
-          <div style={s.cardHead}><span style={s.cardHeadTxt}>V. Dictamen Final</span><span style={s.badge}>Evaluación de Ajuste</span></div>
+          <div style={s.cardHead}><span style={s.cardHeadTxt}>V. Dictamen Final</span><span style={s.badge}>Evaluación de ajuste</span></div>
           <div style={s.recBtns}>
             {(['recomendado', 'con_reservas', 'no_recomendado'] as Rec[]).map(op => (
-              <button key={op} onClick={() => upd('recomendacion', op)} style={{ ...s.recBtn, borderColor: inf.recomendacion === op ? REC_COLOR[op] : '#e2e8f0', background: inf.recomendacion === op ? REC_COLOR[op] + '18' : '#fff', color: inf.recomendacion === op ? REC_COLOR[op] : '#64748b', fontWeight: inf.recomendacion === op ? '700' : '400' }}>
+              <button key={op} onClick={() => upd('recomendacion', op)} style={{ ...s.recBtn, borderColor: inf.recomendacion === op ? REC_COLOR[op] : 'var(--slate-200)', background: inf.recomendacion === op ? REC_COLOR[op] + '18' : 'var(--white-bg)', color: inf.recomendacion === op ? REC_COLOR[op] : 'var(--slate-500)', fontWeight: inf.recomendacion === op ? '700' : '400' }}>
                 {REC_LABELS[op]}
               </button>
             ))}
           </div>
           <div style={{ ...s.sello, background: REC_COLOR[inf.recomendacion] + '12', borderColor: REC_COLOR[inf.recomendacion] + '50', color: REC_COLOR[inf.recomendacion] }}>
-            {REC_LABELS[inf.recomendacion].toUpperCase()}
+            {REC_LABELS[inf.recomendacion]}
           </div>
           <div style={{ padding: '0 1.25rem 1.25rem' }}>
-            <label style={s.commentLabel}>Argumentación Técnica del Dictamen</label>
-            <textarea style={{ ...s.ta, minHeight: '120px' }} value={inf.fundamentacion || ''} onChange={e => upd('fundamentacion', e.target.value)} placeholder="Fundamente su recomendación basándose en las evidencias psicométricas..." />
+            <label htmlFor="informe-fundamentacion" style={s.commentLabel}>Argumentación del dictamen</label>
+            <textarea id="informe-fundamentacion" style={{ ...s.ta, minHeight: '120px' }} value={inf.fundamentacion || ''} onChange={e => upd('fundamentacion', e.target.value)} placeholder="Fundamente su recomendación basándose en las evidencias psicométricas..." />
           </div>
         </div>
 
@@ -1421,14 +1396,13 @@ PsicoPlataforma - Gestión Inteligente de Talento
         <div style={s.card}>
           <div style={s.cardHead}><span style={s.cardHeadTxt}>Validación del Informe</span></div>
           <div style={{ padding: '1.25rem' }}>
-            <label style={s.commentLabel}>Nombre del Evaluador Responsable</label>
-            <input style={{ ...s.ta, padding: '0.75rem' }} value={inf.nombreEvaluador || ''} onChange={e => upd('nombreEvaluador', e.target.value)} />
+            <label htmlFor="informe-evaluador" style={s.commentLabel}>Nombre del evaluador responsable</label>
+            <input id="informe-evaluador" style={{ ...s.ta, padding: '0.75rem' }} value={inf.nombreEvaluador || ''} onChange={e => upd('nombreEvaluador', e.target.value)} />
           </div>
         </div>
         {/* ── PIE DE INFORME (AUDITORÍA) ────────────────────────────────── */}
-        <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: 0.5, fontSize: '0.7rem' }}>
-          <span>PsicoPlataforma © 2026 - Informe de Auditoría Rigurosa</span>
-          <span style={{ fontWeight: 'bold', color: '#0369a1' }}>ENGINE_V4.0_STABLE</span>
+        <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--slate-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--slate-500)', fontSize: '0.85rem' }}>
+          <span>PsicoPlataforma</span>
         </div>
       </div>
     </div>
@@ -1437,7 +1411,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
 
 export default function InformePage() {
   return (
-    <Suspense fallback={<div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>Cargando motor de informes...</div>}>
+    <Suspense fallback={<div style={{ padding: '4rem', textAlign: 'center', color: 'var(--slate-500)' }}>Cargando el informe…</div>}>
       <InformePageContent />
     </Suspense>
   )

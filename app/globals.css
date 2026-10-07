@@ -2,47 +2,75 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+/*
+ * Tema del panel de administracion: misma identidad que las pantallas del candidato (papel y marcador).
+ * El panel usa Tailwind, asi que la paleta se cambia aca: "slate" pasa a ser el gris verdoso de la marca e "indigo" la
+ * rampa pino (que antes era violeta). En modo oscuro las rampas se invierten: 50 es el fondo mas oscuro y 900 el mas claro.
+ */
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  
-  --white-bg: #ffffff;
-  
-  --slate-50: #f8fafc;
-  --slate-100: #f1f5f9;
-  --slate-200: #e2e8f0;
-  --slate-300: #cbd5e1;
-  --slate-400: #94a3b8;
-  --slate-500: #64748b;
-  --slate-600: #475569;
-  --slate-700: #334155;
-  --slate-800: #1e293b;
-  --slate-900: #0f172a;
+  --background: #eef1ee;
+  --foreground: #12332e;
+
+  --white-bg: #fbfcfb;
+  --marcador: #f5d547; /* el amarillo del marcador: seleccion, pestana activa, citas */
+
+  --slate-50: #f3f6f4;
+  --slate-100: #e8eeeb;
+  --slate-200: #d6dfdb;
+  --slate-300: #82948e; /* bordes de campo y controles: 3:1 */
+  --slate-400: #5a6e68; /* texto terciario: 4,5:1 sobre blanco */
+  --slate-500: #4f645e;
+  --slate-600: #475d58;
+  --slate-700: #2f4a44;
+  --slate-800: #1d3a34;
+  --slate-900: #12332e;
+
+  --indigo-50: #e8f1ee;
+  --indigo-100: #d3e5df;
+  --indigo-200: #a9ccc2;
+  --indigo-300: #7eb0a3;
+  --indigo-400: #4a8c7d;
+  --indigo-500: #2d7364;
+  --indigo-600: #17594e;
+  --indigo-700: #124a41;
+  --indigo-800: #0f3d35;
+  --indigo-900: #0c312b;
 }
 
-/* Dark Mode Theme overrides - Premium Navy/Slate palette */
+/* Modo oscuro: verde profundo en lugar del azul marino anterior */
 html.dark, :root.dark {
-  --background: #090d16;
-  --foreground: #f8fafc;
-  
-  --white-bg: #111827;
-  
-  --slate-50: #182235;
-  --slate-100: #1f2a40;
-  --slate-200: #293854;
-  --slate-300: #475569;
-  --slate-400: #8892b0;
-  --slate-500: #a8b2d1;
-  --slate-600: #ccd6f6;
-  --slate-700: #e2e8f0;
-  --slate-800: #f1f5f9;
+  --background: #0d1917;
+  --foreground: #e6efec;
+
+  --white-bg: #142521;
+
+  --slate-50: #12211e;
+  --slate-100: #182b27;
+  --slate-200: #24403a;
+  --slate-300: #53796f;
+  --slate-400: #7f9a92;
+  --slate-500: #9db4ad;
+  --slate-600: #c3d3ce;
+  --slate-700: #dbe6e2;
+  --slate-800: #eaf1ee;
   --slate-900: #ffffff;
+
+  --indigo-50: #14302a;
+  --indigo-100: #19403a;
+  --indigo-200: #235a50;
+  --indigo-300: #2f7a69;
+  --indigo-400: #46a38d;
+  --indigo-500: #4fb59d;
+  --indigo-600: #5cc2aa;
+  --indigo-700: #7ad3bd;
+  --indigo-800: #a1e2d2;
+  --indigo-900: #c8f0e6;
 }
 
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  
+
   /* Map Tailwind standard colors to custom theme variables */
   --color-slate-50: var(--slate-50);
   --color-slate-100: var(--slate-100);
@@ -54,15 +82,52 @@ html.dark, :root.dark {
   --color-slate-700: var(--slate-700);
   --color-slate-800: var(--slate-800);
   --color-slate-900: var(--slate-900);
-  
+
+  --color-indigo-50: var(--indigo-50);
+  --color-indigo-100: var(--indigo-100);
+  --color-indigo-200: var(--indigo-200);
+  --color-indigo-300: var(--indigo-300);
+  --color-indigo-400: var(--indigo-400);
+  --color-indigo-500: var(--indigo-500);
+  --color-indigo-600: var(--indigo-600);
+  --color-indigo-700: var(--indigo-700);
+  --color-indigo-800: var(--indigo-800);
+  --color-indigo-900: var(--indigo-900);
+
   --color-white: var(--white-bg);
+  --color-marcador: var(--marcador);
+
+  /* Esquinas menos infladas: el panel usaba rounded-2xl y rounded-3xl en casi todo */
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.625rem;
+  --radius-2xl: 0.75rem;
+  --radius-3xl: 0.875rem;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-ui), system-ui, sans-serif;
 }
+
+/* Barra de desplazamiento de las listas del panel: sigue el tema, claro u oscuro */
+.custom-scrollbar-visible::-webkit-scrollbar { width: 8px; }
+.custom-scrollbar-visible::-webkit-scrollbar-track { background: var(--slate-100); }
+.custom-scrollbar-visible::-webkit-scrollbar-thumb { background: var(--slate-300); border-radius: 10px; }
+.custom-scrollbar-visible { scrollbar-color: var(--slate-300) var(--slate-100); }
+
+/* Panel de administracion (AppLayout le pone esta clase al contenedor) */
+.admin-shell h1, .admin-shell h2 { font-family: var(--font-lectura), Georgia, serif; letter-spacing: -0.01em; }
+/* Nada por debajo de 12 px: los datos que se leen todo el dia no pueden ir en 9 o 10 */
+.admin-shell [class~="text-[9px]"], .admin-shell [class~="text-[10px]"] { font-size: 0.75rem; line-height: 1.35; }
+.admin-shell [class~="text-[11px]"] { font-size: 0.8125rem; line-height: 1.4; }
+/* Las etiquetas se leen mejor en minuscula que en mayuscula sostenida */
+.admin-shell .uppercase { text-transform: none; }
+.admin-shell .tracking-widest, .admin-shell .tracking-wider, .admin-shell .tracking-wide { letter-spacing: normal; }
+
+/* Texto en gris muy claro (slate-300) y marcas de posicion: se leen con el mismo contraste que el terciario */
+.admin-shell .text-slate-300 { color: var(--slate-400); }
+.admin-shell ::placeholder { color: var(--slate-400); opacity: 1; }
 
 /* Premium smooth transitions for color variables, ignoring Recharts SVGs for stability */
 body, aside, main, header, div:not(.recharts-wrapper):not(.recharts-surface), section, article, nav, button, p, span, h1, h2, h3, h4, h5, h6, a, input, select, textarea {

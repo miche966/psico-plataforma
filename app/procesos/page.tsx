@@ -8,6 +8,8 @@ import { Plus, Check, Link as LinkIcon, Search, FileText, X, Video, Eye, Setting
 import { getBaseUrl } from '@/lib/utils'
 import { getAdminHeaders, obtenerLinkEvaluacion } from '@/lib/evaluacionLink'
 import { calcularProgresoEvaluacion } from '@/lib/progresoEvaluacion'
+import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
+import { EsqueletoPagina } from '@/components/Esqueleto'
 
 const TESTS_DISPONIBLES = [
   { key: 'bigfive', label: 'Big Five' },
@@ -333,9 +335,7 @@ export default function ProcesosPage() {
   if (cargando) {
     return (
       <AppLayout>
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-        </div>
+        <EsqueletoPagina />
       </AppLayout>
     )
   }
@@ -375,8 +375,8 @@ export default function ProcesosPage() {
           <h2 className="text-lg font-bold text-slate-900 mb-6">{modoEdicion ? 'Editar proceso de selección' : 'Nuevo proceso de selección'}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">Nombre del proceso *</label>
-              <input
+              <label htmlFor="proceso-nombre" className="text-sm font-medium text-slate-700">Nombre del proceso *</label>
+              <input id="proceso-nombre"
                 className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                 value={form.nombre}
                 onChange={e => setForm({ ...form, nombre: e.target.value })}
@@ -384,8 +384,8 @@ export default function ProcesosPage() {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">Cargo *</label>
-              <input
+              <label htmlFor="proceso-cargo" className="text-sm font-medium text-slate-700">Cargo *</label>
+              <input id="proceso-cargo"
                 className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                 value={form.cargo}
                 onChange={e => setForm({ ...form, cargo: e.target.value })}
@@ -395,8 +395,8 @@ export default function ProcesosPage() {
           </div>
           
           <div className="flex flex-col gap-1.5 mb-4">
-            <label className="text-sm font-medium text-slate-700">Descripción corta</label>
-            <input
+            <label htmlFor="proceso-descripcion" className="text-sm font-medium text-slate-700">Descripción corta</label>
+            <input id="proceso-descripcion"
               className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
               value={form.descripcion}
               onChange={e => setForm({ ...form, descripcion: e.target.value })}
@@ -405,8 +405,8 @@ export default function ProcesosPage() {
           </div>
 
           <div className="flex flex-col gap-1.5 mb-6">
-            <label className="text-sm font-medium text-slate-700">Misión del puesto y responsabilidades</label>
-            <textarea
+            <label htmlFor="proceso-mision" className="text-sm font-medium text-slate-700">Misión del puesto y responsabilidades</label>
+            <textarea id="proceso-mision"
               className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all min-h-[80px] resize-y"
               value={form.descripcion_cargo}
               onChange={e => setForm({ ...form, descripcion_cargo: e.target.value })}
@@ -437,7 +437,7 @@ export default function ProcesosPage() {
                       <span className="text-xs font-medium text-slate-700">{comp}</span>
                     </label>
                     {selected && (
-                      <select
+                      <select aria-label={`Nivel de ${comp}`}
                         className="px-2 py-0.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-indigo-500"
                         value={selected.nivel}
                         onChange={e => {
@@ -563,7 +563,7 @@ export default function ProcesosPage() {
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <Search className="h-4 w-4 text-slate-400" />
         </div>
-        <input
+        <input aria-label="Buscar proceso por nombre o cargo"
           type="text"
           placeholder="Buscar proceso por nombre o cargo..."
           value={filtro}
@@ -594,7 +594,7 @@ export default function ProcesosPage() {
               >
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">{proceso.nombre}</h3>
+                    <h3 className="text-base font-bold text-slate-900">{nombreDeProcesoLegible(proceso.nombre)}</h3>
                     <p className="text-sm font-medium text-indigo-600 mt-0.5">{proceso.cargo}</p>
                   </div>
                   <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold uppercase tracking-wide ${

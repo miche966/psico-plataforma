@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useSearchParams, useRouter } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
 import { ArrowLeft, Play, VideoOff, MessageSquare } from 'lucide-react'
+import { EsqueletoPagina } from '@/components/Esqueleto'
 
 interface Pregunta {
   id: string
@@ -113,9 +114,7 @@ export default function RevisarPage() {
   if (cargando) {
     return (
       <AppLayout>
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-        </div>
+        <EsqueletoPagina />
       </AppLayout>
     )
   }

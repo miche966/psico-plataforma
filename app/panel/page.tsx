@@ -15,6 +15,8 @@ import { TEST_IDS, calcularProgresoEvaluacion } from '@/lib/progresoEvaluacion'
 import SaludOperativa from '@/components/SaludOperativa'
 import { FRASES_INCOMPLETAS_ID, FRASES_ESTIMULO } from '@/lib/frasesIncompletas'
 import { useAdminRole } from '@/lib/useAdminRole'
+import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
+import { EsqueletoPagina } from '@/components/Esqueleto'
 
 
 const COMPETENCIAS_MAPPING: Record<string, Partial<Record<string, number>>> = {
@@ -206,6 +208,7 @@ interface CandidatoAgrupado {
   }
   matchScore?: number | null
   resumen_ia?: string | null
+  resumen_ia_fecha?: string | null
   estado_operativo?: 'pendiente' | 'en curso' | 'completada'
   progreso_detallado?: Array<{ evaluacion_key: string; estado: string; pregunta_actual?: number; total_preguntas?: number; respuestas_completadas?: number }>
   ultima_actividad_operativa?: string | null
@@ -241,13 +244,18 @@ async function generarResumenIA(candidato: CandidatoAgrupado) {
     const response = await fetch('/api/ia-summary', {
       method: 'POST',
       headers: await getAdminHeaders(),
-      body: JSON.stringify({ prompt })
+      body: JSON.stringify({ prompt, candidato_id: candidato.id, proceso_id: candidato.proceso_id })
     })
-    const data = await response.json()
-    return data.summary
+    if (response.status === 429) return { error: 'Se alcanzó el límite de consultas a la IA. Probá de nuevo en unos minutos.' }
+    if (response.status === 403) return { error: 'Tu rol no permite generar resúmenes con IA.' }
+    const data = await response.json().catch(() => null)
+    if (!response.ok || typeof data?.summary !== 'string' || !data.summary.trim()) {
+      return { error: 'No se pudo generar el resumen. Probá de nuevo en un momento.' }
+    }
+    return { resumen: data.summary as string, guardado: data.guardado === true }
   } catch (err) {
     console.error("Error generando resumen:", err)
-    return "No se pudo generar el resumen en este momento."
+    return { error: 'No se pudo generar el resumen. Revisá tu conexión y probá de nuevo.' }
   }
 }
 
@@ -261,9 +269,30 @@ export default function PanelEvaluador() {
   const [procesos, setProcesos] = useState<any[]>([])
   const [procesoSeleccionadoId, setProcesoSeleccionadoId] = useState<string>('todos')
   const [agrupadoSeleccionado, setAgrupadoSeleccionado] = useState<CandidatoAgrupado | null>(null)
+  const [resumenEnCurso, setResumenEnCurso] = useState<string | null>(null)   // claveFila del candidato mientras la IA trabaja
+  const [errorResumen, setErrorResumen] = useState<{ clave: string; mensaje: string } | null>(null)
   const [sesionSeleccionada, setSesionSeleccionada] = useState<Sesion | null>(null)
   const [cargando, setCargando] = useState(true)
   const [enviandoRecordatorio, setEnviandoRecordatorio] = useState<string | null>(null)
+
+  const generarResumen = async () => {
+    const objetivo = agrupadoSeleccionado
+    if (!objetivo || resumenEnCurso) return
+    const clave = claveFila(objetivo)
+    setResumenEnCurso(clave)
+    setErrorResumen(null)
+    const res = await generarResumenIA(objetivo)
+    setResumenEnCurso(null)
+    if ('resumen' in res) {
+      const ahora = new Date().toISOString()
+      setAgrupadoSeleccionado(actual => actual && claveFila(actual) === clave ? { ...actual, resumen_ia: res.resumen, resumen_ia_fecha: ahora } : actual)
+      // La lista de candidatos tambien guarda el resumen: asi sigue ahi al cambiar de candidato sin recargar
+      setCandidatos(lista => lista.map(c => claveFila(c) === clave ? { ...c, resumen_ia: res.resumen, resumen_ia_fecha: ahora } : c))
+      if (!res.guardado) setErrorResumen({ clave, mensaje: 'El resumen se generó, pero no se pudo guardar: se perderá al recargar la página.' })
+    } else {
+      setErrorResumen({ clave, mensaje: res.error })
+    }
+  }
   const [filtro, setFiltro] = useState('')
   const [ordenFecha, setOrdenFecha] = useState<'desc' | 'asc'>('desc')
   const [estadoFiltro, setEstadoFiltro] = useState<'todos' | 'pendiente' | 'en curso' | 'completada'>('todos')
@@ -453,6 +482,7 @@ export default function PanelEvaluador() {
     const respuestasVideo: any[] = payload.respuestasVideo || []
     const preguntasVideo: any[] = payload.preguntasVideo || []
     const progresoOperativo: any[] = payload.progresoOperativo || []
+    const resumenesIa: any[] = payload.resumenesIa || []
 
     if (sesionesData.length > 0) setSesionesGlobales(sesionesData)
 
@@ -522,6 +552,8 @@ export default function PanelEvaluador() {
       const estadoOperativo: 'pendiente' | 'en curso' | 'completada' = progresoCalculado.total > 0 && progresoCalculado.completados >= progresoCalculado.total ? 'completada' : (tieneActividad || progresoCalculado.completados > 0 ? 'en curso' : 'pendiente')
       const ultimaActividadOperativa = progresoCandidato.map(item => item.ultima_actividad_en).filter(Boolean).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] || null
 
+      const resumenIa = resumenesIa.find(x => x.candidato_id === c.id && (x.proceso_id || null) === (procesoId || null))
+
       let ultimaFecha = c.creado_en
       sesionesDeEsteProceso.forEach((s: any) => {
         const f = s.finalizada_en || s.creado_en
@@ -544,6 +576,8 @@ export default function PanelEvaluador() {
         fecha_postulacion: c.creado_en || '',
         ultima_fecha: ultimaFecha,
         proceso_id: procesoId,
+        resumen_ia: resumenIa?.resumen ?? null,
+        resumen_ia_fecha: resumenIa?.generado_en ?? null,
         proceso_nombre: procesoNombre,
         proceso_cargo: procesoCargo,
         competencias_requeridas: competenciasReq,
@@ -792,95 +826,69 @@ export default function PanelEvaluador() {
     document.body.removeChild(link)
   }
 
+  // Enlace "Ver ficha" de Estadisticas: /panel?candidato=<id>&proceso=<id>
+  const [fichaPedida, setFichaPedida] = useState<{ candidato: string; proceso: string | null } | null>(null)
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search)
+    const candidato = q.get('candidato')
+    if (candidato) setFichaPedida({ candidato, proceso: q.get('proceso') })
+  }, [])
+  useEffect(() => {
+    if (!fichaPedida || cargando) return
+    const c = candidatos.find(x => x.id === fichaPedida.candidato && (!fichaPedida.proceso || x.proceso_id === fichaPedida.proceso))
+      || candidatos.find(x => x.id === fichaPedida.candidato)
+    setFichaPedida(null)
+    if (c) { setTab('evaluaciones'); seleccionarCandidato(c) }
+  }, [fichaPedida, cargando, candidatos])
+
   if (cargando) {
     return (
       <AppLayout>
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-        </div>
+        <EsqueletoPagina detalle />
       </AppLayout>
     )
   }
 
+  const seleccionarCandidato = async (c: CandidatoAgrupado) => {
+    setAgrupadoSeleccionado(c)
+    const sInicial = c.sesiones[0]
+    setSesionSeleccionada(sInicial)
+    if (sInicial) cargarAuditoriaSesion(sInicial)
+
+    await cargarVideosDe(c)
+  }
+
   return (
     <AppLayout>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Centro de Control</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Gestión inteligente de talento y procesos
-          </p>
-        </div>
+      <header className="mb-2">
+        <h1 className="text-3xl font-semibold text-slate-900">Centro de control</h1>
+        <p className="text-slate-500 mt-1">Candidatos y procesos de selección</p>
+      </header>
 
-        <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-sm">
+      <nav className="flex flex-wrap gap-x-6 border-b border-slate-200 mb-6" aria-label="Secciones">
+        {([
+          ['dashboard', 'Dashboard'],
+          ['evaluaciones', 'Análisis'],
+          ['historial', 'Historial'],
+          ['diagnostico', 'Diagnóstico'],
+          ['gestion', 'Gestión de procesos'],
+          ['salud', 'Salud operativa'],
+        ] as const).map(([clave, etiqueta]) => (
           <button
-            onClick={() => setTab('dashboard')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              tab === 'dashboard' 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : 'text-slate-500 hover:text-slate-700'
+            key={clave}
+            type="button"
+            onClick={() => setTab(clave)}
+            aria-current={tab === clave ? 'page' : undefined}
+            className={`relative pt-2 pb-3 text-sm transition-colors ${
+              tab === clave
+                ? 'font-bold text-slate-900 after:absolute after:left-0 after:right-0 after:-bottom-px after:h-1 after:rounded after:bg-marcador'
+                : 'font-medium text-slate-500 hover:text-slate-800'
             }`}
           >
-            <LayoutDashboard className="w-4 h-4" />
-            DASHBOARD
+            {etiqueta}
           </button>
-          <button
-            onClick={() => setTab('evaluaciones')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              tab === 'evaluaciones' 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <BarChart2 className="w-4 h-4" />
-            ANÁLISIS
-          </button>
-          <button
-            onClick={() => setTab('historial')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              tab === 'historial' 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <History className="w-4 h-4" />
-            HISTORIAL
-          </button>
-          <button
-            onClick={() => setTab('diagnostico')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              tab === 'diagnostico' 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            DIAGNÓSTICO
-          </button>
-          <button
-            onClick={() => setTab('gestion')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              tab === 'gestion' 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <Settings2 className="w-4 h-4" />
-            GESTIÓN PROCESOS
-          </button>
-          <button
-            onClick={() => setTab('salud')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              tab === 'salud'
-                ? 'bg-white text-indigo-600 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <AlertTriangle className="w-4 h-4" />
-            SALUD OPERATIVA
-          </button>
-        </div>
-      </div>
+        ))}
+      </nav>
 
       {tab === 'dashboard' ? (
         <Dashboard />
@@ -891,17 +899,39 @@ export default function PanelEvaluador() {
       ) : tab === 'diagnostico' ? (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm animate-in fade-in duration-300">
           <div className="mb-6">
-            <h2 className="text-lg font-bold text-slate-900">Diagnóstico Cualitativo e IA</h2>
-            <p className="text-xs text-slate-500">Evaluación consolidada de discurso, perfil MBTI y ajuste competencial</p>
+            <h2 className="text-lg font-bold text-slate-900">Diagnóstico cualitativo e IA</h2>
           </div>
           {agrupadoSeleccionado ? (
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
               <h3 className="font-bold text-slate-900 text-sm mb-2">{agrupadoSeleccionado.nombre} {agrupadoSeleccionado.apellido}</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">{agrupadoSeleccionado.resumen_ia || "Generando síntesis de diagnóstico..."}</p>
+              {agrupadoSeleccionado.resumen_ia ? (
+                <>
+                  <p className="text-sm text-slate-700 leading-relaxed">{agrupadoSeleccionado.resumen_ia}</p>
+                  {agrupadoSeleccionado.resumen_ia_fecha && (
+                    <p className="mt-2 text-xs text-slate-500">Generado el {new Date(agrupadoSeleccionado.resumen_ia_fecha).toLocaleDateString('es-UY')}</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-slate-500">Todavía no se generó el diagnóstico de este candidato.</p>
+              )}
+              {errorResumen?.clave === claveFila(agrupadoSeleccionado) && (
+                <p role="alert" className="mt-3 text-sm text-red-600">{errorResumen.mensaje}</p>
+              )}
+              {!esViewer && (
+                <button
+                  type="button"
+                  onClick={generarResumen}
+                  disabled={resumenEnCurso !== null}
+                  className="mt-3 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-wait transition-colors"
+                >
+                  {resumenEnCurso === claveFila(agrupadoSeleccionado) ? 'Generando…' : agrupadoSeleccionado.resumen_ia ? 'Regenerar' : 'Generar resumen'}
+                </button>
+              )}
+              <span role="status" className="sr-only">{resumenEnCurso === claveFila(agrupadoSeleccionado) ? 'Generando el resumen con IA' : ''}</span>
             </div>
           ) : (
             <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
-              <p className="text-xs text-slate-500">Selecciona un candidato en la pestaña ANÁLISIS para visualizar su diagnóstico detallado.</p>
+              <p className="text-xs text-slate-500">Elegí un candidato en Análisis para ver su diagnóstico.</p>
             </div>
           )}
         </div>
@@ -909,8 +939,7 @@ export default function PanelEvaluador() {
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-220px)]">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Bitácora Global</h2>
-              <p className="text-xs text-slate-500">Registro cronológico de todas las evaluaciones finalizadas</p>
+              <h2 className="text-lg font-bold text-slate-900">Historial de evaluaciones</h2>
             </div>
           </div>
           
@@ -944,7 +973,7 @@ export default function PanelEvaluador() {
                         <div className="text-[10px] text-slate-400">{c.email}</div>
                       </td>
                       <td className="py-3 px-4">
-                        <div className="text-[10px] text-slate-600 truncate max-w-[150px]">{c.proceso_nombre || 'Independiente'}</div>
+                        <div className="text-[10px] text-slate-600 truncate max-w-[150px]">{nombreDeProcesoLegible(c.proceso_nombre) || 'Independiente'}</div>
                         <div className="text-[10px] text-indigo-500 font-bold">{c.proceso_cargo || 'Sin cargo'}</div>
                       </td>
                       <td className="py-3 px-4">
@@ -1009,92 +1038,111 @@ export default function PanelEvaluador() {
       ) : (
         <>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" aria-label="Resumen de postulaciones">
-        {[
-          { label: 'Total', value: candidatos.length, tone: 'text-slate-800' },
-          { label: 'Pendientes', value: conteoEstados.pendiente || 0, tone: 'text-slate-600' },
-          { label: 'En curso', value: conteoEstados['en curso'] || 0, tone: 'text-amber-600' },
-          { label: 'Completadas', value: conteoEstados.completada || 0, tone: 'text-emerald-600' }
-        ].map(item => (
-          <div key={item.label} className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
-            <div className={`text-xl font-bold ${item.tone}`}>{item.value}</div>
-            <div className="text-[10px] text-slate-500 uppercase tracking-wide">{item.label}</div>
+      <section className="flex flex-wrap items-center gap-x-10 gap-y-4 pb-6" aria-label="Resumen de postulaciones">
+        <div className="flex gap-8">
+          {[
+            { label: 'candidatos', value: candidatos.length, extra: 'pr-8 border-r border-slate-200' },
+            { label: 'pendientes', value: conteoEstados.pendiente || 0, extra: '' },
+            { label: 'en curso', value: conteoEstados['en curso'] || 0, extra: '' },
+            { label: 'completadas', value: conteoEstados.completada || 0, extra: '' },
+          ].map(item => (
+            <div key={item.label} className={item.extra}>
+              <div className="text-4xl font-semibold leading-none text-slate-900" style={{ fontFamily: 'var(--font-lectura), Georgia, serif' }}>{item.value}</div>
+              <div className="text-sm text-slate-500 mt-1">{item.label}</div>
+            </div>
+          ))}
+        </div>
+        <div className="flex-1 min-w-[16rem] space-y-2">
+          <div
+            className="flex h-3.5 rounded-full overflow-hidden bg-slate-200"
+            role="img"
+            aria-label={`${conteoEstados.completada || 0} completadas, ${conteoEstados['en curso'] || 0} en curso, ${conteoEstados.pendiente || 0} pendientes`}
+          >
+            <span className="bg-indigo-600" style={{ width: `${candidatos.length ? ((conteoEstados.completada || 0) / candidatos.length) * 100 : 0}%` }} />
+            <span className="bg-marcador" style={{ width: `${candidatos.length ? ((conteoEstados['en curso'] || 0) / candidatos.length) * 100 : 0}%` }} />
           </div>
-        ))}
-      </div>
-
-      {/* BARRA DE HERRAMIENTAS: BUSCADOR + FILTRO POR PROCESO */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-3 mb-6 shadow-sm space-y-3">
-        <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Buscar por nombre, email o cargo..."
-            value={filtro}
-            onChange={(e) => setFiltro(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
-          />
+          <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />Completadas</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-marcador" />En curso</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-slate-200" />Pendientes</span>
+          </div>
         </div>
+      </section>
 
-        <div className="flex items-center gap-2 w-full flex-wrap">
-          <Settings2 className="w-4 h-4 text-slate-400" />
-          <select
-            value={procesoSeleccionadoId}
-            onChange={(e) => setProcesoSeleccionadoId(e.target.value)}
-            className="flex-1 md:w-56 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium text-slate-700"
-          >
-            <option value="todos">Todos los procesos</option>
-            {procesos.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.nombre} ({p.cargo})
-              </option>
-            ))}
-          </select>
-          <select
-            value={estadoFiltro}
-            onChange={(e) => setEstadoFiltro(e.target.value as 'todos' | 'pendiente' | 'en curso' | 'completada')}
-            className="flex-1 md:w-44 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium text-slate-700"
-            aria-label="Filtrar por estado"
-          >
-            <option value="todos">Todos los estados</option>
-            <option value="pendiente">Pendientes</option>
-            <option value="en curso">En curso</option>
-            <option value="completada">Completadas</option>
-          </select>
+      {/* BARRA DE HERRAMIENTAS: BUSCADOR + FILTROS + EXPORTAR */}
+      <div className="flex flex-wrap items-center gap-2.5 pb-5">
+        <input
+          type="text"
+          aria-label="Buscar candidatos"
+          placeholder="Buscar por nombre, correo o cargo"
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          className="flex-1 min-w-[16rem] bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600"
+        />
+        <select
+          aria-label="Filtrar por proceso"
+          value={procesoSeleccionadoId}
+          onChange={(e) => setProcesoSeleccionadoId(e.target.value)}
+          className="bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600 max-w-[16rem]"
+        >
+          <option value="todos">Todos los procesos</option>
+          {procesos.map(p => (
+            <option key={p.id} value={p.id}>
+              {nombreDeProcesoLegible(p.nombre)} ({p.cargo})
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Filtrar por estado"
+          value={estadoFiltro}
+          onChange={(e) => setEstadoFiltro(e.target.value as 'todos' | 'pendiente' | 'en curso' | 'completada')}
+          className="bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600"
+        >
+          <option value="todos">Todos los estados</option>
+          <option value="pendiente">Pendientes</option>
+          <option value="en curso">En curso</option>
+          <option value="completada">Completadas</option>
+        </select>
+        <select
+          aria-label="Ordenar por fecha"
+          value={ordenFecha}
+          onChange={(e) => setOrdenFecha(e.target.value as 'desc' | 'asc')}
+          className="bg-white border border-slate-300 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600"
+        >
+          <option value="desc">Más recientes primero</option>
+          <option value="asc">Más antiguas primero</option>
+        </select>
 
-          <select
-            value={ordenFecha}
-            onChange={(e) => setOrdenFecha(e.target.value as 'desc' | 'asc')}
-            className="flex-1 md:w-48 bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium text-slate-700"
-          >
-            <option value="desc">Ordenar: Más recientes primero</option>
-            <option value="asc">Ordenar: Más antiguas primero</option>
-          </select>
-
-          <button
-            onClick={exportarPeopleAnalyticsCSV}
-            className="px-3 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold transition-all border border-indigo-200/60 flex items-center gap-1.5 shadow-sm whitespace-nowrap"
-            title="Exportar People Analytics en formato CSV"
-          >
-            <Download className="w-3.5 h-3.5 text-indigo-600" />
-            Exportar People Analytics
-          </button>
-          <button
-            onClick={() => { setFiltro(''); setProcesoSeleccionadoId('todos'); setEstadoFiltro('todos'); setOrdenFecha('desc') }}
-            className="px-3 py-2 text-slate-500 hover:text-indigo-600 rounded-xl text-xs font-bold transition-all"
-          >
-            Limpiar filtros
-          </button>
-
-          <button
-            onClick={exportarReporteMacroCSV}
-            className="px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-bold transition-all border border-emerald-200/60 flex items-center gap-1.5 shadow-sm whitespace-nowrap"
-            title="Exportar Reporte Macro Business Intelligence (BI)"
-          >
-            <Download className="w-3.5 h-3.5 text-emerald-600" />
-            Exportar Reporte Macro (BI)
-          </button>
-        </div>
+        <details className="relative">
+          <summary className="list-none cursor-pointer select-none px-4 py-2.5 rounded-lg border border-indigo-600 text-indigo-600 text-sm font-bold hover:bg-indigo-50">
+            Exportar ▾
+          </summary>
+          <div className="absolute right-0 mt-1 z-20 w-72 rounded-lg border border-slate-200 bg-white shadow-lg p-1">
+            <button
+              type="button"
+              onClick={(e) => { exportarPeopleAnalyticsCSV(); (e.currentTarget.closest('details') as HTMLDetailsElement).open = false }}
+              className="w-full text-left px-3 py-2.5 rounded-md text-sm text-slate-800 hover:bg-slate-100"
+              title="Exportar People Analytics en formato CSV"
+            >
+              People Analytics (CSV)
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { exportarReporteMacroCSV(); (e.currentTarget.closest('details') as HTMLDetailsElement).open = false }}
+              className="w-full text-left px-3 py-2.5 rounded-md text-sm text-slate-800 hover:bg-slate-100"
+              title="Exportar Reporte Macro Business Intelligence (BI)"
+            >
+              Reporte macro de BI (CSV)
+            </button>
+          </div>
+        </details>
+        <button
+          type="button"
+          onClick={() => { setFiltro(''); setProcesoSeleccionadoId('todos'); setEstadoFiltro('todos'); setOrdenFecha('desc') }}
+          className="px-2 py-2 text-sm text-slate-500 underline underline-offset-4 hover:text-slate-900"
+        >
+          Limpiar filtros
+        </button>
       </div>
 
       {candidatos.length === 0 ? (
@@ -1103,108 +1151,97 @@ export default function PanelEvaluador() {
           <a href="/candidatos" className="text-indigo-600 font-medium hover:text-indigo-700">Ir a candidatos aa~</a>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          <div className="flex flex-col gap-3 h-[calc(100vh-220px)] overflow-y-auto pr-2 custom-scrollbar-visible">
-            {candidatosFiltrados.map(c => (
-              <div
-                key={claveFila(c)}
-                onClick={async () => {
-                  setAgrupadoSeleccionado(c)
-                  const sInicial = c.sesiones[0]
-                  setSesionSeleccionada(sInicial)
-                  if (sInicial) cargarAuditoriaSesion(sInicial)
-
-                  await cargarVideosDe(c)
-                }}
-                className={`p-4 rounded-xl border bg-white cursor-pointer transition-all duration-200 hover:shadow-md ${
-                  agrupadoSeleccionado && claveFila(agrupadoSeleccionado) === claveFila(c)
-                    ? 'border-indigo-500 ring-1 ring-indigo-500/20 shadow-sm'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex gap-4 items-center w-full overflow-hidden">
-                  {/* INDICADOR DE ESTADO IZQUIERDO */}
-                  <div className="relative shrink-0">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border-2 ${
-                      c.progreso && c.progreso.completados === c.progreso.total && c.progreso.total > 0
-                        ? 'bg-green-50 border-green-200 text-green-600'
-                        : 'bg-slate-50 border-slate-100 text-slate-500'
-                    }`}>
-                      {c.progreso && c.progreso.completados === c.progreso.total && c.progreso.total > 0 ? (
-                        <CheckCircle2 className="w-5 h-5" />
-                      ) : (
-                        `${c.progreso?.completados || 0}/${c.progreso?.total || 0}`
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-6 items-start">
+          <div className="flex flex-col h-[calc(100vh-220px)] overflow-y-auto custom-scrollbar-visible bg-white border border-slate-200 rounded-xl" role="list" aria-label="Candidatos">
+            {candidatosFiltrados.map(c => {
+              const seleccionado = !!agrupadoSeleccionado && claveFila(agrupadoSeleccionado) === claveFila(c)
+              const hechas = c.progreso?.completados || 0
+              const total = c.progreso?.total || 0
+              const estado = c.estado_operativo || 'pendiente'
+              return (
+                <div
+                  key={claveFila(c)}
+                  role="listitem"
+                  tabIndex={0}
+                  aria-current={seleccionado ? 'true' : undefined}
+                  onClick={() => seleccionarCandidato(c)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); seleccionarCandidato(c) } }}
+                  className={`px-4 py-3.5 border-b border-slate-100 last:border-b-0 cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600 ${
+                    seleccionado ? 'bg-slate-100 shadow-[inset_5px_0_0_var(--marcador)]' : 'hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="grid grid-cols-[minmax(0,1fr)_6rem_6.75rem_auto] gap-3 items-center">
+                    <div className="min-w-0">
+                      <div className="font-bold text-slate-900 break-words">{c.nombre} {c.apellido}</div>
+                      <div className="text-sm text-slate-500 break-words" title={nombreDeProcesoLegible(c.proceso_nombre) || 'Proceso independiente'}>
+                        {nombreDeProcesoLegible(c.proceso_nombre) || 'Proceso independiente'}
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 text-xs text-slate-400">
+                        <span className="truncate max-w-[16rem]">{c.email || 'Sin email'}</span>
+                        <span className="whitespace-nowrap">Postuló el {formatearFecha(c.fecha_postulacion)}</span>
+                      </div>
+                    </div>
+                    <div className="text-sm tabular-nums text-slate-700">
+                      <div>{hechas} de {total}</div>
+                      <div className="h-1.5 mt-1 rounded-full bg-slate-200 overflow-hidden" aria-hidden="true">
+                        <div className="h-full rounded-full bg-indigo-600" style={{ width: `${total ? (hechas / total) * 100 : 0}%` }} />
+                      </div>
+                      {c.matchScore != null && (
+                        <div className="text-xs text-slate-500 mt-1" title="Puntaje de ajuste al perfil">Ajuste {c.matchScore}%</div>
                       )}
                     </div>
-                    {c.matchScore != null && (
-                      <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border border-white shadow-sm text-[8px] font-bold text-white ${
-                        Number(c.matchScore) >= 80 ? 'bg-emerald-500' : Number(c.matchScore) >= 60 ? 'bg-amber-500' : 'bg-slate-500'
-                      }`} title={`Match Score: ${c.matchScore}%`}>
-                        {c.matchScore}%
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0 pr-2">
-                    <div className="font-bold text-slate-900 leading-tight truncate">{c.nombre} {c.apellido}</div>
-                    <div
-                      className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mt-0.5 line-clamp-2 break-words"
-                      title={c.proceso_nombre || 'Proceso independiente'}
-                    >
-                      {c.proceso_nombre || 'Proceso independiente'}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${c.estado_operativo === 'completada' ? 'bg-emerald-50 text-emerald-700' : c.estado_operativo === 'en curso' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                        {c.estado_operativo || 'pendiente'}
-                      </span>
-                      <span className="text-[10px] text-slate-500">{c.progreso?.completados || 0}/{c.progreso?.total || 0} evaluaciones</span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="text-xs text-slate-500 truncate">{c.email || 'Sin email'}</span>
-                      <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap bg-slate-100 px-1.5 py-0.5 rounded-md">
-                        Postulación: {formatearFecha(c.fecha_postulacion)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-end gap-2 shrink-0 pr-1">
+                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-800">
+                      <span className={`w-2.5 h-2.5 rounded-full border-2 ${
+                        estado === 'completada' ? 'bg-indigo-600 border-indigo-600' : estado === 'en curso' ? 'bg-marcador border-marcador' : 'border-slate-400'
+                      }`} />
+                      <span className="inline-block first-letter:uppercase">{estado}</span>
+                    </span>
                     <div className="flex items-center gap-1.5">
                       {c.progreso && c.progreso.completados < c.progreso.total && (
                         <button
+                          type="button"
                           onClick={(e) => { e.stopPropagation(); enviarRecordatorio(c); }}
                           disabled={enviandoRecordatorio === claveFila(c)}
-                          className="p-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg transition-all border border-amber-100"
+                          className="p-2 text-amber-700 hover:bg-amber-50 rounded-lg transition-colors border border-slate-200 disabled:opacity-60"
+                          title="Enviar recordatorio"
+                          aria-label={`Enviar recordatorio a ${c.nombre} ${c.apellido}`}
                         >
-                          <BellRing className="w-3.5 h-3.5" />
+                          <BellRing className="w-4 h-4" />
                         </button>
                       )}
-                      <a href={`/informe?candidato=${c.id}`} target="_blank" onClick={(e) => e.stopPropagation()} className="p-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg border border-indigo-100">
-                        <FileText className="w-3.5 h-3.5" />
+                      <a
+                        href={`/informe?candidato=${c.id}`}
+                        target="_blank"
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg border border-slate-200"
+                        title="Abrir informe"
+                        aria-label={`Abrir informe de ${c.nombre} ${c.apellido}`}
+                      >
+                        <FileText className="w-4 h-4" />
                       </a>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {/* DETALLE DEL CANDIDATO SELECCIONADO CON SCROLL INDEPENDIENTE */}
           <div className="sticky top-0 h-[calc(100vh-220px)] flex flex-col">
-            <style jsx>{`
-              .custom-scrollbar-visible::-webkit-scrollbar { width: 6px; }
-              .custom-scrollbar-visible::-webkit-scrollbar-track { background: #f1f5f9; }
-              .custom-scrollbar-visible::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-            `}</style>
             {agrupadoSeleccionado ? (
-              <div className="bg-white border border-slate-200 rounded-2xl shadow-xl flex flex-col h-full overflow-hidden border-indigo-100">
+              <div className="bg-white border border-slate-200 rounded-xl flex flex-col h-full overflow-hidden">
                 {/* CABEZAL FIJO */}
-                <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-white z-20 shrink-0">
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-900">{agrupadoSeleccionado.nombre} {agrupadoSeleccionado.apellido}</h2>
-                    <p className="text-sm text-slate-500">{agrupadoSeleccionado.email}</p>
+                <div className="px-6 py-5 border-b border-slate-200 flex justify-between items-start gap-4 bg-white z-20 shrink-0">
+                  <div className="min-w-0">
+                    <h2 className="text-2xl font-semibold text-slate-900 break-words">{agrupadoSeleccionado.nombre} {agrupadoSeleccionado.apellido}</h2>
+                    <p className="text-slate-500 break-all">{agrupadoSeleccionado.email}</p>
                   </div>
-                  <button onClick={() => setAgrupadoSeleccionado(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setAgrupadoSeleccionado(null)}
+                    className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                    aria-label="Cerrar el detalle del candidato"
+                  >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -1212,34 +1249,35 @@ export default function PanelEvaluador() {
                 {/* CONTENIDO DESPLAZABLE */}
                 <div className="flex-1 overflow-y-scroll p-6 custom-scrollbar-visible">
                   {/* RESUMEN EJECUTIVO IA */}
-                  <div className="mb-8 p-5 bg-gradient-to-br from-indigo-50/50 to-white rounded-2xl border border-indigo-100 shadow-sm relative">
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-pulse" />
-                        <h3 className="text-[10px] font-bold text-indigo-900 uppercase tracking-widest">Resumen Ejecutivo IA</h3>
-                      </div>
+                  <section className="mb-8 pl-5 pr-4 py-4 border-l-4 border-marcador bg-slate-100 rounded-r-lg" aria-labelledby="resumen-ia">
+                    <div className="flex justify-between items-center gap-3 mb-2">
+                      <h3 id="resumen-ia" className="text-lg font-semibold text-slate-900" style={{ fontFamily: 'var(--font-lectura), Georgia, serif' }}>Resumen ejecutivo con IA</h3>
                       {!esViewer && (
                         <button
-                          onClick={async () => {
-                            const res = await generarResumenIA(agrupadoSeleccionado)
-                            setAgrupadoSeleccionado({ ...agrupadoSeleccionado, resumen_ia: res })
-                          }}
-                          className="text-[9px] font-bold bg-indigo-600 text-white px-2 py-1 rounded-lg hover:bg-indigo-700 transition-all"
+                          type="button"
+                          onClick={generarResumen}
+                          disabled={resumenEnCurso !== null}
+                          className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-wait transition-colors whitespace-nowrap"
                         >
-                          {agrupadoSeleccionado.resumen_ia ? 'Regenerar' : 'Generar Informe'}
+                          {resumenEnCurso === claveFila(agrupadoSeleccionado) ? 'Generando…' : agrupadoSeleccionado.resumen_ia ? 'Regenerar' : 'Generar resumen'}
                         </button>
                       )}
                     </div>
                     {agrupadoSeleccionado.resumen_ia ? (
-                      <div className="text-xs text-slate-600 leading-relaxed space-y-2">{agrupadoSeleccionado.resumen_ia}</div>
+                      <div className="text-sm text-slate-700 leading-relaxed space-y-2">{agrupadoSeleccionado.resumen_ia}</div>
                     ) : (
-                      <p className="text-[10px] text-slate-400 italic">Analiza todos los tests y videos para generar un resumen profesional.</p>
+                      <p className="text-sm text-slate-500">Analiza todas las pruebas y los videos para armar un resumen profesional del candidato.</p>
                     )}
-                  </div>
+                    {errorResumen?.clave === claveFila(agrupadoSeleccionado) && (
+                      <p role="alert" className="mt-2 text-sm text-red-600">{errorResumen.mensaje}</p>
+                    )}
+                  </section>
 
-                  <div className="mb-6">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tests realizados</p>
-                    <div className="flex flex-wrap gap-2">
+                  <section className="mb-8" aria-labelledby="pruebas-realizadas">
+                    <h3 id="pruebas-realizadas" className="text-lg font-semibold text-slate-900 mb-3" style={{ fontFamily: 'var(--font-lectura), Georgia, serif' }}>
+                      Pruebas realizadas{agrupadoSeleccionado.progreso ? `: ${agrupadoSeleccionado.progreso.completados} de ${agrupadoSeleccionado.progreso.total}` : ''}
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {(() => {
                         const vtos = new Set()
                         return agrupadoSeleccionado.sesiones
@@ -1263,35 +1301,40 @@ export default function PanelEvaluador() {
                             }
                             const isActive = sesionSeleccionada?.id === s.id
                             return (
-                              <button 
-                                key={s.id} 
+                              <button
+                                key={s.id}
+                                type="button"
+                                aria-pressed={isActive}
                                 onClick={() => {
                                   setSesionSeleccionada(s)
                                   cargarAuditoriaSesion(s)
-                                }} 
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                                  isActive 
-                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' 
-                                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                                }}
+                                className={`flex items-center gap-2.5 text-left px-3 py-2.5 rounded-lg border text-sm transition-colors ${
+                                  isActive
+                                    ? 'border-indigo-600 bg-slate-100 font-bold text-slate-900 shadow-[inset_4px_0_0_var(--marcador)]'
+                                    : 'border-slate-200 text-slate-700 hover:bg-slate-50'
                                 }`}
                               >
-                                {label}
-                                {agrupadoSeleccionado.sesiones.filter(x => x.test_id === s.test_id).length > 1 && (
-                                  <span className="ml-1 opacity-50 text-[10px]">(Reciente)</span>
-                                )}
+                                <span className="shrink-0 grid place-items-center w-5 h-5 rounded-full bg-slate-900 text-white" aria-hidden="true">
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                                </span>
+                                <span>
+                                  {label}
+                                  {agrupadoSeleccionado.sesiones.filter(x => x.test_id === s.test_id).length > 1 && (
+                                    <span className="ml-1 text-xs font-normal text-slate-500">(más reciente)</span>
+                                  )}
+                                </span>
                               </button>
                             )
                           })
                       })()}
                     </div>
-                  </div>
+                  </section>
 
                   {/* VIDEO ENTREVISTAS */}
                   {videosCandidato.length > 0 && (
                     <div className="mb-8">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <Video className="w-3 h-3" /> Video Entrevistas
-                      </p>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-3" style={{ fontFamily: 'var(--font-lectura), Georgia, serif' }}>Video entrevistas</h3>
                       <div className="space-y-4">
                         {videosCandidato.map((v, i) => (
                           <div key={i} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
@@ -1356,10 +1399,12 @@ export default function PanelEvaluador() {
 
                   {/* RESULTADOS DETALLADOS DEL TEST */}
                   {sesionSeleccionada && (
-                    <div className="mt-8 pt-8 border-t border-slate-100 animate-in fade-in duration-500">
-                      <div className="flex items-center justify-between mb-6">
-                        <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Resultados del Test</h4>
-                        <a href={`/informe?candidato=${agrupadoSeleccionado.id}`} target="_blank" className="text-[10px] font-bold text-indigo-600 hover:underline">Ver Informe Completo →</a>
+                    <div className="mt-8 pt-8 border-t border-slate-200">
+                      <div className="flex items-center justify-between gap-3 mb-5">
+                        <h3 className="text-lg font-semibold text-slate-900" style={{ fontFamily: 'var(--font-lectura), Georgia, serif' }}>
+                          Resultados: {TEST_NAMES[sesionSeleccionada.test_id] || 'prueba seleccionada'}
+                        </h3>
+                        <a href={`/informe?candidato=${agrupadoSeleccionado.id}`} target="_blank" className="text-sm font-bold text-indigo-600 underline underline-offset-4 whitespace-nowrap">Ver informe completo</a>
                       </div>
 
                       {sesionSeleccionada.puntaje_bruto && (() => {
@@ -1369,92 +1414,73 @@ export default function PanelEvaluador() {
                           <div className="space-y-6">
                             {/* MÉTRICAS DE FRAUDE */}
                             {metricas && (
-                              <div className="grid grid-cols-2 gap-3 mb-6">
-                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                  <p className="text-[8px] font-bold text-slate-400 uppercase">Fugas de Foco</p>
-                                  <p className="text-lg font-bold text-slate-800">{metricas.tabSwitches || 0}</p>
+                              <dl className="flex gap-8 pb-5 border-b border-slate-200">
+                                <div>
+                                  <dt className="text-sm text-slate-500">Fugas de foco</dt>
+                                  <dd className="text-2xl font-semibold tabular-nums text-slate-900">{metricas.tabSwitches || 0}</dd>
                                 </div>
-                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                  <p className="text-[8px] font-bold text-slate-400 uppercase">Copia/Pega</p>
-                                  <p className="text-lg font-bold text-slate-800">{metricas.copyPasteAttempts || 0}</p>
+                                <div>
+                                  <dt className="text-sm text-slate-500">Copia y pega</dt>
+                                  <dd className="text-2xl font-semibold tabular-nums text-slate-900">{metricas.copyPasteAttempts || 0}</dd>
                                 </div>
-                              </div>
+                              </dl>
                             )}
 
-                            {/* GRÁFICOS BIG FIVE */}
-                            {esBigFive(pb) ? valoresNumericos(pb).map(([factor, valor]) => (
-                              <div key={factor}>
-                                <div className="flex justify-between mb-1">
-                                  <span className="text-xs font-bold text-slate-700">{etiquetas[factor] || factor}</span>
-                                  <span className="text-xs font-bold text-indigo-600">{valor} / 5</span>
-                                </div>
-                                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                  <div className={`h-full ${colores[factor] || 'bg-indigo-500'}`} style={{ width: `${(valor / 5) * 100}%` }} />
-                                </div>
+                            {/* FACTORES (Big Five, Iniciativa y dinamismo) */}
+                            {(esBigFive(pb) || esIniciativaDinamismo(pb)) ? (
+                              <div className="space-y-4">
+                                {valoresNumericos(pb).map(([factor, valor]) => (
+                                  <div key={factor}>
+                                    <div className="flex justify-between mb-1.5 text-sm">
+                                      <span className="font-bold text-slate-800">{etiquetas[factor] || factor}</span>
+                                      <span className="tabular-nums text-slate-700">{valor} / 5</span>
+                                    </div>
+                                    <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                                      <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${(valor / 5) * 100}%` }} />
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
-                            )) : esIniciativaDinamismo(pb) ? valoresNumericos(pb).map(([factor, valor]) => (
-                              <div key={factor}>
-                                <div className="flex justify-between mb-1">
-                                  <span className="text-xs font-bold text-slate-700">{etiquetas[factor] || factor}</span>
-                                  <span className="text-xs font-bold text-indigo-600">{valor} / 5</span>
-                                </div>
-                                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                  <div className={`h-full ${colores[factor] || 'bg-indigo-500'}`} style={{ width: `${(valor / 5) * 100}%` }} />
-                                </div>
-                              </div>
-                            )) : esCognitivo(pb) ? (
-                              <div className="bg-slate-50 p-4 rounded-xl text-center">
-                                <p className="text-xs text-slate-500">
-                                  Puntaje General: <span className="font-bold text-slate-800">{datosCognitivos(pb).correctas} / {datosCognitivos(pb).total} correctas ({datosCognitivos(pb).pct}%)</span>
-                                </p>
-                              </div>
+                            ) : esCognitivo(pb) ? (
+                              <p className="text-slate-700">
+                                Puntaje general: <strong className="text-slate-900">{datosCognitivos(pb).correctas} / {datosCognitivos(pb).total} correctas ({datosCognitivos(pb).pct}%)</strong>
+                              </p>
                             ) : (
-                              <div className="bg-slate-50 p-4 rounded-xl text-center">
-                                <p className="text-xs text-slate-500">
-                                  Puntaje General: <span className="font-bold text-slate-800">{(pb as any)?.porcentaje != null ? `${(pb as any).porcentaje}%` : `${promedioPuntaje(pb)} / 5`}</span>
-                                </p>
-                              </div>
+                              <p className="text-slate-700">
+                                Puntaje general: <strong className="text-slate-900">{(pb as any)?.porcentaje != null ? `${(pb as any).porcentaje}%` : `${promedioPuntaje(pb)} / 5`}</strong>
+                              </p>
                             )}
 
-                            {/* RENDERIZADO ESPECIAL DE ROLEPLAY IA (TRANSCRIPCIÓN CHAT EN VIVO) */}
+                            {/* TRANSCRIPCIÓN DEL ROLEPLAY IA */}
                             {(() => {
                               const pbRoleplay = sesionSeleccionada.puntaje_bruto as any
                               const transcripcion = pbRoleplay?.transcripcion || pbRoleplay?.mensajes || pbRoleplay?.historial
                               const esRoleplayAtencion = sesionSeleccionada.test_id === 'd8e9f0a1-b2c3-4567-defa-777777777777'
-                              const nombreClienteIA = esRoleplayAtencion ? 'Cliente (Laura Benítez - IA)' : 'Cliente Moroso (Carlos Gómez - IA)'
+                              const nombreClienteIA = esRoleplayAtencion ? 'Cliente (Laura Benítez - IA)' : 'Cliente moroso (Carlos Gómez - IA)'
                               if (Array.isArray(transcripcion) && transcripcion.length > 0) {
                                 return (
-                                  <div className="mt-6 bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 shadow-xl space-y-4">
-                                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                                      <div className="flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                                        <h4 className="font-bold text-sm text-emerald-400 uppercase tracking-wider">
-                                          Transcripción del Roleplay IA (Simulación en Vivo)
-                                        </h4>
-                                      </div>
+                                  <div className="mt-6 border border-slate-200 rounded-xl overflow-hidden">
+                                    <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 bg-slate-100">
+                                      <h4 className="font-semibold text-slate-900" style={{ fontFamily: 'var(--font-lectura), Georgia, serif' }}>
+                                        Transcripción del Role Play con IA
+                                      </h4>
                                       {pbRoleplay.acuerdo_alcanzado !== undefined && (
-                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                                          pbRoleplay.acuerdo_alcanzado ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                          pbRoleplay.acuerdo_alcanzado ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
                                         }`}>
-                                          {pbRoleplay.acuerdo_alcanzado ? '✅ Acuerdo Alcanzado' : '❌ Sin Acuerdo'}
+                                          {pbRoleplay.acuerdo_alcanzado ? 'Acuerdo alcanzado' : 'Sin acuerdo'}
                                         </span>
                                       )}
                                     </div>
 
-                                    {/* Retroalimentación de la IA con texto oscuro hiperlegible */}
                                     {pbRoleplay.retroalimentacion && (
-                                       <div className="p-4 bg-slate-100 rounded-xl border border-slate-300 text-xs text-slate-900 leading-relaxed shadow-sm font-medium">
-                                         <span className="font-extrabold text-indigo-700 block mb-1.5 uppercase tracking-wider text-[11px]">
-                                           Análisis Cualitativo de IA:
-                                         </span>
-                                         <p className="text-slate-900 font-medium">
-                                           {pbRoleplay.retroalimentacion}
-                                         </p>
-                                       </div>
-                                     )}
+                                      <div className="m-4 pl-4 py-2 border-l-4 border-marcador">
+                                        <p className="text-sm font-bold text-slate-900 mb-1">Análisis cualitativo de la IA</p>
+                                        <p className="text-sm text-slate-700 leading-relaxed">{pbRoleplay.retroalimentacion}</p>
+                                      </div>
+                                    )}
 
-                                    {/* Burbujas del Diálogo Estilizadas de Alto Contraste */}
-                                    <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar-visible p-3 bg-slate-950 rounded-xl border border-slate-800">
+                                    <div className="space-y-4 max-h-[450px] overflow-y-auto p-4 custom-scrollbar-visible">
                                       {transcripcion.map((msg: any, mIdx: number) => {
                                         const r = String(msg.rol || msg.role || msg.sender || '').toLowerCase()
                                         // Discriminación estricta de roles: user/candidato vs assistant/model/bot
@@ -1464,21 +1490,15 @@ export default function PanelEvaluador() {
                                         const texto = msg.contenido || msg.texto || msg.content || (typeof msg === 'string' ? msg : JSON.stringify(msg))
 
                                         return (
-                                          <div
-                                            key={mIdx}
-                                            className={`flex flex-col ${esCandidato ? 'items-end' : 'items-start'} space-y-1`}
-                                          >
-                                            <div className="flex items-center gap-1.5 px-1">
-                                              <span className={`text-[11px] font-extrabold tracking-wide ${esCandidato ? 'text-indigo-400' : 'text-amber-400'}`}>
-                                                {esCandidato ? `Evaluado (${agrupadoSeleccionado.nombre} ${agrupadoSeleccionado.apellido})` : nombreClienteIA}
-                                              </span>
-                                            </div>
-
+                                          <div key={mIdx} className={`flex flex-col ${esCandidato ? 'items-end' : 'items-start'} gap-1`}>
+                                            <span className="text-xs text-slate-500 px-1">
+                                              {esCandidato ? `Evaluado (${agrupadoSeleccionado.nombre} ${agrupadoSeleccionado.apellido})` : nombreClienteIA}
+                                            </span>
                                             <div
-                                              className={`p-4 rounded-2xl max-w-[88%] text-xs md:text-sm leading-relaxed shadow-sm font-semibold ${
+                                              className={`px-4 py-2.5 max-w-[88%] text-sm leading-relaxed ${
                                                 esCandidato
-                                                  ? 'bg-indigo-100 text-indigo-950 rounded-tr-none border border-indigo-300'
-                                                  : 'bg-slate-100 text-slate-950 rounded-tl-none border border-slate-300'
+                                                  ? 'bg-indigo-600 text-white rounded-2xl rounded-br-sm'
+                                                  : 'bg-slate-100 text-slate-900 border border-slate-200 rounded-2xl rounded-bl-sm'
                                               }`}
                                             >
                                               {texto}
@@ -1512,7 +1532,7 @@ export default function PanelEvaluador() {
                         </div>
                       )}
 
-                      <button onClick={() => generarPDF(sesionSeleccionada)} className="w-full mt-8 flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all">
+                      <button type="button" onClick={() => generarPDF(sesionSeleccionada)} className="w-full mt-8 flex items-center justify-center gap-2 py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors">
                         <Download className="w-4 h-4" /> Descargar PDF
                       </button>
                     </div>
@@ -1520,9 +1540,9 @@ export default function PanelEvaluador() {
                 </div>
               </div>
             ) : (
-              <div className="bg-slate-50 border border-slate-200 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center h-full">
-                <Search className="w-8 h-8 text-slate-300 mb-2" />
-                <p className="text-xs text-slate-500">Selecciona un candidato para analizar</p>
+              <div className="border border-slate-300 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center h-full">
+                <Search className="w-8 h-8 text-slate-400 mb-2" />
+                <p className="text-slate-500">Elegí un candidato de la lista para ver su detalle.</p>
               </div>
             )}
           </div>

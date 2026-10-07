@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
-import { Clock, CheckCircle, AlertTriangle } from 'lucide-react'
+import { Marco } from '@/components/candidato/Marco'
+import { PantallaCarga, PantallaFin, PantallaSiguiente } from '@/components/candidato/Estados'
 import { FRASES_INCOMPLETAS_ID, FRASES_ESTIMULO } from '@/lib/frasesIncompletas'
 
 export default function FrasesIncompletasPage() {
@@ -133,125 +134,68 @@ export default function FrasesIncompletasPage() {
     }
   }
 
-  if (cargando) {
-    return (
-      <div className="flex justify-center items-center h-screen bg-slate-50">
-        <p className="text-slate-500 font-medium">Cargando evaluación...</p>
-      </div>
-    )
-  }
-
-  if (finalizado && enEvaluacion) {
-    return (
-      <div className="flex justify-center items-center h-screen bg-slate-50 font-sans">
-        <p className="text-slate-500 font-medium animate-pulse">Guardando y redirigiendo...</p>
-      </div>
-    )
-  }
-
-  if (finalizado) {
-    return (
-      <div className="min-h-screen bg-slate-50 py-12 px-4 flex items-center justify-center font-sans">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-10 text-center border border-slate-100">
-          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
-            <CheckCircle className="w-10 h-10" />
-          </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-4">Evaluación Completada</h1>
-          {nombreCandidato && <p className="text-slate-600 mb-6">Gracias, <strong>{nombreCandidato}</strong>.</p>}
-          <p className="text-slate-500 text-sm mb-8">Tus respuestas de frases incompletas fueron registradas correctamente.</p>
-        </div>
-      </div>
-    )
-  }
+  if (cargando) return <PantallaCarga texto="Cargando la evaluación…" />
+  if (finalizado && enEvaluacion) return <PantallaSiguiente />
+  if (finalizado) return <PantallaFin nombre={nombreCandidato}>Tus respuestas de frases incompletas fueron registradas correctamente.</PantallaFin>
 
   const minutos = Math.floor(tiempoRestante / 60)
   const segundos = tiempoRestante % 60
   const tiempoCritico = tiempoRestante <= 180 // Menos de 3 minutos
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 font-sans">
-      <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden">
-        
-        {/* HEADER FLOTANTE DEL TEST */}
-        <div className="sticky top-0 bg-white/95 backdrop-blur-md px-6 py-4 border-b border-slate-200 flex justify-between items-center z-10">
-          <div>
-            <h1 className="text-lg font-black text-slate-900">Frases Incompletas</h1>
-            <p className="text-xs text-slate-400 font-medium">Asociación libre y proyección laboral</p>
-          </div>
-          
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border font-bold text-sm transition-colors ${
-            tiempoCritico 
-              ? 'bg-rose-50 border-rose-200 text-rose-600 animate-pulse' 
-              : 'bg-indigo-50 border-indigo-100 text-indigo-700'
-          }`}>
-            <Clock className="w-4 h-4" />
-            <span>{minutos}:{String(segundos).padStart(2, '0')}</span>
-          </div>
+    <Marco titulo="Frases incompletas">
+      <div className="pp-fijo">
+        <div>
+          <h1 className="pp-prueba-nombre">Frases incompletas</h1>
+          <p className="pp-prueba-avance">Asociación libre y proyección laboral</p>
         </div>
-
-        {/* INSTRUCCIONES */}
-        <div className="p-6 bg-slate-50/50 border-b border-slate-100 text-slate-600 space-y-3">
-          <p className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
-            <AlertTriangle className="w-4 h-4 text-amber-500" /> Instrucciones de la Prueba:
-          </p>
-          <ul className="text-xs space-y-2 pl-4 list-disc text-slate-500 leading-relaxed">
-            <li>A continuación verás 22 frases incompletas. Completa cada una de ellas con el <strong>primer pensamiento</strong> que te venga a la mente.</li>
-            <li>Intenta ser espontáneo y natural. No pienses demasiado tus respuestas.</li>
-            <li>Dispones de un tiempo total de <strong>15 minutos</strong>. Si el tiempo finaliza, tus respuestas se guardarán de forma automática.</li>
-            <li>No recargues la página ni cierres el portal hasta finalizar la prueba.</li>
-          </ul>
+        <div className="pp-tiempo" data-estado={tiempoCritico ? 'alarma' : 'normal'} role="timer" aria-label={`Tiempo restante: ${minutos} minutos ${segundos} segundos`}>
+          <span className="pp-tiempo-num">{minutos}:{String(segundos).padStart(2, '0')}</span>
         </div>
-
-        {mensajeProrroga && (
-          <div className="mx-6 mt-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 text-amber-800 animate-pulse">
-            <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
-            <div className="text-xs font-semibold leading-relaxed">
-              {mensajeProrroga}
-            </div>
-          </div>
-        )}
-
-        {/* FORMULARIO DE FRASES */}
-        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
-          <div className="space-y-6">
-            {FRASES_ESTIMULO.map((item) => (
-              <div key={item.id} className="flex flex-col gap-2 p-4 bg-slate-50/40 border border-slate-100 rounded-2xl hover:border-slate-200 transition-colors">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Frase {item.id} de {FRASES_ESTIMULO.length}
-                </label>
-                <div className="flex flex-col md:flex-row md:items-center gap-3">
-                  <span className="text-sm font-bold text-slate-800 shrink-0">
-                    {item.texto}...
-                  </span>
-                  <input
-                    type="text"
-                    value={respuestas[item.id] || ''}
-                    onChange={(e) => handleInputChange(item.id, e.target.value)}
-                    placeholder="Completa la frase aquí..."
-                    className="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-700 bg-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
-                    spellCheck="false"
-                    autoComplete="off"
-                    autoCorrect="off"
-                    autoCapitalize="none"
-                    maxLength={150}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="pt-8 border-t border-slate-100 flex justify-end">
-            <button
-              type="submit"
-              disabled={enviando}
-              className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-100 transition-all hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-slate-300 disabled:cursor-not-allowed disabled:transform-none"
-            >
-              {enviando ? 'Guardando...' : 'Finalizar Evaluación'}
-            </button>
-          </div>
-        </form>
-
       </div>
-    </div>
+
+      <section className="pp-aparte" aria-labelledby="pp-instrucciones">
+        <h2 id="pp-instrucciones">Antes de empezar</h2>
+        <ul className="pp-instrucciones">
+          <li>A continuación verás {FRASES_ESTIMULO.length} frases incompletas. Completá cada una con el <strong>primer pensamiento</strong> que te venga a la mente.</li>
+          <li>Intentá ser espontáneo y natural. No pienses demasiado tus respuestas.</li>
+          <li>Tenés un tiempo total de <strong>15 minutos</strong>. Si el tiempo termina, tus respuestas se guardan de forma automática.</li>
+          <li>No recargues la página ni cierres el portal hasta terminar la prueba.</li>
+        </ul>
+      </section>
+
+      {mensajeProrroga && (
+        <div className="pp-alerta pp-alerta-aviso" role="status">
+          <p>{mensajeProrroga}</p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="pp-frases">
+        {FRASES_ESTIMULO.map((item) => (
+          <div key={item.id} className="pp-frase">
+            <label htmlFor={`frase-${item.id}`}>
+              <span className="pp-frase-numero">Frase {item.id} de {FRASES_ESTIMULO.length}</span>
+              <span className="pp-frase-texto">{item.texto}…</span>
+            </label>
+            <input
+              id={`frase-${item.id}`}
+              type="text"
+              value={respuestas[item.id] || ''}
+              onChange={(e) => handleInputChange(item.id, e.target.value)}
+              placeholder="Completá la frase acá"
+              spellCheck="false"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              maxLength={150}
+            />
+          </div>
+        ))}
+
+        <button type="submit" className="pp-boton pp-boton-ancho" disabled={enviando}>
+          {enviando ? 'Guardando…' : 'Finalizar evaluación'}
+        </button>
+      </form>
+    </Marco>
   )
 }

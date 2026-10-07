@@ -3,10 +3,9 @@
 import { useEffect, useState, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { marcarEvaluacionOperativaEnCurso, marcarEvaluacionOperativaCompletada } from '@/lib/progresoOperativo'
-import { 
-  Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX, 
-  MessageSquare, Loader2, ShieldAlert, ArrowLeft, PlayCircle
-} from 'lucide-react'
+import { PhoneOff, Mic, MicOff, Volume2, VolumeX, MessageSquare, Loader2 } from 'lucide-react'
+import { Marco } from '@/components/candidato/Marco'
+import { PantallaCarga, PantallaError } from '@/components/candidato/Estados'
 
 export default function RolePlayPage() {
   const searchParams = useSearchParams()
@@ -426,289 +425,197 @@ export default function RolePlayPage() {
     }
   }
 
-  if (cargando) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
-      </div>
-    )
-  }
+  if (cargando) return <PantallaCarga texto="Preparando la simulación…" />
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-950 flex justify-center items-center p-6 text-center">
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-lg">
-          <ShieldAlert className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-lg font-bold text-white mb-2">Simulación Bloqueada</h2>
-          <p className="text-sm text-slate-400 mb-6">{error}</p>
-          <button 
-            onClick={() => router.push(`/evaluacion?candidato=${candidatoId}&proceso=${procesoId}${token ? `&token=${encodeURIComponent(token)}` : ''}`)}
-            className="flex items-center justify-center gap-2 mx-auto px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-semibold transition-all"
-          >
-            <ArrowLeft className="w-4 h-4" /> Volver al portal
-          </button>
-        </div>
-      </div>
+      <PantallaError
+        titulo="Simulación bloqueada"
+        mensaje={error}
+        etiqueta="Volver al portal"
+        onReintentar={() => router.push(`/evaluacion?candidato=${candidatoId}&proceso=${procesoId}${token ? `&token=${encodeURIComponent(token)}` : ''}`)}
+      />
+    )
+  }
+
+  const cliente = esAtencion
+    ? { nombre: 'Laura Benítez', iniciales: 'LB' }
+    : { nombre: 'Carlos Gómez', iniciales: 'CG' }
+
+  // Antes de empezar: la ficha del cliente y los objetivos se leen con calma, en tamaño normal
+  if (!llamadaIniciada) {
+    return (
+      <Marco titulo="Simulación de llamada">
+        <h1 className="pp-titulo">{esAtencion ? 'Simulación de recepción de reclamo' : 'Simulación de llamada de cobranza'}</h1>
+        <p className="pp-lead">
+          {esAtencion
+            ? <>Vas a simular la atención de un reclamo telefónico como <strong>Analista de Soporte y Atención al Cliente</strong> de <strong>República Microfinanzas</strong>.</>
+            : <>Vas a simular una llamada como <strong>Analista de Cobranzas telefónicas</strong> de <strong>República Microfinanzas</strong>.</>
+          }
+        </p>
+
+        {esAtencion ? (
+          <>
+            <section className="pp-aparte" aria-labelledby="pp-ficha">
+              <h2 id="pp-ficha">Ficha de la clienta</h2>
+              <ul className="pp-instrucciones">
+                <li><strong>Nombre:</strong> Laura Benítez.</li>
+                <li><strong>Negocio:</strong> Dueña de una pañalera y artículos de limpieza de barrio.</li>
+                <li><strong>Problema:</strong> Reclama un cobro duplicado en su cuenta de Microfinanzas por un valor de $8,500.</li>
+                <li><strong>Estado de ánimo:</strong> Muy molesta por la falta de respuesta en los canales digitales y la urgencia de su dinero.</li>
+              </ul>
+            </section>
+            <section className="pp-aparte" aria-labelledby="pp-objetivos">
+              <h2 id="pp-objetivos">Objetivos de la llamada</h2>
+              <ul className="pp-instrucciones">
+                <li><strong>Contener y empatizar:</strong> Saludar profesionalmente, validar la molestia de la clienta por el error y disculparte sinceramente.</li>
+                <li><strong>Indagar detalles:</strong> Solicitar su número de DNI o Cuenta para validar la transacción en el sistema de manera calmada.</li>
+                <li><strong>Ofrecer solución clara:</strong> Explicar el proceso administrativo de reintegro (se acreditará en un plazo de 24 a 48 horas hábiles).</li>
+                <li><strong>Tono y estilo:</strong> Mantener un tono y estilo de comunicación lo más profesional posible en todo momento, evitando confrontaciones, expresiones informales o impaciencia.</li>
+              </ul>
+            </section>
+          </>
+        ) : (
+          <>
+            <section className="pp-aparte" aria-labelledby="pp-ficha">
+              <h2 id="pp-ficha">Ficha del cliente a contactar</h2>
+              <ul className="pp-instrucciones">
+                <li><strong>Nombre:</strong> Carlos Gómez.</li>
+                <li><strong>Producto:</strong> Préstamo personal para Capital de Trabajo de su almacén.</li>
+                <li><strong>Situación de mora:</strong> 45 días de atraso en la cuota mensual.</li>
+                <li><strong>Monto adeudado:</strong> $35,000 (pesos uruguayos).</li>
+                <li><strong>Historial:</strong> Era un cliente con excelente conducta de pago, pero ha tenido dificultades recientes para regularizar sus cuotas.</li>
+              </ul>
+            </section>
+            <section className="pp-aparte" aria-labelledby="pp-objetivos">
+              <h2 id="pp-objetivos">Objetivo de la llamada</h2>
+              <ul className="pp-instrucciones">
+                <li><strong>Identificarte profesionalmente:</strong> Saludar al cliente, identificarte con tu nombre e indicar que llamas en representación de República Microfinanzas.</li>
+                <li><strong>Indagar el motivo:</strong> Indagar el motivo del atraso en sus pagos.</li>
+                <li><strong>Negociar un compromiso:</strong> Encontrar una solución de pago viable (promesa de pago para una fecha específica o posibilidad de refinanciación) adaptada a su situación.</li>
+                <li><strong>Tono y estilo:</strong> Mantener un tono y estilo de comunicación lo más profesional posible en todo momento, evitando confrontaciones, expresiones informales o impaciencia.</li>
+              </ul>
+            </section>
+          </>
+        )}
+
+        <fieldset className="pp-preferencias">
+          <legend>Cómo querés hacer la llamada</legend>
+          <label className="pp-interruptor">
+            <input type="checkbox" checked={!audioMutado} onChange={() => setAudioMutado(!audioMutado)} />
+            <span>Escuchar la voz del cliente</span>
+          </label>
+          <label className="pp-interruptor">
+            <input type="checkbox" checked={fallbackTexto} onChange={() => setFallbackTexto(!fallbackTexto)} />
+            <span>Responder por escrito en vez de hablar</span>
+          </label>
+        </fieldset>
+
+        <button type="button" className="pp-boton" onClick={iniciarLlamada}>Iniciar llamada</button>
+      </Marco>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-xl overflow-hidden flex flex-col h-[650px] max-h-[calc(100vh-2rem)] relative">
-        
-        {/* CABECERA SIMULADOR DE LLAMADA EJECUTIVA */}
-        <div className="p-5 bg-slate-900/90 border-b border-slate-800/80 backdrop-blur-md flex items-center justify-between z-10">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              {reproduciendoAudio && (
-                <div className="absolute -inset-2 rounded-2xl bg-indigo-500/30 animate-ping pointer-events-none"></div>
-              )}
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-slate-800 border border-indigo-500/30 flex items-center justify-center font-bold text-white shadow-lg relative z-10">
-                {esAtencion ? 'LB' : 'CG'}
-              </div>
-              <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-slate-900 rounded-full animate-pulse z-20"></span>
-            </div>
+    <Marco titulo="Llamada en curso">
+      <div className="pp-llamada">
+        <div className="pp-llamada-cab">
+          <div className="pp-contacto">
+            <span className="pp-avatar" data-habla={reproduciendoAudio} aria-hidden="true">{cliente.iniciales}</span>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-white">{esAtencion ? 'Laura Benítez' : 'Carlos Gómez'}</h2>
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
-                  Llamada en Línea
-                  {reproduciendoAudio && (
-                    <span className="flex items-end gap-0.5 h-2.5 ml-0.5">
-                      <span className="w-0.5 bg-emerald-400 rounded-full animate-bounce h-full"></span>
-                      <span className="w-0.5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.15s] h-full"></span>
-                      <span className="w-0.5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.3s] h-full"></span>
-                    </span>
-                  )}
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-400">
-                {esAtencion ? 'Reclamo de Servicio • Pañalera' : 'Negociación de Mora • Almacén de Barrio'}
-              </p>
+              <h1 className="pp-contacto-nombre">{cliente.nombre}</h1>
+              <p className="pp-contacto-estado">{reproduciendoAudio ? 'Hablando…' : 'Llamada en línea'}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="pp-llamada-herr">
             <button
+              type="button"
+              className="pp-icono"
               onClick={() => setAudioMutado(!audioMutado)}
-              className="p-2 bg-slate-800/80 hover:bg-slate-700 rounded-xl transition-all text-slate-400 hover:text-white"
-              title={audioMutado ? "Activar sonido" : "Mutar sonido"}
+              aria-pressed={audioMutado}
+              aria-label={audioMutado ? 'Activar sonido' : 'Silenciar sonido'}
+              title={audioMutado ? 'Activar sonido' : 'Silenciar sonido'}
             >
-              {audioMutado ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-indigo-400" />}
+              {audioMutado ? <VolumeX size={18} /> : <Volume2 size={18} />}
             </button>
             <button
+              type="button"
+              className="pp-icono"
               onClick={() => setFallbackTexto(!fallbackTexto)}
-              className={`p-2 rounded-xl transition-all ${
-                fallbackTexto ? 'bg-indigo-600 text-white' : 'bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white'
-              }`}
+              aria-pressed={fallbackTexto}
+              aria-label="Responder por escrito"
               title="Modo de texto alternativo"
             >
-              <MessageSquare className="w-4 h-4" />
+              <MessageSquare size={18} />
             </button>
           </div>
         </div>
 
-        {/* CONTENEDOR DE LA LLAMADA */}
-        <div className={`flex-1 p-6 flex flex-col justify-between relative z-20 ${!llamadaIniciada ? 'overflow-y-auto' : 'overflow-hidden'}`}>
-          
-          {!llamadaIniciada ? (
-            /* PANTALLA ANTES DE EMPEZAR */
-            <div className="flex-1 flex flex-col justify-start items-center text-center p-2 w-full">
-              <div className="w-20 h-20 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-6 animate-pulse">
-                <Phone className="w-8 h-8" />
-              </div>
-              <h1 className="text-lg font-bold text-white mb-2">
-                {esAtencion ? 'Simulación de Recepción de Reclamo' : 'Simulación de Llamada de Cobranza'}
-              </h1>
-              <p className="text-xs text-slate-400 max-w-xs mb-8">
-                {esAtencion 
-                  ? <span>Vas a simular la atención de un reclamo telefónico como <strong>Analista de Soporte y Atención al Cliente</strong> de <strong>República Microfinanzas</strong>.</span>
-                  : <span>Vas a simular una llamada como <strong>Analista de Cobranzas telefónicas</strong> de <strong>República Microfinanzas</strong>.</span>
-                }
-              </p>
-              
-              <div className="bg-slate-950/50 border border-slate-850 rounded-2xl p-5 mb-8 text-left max-w-sm w-full space-y-4">
-                {esAtencion ? (
-                  <>
-                    <div>
-                      <h3 className="text-xs font-bold text-slate-300 mb-1.5">Ficha de la Clienta:</h3>
-                      <ul className="text-[10px] text-slate-400 space-y-1 list-disc pl-4">
-                        <li><strong>Nombre:</strong> Laura Benítez.</li>
-                        <li><strong>Negocio:</strong> Dueña de una pañalera y artículos de limpieza de barrio.</li>
-                        <li><strong>Problema:</strong> Reclama un cobro duplicado en su cuenta de Microfinanzas por un valor de $8,500.</li>
-                        <li><strong>Estado de ánimo:</strong> Muy molesta por la falta de respuesta en los canales digitales y la urgencia de su dinero.</li>
-                      </ul>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-xs font-bold text-slate-300 mb-1.5">Objetivos de la llamada:</h3>
-                      <ul className="text-[10px] text-slate-400 space-y-1 list-disc pl-4">
-                        <li><strong>Contener y Empatizar:</strong> Saludar profesionalmente, validar la molestia de la clienta por el error y disculparte sinceramente.</li>
-                        <li><strong>Indagar detalles:</strong> Solicitar su número de DNI o Cuenta para validar la transacción en el sistema de manera calmada.</li>
-                        <li><strong>Ofrecer solución clara:</strong> Explicar el proceso administrativo de reintegro (se acreditará en un plazo de 24 a 48 horas hábiles).</li>
-                        <li><strong>Tono y Estilo:</strong> Mantener un tono y estilo de comunicación lo más profesional posible en todo momento, evitando confrontaciones, expresiones informales o impaciencia.</li>
-                      </ul>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div>
-                      <h3 className="text-xs font-bold text-slate-300 mb-1.5">Ficha del Cliente a Contactar:</h3>
-                      <ul className="text-[10px] text-slate-400 space-y-1 list-disc pl-4">
-                        <li><strong>Nombre:</strong> Carlos Gómez.</li>
-                        <li><strong>Producto:</strong> Préstamo personal para Capital de Trabajo de su almacén.</li>
-                        <li><strong>Situación de Mora:</strong> 45 días de atraso en la cuota mensual.</li>
-                        <li><strong>Monto adeudado:</strong> $35,000 (pesos Uruguayos).</li>
-                        <li><strong>Historial:</strong> Era un cliente con excelente conducta de pago, pero ha tenido dificultades recientes para regularizar sus cuotas.</li>
-                      </ul>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-xs font-bold text-slate-300 mb-1.5">Objetivo de la llamada:</h3>
-                      <ul className="text-[10px] text-slate-400 space-y-1 list-disc pl-4">
-                        <li><strong>Identificarte profesionalmente:</strong> Saludar al cliente, identificarte con tu nombre e indicar que llamas en representación de República Microfinanzas.</li>
-                        <li><strong>Indagar el motivo:</strong> Indagar el motivo del atraso en sus pagos.</li>
-                        <li><strong>Negociar un compromiso:</strong> Encontrar una solución de pago viable (promesa de pago para una fecha específica o posibilidad de refinanciación) adaptada a su situación.</li>
-                        <li><strong>Tono y Estilo:</strong> Mantener un tono y estilo de comunicación lo más profesional posible en todo momento, evitando confrontaciones, expresiones informales o impaciencia.</li>
-                      </ul>
-                    </div>
-                  </>
-                )}
-              </div>
+        <div className="pp-chat" role="log" aria-live="polite">
+          {mensajes.map((m, idx) => (
+            <div key={idx} className={m.role === 'user' ? 'pp-msg pp-msg-yo' : 'pp-msg'}>
+              <span className="pp-msg-autor">{m.role === 'user' ? 'Vos (analista)' : 'Cliente'}</span>
+              <div className="pp-msg-texto">{m.content}</div>
+            </div>
+          ))}
 
-              <button
-                onClick={iniciarLlamada}
-                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-sm font-bold shadow-lg hover:shadow-indigo-500/25 transition-all flex items-center justify-center gap-2"
-              >
-                <PlayCircle className="w-5 h-5" />
-                Iniciar Llamada
-              </button>
+          {/* Transcripcion parcial en tiempo real */}
+          {transcripcionParcial && (
+            <div className="pp-msg pp-msg-yo pp-msg-parcial">
+              <span className="pp-msg-autor">Escribiendo…</span>
+              <div className="pp-msg-texto">{transcripcionParcial}</div>
+            </div>
+          )}
+        </div>
+
+        <div className="pp-controles">
+          <div className="pp-turnos">
+            <span>Turno {turnoActual} de {maxTurnos}</span>
+            {escuchando && <span className="pp-escuchando">Transcribiendo…</span>}
+          </div>
+
+          {fallbackTexto ? (
+            <div className="pp-escribir">
+              <input
+                type="text"
+                aria-label="Tu mensaje"
+                placeholder="Escribí tu mensaje"
+                value={mensajeEscrito}
+                onChange={(e) => setMensajeEscrito(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && enviarMensajeEscrito()}
+                disabled={guardandoEvaluacion}
+              />
+              <button type="button" className="pp-boton" onClick={enviarMensajeEscrito} disabled={guardandoEvaluacion || !mensajeEscrito.trim()}>Enviar</button>
             </div>
           ) : (
-            /* LLAMADA ACTIVA */
-            <div className="flex-1 flex flex-col justify-between h-full">
-              
-              {/* HISTORIAL VISUAL O INTERFAZ DE LLAMADA */}
-              <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-1 scrollbar-thin">
-                {mensajes.map((m, idx) => (
-                  <div 
-                    key={idx} 
-                    className={`flex flex-col max-w-[85%] ${m.role === 'user' ? 'ml-auto items-end' : 'mr-auto items-start'}`}
-                  >
-                    <span className="text-[9px] text-slate-500 mb-1">
-                      {m.role === 'user' ? 'Tú (Analista)' : 'Cliente'}
-                    </span>
-                    <div className={`px-4 py-2.5 rounded-2xl text-xs ${
-                      m.role === 'user' 
-                        ? 'bg-indigo-600 text-white rounded-tr-none' 
-                        : 'bg-slate-800 text-slate-200 rounded-tl-none'
-                    }`}>
-                      {m.content}
-                    </div>
-                  </div>
-                ))}
-                
-                {/* Transcripción parcial en tiempo real */}
-                {transcripcionParcial && (
-                  <div className="flex flex-col max-w-[85%] ml-auto items-end animate-pulse">
-                    <span className="text-[9px] text-slate-500 mb-1">Escribiendo...</span>
-                    <div className="px-4 py-2.5 bg-indigo-900/50 border border-indigo-800/30 text-indigo-200 rounded-2xl rounded-tr-none text-xs italic">
-                      {transcripcionParcial}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* CONTROLES DE LA LLAMADA */}
-              <div className="space-y-4 pt-4 border-t border-slate-850">
-                {/* Contador de turnos */}
-                <div className="flex justify-between items-center text-[10px] text-slate-500 px-1">
-                  <span>Turno {turnoActual} de {maxTurnos}</span>
-                  {escuchando && <span className="text-indigo-400 flex items-center gap-1">● Transcribiendo...</span>}
-                </div>
-
-                {fallbackTexto ? (
-                  /* CONTROLES DE MODO TEXTO FALLBACK */
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Escribe tu mensaje..."
-                      value={mensajeEscrito}
-                      onChange={(e) => setMensajeEscrito(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && enviarMensajeEscrito()}
-                      disabled={guardandoEvaluacion}
-                      className="flex-1 px-4 py-3 bg-slate-955 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                    <button
-                      onClick={enviarMensajeEscrito}
-                      disabled={guardandoEvaluacion || !mensajeEscrito.trim()}
-                      className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all"
-                    >
-                      Enviar
-                    </button>
-                  </div>
-                ) : (
-                  /* CONTROLES DE MODO VOZ HABLADA */
-                  <div className="flex flex-col items-center gap-2">
-                    <button
-                      onClick={hablar}
-                      disabled={guardandoEvaluacion}
-                      title={escuchando ? 'Presiona para detener y enviar' : 'Presiona para hablar'}
-                      className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg ${
-                        escuchando 
-                          ? 'bg-red-500/20 border border-red-500/30 text-red-500 scale-105 animate-pulse' 
-                          : 'bg-indigo-600 hover:bg-indigo-500 text-white hover:scale-105 hover:shadow-indigo-500/20'
-                      }`}
-                    >
-                      {escuchando ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-                    </button>
-                    {escuchando && (
-                      <div className="flex items-center gap-2 my-1 px-3 py-1 bg-slate-900/90 border border-emerald-500/40 rounded-full shadow-md animate-in fade-in">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                        <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Entrada de Micrófono Activa</span>
-                        <div className="flex items-end gap-0.5 h-3 ml-1">
-                          <span className="w-1 bg-emerald-500 rounded-full animate-bounce h-full"></span>
-                          <span className="w-0.5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.1s] h-full"></span>
-                          <span className="w-1 bg-emerald-500 rounded-full animate-bounce [animation-delay:0.2s] h-full"></span>
-                          <span className="w-0.5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.3s] h-full"></span>
-                        </div>
-                      </div>
-                    )}
-                    <p className="text-[10px] text-slate-400 font-medium animate-pulse text-center">
-                      {escuchando ? "Hable ahora. Cuando termines de decir tu idea, presiona el micrófono de nuevo para enviarla." : "Presiona el micrófono para hablar"}
-                    </p>
-                    <button
-                      onClick={() => setFallbackTexto(true)}
-                      className="text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors font-semibold mt-2 underline decoration-indigo-400/40 underline-offset-4"
-                    >
-                      ¿Problemas con el micrófono? Escribir por chat de texto
-                    </button>
-                  </div>
-                )}
-
-                {/* BOTÓN COLGAR/FINALIZAR MANUAL */}
-                <button
-                  onClick={() => finalizarLlamada()}
-                  disabled={guardandoEvaluacion}
-                  className="w-full py-3 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 text-red-400 hover:text-red-300 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2"
-                >
-                  {guardandoEvaluacion ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> Guardando evaluación...
-                    </>
-                  ) : (
-                    <>
-                      <PhoneOff className="w-4 h-4" /> Colgar y Finalizar Simulación
-                    </>
-                  )}
-                </button>
-
-              </div>
+            <div className="pp-voz">
+              <button
+                type="button"
+                className="pp-mic"
+                data-activo={escuchando}
+                onClick={hablar}
+                disabled={guardandoEvaluacion}
+                aria-label={escuchando ? 'Detener y enviar' : 'Hablar'}
+                title={escuchando ? 'Tocá para detener y enviar' : 'Tocá para hablar'}
+              >
+                {escuchando ? <MicOff size={26} /> : <Mic size={26} />}
+              </button>
+              <p className="pp-voz-ayuda">
+                {escuchando ? 'Hablá ahora. Cuando termines tu idea, tocá el micrófono de nuevo para enviarla.' : 'Tocá el micrófono para hablar.'}
+              </p>
+              <button type="button" className="pp-enlace" onClick={() => setFallbackTexto(true)}>¿Problemas con el micrófono? Escribir por chat de texto</button>
             </div>
           )}
 
+          <button type="button" className="pp-colgar" onClick={() => finalizarLlamada()} disabled={guardandoEvaluacion}>
+            {guardandoEvaluacion ? (
+              <><Loader2 className="pp-girar" size={16} /> Guardando evaluación…</>
+            ) : (
+              <><PhoneOff size={16} /> Colgar y finalizar simulación</>
+            )}
+          </button>
         </div>
-
       </div>
-    </div>
+    </Marco>
   )
 }

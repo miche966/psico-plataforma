@@ -5,6 +5,9 @@ import { useSearchParams } from 'next/navigation'
 import { useEvaluacionRedirect } from '@/lib/useEvaluacionRedirect'
 import { useProctoring } from '@/hooks/useProctoring'
 import { finalizarTestCrudo, MENSAJE_ERROR_GUARDADO } from '@/lib/finalizarTest'
+import { ListaOpciones, MarcoPrueba } from '@/components/candidato/Prueba'
+import { PantallaError, PantallaFin, PantallaGuardadoFallido, PantallaSiguiente } from '@/components/candidato/Estados'
+import { EsqueletoPrueba } from '@/components/candidato/Esqueleto'
 
 const ICAR_ID = 'f6a7b8c9-d0e1-2345-fabc-456789012345'
 
@@ -26,7 +29,7 @@ function MatrizVisual({ codigo }: { codigo: string }) {
   const renderForma = (desc: string, size: number = 28) => {
     const d = desc.toLowerCase()
     const lleno = d.includes('lleno') || (!d.includes('vac') && !d.includes('empty'))
-    const color = '#185FA5'
+    const color = '#17594E'
     const s = size
 
     if (d.includes('círculo') || d.includes('circulo')) {
@@ -59,18 +62,10 @@ function MatrizVisual({ codigo }: { codigo: string }) {
   const esInterrogante = (desc: string) => desc.trim() === '?'
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px', marginBottom: '1.25rem', maxWidth: '180px' }}>
+    <div className="pp-matriz" role="img" aria-label="Matriz de figuras con una celda incógnita">
       {celdas.map((celda, i) => (
-        <div key={i} style={{
-          border: esInterrogante(celda) ? '2px solid #185FA5' : '0.5px solid var(--color-border-secondary)',
-          borderRadius: '8px',
-          background: esInterrogante(celda) ? '#E6F1FB' : 'var(--color-background-secondary)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '6px', aspectRatio: '1'
-        }}>
-          {esInterrogante(celda)
-            ? <span style={{ fontSize: '18px', color: '#185FA5', fontWeight: '500' }}>?</span>
-            : renderForma(celda)}
+        <div key={i} className={esInterrogante(celda) ? 'pp-celda pp-celda-incognita' : 'pp-celda'}>
+          {esInterrogante(celda) ? '?' : renderForma(celda)}
         </div>
       ))}
     </div>
@@ -83,7 +78,7 @@ function OpcionMatriz({ texto, seleccionada, onClick }: {
   const renderForma = (desc: string) => {
     const d = desc.toLowerCase()
     const lleno = d.includes('lleno') || (!d.includes('vac') && !d.includes('empty'))
-    const color = seleccionada ? '#fff' : '#185FA5'
+    const color = seleccionada ? '#12332E' : '#17594E'
     if (d.includes('círculo') || d.includes('circulo'))
       return <svg width="24" height="24" viewBox="0 0 30 30"><circle cx="15" cy="15" r="10" fill={lleno ? color : 'none'} stroke={color} strokeWidth="2"/></svg>
     if (d.includes('cuadrado'))
@@ -94,16 +89,7 @@ function OpcionMatriz({ texto, seleccionada, onClick }: {
   }
 
   return (
-    <button
-      onClick={onClick}
-      style={{
-        border: seleccionada ? 'none' : '0.5px solid var(--color-border-secondary)',
-        borderRadius: '8px',
-        background: seleccionada ? '#185FA5' : 'var(--color-background-secondary)',
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        padding: '8px', cursor: 'pointer', transition: 'all .15s', gap: '4px'
-      }}
-    >
+    <button type="button" className="pp-matriz-opcion" aria-pressed={seleccionada} aria-label={texto} disabled={seleccionada} onClick={onClick}>
       {renderForma(texto)}
     </button>
   )
@@ -111,7 +97,7 @@ function OpcionMatriz({ texto, seleccionada, onClick }: {
 
 function FiguraRotacion({ codigo }: { codigo: string }) {
   const tipo = codigo.split('|')[0]
-  const color = '#185FA5'
+  const color = '#17594E'
   
   // Mapeo de figuras basadas en el banco de ítems de ICAR
   if (tipo === 'ROTACION_A') {
@@ -249,100 +235,42 @@ export default function IcarPage() {
     setTimeout(() => avanzar(opcion), 400)
   }
 
-  if (cargando) return <div style={s.centro}><p>Cargando test...</p></div>
-  if (error) return (
-    <div style={s.centro}>
-      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
-        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{error}</p>
-        <button onClick={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
-      </div>
-    </div>
-  )
-
-  if (errorGuardado) return (
-    <div style={s.centro}>
-      <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 1.5rem' }}>
-        <p style={{ color: '#dc2626', fontSize: '0.95rem', marginBottom: '1.25rem' }}>{MENSAJE_ERROR_GUARDADO}</p>
-        <button onClick={() => terminarTest(respuestas, items)} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}>Reintentar</button>
-      </div>
-    </div>
-  )
-
-  if (finalizado && enEvaluacion) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}><p>Guardando y volviendo al portal...</p></div>
-  if (finalizado) return (
-    <div style={s.contenedor}>
-      <div style={s.checkCirculo}>✓</div>
-      <h1 style={s.titulo}>Evaluación completada</h1>
-      {nombreCandidato && <p style={s.nombreCandidato}>Gracias, <strong>{nombreCandidato}</strong>.</p>}
-      <p style={s.mensajeConfirmacion}>Tu evaluación fue registrada correctamente. Tus respuestas han sido enviadas al equipo de selección para su análisis.</p>
-      <div style={s.contactoBox}>
-        <p style={s.contactoTitulo}>Próximos pasos</p>
-        <p style={s.contactoTexto}>El equipo de selección se pondrá en contacto contigo a la brevedad. Si tenés alguna consulta, podés comunicarte por los siguientes medios:</p>
-        <div style={s.contactoDetalle}>
-          <p style={s.contactoItem}>📧 <a href="mailto:seleccion@republicamicrofinanzas.com.uy" style={s.link}>seleccion@republicamicrofinanzas.com.uy</a></p>
-          <p style={s.contactoItem}>💬 WhatsApp: <a href="https://wa.me/598092651770" style={s.link}>092 651 770</a></p>
-        </div>
-      </div>
-    </div>
-  )
+  if (cargando) return <EsqueletoPrueba />
+  if (error) return <PantallaError mensaje={error} onReintentar={() => { setError(null); setCargando(true); setIntentoCarga(i => i + 1) }} />
+  if (errorGuardado) return <PantallaGuardadoFallido mensaje={MENSAJE_ERROR_GUARDADO} onReintentar={() => terminarTest(respuestas, items)} />
+  if (finalizado && enEvaluacion) return <PantallaSiguiente />
+  if (finalizado) return <PantallaFin nombre={nombreCandidato} />
 
   const item = items[itemActual]
-  if (!item) return <div style={s.centro}><p>Cargando...</p></div>
+  if (!item) return <EsqueletoPrueba />
 
   const esMatriz = item.contenido.startsWith('MATRIZ_')
   const esRotacion = item.contenido.startsWith('ROTACION_')
-  const progreso = Math.round((itemActual / items.length) * 100)
-  const tiempoColor = tiempoRestante <= 10 ? '#dc2626' : tiempoRestante <= 20 ? '#ea580c' : '#1e293b'
 
   const nivelLabel = ['', 'Básico', 'Intermedio', 'Avanzado'][item.nivel_dificultad] || ''
   const subtipoLabel = item.subtipo === 'series' ? 'Serie numérica' : item.subtipo === 'matrices' ? 'Matriz visual' : 'Rotación mental'
 
   return (
-    <div style={s.contenedor}>
-      <div style={s.encabezado}>
-        <div style={s.encabezadoTop}>
-          <span style={s.testNombre}>ICAR — Razonamiento Abstracto</span>
-          <div style={{ ...s.cronometro, color: tiempoColor }}>{tiempoRestante}s</div>
-        </div>
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '0.4rem' }}>
-          <span style={s.progresoTexto}>{itemActual + 1} de {items.length}</span>
-          <span style={{ ...s.badge, background: '#E6F1FB', color: '#0C447C' }}>{subtipoLabel}</span>
-          <span style={{ ...s.badge, background: item.nivel_dificultad === 1 ? '#EAF3DE' : item.nivel_dificultad === 2 ? '#FAEEDA' : '#FCEBEB', color: item.nivel_dificultad === 1 ? '#27500A' : item.nivel_dificultad === 2 ? '#633806' : '#501313' }}>{nivelLabel}</span>
-        </div>
-        <div style={s.barraFondo}>
-          <div style={{ ...s.barraRelleno, width: `${progreso}%` }} />
-        </div>
-      </div>
-
+    <MarcoPrueba
+      nombre="ICAR — Razonamiento Abstracto"
+      actual={itemActual + 1}
+      total={items.length}
+      categoria={`${subtipoLabel}${nivelLabel ? ` (nivel ${nivelLabel.toLowerCase()})` : ''}`}
+      restante={tiempoRestante}
+      limite={60}
+    >
       {!esMatriz && !esRotacion && (
         <>
-          <h2 style={s.pregunta}>{item.contenido}</h2>
-          <div style={s.opciones}>
-            {item.opciones.map((opcion, index) => (
-              <button
-                key={index}
-                style={{
-                  ...s.opcionBoton,
-                  background: seleccionada === opcion ? '#185FA5' : '#fff',
-                  color: seleccionada === opcion ? '#fff' : '#1e293b',
-                  borderColor: seleccionada === opcion ? '#185FA5' : '#e2e8f0',
-                }}
-                onClick={() => responder(opcion)}
-                disabled={seleccionada !== null}
-              >
-                <span style={s.opcionLetra}>{['A','B','C','D'][index]}</span>
-                {opcion}
-              </button>
-            ))}
-          </div>
+          <h2 className="pp-enunciado">{item.contenido}</h2>
+          <ListaOpciones opciones={item.opciones} elegida={seleccionada} onElegir={responder} />
         </>
       )}
 
       {esMatriz && (
         <>
-          <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>¿Cuál figura completa correctamente la matriz?</p>
+          <p className="pp-consigna">¿Cuál figura completa correctamente la matriz?</p>
           <MatrizVisual codigo={item.contenido} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '8px' }}>
+          <div className="pp-matriz-opciones">
             {item.opciones.map((opcion, index) => (
               <OpcionMatriz
                 key={index}
@@ -357,64 +285,14 @@ export default function IcarPage() {
 
       {esRotacion && (
         <>
-          <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>¿Cuál es la misma figura rotada?</p>
-          <div style={{ background: 'var(--color-background-secondary)', borderRadius: '8px', padding: '1rem', marginBottom: '1rem', display: 'inline-block' }}>
+          <p className="pp-consigna">¿Cuál es la misma figura rotada?</p>
+          <div className="pp-figura">
             <FiguraRotacion codigo={item.contenido} />
-            <div style={{ fontSize: '10px', color: 'var(--color-text-secondary)', textAlign: 'center', marginTop: '4px' }}>Original</div>
+            <small>Original</small>
           </div>
-          <div style={s.opciones}>
-            {item.opciones.map((opcion, index) => (
-              <button
-                key={index}
-                style={{
-                  ...s.opcionBoton,
-                  background: seleccionada === opcion ? '#185FA5' : '#fff',
-                  color: seleccionada === opcion ? '#fff' : '#1e293b',
-                  borderColor: seleccionada === opcion ? '#185FA5' : '#e2e8f0',
-                }}
-                onClick={() => responder(opcion)}
-                disabled={seleccionada !== null}
-              >
-                <span style={s.opcionLetra}>{['A','B','C','D'][index]}</span>
-                {opcion}
-              </button>
-            ))}
-          </div>
+          <ListaOpciones opciones={item.opciones} elegida={seleccionada} onElegir={responder} />
         </>
       )}
-
-      <div style={s.barraTiempo}>
-        <div style={{ ...s.barraTiempoRelleno, width: `${(tiempoRestante / 60) * 100}%`, background: tiempoColor }} />
-      </div>
-    </div>
+    </MarcoPrueba>
   )
-}
-
-const s = {
-  centro: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' } as React.CSSProperties,
-  contenedor: { maxWidth: '600px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' } as React.CSSProperties,
-  encabezado: { marginBottom: '1.5rem' } as React.CSSProperties,
-  encabezadoTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' } as React.CSSProperties,
-  testNombre: { fontSize: '0.75rem', fontWeight: '500', color: '#185FA5', textTransform: 'uppercase' as const, letterSpacing: '0.05em' } as React.CSSProperties,
-  cronometro: { fontSize: '1.25rem', fontWeight: '700', minWidth: '48px', textAlign: 'right' as const, transition: 'color 0.3s' } as React.CSSProperties,
-  progresoTexto: { fontSize: '0.875rem', color: '#64748b' } as React.CSSProperties,
-  badge: { fontSize: '10px', padding: '2px 8px', borderRadius: '99px', fontWeight: '500' } as React.CSSProperties,
-  barraFondo: { width: '100%', height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' } as React.CSSProperties,
-  barraRelleno: { height: '100%', background: '#185FA5', borderRadius: '3px', transition: 'width 0.3s ease' } as React.CSSProperties,
-  pregunta: { fontSize: '1.2rem', fontWeight: '500', color: '#1e293b', lineHeight: '1.6', marginBottom: '1.75rem', fontFamily: 'monospace' } as React.CSSProperties,
-  opciones: { display: 'flex', flexDirection: 'column' as const, gap: '0.75rem', marginBottom: '1.5rem' } as React.CSSProperties,
-  opcionBoton: { padding: '0.875rem 1.25rem', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '1rem', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s ease', display: 'flex', alignItems: 'center', gap: '0.75rem' } as React.CSSProperties,
-  opcionLetra: { display: 'inline-flex', width: '24px', height: '24px', borderRadius: '50%', background: '#f1f5f9', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: '600', flexShrink: 0 } as React.CSSProperties,
-  barraTiempo: { width: '100%', height: '4px', background: '#e2e8f0', borderRadius: '2px', overflow: 'hidden' } as React.CSSProperties,
-  barraTiempoRelleno: { height: '100%', borderRadius: '2px', transition: 'width 1s linear, background 0.3s' } as React.CSSProperties,
-  checkCirculo: { width: '64px', height: '64px', borderRadius: '50%', background: '#16a34a', color: '#fff', fontSize: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' } as React.CSSProperties,
-  titulo: { fontSize: '1.5rem', fontWeight: '600', color: '#1e293b', textAlign: 'center' as const, marginBottom: '0.5rem' } as React.CSSProperties,
-  nombreCandidato: { fontSize: '1.125rem', color: '#1e293b', textAlign: 'center' as const, margin: '0 0 1rem' } as React.CSSProperties,
-  mensajeConfirmacion: { fontSize: '0.9rem', color: '#475569', lineHeight: '1.6', textAlign: 'center' as const, marginBottom: '2rem' } as React.CSSProperties,
-  contactoBox: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem' } as React.CSSProperties,
-  contactoTitulo: { fontSize: '0.875rem', fontWeight: '600', color: '#1e293b', margin: '0 0 0.5rem' } as React.CSSProperties,
-  contactoTexto: { fontSize: '0.875rem', color: '#64748b', lineHeight: '1.6', margin: '0 0 1rem' } as React.CSSProperties,
-  contactoDetalle: { display: 'flex', flexDirection: 'column' as const, gap: '0.5rem' } as React.CSSProperties,
-  contactoItem: { fontSize: '0.875rem', color: '#1e293b', margin: 0 } as React.CSSProperties,
-  link: { color: '#2563eb', textDecoration: 'none' } as React.CSSProperties,
 }

@@ -1,11 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Plus, Check, Link as LinkIcon, Search, FileText, X, Eye, Settings, Clock, CheckCircle2, BellRing, Upload, ClipboardPaste, UserPlus, Download, Video } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Link as LinkIcon, FileText, X, BellRing, Upload, ClipboardPaste, UserPlus, Download, Video } from 'lucide-react'
 import { getAdminHeaders, obtenerLinkEvaluacion } from '@/lib/evaluacionLink'
 import { useAdminRole } from '@/lib/useAdminRole'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
+import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
+import { EsqueletoLista } from '@/components/Esqueleto'
+import { calcularProgresoEvaluacion } from '@/lib/progresoEvaluacion'
 
 // navigator.clipboard.writeText exige que el documento tenga foco en el momento exacto en
 // que se llama. Como el link se genera con un fetch async antes de copiarlo, el foco se
@@ -128,6 +131,24 @@ export default function GestionProcesos() {
   const [progresoOperativo, setProgresoOperativo] = useState<any[]>([])
   const [exportandoLinks, setExportandoLinks] = useState(false)
   const [recordatorios, setRecordatorios] = useState<any[]>([])
+  const [preguntasVideo, setPreguntasVideo] = useState<any[]>([])
+  const [busquedaAsignar, setBusquedaAsignar] = useState('')
+  const [error, setError] = useState(false)
+  const primeraCarga = useRef(true)   // el esqueleto solo se muestra la primera vez: al asignar o editar la lista no tiene que parpadear
+  const botonCerrarMasivoRef = useRef<HTMLButtonElement>(null)
+
+  // La carga masiva se cierra con Escape, el foco entra al abrirla y vuelve al botón que la abrió
+  useEffect(() => {
+    if (!mostrarCargaMasiva) return
+    const abridor = document.activeElement as HTMLElement | null
+    botonCerrarMasivoRef.current?.focus()
+    const alTeclear = (e: KeyboardEvent) => { if (e.key === 'Escape') setMostrarCargaMasiva(false) }
+    document.addEventListener('keydown', alTeclear)
+    return () => {
+      document.removeEventListener('keydown', alTeclear)
+      abridor?.focus?.()
+    }
+  }, [mostrarCargaMasiva])
 
   useEffect(() => {
     cargarDatos()
@@ -444,7 +465,8 @@ export default function GestionProcesos() {
   }
 
   async function cargarDatos() {
-    setCargando(true)
+    if (primeraCarga.current) setCargando(true)
+    setError(false)
     try {
       const response = await fetch('/api/admin/procesos', {
         headers: await getAdminHeaders(),
@@ -464,90 +486,251 @@ export default function GestionProcesos() {
       if (payload.entrevistas) setEntrevistas(payload.entrevistas)
       if (payload.sesiones) setSesiones(payload.sesiones)
       if (payload.respuestasVideo) setVideoRespuestas(payload.respuestasVideo)
+      if (payload.preguntasVideo) setPreguntasVideo(payload.preguntasVideo)
       setProgresoOperativo(Array.isArray(progresoJson.data) ? progresoJson.data : [])
       setRecordatorios(Array.isArray(recordatoriosJson.data) ? recordatoriosJson.data : [])
     } catch (err) {
       console.error('Falla total:', err)
+      if (primeraCarga.current) setError(true)
     } finally {
+      primeraCarga.current = false
       setCargando(false)
     }
   }
 
-  const procesosFiltrados = procesos.filter(p => 
-    p.nombre.toLowerCase().includes(filtro.toLowerCase()) || 
+  const procesosFiltrados = procesos.filter(p =>
+    p.nombre.toLowerCase().includes(filtro.toLowerCase()) ||
     p.cargo.toLowerCase().includes(filtro.toLowerCase())
   )
 
-  if (cargando) return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>
+  async function exportarLinks() {
+    if (!procesoSeleccionado) return
+    setExportandoLinks(true)
+    try {
+      const csvData = await Promise.all(candidatosProceso.map(async c => {
+        // Encontrar la sesión para este proceso y obtener su estado/fecha
+        const sesion = sesiones.find(s => s.candidato_id === c.id && s.proceso_id === procesoSeleccionado.id)
+        let linkEvaluacion = ''
+        try {
+          linkEvaluacion = await obtenerLinkEvaluacion(c.id, procesoSeleccionado.id)
+        } catch (err: any) {
+          console.error(`Error al generar link firmado para ${c.email}:`, err.message)
+        }
+        return {
+          Nombre: c.nombre,
+          Apellido: c.apellido,
+          Email: c.email,
+          Estado: sesion?.estado || 'Sin iniciar',
+          Fecha_Asignacion: sesion?.creado_en ? new Date(sesion.creado_en).toLocaleDateString() : 'N/A',
+          Link_Evaluacion: linkEvaluacion
+        }
+      }))
+      const csv = Papa.unparse(csvData)
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.setAttribute('download', `Links_${procesoSeleccionado.cargo.replace(/\s+/g, '_')}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } finally {
+      setExportandoLinks(false)
+    }
+  }
+
+  function alternarFormulario() {
+    if (mostrarForm) {
+      setMostrarForm(false)
+      setModoEdicion(false)
+    } else {
+      setForm({ nombre: '', cargo: '', descripcion: '', descripcion_cargo: '', bateria_tests: [], competencias_requeridas: [] })
+      setModoEdicion(false)
+      setMostrarForm(true)
+    }
+  }
+
+  if (cargando) return <EsqueletoLista />
+
+  if (error) {
+    return (
+      <div role="alert" className="py-12 text-center">
+        <p className="text-slate-900 font-medium mb-1">No se pudieron cargar los procesos.</p>
+        <p className="text-sm text-slate-500 mb-4">Revisá tu conexión y probá de nuevo.</p>
+        <button
+          type="button"
+          onClick={cargarDatos}
+          className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors"
+        >
+          Reintentar
+        </button>
+      </div>
+    )
+  }
+
+  // Avance de cada participante del proceso elegido: mismo cálculo que el panel (solo sesiones finalizadas de ESTE proceso,
+  // videoentrevista completa), en vez de contar cualquier sesión del candidato, incluida la pendiente que se crea al asignarlo
+  const bateriaProceso = procesoSeleccionado?.bateria_tests || []
+  const participantes = procesoSeleccionado
+    ? candidatosProceso
+      .map(c => {
+        const sesionesDe = sesiones.filter(s => s.candidato_id === c.id && s.proceso_id === procesoSeleccionado.id)
+        const videosDe = videoRespuestas.filter(v => v.candidato_id === c.id)
+        const progreso = calcularProgresoEvaluacion(bateriaProceso, sesionesDe, videosDe, preguntasVideo)
+        const tieneActividad = progresoOperativo.some(p => p.candidato_id === c.id && p.proceso_id === procesoSeleccionado.id && ['en_curso', 'pausada'].includes(p.estado))
+        let estado: 'completada' | 'en curso' | 'pendiente' = 'en curso'
+        if (progreso.completados === 0 && !tieneActividad) estado = 'pendiente'
+        else if (progreso.total > 0 && progreso.completados >= progreso.total) estado = 'completada'
+        return { ...c, comp: progreso.completados, total: progreso.total, estado }
+      })
+      .filter(c => filtroEstado === 'todos' || c.estado === filtroEstado)
+      .filter(c => {
+        const q = busquedaParticipante.trim().toLowerCase()
+        if (!q) return true
+        return `${c.nombre || ''} ${c.apellido || ''}`.toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q)
+      })
+    : []
+
+  // Candidatos que se pueden sumar: los que todavía no están en este proceso (y se avisa si ya participan en otro)
+  const idsParticipantes = new Set(candidatosProceso.map(c => c.id))
+  const idsEnOtroProceso = new Set(sesiones.filter(s => s.proceso_id && s.proceso_id !== procesoSeleccionado?.id).map(s => s.candidato_id))
+  const qAsignar = busquedaAsignar.trim().toLowerCase()
+  const asignables = candidatos.filter(c =>
+    !idsParticipantes.has(c.id) &&
+    (!qAsignar || `${c.nombre || ''} ${c.apellido || ''}`.toLowerCase().includes(qAsignar) || (c.email || '').toLowerCase().includes(qAsignar))
+  )
+  const LIMITE_ASIGNABLES = 40
+
+  const etiquetaPrueba = (clave: string) => {
+    if (clave.startsWith('entrevista:')) return entrevistas.find(e => `entrevista:${e.id}` === clave)?.nombre || 'Videoentrevista'
+    return TESTS_DISPONIBLES.find(t => t.key === clave)?.label || clave
+  }
+  const SERIF = { fontFamily: 'var(--font-lectura), Georgia, serif' }
+  const PUNTO_ESTADO = { completada: 'bg-indigo-600', 'en curso': 'bg-marcador', pendiente: 'bg-slate-300' }
+  const TEXTO_ESTADO = { completada: 'Completada', 'en curso': 'En curso', pendiente: 'Pendiente' }
+  const campo = 'w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600'
 
   return (
-    <div className="animate-in fade-in duration-500">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Gestión de Procesos</h2>
-          <p className="text-sm text-slate-500">Configura vacantes y asigna candidatos</p>
-        </div>
-        <div className="flex gap-2">
-          {!esViewer && (
+    <div>
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
+        <h2 className="text-2xl font-semibold text-slate-900">Gestión de procesos</h2>
+        {!esViewer && (
+          <div className="flex gap-2">
             <button
+              type="button"
               onClick={() => setMostrarCargaMasiva(true)}
-              className="px-4 py-2 text-sm font-bold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm transition-all flex items-center gap-2"
+              className="px-4 py-2 text-sm font-bold rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
             >
-              <UserPlus className="w-4 h-4 text-indigo-600" />
-              Carga Masiva
+              <UserPlus className="w-4 h-4" aria-hidden="true" />
+              Carga masiva
             </button>
-          )}
-          {!esViewer && (
             <button
-              onClick={() => {
-                if (mostrarForm) {
-                  setMostrarForm(false)
-                  setModoEdicion(false)
-                } else {
-                  setForm({ nombre: '', cargo: '', descripcion: '', descripcion_cargo: '', bateria_tests: [], competencias_requeridas: [] })
-                  setModoEdicion(false)
-                  setMostrarForm(true)
-                }
-              }}
-              className={`px-4 py-2 text-sm font-bold rounded-xl shadow-sm transition-all flex items-center gap-2 ${
-                mostrarForm ? 'bg-white border border-slate-200 text-slate-700' : 'bg-indigo-600 text-white hover:bg-indigo-700'
+              type="button"
+              onClick={alternarFormulario}
+              className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors ${
+                mostrarForm ? 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50' : 'bg-indigo-600 text-white hover:bg-indigo-700'
               }`}
             >
-              {mostrarForm ? 'Cerrar' : <><Plus className="w-4 h-4" /> Nuevo Proceso</>}
+              {mostrarForm ? 'Cancelar' : 'Nuevo proceso'}
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {mostrarForm && (
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 mb-8 shadow-xl animate-in slide-in-from-top-4 duration-300 ring-2 ring-indigo-500/10">
-          <h2 className="text-lg font-bold text-slate-900 mb-6">{modoEdicion ? 'Editar Proceso' : 'Nuevo Proceso de Selección'}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nombre del proceso</label>
-              <input
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none"
+        <section aria-labelledby="gestion-form-titulo" className="bg-white border border-slate-200 rounded-xl p-6 mb-8">
+          <h3 id="gestion-form-titulo" className="text-lg font-semibold text-slate-900 mb-5" style={SERIF}>{modoEdicion ? 'Editar proceso' : 'Nuevo proceso de selección'}</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+            <div className="space-y-1.5">
+              <label htmlFor="gestion-nombre" className="text-sm font-medium text-slate-700">Nombre del proceso</label>
+              <input id="gestion-nombre"
+                className={campo}
                 value={form.nombre}
                 onChange={e => setForm({ ...form, nombre: e.target.value })}
-                placeholder="Ej: Analista Senior IT"
+                placeholder="Ej: Analista senior de TI"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cargo / Vacante</label>
-              <input
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none"
+            <div className="space-y-1.5">
+              <label htmlFor="gestion-cargo" className="text-sm font-medium text-slate-700">Cargo o vacante</label>
+              <input id="gestion-cargo"
+                className={campo}
                 value={form.cargo}
                 onChange={e => setForm({ ...form, cargo: e.target.value })}
-                placeholder="Ej: Desarrollador Fullstack"
+                placeholder="Ej: Desarrollador fullstack"
               />
             </div>
           </div>
-          
-          <div className="space-y-2 mb-6">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Batería de Tests</label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+
+          <div className="space-y-1.5 mb-5">
+            <label htmlFor="gestion-descripcion" className="text-sm font-medium text-slate-700">Descripción corta</label>
+            <input id="gestion-descripcion"
+              className={campo}
+              value={form.descripcion}
+              onChange={e => setForm({ ...form, descripcion: e.target.value })}
+              placeholder="Descripción opcional del proceso"
+            />
+          </div>
+
+          <div className="space-y-1.5 mb-6">
+            <label htmlFor="gestion-mision" className="text-sm font-medium text-slate-700">Misión del puesto y responsabilidades</label>
+            <textarea id="gestion-mision"
+              className={`${campo} min-h-[88px] resize-y`}
+              value={form.descripcion_cargo}
+              onChange={e => setForm({ ...form, descripcion_cargo: e.target.value })}
+              placeholder="Describí la misión principal y las tareas clave del puesto"
+            />
+          </div>
+
+          <fieldset className="mb-6">
+            <legend className="text-sm font-medium text-slate-700 mb-2">
+              Competencias requeridas <span className="font-normal text-slate-500">({form.competencias_requeridas.length} elegidas)</span>
+            </legend>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 p-3 bg-slate-50 rounded-lg border border-slate-200">
+              {COMPETENCIAS_ALLES.map(comp => {
+                const elegida = form.competencias_requeridas.find(c => c.nombre === comp)
+                return (
+                  <div key={comp} className={`flex items-center gap-2 py-1 px-1 rounded-md min-h-[2.25rem] ${elegida ? 'bg-white' : ''}`}>
+                    <label className="flex flex-1 items-center gap-2 cursor-pointer text-sm text-slate-700 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={!!elegida}
+                        onChange={e => setForm({
+                          ...form,
+                          competencias_requeridas: e.target.checked
+                            ? [...form.competencias_requeridas, { nombre: comp, nivel: 'B' }]
+                            : form.competencias_requeridas.filter(c => c.nombre !== comp)
+                        })}
+                        className="w-4 h-4 accent-indigo-600 shrink-0"
+                      />
+                      <span className="truncate">{comp}</span>
+                    </label>
+                    {elegida && (
+                      <select
+                        aria-label={`Nivel requerido de ${comp}`}
+                        value={elegida.nivel}
+                        onChange={e => setForm({
+                          ...form,
+                          competencias_requeridas: form.competencias_requeridas.map(c => c.nombre === comp ? { ...c, nivel: e.target.value } : c)
+                        })}
+                        className="px-2 py-1 text-sm bg-white border border-slate-300 rounded-md text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600"
+                      >
+                        <option value="A">A · Excelente</option>
+                        <option value="B">B · Bueno</option>
+                        <option value="C">C · Mínimo</option>
+                        <option value="D">D · No requerido</option>
+                      </select>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <p className="mt-1.5 text-sm text-slate-500">Con estas competencias se calcula el encaje de cada candidato con el cargo.</p>
+          </fieldset>
+
+          <fieldset className="mb-6">
+            <legend className="text-sm font-medium text-slate-700 mb-2">Pruebas de la batería ({form.bateria_tests.filter(k => !k.startsWith('entrevista:')).length} elegidas)</legend>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 p-3 bg-slate-50 rounded-lg border border-slate-200">
               {TESTS_DISPONIBLES.map(t => (
-                <label key={t.key} className="flex items-center gap-2 p-2 hover:bg-white rounded-xl transition-colors cursor-pointer border border-transparent hover:border-slate-200">
+                <label key={t.key} className="flex items-center gap-2 py-1.5 px-1 rounded-md hover:bg-white cursor-pointer text-sm text-slate-700">
                   <input
                     type="checkbox"
                     checked={form.bateria_tests.includes(t.key)}
@@ -555,19 +738,19 @@ export default function GestionProcesos() {
                       const next = e.target.checked ? [...form.bateria_tests, t.key] : form.bateria_tests.filter(k => k !== t.key)
                       setForm({ ...form, bateria_tests: next })
                     }}
-                    className="w-4 h-4 text-indigo-600 rounded"
+                    className="w-4 h-4 accent-indigo-600"
                   />
-                  <span className="text-[10px] font-bold text-slate-600 uppercase">{t.label}</span>
+                  {t.label}
                 </label>
               ))}
             </div>
-          </div>
+          </fieldset>
 
-          <div className="space-y-2 mb-6">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Video Entrevistas</label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+          <fieldset className="mb-6">
+            <legend className="text-sm font-medium text-slate-700 mb-2">Videoentrevistas</legend>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 p-3 bg-slate-50 rounded-lg border border-slate-200">
               {entrevistas.map(e => (
-                <label key={e.id} className="flex items-center gap-2 p-2 hover:bg-white rounded-xl transition-colors cursor-pointer border border-transparent hover:border-slate-200">
+                <label key={e.id} className="flex items-center gap-2 py-1.5 px-1 rounded-md hover:bg-white cursor-pointer text-sm text-slate-700">
                   <input
                     type="checkbox"
                     checked={form.bateria_tests.includes(`entrevista:${e.id}`)}
@@ -576,206 +759,169 @@ export default function GestionProcesos() {
                       const next = ec.target.checked ? [...form.bateria_tests, key] : form.bateria_tests.filter(k => k !== key)
                       setForm({ ...form, bateria_tests: next })
                     }}
-                    className="w-4 h-4 text-indigo-600 rounded"
+                    className="w-4 h-4 accent-indigo-600"
                   />
-                  <span className="text-[10px] font-bold text-slate-600 uppercase flex items-center gap-2">
-                    <Video className="w-3 h-3 text-indigo-400" />
-                    {e.nombre}
-                  </span>
+                  <Video className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
+                  {e.nombre}
                 </label>
               ))}
               {entrevistas.length === 0 && (
-                <p className="text-[10px] text-slate-400 italic p-2">No hay video entrevistas creadas.</p>
+                <p className="text-sm text-slate-500 p-1">Todavía no hay videoentrevistas creadas.</p>
               )}
             </div>
-          </div>
+          </fieldset>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
             <button
+              type="button"
+              onClick={alternarFormulario}
+              className="px-4 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-bold hover:bg-slate-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
               onClick={guardarProceso}
               disabled={guardando || !form.nombre || !form.cargo || esViewer}
-              className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50"
+              className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
             >
-              {guardando ? 'Guardando...' : modoEdicion ? 'Actualizar Proceso' : 'Crear Proceso'}
+              {guardando ? 'Guardando…' : modoEdicion ? 'Guardar cambios' : 'Crear proceso'}
             </button>
           </div>
-        </div>
+        </section>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-4 space-y-3">
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input 
-              className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none"
-              placeholder="Buscar..."
-              value={filtro}
-              onChange={e => setFiltro(e.target.value)}
-            />
-          </div>
-          {procesosFiltrados.map(p => (
-            <div 
-              key={p.id}
-              onClick={() => setProcesoSeleccionado(p)}
-              className={`p-4 bg-white border rounded-2xl cursor-pointer transition-all group relative ${
-                procesoSeleccionado?.id === p.id ? 'border-indigo-500 ring-2 ring-indigo-500/10' : 'border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              <div className="flex justify-between items-start">
-                <div className="pr-8">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold text-slate-800 leading-tight">{p.nombre}</h3>
-                    <span
-                      onClick={esViewer ? undefined : (e) => toggleEstado(p, e)}
-                      className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full transition-all ${esViewer ? '' : 'cursor-pointer hover:scale-105'} ${
-                        p.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                      }`}
-                    >
-                      {p.activo ? 'Abierto' : 'Cerrado'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-indigo-600 font-bold">{p.cargo}</p>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  {!esViewer && (
-                    <button
-                      onClick={(e) => eliminarProceso(p.id, e)}
-                      className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                  <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">
-                    {new Set(sesiones.filter(s => s.proceso_id === p.id).map(s => s.candidato_id)).size} cand.
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-4">
+          <input
+            aria-label="Buscar proceso"
+            className={`${campo} mb-3`}
+            placeholder="Buscar proceso"
+            value={filtro}
+            onChange={e => setFiltro(e.target.value)}
+          />
+          <ul className="border border-slate-200 rounded-xl bg-white overflow-hidden divide-y divide-slate-100">
+            {procesosFiltrados.map(p => {
+              const nCand = new Set(sesiones.filter(s => s.proceso_id === p.id).map(s => s.candidato_id)).size
+              const elegido = procesoSeleccionado?.id === p.id
+              return (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    onClick={() => setProcesoSeleccionado(p)}
+                    aria-current={elegido ? 'true' : undefined}
+                    className={`w-full text-left px-4 py-3.5 transition-colors ${elegido ? 'bg-slate-100 shadow-[inset_4px_0_0_var(--marcador)]' : 'hover:bg-slate-50'}`}
+                  >
+                    <div className="font-semibold text-slate-900 leading-snug">{nombreDeProcesoLegible(p.nombre)}</div>
+                    <div className="text-sm text-slate-600 mt-0.5">{p.cargo}</div>
+                    <div className="text-sm text-slate-500 mt-1">
+                      {p.activo ? 'Abierto' : 'Cerrado'} · {nCand} {nCand === 1 ? 'candidato' : 'candidatos'}
+                    </div>
+                  </button>
+                </li>
+              )
+            })}
+            {procesosFiltrados.length === 0 && (
+              <li className="px-4 py-8 text-center text-sm text-slate-500">
+                {procesos.length === 0 ? 'Todavía no hay procesos. Creá el primero con “Nuevo proceso”.' : 'No hay procesos que coincidan con la búsqueda.'}
+              </li>
+            )}
+          </ul>
         </div>
 
         <div className="lg:col-span-8">
           {procesoSeleccionado ? (
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 sticky top-6 shadow-sm overflow-y-auto max-h-[calc(100vh-100px)] custom-scrollbar">
-              <div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-6">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">{procesoSeleccionado.nombre}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span
-                      onClick={esViewer ? undefined : (e) => toggleEstado(procesoSeleccionado, e)}
-                      className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full transition-all ${esViewer ? '' : 'cursor-pointer hover:scale-105'} ${
-                        procesoSeleccionado.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                      }`}
+            <div className="space-y-8">
+              <header className="pb-6 border-b border-slate-200">
+                <h3 className="text-2xl font-semibold text-slate-900" style={SERIF}>{nombreDeProcesoLegible(procesoSeleccionado.nombre)}</h3>
+                <p className="text-slate-600 mt-1">{procesoSeleccionado.cargo} · {procesoSeleccionado.activo ? 'Abierto' : 'Cerrado'}</p>
+                <div className="flex flex-wrap items-center gap-2 mt-4">
+                  {!esViewer && (
+                    <button
+                      type="button"
+                      onClick={iniciarEdicion}
+                      className="px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg text-sm font-bold transition-colors"
                     >
-                      {procesoSeleccionado.activo ? 'Abierto' : 'Cerrado'}
-                    </span>
-                    <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">{procesoSeleccionado.cargo}</span>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">ID: {procesoSeleccionado.id.slice(0,8)}</span>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <button 
-                    onClick={iniciarEdicion}
-                    disabled={esViewer}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl text-xs font-bold transition-all shadow-md disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    <Settings className="w-4 h-4" />
-                    CONFIGURAR PROCESO
-                  </button>
+                      Editar proceso
+                    </button>
+                  )}
                   <button
+                    type="button"
                     disabled={exportandoLinks}
-                    onClick={async () => {
-                      setExportandoLinks(true)
-                      try {
-                        const csvData = await Promise.all(candidatosProceso.map(async c => {
-                          // Encontrar la sesión para este proceso y obtener su estado/fecha
-                          const sesion = sesiones.find(s => s.candidato_id === c.id && s.proceso_id === procesoSeleccionado.id)
-                          let linkEvaluacion = ''
-                          try {
-                            linkEvaluacion = await obtenerLinkEvaluacion(c.id, procesoSeleccionado.id)
-                          } catch (err: any) {
-                            console.error(`Error al generar link firmado para ${c.email}:`, err.message)
-                          }
-                          return {
-                            Nombre: c.nombre,
-                            Apellido: c.apellido,
-                            Email: c.email,
-                            Estado: sesion?.estado || 'Sin iniciar',
-                            Fecha_Asignacion: sesion?.creado_en ? new Date(sesion.creado_en).toLocaleDateString() : 'N/A',
-                            Link_Evaluacion: linkEvaluacion
-                          }
-                        }))
-                        const csv = Papa.unparse(csvData)
-                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-                        const link = document.createElement('a')
-                        link.href = URL.createObjectURL(blob)
-                        link.setAttribute('download', `Links_${procesoSeleccionado.cargo.replace(/\s+/g, '_')}.csv`)
-                        document.body.appendChild(link)
-                        link.click()
-                        document.body.removeChild(link)
-                      } finally {
-                        setExportandoLinks(false)
-                      }
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl text-[10px] font-bold transition-all border border-slate-200 disabled:opacity-50"
-                    title="Exportar lista con links para Gmail"
+                    onClick={exportarLinks}
+                    className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 rounded-lg text-sm font-bold transition-colors border border-slate-300 disabled:opacity-50"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    {exportandoLinks ? 'GENERANDO...' : 'EXPORTAR LINKS'}
+                    <Download className="w-4 h-4" aria-hidden="true" />
+                    {exportandoLinks ? 'Generando…' : 'Exportar links'}
                   </button>
+                  {!esViewer && (
+                    <button
+                      type="button"
+                      onClick={(e) => toggleEstado(procesoSeleccionado, e)}
+                      className="px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 rounded-lg text-sm font-bold transition-colors border border-slate-300"
+                    >
+                      {procesoSeleccionado.activo ? 'Cerrar proceso' : 'Reabrir proceso'}
+                    </button>
+                  )}
+                  {!esViewer && (
+                    <button
+                      type="button"
+                      onClick={(e) => eliminarProceso(procesoSeleccionado.id, e)}
+                      className="ml-auto px-3 py-2 text-sm font-bold text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
+                    >
+                      Eliminar proceso
+                    </button>
+                  )}
                 </div>
-              </div>
+              </header>
 
-              <div className="space-y-8">
-                {/* BATERIA DE TESTS */}
-                <div>
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <Clock className="w-3 h-3" />
-                    Batería de tests asignada ({procesoSeleccionado.bateria_tests?.length || 0})
+              <section aria-labelledby="gestion-bateria">
+                <h4 id="gestion-bateria" className="text-lg font-semibold text-slate-900 mb-3" style={SERIF}>
+                  Batería de pruebas ({bateriaProceso.length})
+                </h4>
+                {bateriaProceso.length > 0 ? (
+                  <ul className="flex flex-wrap gap-2">
+                    {bateriaProceso.map(tKey => (
+                      <li key={tKey} className="px-2.5 py-1 bg-slate-100 text-slate-700 text-sm rounded-md flex items-center gap-1.5">
+                        {tKey.startsWith('entrevista:') && <Video className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />}
+                        {etiquetaPrueba(tKey)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-slate-500">Este proceso no tiene pruebas asignadas.</p>
+                )}
+              </section>
+
+              <section aria-labelledby="gestion-participantes">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                  <h4 id="gestion-participantes" className="text-lg font-semibold text-slate-900" style={SERIF}>
+                    Participantes ({candidatosProceso.length})
                   </h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    {procesoSeleccionado.bateria_tests?.map(tKey => {
-                      const tInfo = [...TESTS_DISPONIBLES, ...entrevistas.map(e => ({ key: `entrevista:${e.id}`, label: `🎥 ${e.nombre || 'Videoentrevista / Roleplay'}` }))].find(t => t.key === tKey)
-                      const displayLabel = tInfo?.label || (tKey.startsWith('entrevista:') ? '🎥 Roleplay / Videoentrevista' : tKey)
-                      return (
-                        <span key={tKey} className="px-3 py-1.5 bg-slate-50 text-slate-600 text-[10px] rounded-xl font-bold border border-slate-100 flex items-center gap-1.5">
-                          {displayLabel}
-                        </span>
-                      )
-                    })}
-                    {(!procesoSeleccionado.bateria_tests || procesoSeleccionado.bateria_tests.length === 0) && (
-                      <span className="text-xs text-slate-400 italic">Sin tests asignados</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* PARTICIPANTES ACTUALES */}
-                <div>
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <CheckCircle2 className="w-3 h-3 text-green-500" />
-                      Participantes en este proceso
-                    </h4>
-                    <div className="flex items-center gap-2">
+                  {candidatosProceso.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2">
                       <input
+                        aria-label="Buscar participante por nombre o correo"
                         type="text"
-                        placeholder="Buscar por nombre o email..."
+                        placeholder="Buscar por nombre o correo"
                         value={busquedaParticipante}
                         onChange={e => setBusquedaParticipante(e.target.value)}
-                        className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px] focus:ring-2 focus:ring-indigo-500/20 outline-none w-48"
+                        className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600 w-52"
                       />
-                      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg" role="group" aria-label="Filtrar por estado">
                         {[
-                          { id: 'todos', label: 'Todos', color: 'text-slate-600' },
-                          { id: 'completada', label: 'Comp.', color: 'text-green-600' },
-                          { id: 'en curso', label: 'En curso', color: 'text-amber-600' },
-                          { id: 'pendiente', label: 'Pend.', color: 'text-slate-400' },
+                          { id: 'todos', label: 'Todos' },
+                          { id: 'completada', label: 'Completadas' },
+                          { id: 'en curso', label: 'En curso' },
+                          { id: 'pendiente', label: 'Pendientes' },
                         ].map(f => (
                           <button
                             key={f.id}
+                            type="button"
+                            aria-pressed={filtroEstado === f.id}
                             onClick={() => setFiltroEstado(f.id as any)}
-                            className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                              filtroEstado === f.id ? 'bg-white text-indigo-600 shadow-sm' : `${f.color} hover:bg-white/50`
+                            className={`px-2.5 py-1 rounded-md text-sm transition-colors ${
+                              filtroEstado === f.id ? 'bg-white text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:bg-white/60'
                             }`}
                           >
                             {f.label}
@@ -783,100 +929,44 @@ export default function GestionProcesos() {
                         ))}
                       </div>
                     </div>
-                  </div>
+                  )}
+                </div>
 
-                  {candidatosProceso.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
-                      {candidatosProceso
-                        .map(c => {
-                          const testsAsignadosSlugs = procesoSeleccionado?.bateria_tests || []
-                          const misSesiones = sesiones.filter(s => s.candidato_id === c.id)
-                          const misVideos = videoRespuestas.filter(v => v.candidato_id === c.id)
-                          
-                          const testsCompletadosIds = misSesiones.map(s => s.test_id)
-                          const videosCompletadosIds = misVideos.map(v => v.entrevista_id)
-                          
-                          const uniqueCompletados = new Set<string>()
-                          testsAsignadosSlugs.forEach(slug => {
-                            if (slug.startsWith('entrevista:')) {
-                              const entId = slug.split(':')[1]
-                              if (videosCompletadosIds.includes(entId)) uniqueCompletados.add(slug)
-                            } else {
-                              const id = SLUG_TO_ID[slug]
-                              // Verificación redundante para asegurar match
-                              if (testsCompletadosIds.includes(slug) || (id && testsCompletadosIds.includes(id))) {
-                                uniqueCompletados.add(slug)
-                              }
-                            }
-                          })
-                          
-                          const numCompletados = uniqueCompletados.size
-                          const totalAsignados = testsAsignadosSlugs.length
-                          
-                          let estado: 'completada' | 'en curso' | 'pendiente' = 'pendiente'
-                          const progresoCandidato = progresoOperativo.filter(p => p.candidato_id === c.id && p.proceso_id === procesoSeleccionado?.id)
-                           const tieneActividad = progresoCandidato.some(p => ['en_curso', 'pausada'].includes(p.estado))
-                           if (numCompletados === 0 && !tieneActividad) estado = 'pendiente'
-                          // Si ha completado el 100% de la batería
-                          else if (numCompletados >= totalAsignados && totalAsignados > 0) estado = 'completada'
-                          else estado = 'en curso'
-
-                          return { ...c, progreso_real: { comp: numCompletados, total: totalAsignados, estado } }
-                        })
-                        .filter(c => {
-                          if (filtroEstado === 'todos') return true
-                          return (c as any).progreso_real.estado === filtroEstado
-                        })
-                        .filter(c => {
-                          const q = busquedaParticipante.trim().toLowerCase()
-                          if (!q) return true
-                          const nombreCompleto = `${c.nombre || ''} ${c.apellido || ''}`.toLowerCase()
-                          return nombreCompleto.includes(q) || (c.email || '').toLowerCase().includes(q)
-                        })
-                        .map(c => (
-                        <div key={c.id} className="p-4 bg-white border border-slate-200 rounded-2xl flex justify-between items-center group hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-500/5 transition-all">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="text-sm font-bold text-slate-800 truncate">{c.nombre} {c.apellido}</p>
-                              <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
-                                c.progreso_real.estado === 'completada' ? 'bg-green-100 text-green-700' :
-                                c.progreso_real.estado === 'en curso' ? 'bg-amber-100 text-amber-700' :
-                                'bg-slate-100 text-slate-500'
-                              }`}>
-                                {c.progreso_real.estado}
-                              </span>
+                {candidatosProceso.length > 0 ? (
+                  <ul className="border border-slate-200 rounded-xl bg-white overflow-hidden divide-y divide-slate-100">
+                    {participantes.map(c => {
+                      const ultimoRecordatorio = recordatorios
+                        .filter(r => r.candidato_id === c.id && r.proceso_id === procesoSeleccionado.id)
+                        .sort((a, b) => new Date(b.enviado_en).getTime() - new Date(a.enviado_en).getTime())[0]
+                      const fecha = ultimoRecordatorio
+                        ? new Date(ultimoRecordatorio.enviado_en).toLocaleString('es-UY', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+                        : ''
+                      const nombreCompleto = `${c.nombre} ${c.apellido}`.trim()
+                      return (
+                        <li key={c.id} className="px-4 py-3.5 flex flex-wrap items-center gap-x-4 gap-y-2">
+                          <div className="min-w-0 flex-1 basis-56">
+                            <p className="font-semibold text-slate-900 truncate">{nombreCompleto}</p>
+                            <p className="text-sm text-slate-500 truncate">{c.email}</p>
+                            {ultimoRecordatorio && (
+                              <p className={`text-sm mt-0.5 flex items-center gap-1 ${ultimoRecordatorio.estado === 'error' ? 'text-red-600 dark:text-red-400' : 'text-slate-500'}`}>
+                                <BellRing className="w-3.5 h-3.5" aria-hidden="true" />
+                                {ultimoRecordatorio.estado === 'error' ? 'El recordatorio falló' : 'Último recordatorio'}: {fecha}
+                              </p>
+                            )}
+                          </div>
+                          <div className="w-44 shrink-0">
+                            <div className="flex items-center gap-2 text-sm text-slate-700">
+                              <span className={`w-2.5 h-2.5 rounded-full ${PUNTO_ESTADO[c.estado]}`} aria-hidden="true" />
+                              {TEXTO_ESTADO[c.estado]}
+                              <span className="ml-auto tabular-nums text-slate-500">{c.comp} de {c.total}</span>
                             </div>
-                            <p className="text-[10px] text-slate-500 truncate mb-2">{c.email}</p>
-                            {(() => {
-                              const ultimoRecordatorio = recordatorios
-                                .filter(r => r.candidato_id === c.id && r.proceso_id === procesoSeleccionado?.id)
-                                .sort((a, b) => new Date(b.enviado_en).getTime() - new Date(a.enviado_en).getTime())[0]
-                              if (!ultimoRecordatorio) return null
-                              const fecha = new Date(ultimoRecordatorio.enviado_en).toLocaleString('es-UY', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-                              return (
-                                <p className={`text-[10px] mb-2 flex items-center gap-1 ${ultimoRecordatorio.estado === 'error' ? 'text-red-500' : 'text-slate-400'}`}>
-                                  <BellRing className="w-3 h-3" />
-                                  {ultimoRecordatorio.estado === 'error' ? 'Recordatorio falló' : 'Último recordatorio'}: {fecha}
-                                </p>
-                              )
-                            })()}
-
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
-                                <div 
-                                  className={`h-full transition-all duration-500 ${
-                                    c.progreso_real.estado === 'completada' ? 'bg-green-500' : 'bg-indigo-500'
-                                  }`} 
-                                  style={{ width: `${(c.progreso_real.comp / c.progreso_real.total) * 100}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">
-                                {c.progreso_real.comp}/{c.progreso_real.total}
-                              </span>
+                            <div className="h-1.5 mt-1.5 bg-slate-200 rounded-full overflow-hidden" aria-hidden="true">
+                              <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${c.total ? (c.comp / c.total) * 100 : 0}%` }} />
                             </div>
                           </div>
-                          <div className="flex items-center gap-1 shrink-0 ml-4">
+                          <div className="flex items-center gap-0.5 shrink-0">
                             <button
+                              type="button"
                               onClick={async () => {
                                 try {
                                   const link = await obtenerLinkEvaluacion(c.id, procesoSeleccionado.id)
@@ -885,173 +975,214 @@ export default function GestionProcesos() {
                                   alert('No se pudo generar el link: ' + (err.message || err))
                                 }
                               }}
-                              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                              className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors"
                               title="Copiar link de evaluación"
+                              aria-label={`Copiar el link de evaluación de ${nombreCompleto}`}
                             >
-                              <LinkIcon className="w-4 h-4" />
+                              <LinkIcon className="w-4 h-4" aria-hidden="true" />
                             </button>
-                            <button 
-                              onClick={() => enviarRecordatorio(c)}
-                              disabled={enviandoRecordatorio === c.id || esViewer}
-                              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
-                              title="Enviar recordatorio"
-                            >
-                              <BellRing className={`w-4 h-4 ${enviandoRecordatorio === c.id ? 'animate-bounce text-indigo-600' : ''}`} />
-                            </button>
-                            <button
-                              onClick={() => desvincularCandidato(c.id)}
-                              disabled={esViewer}
-                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                              title="Desvincular del proceso"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-8 text-center border-2 border-dashed border-slate-100 rounded-3xl mb-8 flex flex-col items-center gap-4">
-                      <p className="text-xs text-slate-400 font-medium text-center">Parece que se perdieron los vínculos de este proceso.</p>
-                      <button
-                        onClick={repararVinculos}
-                        disabled={procesandoMasivo || esViewer}
-                        className="px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-bold hover:bg-amber-600 transition-all shadow-sm"
-                      >
-                        {procesandoMasivo ? 'Reparando...' : 'REPARAR VÍNCULOS Y RECUPERAR CANDIDATOS'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* ASIGNAR NUEVOS */}
-                <div className="pt-6 border-t border-slate-100">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <Plus className="w-3 h-3" />
-                    Asignar más candidatos
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                    {candidatos
-                      .filter(c => (c as any).proceso_id !== procesoSeleccionado.id)
-                      .map(c => (
-                      <div key={c.id} className="p-3 border border-slate-100 rounded-2xl hover:bg-slate-50 transition-colors flex justify-between items-center group">
-                        <div className="flex-1 min-w-0 mr-3">
-                          <p className="text-xs font-bold text-slate-800 truncate">{c.nombre} {c.apellido}</p>
-                          <div className="flex items-center gap-2">
-                            <p className="text-[10px] text-slate-500 truncate">{c.email}</p>
-                            {(c as any).proceso_id && (
-                              <span className="text-[8px] bg-amber-50 text-amber-600 px-1 rounded border border-amber-100">En otro proceso</span>
+                            {!esViewer && (
+                              <button
+                                type="button"
+                                onClick={() => enviarRecordatorio(c)}
+                                disabled={enviandoRecordatorio === c.id}
+                                className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+                                title="Enviar recordatorio"
+                                aria-label={`Enviar un recordatorio a ${nombreCompleto}`}
+                              >
+                                <BellRing className="w-4 h-4" aria-hidden="true" />
+                              </button>
+                            )}
+                            {!esViewer && (
+                              <button
+                                type="button"
+                                onClick={() => desvincularCandidato(c.id)}
+                                className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Desvincular del proceso"
+                                aria-label={`Desvincular a ${nombreCompleto} del proceso`}
+                              >
+                                <X className="w-4 h-4" aria-hidden="true" />
+                              </button>
                             )}
                           </div>
+                        </li>
+                      )
+                    })}
+                    {participantes.length === 0 && (
+                      <li className="px-4 py-8 text-center text-sm text-slate-500">Ningún participante coincide con el filtro.</li>
+                    )}
+                  </ul>
+                ) : (
+                  <div className="py-8 px-6 text-center border border-dashed border-slate-300 rounded-xl">
+                    <p className="text-slate-700">Este proceso todavía no tiene participantes.</p>
+                    <p className="text-sm text-slate-500 mt-1">Sumalos desde la lista de abajo o con “Carga masiva”.</p>
+                    {!esViewer && (
+                      <details className="mt-5 text-left max-w-lg mx-auto">
+                        <summary className="cursor-pointer text-sm text-slate-600 hover:text-slate-900">¿Se perdieron los participantes de este proceso?</summary>
+                        <div className="mt-3 p-4 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-900">
+                          <p>
+                            Recuperar los vínculos <strong>asigna a este proceso a los {candidatos.length} candidatos de la base</strong>, no solo a los que estaban antes.
+                            Usalo únicamente para reconstruir un proceso cuyos vínculos se perdieron.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Esto asignará a ${procesoSeleccionado.cargo} a los ${candidatos.length} candidatos de la base. ¿Querés continuar?`)) repararVinculos()
+                            }}
+                            disabled={procesandoMasivo}
+                            className="mt-3 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-700 transition-colors disabled:opacity-60"
+                          >
+                            {procesandoMasivo ? 'Recuperando…' : 'Recuperar vínculos'}
+                          </button>
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                )}
+              </section>
+
+              {!esViewer && (
+                <section aria-labelledby="gestion-asignar" className="pt-8 border-t border-slate-200">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <h4 id="gestion-asignar" className="text-lg font-semibold text-slate-900" style={SERIF}>Sumar candidatos</h4>
+                    <input
+                      aria-label="Buscar candidato para sumar al proceso"
+                      type="text"
+                      placeholder="Buscar por nombre o correo"
+                      value={busquedaAsignar}
+                      onChange={e => setBusquedaAsignar(e.target.value)}
+                      className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600 w-56"
+                    />
+                  </div>
+                  <ul className="border border-slate-200 rounded-xl bg-white overflow-hidden divide-y divide-slate-100 max-h-[22rem] overflow-y-auto custom-scrollbar-visible">
+                    {asignables.slice(0, LIMITE_ASIGNABLES).map(c => (
+                      <li key={c.id} className="px-4 py-2.5 flex items-center gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-slate-900 truncate">{c.nombre} {c.apellido}</p>
+                          <p className="text-sm text-slate-500 truncate">
+                            {c.email}{idsEnOtroProceso.has(c.id) ? ' · ya participa en otro proceso' : ''}
+                          </p>
                         </div>
                         <button
+                          type="button"
                           onClick={() => asignarCandidato(c.id)}
-                          disabled={esViewer}
-                          className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
-                            agregando === c.id ? 'bg-green-500 text-white' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                          disabled={agregando !== ''}
+                          aria-label={`Sumar a ${c.nombre} ${c.apellido} al proceso`}
+                          className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-60 ${
+                            agregando === c.id ? 'bg-indigo-600 text-white' : 'border border-indigo-600 text-indigo-700 hover:bg-indigo-50'
                           }`}
                         >
-                          {agregando === c.id ? '¡Asignado!' : 'Asignar'}
+                          {agregando === c.id ? 'Sumado' : 'Sumar'}
                         </button>
-                      </div>
+                      </li>
                     ))}
-                  </div>
-                </div>
-              </div>
+                    {asignables.length === 0 && (
+                      <li className="px-4 py-8 text-center text-sm text-slate-500">
+                        {qAsignar ? 'Ningún candidato coincide con la búsqueda.' : 'Todos los candidatos ya están en este proceso.'}
+                      </li>
+                    )}
+                  </ul>
+                  {asignables.length > LIMITE_ASIGNABLES && (
+                    <p className="mt-2 text-sm text-slate-500">Se muestran {LIMITE_ASIGNABLES} de {asignables.length}. Buscá por nombre o correo para acotar.</p>
+                  )}
+                  <p className="mt-2 text-sm text-slate-500">Al sumar a alguien se copia su link de evaluación al portapapeles.</p>
+                </section>
+              )}
             </div>
           ) : (
-            <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-3xl text-slate-400">
-              <FileText className="w-12 h-12 mb-2 opacity-20" />
-              <p className="text-sm font-bold">Selecciona un proceso para gestionar</p>
+            <div className="py-16 text-center border border-dashed border-slate-300 rounded-xl text-slate-500">
+              <FileText className="w-8 h-8 mx-auto mb-3 opacity-40" aria-hidden="true" />
+              Elegí un proceso de la lista para ver sus participantes.
             </div>
           )}
         </div>
       </div>
 
-      {/* Modal de Carga Masiva */}
       {mostrarCargaMasiva && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden border border-slate-100">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4" onClick={() => setMostrarCargaMasiva(false)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="carga-masiva-titulo"
+            className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-slate-200 flex justify-between items-start gap-4">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Carga Masiva de Candidatos</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Importa múltiples perfiles en segundos</p>
+                <h3 id="carga-masiva-titulo" className="text-lg font-semibold text-slate-900" style={SERIF}>Carga masiva de candidatos</h3>
+                <p className="text-sm text-slate-500 mt-1">Sumá varios candidatos de una vez, desde un archivo o pegando una lista.</p>
               </div>
-              <button onClick={() => setMostrarCargaMasiva(false)} className="p-2 hover:bg-slate-200 rounded-xl transition-colors">
-                <X className="w-5 h-5 text-slate-500" />
+              <button
+                ref={botonCerrarMasivoRef}
+                type="button"
+                onClick={() => setMostrarCargaMasiva(false)}
+                className="p-2 -m-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                aria-label="Cerrar la carga masiva"
+              >
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
 
             <div className="p-6">
-              <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl mb-6">
-                <button 
+              <div className="flex gap-1 p-1 bg-slate-100 rounded-lg mb-5" role="group" aria-label="Forma de carga">
+                <button
+                  type="button"
+                  aria-pressed={tabMasivo === 'archivo'}
                   onClick={() => setTabMasivo('archivo')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${tabMasivo === 'archivo' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm transition-colors ${tabMasivo === 'archivo' ? 'bg-white text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}
                 >
-                  <Upload className="w-4 h-4" />
-                  SUBIR ARCHIVO
+                  <Upload className="w-4 h-4" aria-hidden="true" />
+                  Subir archivo
                 </button>
-                <button 
+                <button
+                  type="button"
+                  aria-pressed={tabMasivo === 'texto'}
                   onClick={() => setTabMasivo('texto')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${tabMasivo === 'texto' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm transition-colors ${tabMasivo === 'texto' ? 'bg-white text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}
                 >
-                  <ClipboardPaste className="w-4 h-4" />
-                  PEGAR LISTA
+                  <ClipboardPaste className="w-4 h-4" aria-hidden="true" />
+                  Pegar lista
                 </button>
               </div>
 
               {tabMasivo === 'archivo' ? (
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center hover:border-indigo-300 transition-colors bg-slate-50/50 group">
-                    <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="hidden" id="csv-upload" />
-                    <label htmlFor="csv-upload" className="cursor-pointer">
-                      <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                        <FileText className="w-8 h-8 text-indigo-500" />
-                      </div>
-                      <p className="text-sm font-bold text-slate-700">Haz clic para subir tu Excel o CSV</p>
-                      <p className="text-xs text-slate-500 mt-1">O arrastra el archivo aquí</p>
-                      <div className="mt-4 inline-block px-3 py-1 bg-indigo-50 text-[10px] font-bold text-indigo-600 rounded-lg">
-                        COLUMNAS: NOMBRE, APELLIDO, EMAIL
-                      </div>
-                    </label>
-                  </div>
+                <div>
+                  <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="sr-only peer" id="csv-upload" disabled={procesandoMasivo} />
+                  <label
+                    htmlFor="csv-upload"
+                    className="block cursor-pointer border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-indigo-600 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-600 transition-colors bg-slate-50"
+                  >
+                    <FileText className="w-8 h-8 mx-auto mb-3 text-indigo-600" aria-hidden="true" />
+                    <span className="block font-semibold text-slate-800">{procesandoMasivo ? 'Procesando el archivo…' : 'Elegir un archivo de Excel o CSV'}</span>
+                    <span className="block text-sm text-slate-500 mt-1">La primera fila debe tener las columnas nombre, apellido y email.</span>
+                  </label>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <textarea
-                    className="w-full h-48 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none font-mono"
-                    placeholder="Juan, Perez, juan@email.com&#10;Maria, Lopez, maria@email.com"
+                    aria-label="Participantes a cargar: una persona por línea, con nombre, apellido y correo"
+                    className="w-full h-48 p-3 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600 resize-none font-mono"
+                    placeholder={'Juan, Pérez, juan@email.com\nMaría, López, maria@email.com'}
                     value={textoMasivo}
                     onChange={(e) => setTextoMasivo(e.target.value)}
                   />
                   <button
+                    type="button"
                     disabled={!textoMasivo.trim() || procesandoMasivo}
                     onClick={handleTextoMasivo}
-                    className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-sm hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                    className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                   >
-                    {procesandoMasivo ? (
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <Plus className="w-5 h-5" />
-                        PROCESAR LISTA
-                      </>
-                    )}
+                    {procesandoMasivo ? 'Procesando…' : 'Cargar lista'}
                   </button>
                 </div>
               )}
             </div>
 
-            {procesoSeleccionado && (
-              <div className="px-6 py-4 bg-amber-50 border-t border-amber-100 flex items-center gap-3">
-                <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center shrink-0">
-                  <LinkIcon className="w-4 h-4 text-amber-600" />
-                </div>
-                <p className="text-[11px] text-amber-800 leading-tight">
-                  <span className="font-bold">MODO AUTO-VINCULAR:</span> Los candidatos se asignarán automáticamente al proceso <span className="font-bold underline">{procesoSeleccionado.cargo}</span>.
-                </p>
-              </div>
-            )}
+            <div className={`px-6 py-4 border-t text-sm ${procesoSeleccionado ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>
+              {procesoSeleccionado
+                ? <>Los candidatos se van a asignar al proceso <strong>{procesoSeleccionado.cargo}</strong>.</>
+                : <>No hay un proceso elegido: los candidatos se cargan en la base, pero no se asignan a ningún proceso.</>}
+            </div>
           </div>
         </div>
       )}

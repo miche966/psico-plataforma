@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { Marco } from '@/components/candidato/Marco'
+import { PantallaCarga } from '@/components/candidato/Estados'
 
 interface Factor { id: string; friendly_name?: string }
 
@@ -53,34 +55,31 @@ export default function Login2faPage() {
     router.push('/login')
   }
 
-  if (cargando) return <div style={s.fondo}><p style={s.texto}>Cargando...</p></div>
+  if (cargando) return <PantallaCarga texto="Cargando…" />
 
   return (
-    <div style={s.fondo}>
-      <div style={s.caja}>
-        <h1 style={s.titulo}>Verificación en dos pasos</h1>
-        <p style={s.texto}>Ingresá el código de 6 dígitos de tu app autenticadora.</p>
-        {factores.length > 1 && (
-          <select style={s.input} value={factorId} onChange={e => setFactorId(e.target.value)}>
-            {factores.map(f => <option key={f.id} value={f.id}>{f.friendly_name || 'Dispositivo'}</option>)}
-          </select>
-        )}
-        <input style={s.input} inputMode="numeric" autoComplete="one-time-code" autoFocus maxLength={6} value={codigo} onChange={e => setCodigo(e.target.value.replace(/\D/g, ''))} placeholder="000000" onKeyDown={e => e.key === 'Enter' && verificar()} />
-        {error && <p style={s.error}>{error}</p>}
-        <button style={{ ...s.boton, opacity: verificando || codigo.length !== 6 ? 0.7 : 1 }} onClick={verificar} disabled={verificando || codigo.length !== 6}>{verificando ? 'Verificando...' : 'Verificar'}</button>
-        <button style={s.botonLink} onClick={volver}>Volver al inicio de sesión</button>
+    <Marco titulo="Verificación en dos pasos" centrado>
+      <div className="pp-acceso">
+        <h1 className="pp-titulo">Verificación en dos pasos</h1>
+        <p className="pp-lead">Ingresá el código de 6 dígitos de tu app autenticadora.</p>
+        <form className="pp-formulario" onSubmit={e => { e.preventDefault(); verificar() }}>
+          {factores.length > 1 && (
+            <div className="pp-campo">
+              <label htmlFor="dispositivo">Dispositivo</label>
+              <select id="dispositivo" value={factorId} onChange={e => setFactorId(e.target.value)}>
+                {factores.map(f => <option key={f.id} value={f.id}>{f.friendly_name || 'Dispositivo'}</option>)}
+              </select>
+            </div>
+          )}
+          <div className="pp-campo">
+            <label htmlFor="codigo">Código</label>
+            <input id="codigo" className="pp-codigo" inputMode="numeric" autoComplete="one-time-code" autoFocus maxLength={6} value={codigo} onChange={e => setCodigo(e.target.value.replace(/\D/g, ''))} placeholder="000000" />
+          </div>
+          {error && <div className="pp-alerta" role="alert"><p>{error}</p></div>}
+          <button type="submit" className="pp-boton pp-boton-ancho" disabled={verificando || codigo.length !== 6}>{verificando ? 'Verificando…' : 'Verificar'}</button>
+          <button type="button" className="pp-enlace" onClick={volver}>Volver al inicio de sesión</button>
+        </form>
       </div>
-    </div>
+    </Marco>
   )
-}
-
-const s = {
-  fondo: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', fontFamily: 'sans-serif', padding: '1rem' } as React.CSSProperties,
-  caja: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '2.5rem', width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column' as const, gap: '1rem' } as React.CSSProperties,
-  titulo: { fontSize: '1.4rem', fontWeight: '700', color: '#1e293b', margin: 0, textAlign: 'center' as const } as React.CSSProperties,
-  texto: { fontSize: '0.85rem', color: '#475569', margin: 0, textAlign: 'center' as const, lineHeight: 1.5 } as React.CSSProperties,
-  input: { padding: '0.75rem 0.875rem', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '1.2rem', color: '#1e293b', outline: 'none', background: '#fff', textAlign: 'center' as const, letterSpacing: '0.3em' } as React.CSSProperties,
-  boton: { padding: '0.75rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: '500', cursor: 'pointer' } as React.CSSProperties,
-  botonLink: { background: 'none', border: 'none', color: '#2563eb', fontSize: '0.8rem', cursor: 'pointer', padding: 0 } as React.CSSProperties,
-  error: { fontSize: '0.8rem', color: '#dc2626', margin: 0, textAlign: 'center' as const } as React.CSSProperties,
 }

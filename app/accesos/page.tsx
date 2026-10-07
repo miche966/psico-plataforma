@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import AppLayout from '@/components/AppLayout'
 import { getAdminHeaders } from '@/lib/evaluacionLink'
 import { UserPlus, Mail, CheckCircle2 } from 'lucide-react'
+import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
 
 interface Proceso {
   id: string
@@ -118,8 +119,8 @@ export default function AccesosPage() {
         </h2>
 
         <div className="mb-4">
-          <label className="block text-xs font-medium text-slate-600 mb-1">Email</label>
-          <input
+          <label htmlFor="acceso-email" className="block text-xs font-medium text-slate-600 mb-1">Email</label>
+          <input id="acceso-email"
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
@@ -142,7 +143,7 @@ export default function AccesosPage() {
                     onChange={() => toggleProceso(p.id)}
                     className="rounded border-slate-300"
                   />
-                  <span className="truncate">{p.nombre} <span className="text-slate-400">— {p.cargo}</span></span>
+                  <span className="truncate">{nombreDeProcesoLegible(p.nombre)} <span className="text-slate-400">— {p.cargo}</span></span>
                 </label>
               ))}
             </div>
