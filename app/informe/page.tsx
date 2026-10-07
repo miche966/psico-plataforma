@@ -298,7 +298,7 @@ function InformePageContent() {
     ajusteCargo: { score: 0, analisis: '' },
     interpretacionPorFactor: {},
     interpretacionVersion: undefined,
-    nombreEvaluador: 'Antigravity AI',
+    nombreEvaluador: 'Michel Ochoa',
     liderazgo: 0,
     adaptabilidad: 0,
     resiliencia: 0,
