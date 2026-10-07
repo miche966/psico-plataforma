@@ -36,8 +36,7 @@
 
 .pp-columna > p { margin: 0 0 1rem; }
 
-.pp-marca { display: inline-flex; align-items: center; gap: 0.55rem; font-family: var(--font-lectura), Georgia, serif; font-weight: 600; font-size: 1.0625rem; color: var(--pp-tinta); text-decoration: none; }
-.pp-marca svg { display: block; flex-shrink: 0; }
+.pp-marca { display: inline-block; font-family: var(--font-lectura), Georgia, serif; font-weight: 600; font-size: 1.3rem; line-height: 1.2; color: var(--pp-tinta); text-decoration: none; }
 
 /* Las cifras que cambian a la vista (tiempo, avance) van en Literata: tienen mas presencia que en la fuente de interfaz */
 .pp-tiempo-num, .pp-prueba-avance, .pp-tiempo-total, .pp-contactos dd { font-family: var(--font-lectura), Georgia, serif; }

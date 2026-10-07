@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { useAdminRole } from '@/lib/useAdminRole'
 import { useGateMfa } from '@/lib/useGateMfa'
 import { getAdminHeaders } from '@/lib/evaluacionLink'
+import { NombreMarca } from '@/components/Logo'
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
@@ -74,13 +75,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       {/* Barra lateral */}
       <aside className="w-64 bg-white border-r border-slate-200 flex flex-col fixed h-full z-10">
         <div className="px-6 pt-6 pb-5">
-          <Link href="/panel" className="flex items-center gap-2.5">
-            <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
-              <rect width="32" height="32" rx="8" fill="#17594E" />
-              <circle cx="12" cy="16" r="5.6" fill="none" stroke="#FFFFFF" strokeWidth="2.6" />
-              <rect x="19" y="12" width="9" height="8" rx="2" fill="#F5D547" />
-            </svg>
-            <span className="font-semibold text-slate-900 text-lg" style={{ fontFamily: 'var(--font-lectura), Georgia, serif' }}>PsicoPlataforma</span>
+          <Link href="/panel" className="flex items-center" aria-label="PsicoPlataforma, ir al panel">
+            <NombreMarca className="font-semibold text-slate-900 text-xl" style={{ fontFamily: 'var(--font-lectura), Georgia, serif' }} />
           </Link>
         </div>
 

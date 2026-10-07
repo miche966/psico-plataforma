@@ -10,6 +10,7 @@ Lo único llamativo es la selección (burbuja llena y texto resaltado como con m
 | Variables y clases (`.pp-*`) | `app/candidato.css` (todo vive bajo `.pp`; no toca el panel de administración) |
 | Fuentes | `app/layout.tsx` con `next/font` (se sirven desde el propio dominio, no hace falta tocar la CSP) |
 | Marca y marco (`Marco`, `Marca`) | `components/candidato/Marco.tsx` |
+| Logo: icono (burbuja marcada sobre cuadrado verde) y nombre con la "o" de burbuja | `components/Logo.tsx`; el icono de la pestana es `app/icon.svg` (mismo dibujo) |
 | Pantallas de estado (carga, error, guardado fallido, fin, aviso, contacto) | `components/candidato/Estados.tsx` |
 | Pruebas (`PruebaEleccion`, `PruebaEscala`, `MarcoPrueba`, `ListaOpciones`) | `components/candidato/Prueba.tsx` |
 | Icono de la pestaña | `app/icon.svg` |
