@@ -205,7 +205,8 @@ export async function POST(request: Request) {
         // Protocolo anterior: lo que se guarda sigue siendo lo del navegador; el servidor recalcula y compara en silencio
         await compararPuntajeEnSombra(db, testId, respuestas.map(r => ({ item_id: r.item_id, valor: r.valor as number })), puntaje, sesionId)
       }
-      const { data: actualizada, error: updateError } = await db.from('sesiones').update({ estado: 'finalizado', finalizada_en: new Date().toISOString(), puntaje_bruto: puntajeAGuardar }).eq('id', sesionId).eq('estado', 'iniciado').select('id, estado, puntaje_bruto').maybeSingle()
+      // Una sesion 'pendiente' (asignada desde el panel y nunca abierta por una pagina que avise el inicio) tambien se puede cerrar; solo se excluye la que ya esta finalizada
+      const { data: actualizada, error: updateError } = await db.from('sesiones').update({ estado: 'finalizado', finalizada_en: new Date().toISOString(), puntaje_bruto: puntajeAGuardar }).eq('id', sesionId).in('estado', ['iniciado', 'pendiente']).select('id, estado, puntaje_bruto').maybeSingle()
       if (updateError) throw updateError
       if (!actualizada) return NextResponse.json({ error: 'La sesión cambió de estado; no se duplicaron respuestas' }, { status: 409 })
       try {
