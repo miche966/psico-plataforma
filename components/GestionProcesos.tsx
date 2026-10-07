@@ -660,6 +660,72 @@ export default function GestionProcesos() {
             </div>
           </div>
 
+          <div className="space-y-1.5 mb-5">
+            <label htmlFor="gestion-descripcion" className="text-sm font-medium text-slate-700">Descripción corta</label>
+            <input id="gestion-descripcion"
+              className={campo}
+              value={form.descripcion}
+              onChange={e => setForm({ ...form, descripcion: e.target.value })}
+              placeholder="Descripción opcional del proceso"
+            />
+          </div>
+
+          <div className="space-y-1.5 mb-6">
+            <label htmlFor="gestion-mision" className="text-sm font-medium text-slate-700">Misión del puesto y responsabilidades</label>
+            <textarea id="gestion-mision"
+              className={`${campo} min-h-[88px] resize-y`}
+              value={form.descripcion_cargo}
+              onChange={e => setForm({ ...form, descripcion_cargo: e.target.value })}
+              placeholder="Describí la misión principal y las tareas clave del puesto"
+            />
+          </div>
+
+          <fieldset className="mb-6">
+            <legend className="text-sm font-medium text-slate-700 mb-2">
+              Competencias requeridas <span className="font-normal text-slate-500">({form.competencias_requeridas.length} elegidas)</span>
+            </legend>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 p-3 bg-slate-50 rounded-lg border border-slate-200">
+              {COMPETENCIAS_ALLES.map(comp => {
+                const elegida = form.competencias_requeridas.find(c => c.nombre === comp)
+                return (
+                  <div key={comp} className={`flex items-center gap-2 py-1 px-1 rounded-md min-h-[2.25rem] ${elegida ? 'bg-white' : ''}`}>
+                    <label className="flex flex-1 items-center gap-2 cursor-pointer text-sm text-slate-700 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={!!elegida}
+                        onChange={e => setForm({
+                          ...form,
+                          competencias_requeridas: e.target.checked
+                            ? [...form.competencias_requeridas, { nombre: comp, nivel: 'B' }]
+                            : form.competencias_requeridas.filter(c => c.nombre !== comp)
+                        })}
+                        className="w-4 h-4 accent-indigo-600 shrink-0"
+                      />
+                      <span className="truncate">{comp}</span>
+                    </label>
+                    {elegida && (
+                      <select
+                        aria-label={`Nivel requerido de ${comp}`}
+                        value={elegida.nivel}
+                        onChange={e => setForm({
+                          ...form,
+                          competencias_requeridas: form.competencias_requeridas.map(c => c.nombre === comp ? { ...c, nivel: e.target.value } : c)
+                        })}
+                        className="px-2 py-1 text-sm bg-white border border-slate-300 rounded-md text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600"
+                      >
+                        <option value="A">A · Excelente</option>
+                        <option value="B">B · Bueno</option>
+                        <option value="C">C · Mínimo</option>
+                        <option value="D">D · No requerido</option>
+                      </select>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <p className="mt-1.5 text-sm text-slate-500">Con estas competencias se calcula el encaje de cada candidato con el cargo.</p>
+          </fieldset>
+
           <fieldset className="mb-6">
             <legend className="text-sm font-medium text-slate-700 mb-2">Pruebas de la batería ({form.bateria_tests.filter(k => !k.startsWith('entrevista:')).length} elegidas)</legend>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 p-3 bg-slate-50 rounded-lg border border-slate-200">
