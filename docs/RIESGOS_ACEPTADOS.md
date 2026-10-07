@@ -149,6 +149,59 @@ Alcance recomendado, de menor a mayor costo:
 
 ---
 
+## 3. Intentos del código de 2FA sin bloqueo por cuenta — RIESGO ACEPTADO
+
+- **Decisión**: no se agrega un bloqueo propio por cuenta a los intentos del código de 6 dígitos del segundo factor. Se
+  confía en el límite de Supabase (por IP) y en que hace falta la contraseña antes de poder probar códigos.
+- **Fecha**: 2026-10-07
+- **Decidió**: Michel Ochoa (responsable de la plataforma)
+- **Origen**: revisión de los límites de intentos de MFA en Supabase, pendiente desde el cierre del checklist de seguridad.
+  Opciones evaluadas: aceptar, un endpoint propio que verifique el código con bloqueo por cuenta, o reforzar solo las
+  contraseñas.
+
+### Qué significa
+- La verificación del código la hace el navegador directo contra Supabase (`supabase.auth.mfa.challengeAndVerify` en
+  `app/login/2fa/page.tsx`). El servidor de la plataforma no ve esos intentos, así que no puede contarlos ni bloquearlos.
+- Según la documentación de Supabase (https://supabase.com/docs/guides/auth/rate-limits, consultada el 2026-10-07), los
+  pedidos `/auth/v1/factors/:id/challenge` y `/verify` tienen un límite de **15 por minuto por IP, con ráfagas de hasta 30**.
+  Ese límite figura como **no configurable** en el panel (Authentication → Rate Limits no lo ajusta), y la documentación
+  no menciona ningún bloqueo por usuario tras varios códigos incorrectos. No se pudo comprobar la configuración real del
+  proyecto: son los valores documentados.
+- Cuenta aproximada: cada intento usa dos pedidos (challenge y verify), unos 7 intentos por minuto por IP, unos 10.000 por
+  día. Un código de 6 dígitos tiene 3 valores válidos a la vez (tolerancia de un intervalo de 30 s), o sea 3 en un millón
+  por intento: cerca de **3 % de probabilidad de acertar por día desde una IP**, y más de 75 % por día con 50 IPs.
+
+### Por qué se aceptó
+- Para probar códigos hace falta antes una sesión de primer paso, es decir, **conocer la contraseña de un administrador**,
+  y el login de la plataforma ya limita los intentos de contraseña (`/api/login`: por IP y 5 por 15 minutos por email,
+  en `lib/server/rateLimit.ts`). El 2FA es la segunda barrera, no la primera.
+- Hay pocas cuentas de administrador y de solo lectura.
+- La alternativa (verificar el código desde un endpoint propio con bloqueo por cuenta, usando el Upstash que ya se usa
+  para el login) toca la puerta de entrada de todos los administradores: un error puede dejarlos sin acceso, y solo se
+  puede probar de punta a punta con un autenticador real. Cuesta bastante más que el riesgo que cubre.
+
+### Controles compensatorios vigentes
+- 2FA obligatorio en el panel (`MFA_OBLIGATORIO=true`, desde 2026-10-02; ver `docs/DOBLE_FACTOR.md`).
+- Límites de contraseña en `/api/login` y límite por IP de Supabase para el código.
+- Recomendado (sin código): contraseñas únicas y largas, con administrador de contraseñas, y activar en Supabase la
+  protección contra contraseñas filtradas (Authentication → Attack Protection) si el plan lo incluye. No se confirmó que
+  esté disponible ni activada.
+
+### Cuándo hay que reabrir esta decisión
+- Se suman muchas cuentas de administrador o de solo lectura, o el panel pasa a guardar datos mucho más sensibles.
+- Aparecen muchos intentos de acceso fallidos o una sesión de primer paso sospechosa en el registro.
+- Se filtra o se sospecha filtrada la contraseña de una cuenta de administrador.
+- Supabase publica un límite por usuario para MFA, o cambia el límite por IP (en ese caso, volver a hacer la cuenta).
+- Sugerencia: revisarla una vez al año.
+
+### Si se decide implementar más adelante
+Endpoint propio que reciba el código con la sesión del usuario, aplique un límite por usuario (por ejemplo 5 fallos cada
+15 minutos con `Ratelimit` de Upstash) y llame a `mfa.verify` en el servidor, devolviendo la sesión `aal2` al navegador.
+Hay que dejar abierta una vía de recuperación para el administrador bloqueado (ver `docs/DOBLE_FACTOR.md`) y probarlo con un
+autenticador real antes de desplegarlo.
+
+---
+
 ## Pendientes conocidos (abiertos, sin decisión tomada)
 
 Estos puntos **no** están aceptados: son pendientes que se conocen y que nadie decidió todavía.
