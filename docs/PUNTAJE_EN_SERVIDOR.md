@@ -14,9 +14,9 @@ Pendiente abierto en `docs/RIESGOS_ACEPTADOS.md`.
 |---|---|---|
 | 0 | Datos y auditoría de solo lectura (`npm run audit:puntajes`) | hecha (2026-10-02) |
 | 1 | Módulo puro `lib/server/puntuacion.ts` + `tests/puntuacion.test.ts` | hecha (2026-10-02) |
-| 2 | Modo paralelo en `finalize` (`lib/server/puntajeSombra.ts`: el servidor recalcula y compara, sigue guardando lo del navegador) y reversión de la sesión si falla el guardado de respuestas | hecha (2026-10-02) |
+| 2 | Modo paralelo en `finalize` (el servidor recalculaba y comparaba, sin cambiar lo guardado) y reversión de la sesión si falla el guardado de respuestas | hecha (2026-10-02); el modo paralelo se retiró en la Fase G |
 | 3 | Protocolo nuevo: el navegador manda la elección cruda y el servidor corrige, test por test | **hecha** (Fases A a F, 2026-10-06) |
-| 4 | El GET deja de devolver `respuesta_correcta` e `inverso`; se borra el cálculo de las páginas | **activa en los 19 tests** (18 desde 2026-10-06 e ICAR desde 2026-10-07); falta la limpieza final (Fase G) |
+| 4 | El GET deja de devolver `respuesta_correcta` e `inverso`; se borra el cálculo de las páginas | **hecha en los 19 tests** (18 desde 2026-10-06, ICAR desde 2026-10-07) y **cerrada con la Fase G el 2026-10-07**: el estricto es permanente |
 
 ## Reglas que no se pueden romper
 - La forma de `puntaje_bruto` no cambia (nombres y anidación de claves): informe, panel, estadísticas, PDF y
@@ -59,8 +59,9 @@ firmarlo en el token en la Etapa 3) y los tests sin puntaje (Frases, Role Play).
   `puntaje_bruto` (`puntuarCrudo` en `lib/server/puntuacion.ts`), guarda las `respuestas` y devuelve un `resumen` para la pantalla de
   fin. Lo que el pedido traiga como `puntaje_bruto` se ignora salvo `metricas_fraude`, saneada (`lib/server/metricasFraude.ts`; solo
   Big Five, DASS-21 e ICAR). ICAR todavía no admite el formato crudo (su universo de ítems depende de parámetros de la URL sin firma).
-- **Modo estricto**: la variable `PUNTAJE_ESTRICTO` (ids o slugs separados por comas, se lee en ejecución) hace que para esos tests el
-  servidor rechace el protocolo anterior (400, "recargá la página") y que el GET deje de enviar `respuesta_correcta` e `inverso`.
+- **Modo estricto** (hasta la Fase G): la variable `PUNTAJE_ESTRICTO` (ids o slugs separados por comas, se leía en ejecución) hacía que para esos tests el
+  servidor rechazara el protocolo anterior (400, "recargá la página") y que el GET dejara de enviar `respuesta_correcta` e `inverso`. **Desde la Fase G es
+  permanente para todo test que el servidor puntúa y la variable ya no existe.**
 - Las pantallas siguen usando el protocolo anterior hasta que se migre cada grupo (B: Verbal y Numérico; C: Atención al detalle,
   Tolerancia y SJT; D: Likert y Estrés; E: DASS-21 y Big Five; F: ICAR). El estricto se activa horas después de desplegar cada grupo.
 - **Fase B (2026-10-06, 58cd90a)**: Verbal y Numérico mandan solo la opción elegida (`finalizarTestCrudo` en `lib/finalizarTest.ts`) y la
@@ -91,10 +92,11 @@ firmarlo en el token en la Etapa 3) y los tests sin puntaje (Frases, Role Play).
 
 ## Estado actual (2026-10-07)
 
-**Modo estricto en producción en los 19 tests puntuables** (`PUNTAJE_ESTRICTO` en Vercel Production): 18 desde el 2026-10-06 e ICAR desde el
-2026-10-07. La variable se recargó ese día con estos 19 nombres: verbal, numerico, atencion-detalle, tolerancia-frustracion, sjt-atencion, sjt-cobranzas,
-sjt-comercial, sjt-legal, sjt-problemas, sjt-ventas, creatividad, hexaco, comercial, iniciativa-dinamismo, integridad, estres-laboral, bigfive, dass21 e icar
-(se comprobó con `testsEstrictos()` que resuelven a los 19 ids puntuables, sin faltantes ni sobrantes: un nombre mal escrito se ignora en silencio).
+**Modo estricto permanente en los 19 tests puntuables** (Fase G, 2026-10-07). Hasta esa fecha dependía de la variable `PUNTAJE_ESTRICTO` en Vercel (18 tests desde
+el 2026-10-06 e ICAR desde el 2026-10-07); la variable se borró de Production tras la Fase G y el comportamiento ya no depende de ninguna configuración. Los 19
+tests son: verbal, numerico, atencion-detalle, tolerancia-frustracion, sjt-atencion, sjt-cobranzas, sjt-comercial, sjt-legal, sjt-problemas, sjt-ventas,
+creatividad, hexaco, comercial, iniciativa-dinamismo, integridad, estres-laboral, bigfive, dass21 e icar. El único test que sigue con el protocolo anterior es
+**Frases Incompletas** (texto libre, sin respuestas correctas: el servidor no lo puntúa).
 
 Controles del 2026-10-07:
 - `npm run audit:puntajes`: 3243 sesiones finalizadas, **18 difieren, las mismas 18 históricas** de la auditoría original (datos viejos explicados arriba).
@@ -119,7 +121,7 @@ URL se ignora: un enlace de nivel básico pasaría a nivel 3. Vigencia máxima d
 se confirmó con quien arma los enlaces que siempre se usa el nivel completo y con rotación; los enlaces viejos con `?max=` o `?norot=` se ignoran y dan ese mismo examen.
 El único efecto posible sería para un enlace viejo emitido con un nivel menor o sin rotación: pasaría a nivel 3 con rotación.
 
-Comandos usados (la lista de nombres es la de "Estado actual"):
+Comandos usados (historia: la variable y este paso ya no existen desde la Fase G):
 
 ```bash
 npx vercel@62.7.0 env rm PUNTAJE_ESTRICTO production --yes
@@ -130,9 +132,24 @@ npx vercel@62.7.0 redeploy psico-plataforma.vercel.app
 Verificación hecha en producción con un candidato descartable (borrado al terminar): el GET de los 19 tests no envía `respuesta_correcta` ni `inverso`;
 un pedido de ICAR con `nivel_max=1&sin_rotacion=1` en la URL devuelve el examen completo (niveles 1 a 3, con rotación); el formato viejo recibe 400
 ("recargá la página"); una prueba en formato crudo guardó 7 de 20 correctas, igual al recálculo, ignorando el puntaje inflado del pedido, con
-`nivel_maximo` 3. Marcha atrás: volver a cargar la variable sin `icar` y redesplegar.
+`nivel_maximo` 3. Marcha atrás (válida hasta la Fase G): volver a cargar la variable sin `icar` y redesplegar.
 
-### Fase G (cierre): ya se puede empezar a partir del 2026-10-14
-Con los 19 tests en estricto (ICAR desde el 2026-10-07): quitar la rama del protocolo viejo de `finalize` y `compararPuntajeEnSombra` (`lib/server/puntajeSombra.ts`), borrar el
-cálculo y los campos `respuesta_correcta`/`inverso` que queden en las páginas, actualizar este documento y cerrar la fila de
-`docs/RIESGOS_ACEPTADOS.md`. Hacerlo recién cuando haya al menos una semana de tráfico real en estricto sin diferencias en `npm run audit:puntajes`.
+### Fase G (cierre): hecha el 2026-10-07 (PR #20)
+Con los 19 tests en estricto se quitó lo que ya no se usaba:
+- La comparación en sombra (`lib/server/puntajeSombra.ts` y su llamada en `finalize`).
+- La variable `PUNTAJE_ESTRICTO` y `testsEstrictos()`: los tests puntuables siempre rechazan el formato viejo (400, "recargá la página") y el GET nunca envía
+  `respuesta_correcta` ni `inverso`. La variable se borró de Vercel Production y se redesplegó.
+- El respaldo por URL de ICAR (`?max=`, `?norot=`): el nivel y la rotación salen solo del token firmado; sin token, el examen completo. Se limpiaron la página
+  `/icar` y `finalizarTestCrudo`.
+- `finalizarTest`, el helper del protocolo viejo, que ya nadie llamaba.
+
+Se conservó la rama del protocolo viejo de `finalize` solo para los tests que el servidor no puntúa (Frases Incompletas). Las páginas ya no tenían cálculo local.
+
+Verificación en producción (candidato descartable, borrado al terminar): el GET de los 19 tests sin clave; un enlace ICAR con `nivel_max=1&sin_rotacion=1` se ignora;
+Verbal e ICAR en formato viejo reciben 400; ICAR en formato crudo guardó 7 de 20, igual al esperado, ignorando un puntaje inflado del pedido; Frases Incompletas
+en formato viejo sigue finalizando (200).
+
+**Marcha atrás**: ya no alcanza con apagar una variable; hay que revertir el commit `7ff67ec` (PR #20) y redesplegar.
+
+**Seguimiento pendiente**: la Fase G se hizo el mismo día que ICAR pasó a estricto, antes de la semana de tráfico real que se había previsto. Alrededor del
+2026-10-14 conviene correr `npm run audit:puntajes` y confirmar que no hay diferencias nuevas respecto de las 18 históricas.
