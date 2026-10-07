@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -12,6 +12,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [inactividad, setInactividad] = useState(false)
+
+  // La pantalla del segundo factor manda aca (con ?motivo=2fa-inactividad) cuando se cerro por inactividad
+  useEffect(() => {
+    setInactividad(new URLSearchParams(window.location.search).get('motivo') === '2fa-inactividad')
+  }, [])
 
   async function iniciarSesion() {
     if (!email || !password) { setError('Completá todos los campos.'); return }
@@ -39,6 +45,11 @@ export default function LoginPage() {
       <div className="pp-acceso">
         <h1 className="pp-titulo">Acceso de evaluadores</h1>
         <p className="pp-lead">Ingresá con tu cuenta para ver las evaluaciones y los informes.</p>
+        {inactividad && (
+          <div className="pp-aparte" role="status" style={{ margin: '0 0 1.25rem' }}>
+            <p style={{ margin: 0 }}>Pasaron más de 5 minutos sin actividad en la verificación. Ingresá de nuevo.</p>
+          </div>
+        )}
         <form className="pp-formulario" onSubmit={e => { e.preventDefault(); iniciarSesion() }}>
           <div className="pp-campo">
             <label htmlFor="email">Email</label>

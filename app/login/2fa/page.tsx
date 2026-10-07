@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Marco } from '@/components/candidato/Marco'
 import { PantallaCarga } from '@/components/candidato/Estados'
+import { INACTIVIDAD_2FA_MS, REVISION_2FA_MS, inactividadVencida } from '@/lib/inactividad2fa'
 
 interface Factor { id: string; friendly_name?: string }
 
@@ -17,6 +18,9 @@ export default function Login2faPage() {
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(true)
   const [verificando, setVerificando] = useState(false)
+  const ultimaActividad = useRef(Date.now())
+  const verificandoRef = useRef(false)
+  verificandoRef.current = verificando
 
   useEffect(() => {
     let vivo = true
@@ -37,6 +41,31 @@ export default function Login2faPage() {
     iniciar()
     return () => { vivo = false }
   }, [router])
+
+  useEffect(() => {
+    if (cargando) return
+    let cerrando = false
+    const marcar = () => { ultimaActividad.current = Date.now() }
+    const revisar = async () => {
+      if (cerrando || verificandoRef.current) return
+      if (!inactividadVencida(ultimaActividad.current, Date.now())) return
+      cerrando = true
+      await supabase.auth.signOut()
+      router.replace('/login?motivo=2fa-inactividad')
+    }
+    const eventos = ['keydown', 'pointerdown', 'touchstart', 'input'] as const
+    eventos.forEach(e => window.addEventListener(e, marcar, { passive: true }))
+    // Al volver a la pestana (o despues de suspender la computadora) se revisa enseguida, sin esperar al proximo ciclo
+    const alVolver = () => { if (document.visibilityState === 'visible') revisar() }
+    document.addEventListener('visibilitychange', alVolver)
+    marcar()
+    const ciclo = window.setInterval(revisar, REVISION_2FA_MS)
+    return () => {
+      eventos.forEach(e => window.removeEventListener(e, marcar))
+      document.removeEventListener('visibilitychange', alVolver)
+      window.clearInterval(ciclo)
+    }
+  }, [cargando, router])
 
   async function verificar() {
     if (codigo.length !== 6 || !factorId) return
@@ -78,6 +107,7 @@ export default function Login2faPage() {
           {error && <div className="pp-alerta" role="alert"><p>{error}</p></div>}
           <button type="submit" className="pp-boton pp-boton-ancho" disabled={verificando || codigo.length !== 6}>{verificando ? 'Verificando…' : 'Verificar'}</button>
           <button type="button" className="pp-enlace" onClick={volver}>Volver al inicio de sesión</button>
+          <p className="pp-muted" style={{ margin: 0 }}>Por seguridad, esta pantalla se cierra después de {Math.round(INACTIVIDAD_2FA_MS / 60000)} minutos sin actividad.</p>
         </form>
       </div>
     </Marco>
