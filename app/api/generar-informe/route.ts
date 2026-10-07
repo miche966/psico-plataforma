@@ -238,6 +238,7 @@ REGLAS DE ORO DE REDACCIÓN (OBLIGATORIAS E INFLEXIBLES):
    - "ajusteCargo.analisis": 2-3 frases, ÚNICAMENTE sobre el encaje entre el perfil y las demandas concretas del puesto (${proceso?.cargo || 'N/A'}). No listes fortalezas ni menciones el bienestar.
    - "fortalezas" / "oportunidadesMejora": cada ítem debe combinar DOS O MÁS factores de los DATOS PARA ANÁLISIS de abajo (según la guía de interpretación) en una sola observación de comportamiento integrada (ej: responsabilidad alta + energía baja → "sostiene el cumplimiento incluso cuando el desgaste podría hacerle bajar el ritmo"). Prohibido describir un solo factor de forma aislada.
    - Campo "impacto_organizacional" de cada ítem (en el informe se muestra como "Qué puede aportar" en fortalezas y "Qué puede implicar" en áreas de desarrollo): habla del trabajo en general y de cómo se desempeña o se relaciona la persona con otras y con sus tareas, SIN dar por sentado cómo sería en el puesto ni en la organización, porque la persona todavía no fue seleccionada. PROHIBIDO nombrar en ese campo el puesto, sus tareas, clientes, ventas, cobranzas, cartera, metas, resultados del negocio o "la organización" como si la persona ya trabajara allí. Eso corresponde ÚNICAMENTE a "ajusteCargo.analisis". Redáctalo en condicional o con verbos atenuados ("puede ayudar a", "podría", "suele"), nunca como un hecho consumado.
+   - Cantidad y nivel de detalle: devuelve EXACTAMENTE 2 fortalezas y EXACTAMENTE 2 áreas de desarrollo (ni más ni menos), con un nivel de detalle parejo entre todas: en cada ítem, "mecanismo" e "impacto_organizacional" tienen de 1 a 2 frases cada uno, y "tendencia" es una sola frase corta. No dejes un ítem mucho más largo o más breve que los otros.
 
 ESTILO DE REDACCIÓN OBLIGATORIO:
 - Utiliza un lenguaje claro, directo y profesional, pensado para responsables de selección y supervisores que no tienen formación en psicología.
@@ -263,8 +264,8 @@ ${guiaInterpretacion}
 
 Devuelve UNICAMENTE un objeto JSON con esta estructura:
 {
-  "fortalezas": [{"tendencia": "Comportamiento observado combinando 2+ factores, no uno aislado", "mecanismo": "Forma de actuar", "impacto_organizacional": "Qué puede aportar en el trabajo en general, en condicional y sin nombrar el puesto, sus tareas ni clientes"}],
-  "oportunidadesMejora": [{"tendencia": "Punto de atención combinando 2+ factores, no uno aislado", "mecanismo": "Situación de riesgo", "impacto_organizacional": "Qué podría implicar en el trabajo en general, en condicional y sin nombrar el puesto, sus tareas ni clientes"}],
+  "fortalezas": [{"tendencia": "Comportamiento observado combinando 2+ factores, no uno aislado", "mecanismo": "Forma de actuar", "impacto_organizacional": "Qué puede aportar en el trabajo en general, en condicional y sin nombrar el puesto, sus tareas ni clientes"}, {"tendencia": "Comportamiento observado combinando 2+ factores, no uno aislado", "mecanismo": "Forma de actuar", "impacto_organizacional": "Qué puede aportar en el trabajo en general, en condicional y sin nombrar el puesto, sus tareas ni clientes"}],
+  "oportunidadesMejora": [{"tendencia": "Punto de atención combinando 2+ factores, no uno aislado", "mecanismo": "Situación de riesgo", "impacto_organizacional": "Qué podría implicar en el trabajo en general, en condicional y sin nombrar el puesto, sus tareas ni clientes"}, {"tendencia": "Punto de atención combinando 2+ factores, no uno aislado", "mecanismo": "Situación de riesgo", "impacto_organizacional": "Qué podría implicar en el trabajo en general, en condicional y sin nombrar el puesto, sus tareas ni clientes"}],
   "ajusteCargo": { "score": ${scoreFinal}, "analisis": "2-3 frases, solo sobre el encaje con las demandas concretas del puesto (${proceso?.cargo || 'N/A'}). No listes fortalezas ni menciones el bienestar." },
   "recomendacion": "..."
 }
@@ -284,6 +285,7 @@ REGLAS DE ORO DE REDACCIÓN (OBLIGATORIAS E INFLEXIBLES):
 6. SIN REFERENCIAS AL SOPORTE TECNOLÓGICO: Está estrictamente prohibido usar palabras como "video", "cámara", "grabación", "audio", "plataforma", "videoentrevista". Describe lo observado como "interacción directa", "comunicación discursiva", "estilo verbal", "comportamiento no verbal" o "presencia interactiva".
 7. Cada descripción de factor debe usar la GUÍA DE INTERPRETACIÓN de abajo para saber si, PARA ESE FACTOR PUNTUAL, un puntaje bajo es la señal de alerta o lo es uno alto — no asumas que "puntaje bajo" siempre significa algo negativo ni que siempre significa algo positivo, depende de cada factor.
 8. PROHIBIDA LA CONSTRUCCIÓN "ALINEAMIENTO DE EXPECTATIVAS": nunca uses la combinación "alineamiento de expectativas" en ninguna forma (ej: "las alineamiento de expectativas") — es gramaticalmente incorrecta. Para esa idea usa "las expectativas del rol", "lo que se espera de la función" u otra frase que no combine "alineamiento" con "expectativas".
+9. LARGO PAREJO EN "interpretacionPorFactor": cada descripción debe tener entre 2 y 3 frases (unas 35 a 55 palabras), con el mismo nivel de detalle en todos los factores: qué se observa en su forma de actuar y qué significa en el trabajo. No dejes ninguna de una sola frase ni de más de 4.
 
 CONTEXTO DEL PUESTO: ${proceso?.cargo || 'N/A'}
 PERFIL CONDUCTUAL (MBTI): ${mbtiType}
@@ -343,6 +345,14 @@ Devuelve UNICAMENTE un objeto JSON con esta estructura:
     ]);
 
     const resultado: any = { ...resultadoA, ...resultadoB };
+
+    // Siempre 2 fortalezas y 2 áreas de desarrollo: si la IA devuelve de más se queda con las 2 primeras; si devuelve de
+    // menos se deja constancia en el log (no se inventa contenido).
+    for (const campo of ['fortalezas', 'oportunidadesMejora'] as const) {
+      if (!Array.isArray(resultado[campo])) continue
+      if (resultado[campo].length > 2) resultado[campo] = resultado[campo].slice(0, 2)
+      else if (resultado[campo].length < 2) console.warn(`[WARNING] [GENERAR INFORME] ${campo}: la IA devolvió ${resultado[campo].length} en lugar de 2.`)
+    }
 
     resultado.ajusteCargo.score = scoreFinal;
 
