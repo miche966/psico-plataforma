@@ -242,13 +242,29 @@
 .pp-paso-meta { margin: 0.15rem 0 0; font-size: 0.9375rem; color: var(--pp-tinta-suave); }
 .pp-paso-estado { font-size: 0.9375rem; color: var(--pp-tinta-suave); }
 .pp-paso[data-estado="completada"] .pp-paso-estado { color: var(--pp-pino); font-weight: 700; }
+/* Comprobacion de camara: en computadora el texto y las acciones van a la izquierda y la camara a la derecha, para que todo entre sin scroll */
+.pp-ancho .pp-cabecera, .pp-ancho .pp-columna { max-width: 60rem; }
+.pp-preparacion { display: grid; gap: 0.5rem 3rem; grid-template-areas: "intro" "camara" "accion"; }
+.pp-prep-intro { grid-area: intro; }
+.pp-prep-camara { grid-area: camara; max-width: none; margin-bottom: 0.5rem; }
+.pp-prep-accion { grid-area: accion; }
+.pp-prep-accion .pp-chequeo { margin: 0 0 1rem; }
+.pp-prep-accion .pp-muted { margin: 0 0 1.25rem; }
+.pp-prep-intro .pp-lead { margin-bottom: 1rem; }
+@media (min-width: 56rem) {
+  .pp-preparacion { grid-template-columns: minmax(0, 1fr) 26rem; grid-template-areas: "intro camara" "accion camara"; align-items: start; }
+  .pp-prep-camara { margin-top: 0.4rem; }
+}
 .pp-camara { display: grid; gap: 0.9rem; justify-items: start; margin: 0 0 1.5rem; max-width: 30rem; }
 .pp-camara-vista { width: 100%; aspect-ratio: 16 / 9; display: grid; place-items: center; text-align: center; padding: 1rem; background: var(--pp-tinta); color: #cfdcd7; border-radius: var(--pp-radio); overflow: hidden; }
 .pp-camara-vista p { margin: 0; font-size: 0.9375rem; }
 .pp-camara-video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-.pp-chequeo { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; }
-.pp-chequeo li { color: var(--pp-tinta-suave); }
+.pp-chequeo { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+/* Cada linea lleva una burbuja de hoja de respuestas: vacia mientras falta, rellena de marcador cuando esta lista */
+.pp-chequeo li { display: flex; align-items: center; gap: 0.6rem; color: var(--pp-tinta-suave); }
+.pp-chequeo li::before { content: ""; flex-shrink: 0; width: 1.05rem; height: 1.05rem; border-radius: 50%; border: 2px solid var(--pp-linea-fuerte); background: transparent; box-sizing: border-box; }
 .pp-chequeo li[data-listo="true"] { color: var(--pp-pino); font-weight: 700; }
+.pp-chequeo li[data-listo="true"]::before { border-color: var(--pp-pino); background: var(--pp-marcador); }
 .pp-debug { margin: 0 0 1.5rem; padding: 1rem; overflow: auto; background: var(--pp-tinta); color: #cfe8dd; font-size: 0.75rem; border-radius: var(--pp-radio); }
 @media (max-width: 34rem) {
   .pp-paso { grid-template-columns: auto 1fr; }

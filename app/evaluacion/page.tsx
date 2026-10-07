@@ -191,36 +191,42 @@ export default function PortalCandidatoPage() {
     const hayCamara = !!stream
     const hayMicrofono = !!stream && stream.getAudioTracks().length > 0
     return (
-      <Marco titulo="Antes de empezar">
-        <h1 className="pp-titulo">Hola, {candidato?.nombre}</h1>
-        <p className="pp-lead">Antes de empezar, comprobemos que tu equipo esté listo. Para las video-entrevistas conviene que tu rostro esté bien iluminado y centrado, y que estés en un lugar tranquilo.</p>
-
-        <section className="pp-camara" aria-label="Prueba de cámara y micrófono">
-          <div className="pp-camara-vista">
-            {stream ? (
-              <video autoPlay muted playsInline ref={el => { if (el) el.srcObject = stream }} className="pp-camara-video" />
-            ) : (
-              <p>Activá la cámara para ver tu imagen</p>
-            )}
+      <Marco titulo="Antes de empezar" ancho>
+        <div className="pp-preparacion">
+          <div className="pp-prep-intro">
+            <h1 className="pp-titulo">Hola, {candidato?.nombre}</h1>
+            <p className="pp-lead">Antes de empezar, comprobemos que tu equipo esté listo. Para las video-entrevistas conviene que tu rostro esté bien iluminado y centrado, y que estés en un lugar tranquilo.</p>
           </div>
-          {!stream && <button type="button" className="pp-boton pp-boton-secundario" onClick={activarCamara}>Activar cámara y micrófono</button>}
-          <ul className="pp-chequeo">
-            <li data-listo={hayCamara}>{hayCamara ? 'Cámara lista' : 'Cámara sin activar'}</li>
-            <li data-listo={hayMicrofono}>{hayMicrofono ? 'Micrófono detectado' : 'Micrófono sin activar'}</li>
-          </ul>
-        </section>
 
-        <p className="pp-muted">Al continuar, confirmás que tu equipo funciona bien y que estás en un lugar tranquilo para hacer las pruebas.</p>
-        <button
-          type="button"
-          className="pp-boton"
-          onClick={() => {
-            localStorage.setItem(`setup_done_${candidatoId}`, '1')
-            detenerCamara()
-          }}
-        >
-          Todo funciona bien, empecemos
-        </button>
+          <section className="pp-camara pp-prep-camara" aria-label="Prueba de cámara y micrófono">
+            <div className="pp-camara-vista">
+              {stream ? (
+                <video autoPlay muted playsInline ref={el => { if (el) el.srcObject = stream }} className="pp-camara-video" />
+              ) : (
+                <p>Activá la cámara para ver tu imagen</p>
+              )}
+            </div>
+            {!stream && <button type="button" className="pp-boton pp-boton-secundario" onClick={activarCamara}>Activar cámara y micrófono</button>}
+          </section>
+
+          <div className="pp-prep-accion">
+            <ul className="pp-chequeo" aria-label="Estado del equipo" aria-live="polite">
+              <li data-listo={hayCamara}>{hayCamara ? 'Cámara lista' : 'Cámara sin activar'}</li>
+              <li data-listo={hayMicrofono}>{hayMicrofono ? 'Micrófono detectado' : 'Micrófono sin activar'}</li>
+            </ul>
+            <p className="pp-muted">Al continuar, confirmás que tu equipo funciona bien y que estás en un lugar tranquilo para hacer las pruebas.</p>
+            <button
+              type="button"
+              className="pp-boton"
+              onClick={() => {
+                localStorage.setItem(`setup_done_${candidatoId}`, '1')
+                detenerCamara()
+              }}
+            >
+              Todo funciona bien, empecemos
+            </button>
+          </div>
+        </div>
       </Marco>
     )
   }
