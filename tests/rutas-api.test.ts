@@ -26,9 +26,19 @@ for (const r of rutas) {
   const publica = RUTAS_API_PUBLICAS[r.ruta]
   const metodosAbiertos = publica ? publica.metodos : []
   const metodosCerrados = r.metodos.filter(m => !metodosAbiertos.includes(m))
-  if (metodosCerrados.length > 0) {
+  const esDeSupervisor = r.ruta === '/api/supervisor' || r.ruta.startsWith('/api/supervisor/')
+  if (esDeSupervisor) {
+    // Las rutas del supervisor solo aceptan supervisores: nunca son publicas ni aceptan la sesion de administrador
+    assert.equal(publica, undefined, `${r.ruta}: una ruta de supervisor no puede ser publica`)
+    assert.ok(r.codigo.includes('requireSupervisorSession'), `${r.ruta} es una ruta de supervisor y no llama a requireSupervisorSession`)
+    assert.ok(!r.codigo.includes('requireAdminSession'), `${r.ruta} es una ruta de supervisor y no debe usar requireAdminSession`)
+  } else if (metodosCerrados.length > 0) {
     // Cualquier metodo que el proxy deje cerrado tiene que seguir verificando la sesion de administrador en la propia ruta
     assert.ok(r.codigo.includes('requireAdminSession'), `${r.ruta} (${metodosCerrados.join(', ')}) no esta declarada como publica en lib/server/rutasApi.ts y tampoco llama a requireAdminSession`)
+  }
+  // Y a la inversa: ninguna ruta fuera de /api/supervisor acepta la sesion de supervisor, salvo whoami (solo le dice su rol)
+  if (!esDeSupervisor && r.ruta !== '/api/admin/whoami') {
+    assert.ok(!r.codigo.includes('requireSupervisorSession'), `${r.ruta} no es una ruta de supervisor y no debe aceptar su sesion`)
   }
   if (publica) {
     assert.ok(r.codigo.includes(publica.marcador), `${r.ruta} esta declarada publica por "${publica.mecanismo}" pero su codigo no contiene "${publica.marcador}"`)

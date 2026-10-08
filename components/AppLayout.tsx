@@ -17,6 +17,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [novedades, setNovedades] = useState(0)
   const [isDarkMode, setIsDarkMode] = useState(false)
 
+  // Un supervisor no tiene panel de administracion: su area es /supervisor
+  useEffect(() => {
+    if (role === 'supervisor') router.replace('/supervisor')
+  }, [role, router])
+
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme')
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -69,6 +74,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     ...(role === 'admin' ? [{ href: '/accesos', label: 'Accesos' }] : []),
     { href: '/seguridad', label: 'Seguridad' },
   ]
+
+  if (role === 'supervisor') return null
 
   return (
     <div className="admin-shell min-h-screen bg-slate-50 flex">
