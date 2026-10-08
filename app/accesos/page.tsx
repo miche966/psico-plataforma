@@ -5,6 +5,7 @@ import AppLayout from '@/components/AppLayout'
 import { getAdminHeaders } from '@/lib/evaluacionLink'
 import { UserPlus, Mail, CheckCircle2 } from 'lucide-react'
 import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
+import SupervisoresAccesos from '@/components/SupervisoresAccesos'
 
 interface Proceso {
   id: string
@@ -196,6 +197,8 @@ export default function AccesosPage() {
           </div>
         )}
       </div>
+
+      <SupervisoresAccesos />
     </AppLayout>
   )
 }

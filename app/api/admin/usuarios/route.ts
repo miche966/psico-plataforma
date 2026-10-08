@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { requireAdminSession, requireFullAdmin } from '@/lib/server/adminAuth'
 import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { registrarAcceso } from '@/lib/server/registroAccesos'
+import { borrarFactoresMfa } from '@/lib/server/borrarFactoresMfa'
+import { emailsAdmin } from '@/lib/server/supervisorRol'
 
 // Alta y listado de cuentas "viewer" (solo lectura, acotadas a procesos especificos).
 // Ambas operaciones son superadmin-only: un viewer nunca puede crear otro viewer ni
@@ -58,7 +60,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Elegí al menos un proceso para esta cuenta' }, { status: 400 })
     }
 
+    // Un administrador siempre entra como administrador (ADMIN_EMAILS se revisa primero): darle una cuenta de solo lectura no restringe nada
+    if (emailsAdmin().includes(email)) {
+      return NextResponse.json({ error: 'Ese email es de un administrador y siempre ve todo: una cuenta de solo lectura no le limitaría el acceso. Usá otro email.' }, { status: 409 })
+    }
+
     const db = createSupabaseAdmin()
+
+    // Una cuenta no puede ser a la vez de solo lectura y supervisor
+    const { data: esSupervisor, error: supervisorError } = await db.from('supervisores').select('email').eq('email', email).maybeSingle()
+    if (supervisorError && supervisorError.code !== '42P01') throw supervisorError
+    if (esSupervisor) return NextResponse.json({ error: 'Ese email ya es de un supervisor. Una cuenta no puede tener los dos accesos.' }, { status: 409 })
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(req.url).origin
     const { error: inviteError } = await db.auth.admin.inviteUserByEmail(email, {
@@ -110,24 +122,10 @@ async function restablecer2fa(req: Request, auth: { user?: { email?: string | nu
   if (cuentaError) throw cuentaError
   if (!cuenta) return NextResponse.json({ error: 'Esa cuenta no está entre las cuentas de solo lectura' }, { status: 404 })
 
-  // Supabase Auth no busca usuarios por email: se recorre el listado (hay pocas cuentas)
-  let userId: string | null = null
-  for (let pagina = 1; pagina <= 20 && !userId; pagina++) {
-    const { data, error } = await db.auth.admin.listUsers({ page: pagina, perPage: 200 })
-    if (error) throw error
-    userId = data.users.find(u => (u.email || '').toLowerCase() === email)?.id || null
-    if (data.users.length < 200) break
-  }
-  if (!userId) return NextResponse.json({ error: 'La cuenta todavía no creó su usuario (no aceptó la invitación)' }, { status: 404 })
+  const { encontrado, eliminados } = await borrarFactoresMfa(db, email)
+  if (!encontrado) return NextResponse.json({ error: 'La cuenta todavía no creó su usuario (no aceptó la invitación)' }, { status: 404 })
 
-  const { data: lista, error: listaError } = await db.auth.admin.mfa.listFactors({ userId })
-  if (listaError) throw listaError
-  const factores = lista?.factors || []
-  for (const factor of factores) {
-    const { error } = await db.auth.admin.mfa.deleteFactor({ id: factor.id, userId })
-    if (error) throw error
-  }
-  console.warn(`[admin/usuarios] 2FA restablecido por ${auth.user?.email}: ${factores.length} dispositivo(s) de ${email}`)
+  console.warn(`[admin/usuarios] 2FA restablecido por ${auth.user?.email}: ${eliminados} dispositivo(s) de ${email}`)
   await registrarAcceso(db, auth, { accion: 'restablecer_2fa' }, req)
-  return NextResponse.json({ success: true, eliminados: factores.length })
+  return NextResponse.json({ success: true, eliminados })
 }

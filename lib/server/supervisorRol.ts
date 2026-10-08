@@ -17,3 +17,11 @@ export function decidirRolSupervisor(entrada: {
   if (entrada.esAdmin || entrada.esViewer) return 'doble_rol'
   return 'supervisor'
 }
+
+/** Emails de los administradores (ADMIN_EMAILS), normalizados. Un administrador nunca puede ser supervisor. */
+export function emailsAdmin(): string[] {
+  return (process.env.ADMIN_EMAILS || 'mochoa@republicamicrofinanzas.com.uy')
+    .split(',')
+    .map(email => email.trim().toLowerCase())
+    .filter(Boolean)
+}
