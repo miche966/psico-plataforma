@@ -670,10 +670,10 @@ export default function CandidatosPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const misSesiones = sesionesData.filter(s => s.candidato_id === candidato.id && (s.puntaje_bruto || s.puntajes || s.resultados))
                             setCandidatoParaDashboard(candidato)
                             setMostrarDashboard(true)
-                            setSimularDatos(misSesiones.length === 0)
+                            // Siempre con datos reales: sin resultados la ficha queda vacía, el ejemplo es solo a pedido
+                            setSimularDatos(false)
                           }}
                           className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
                           title="Ver dashboard ejecutivo"
@@ -956,6 +956,12 @@ export default function CandidatosPage() {
             {simularDatos && (
               <div role="status" className="px-6 py-3 bg-amber-50 border-b border-amber-300 text-amber-900 text-sm">
                 Estás viendo datos de ejemplo generados a partir del nombre, no los resultados reales de {candidatoParaDashboard.nombre}.
+              </div>
+            )}
+
+            {!simularDatos && !sesionesData.some(s => s.candidato_id === candidatoParaDashboard.id && (s.puntaje_bruto || s.puntajes || s.resultados)) && (
+              <div role="status" className="px-6 py-3 bg-slate-50 border-b border-slate-200 text-slate-700 text-sm">
+                {candidatoParaDashboard.nombre} todavía no tiene resultados de pruebas, por eso no hay nada para mostrar. «Ver datos de ejemplo» muestra un perfil ilustrativo, no sus resultados.
               </div>
             )}
 
