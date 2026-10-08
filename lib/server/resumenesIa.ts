@@ -44,6 +44,22 @@ export async function guardarResumen(
   }
 }
 
+export type ResumenGuardado = { candidato_id: string; proceso_id: string | null; resumen: string; generado_en: string }
+
+/**
+ * Los resumenes que una cuenta puede ver: solo de los candidatos indicados y, si se pasan procesos permitidos (cuentas de solo
+ * lectura), solo de esos procesos. Los mas recientes primero.
+ */
+export function resumenesVisibles(
+  resumenes: ResumenGuardado[],
+  candidatoIds: Set<string>,
+  procesosPermitidos: Set<string> | null,
+): ResumenGuardado[] {
+  return resumenes
+    .filter(r => candidatoIds.has(r.candidato_id) && (!procesosPermitidos || (!!r.proceso_id && procesosPermitidos.has(r.proceso_id))))
+    .sort((a, b) => new Date(b.generado_en).getTime() - new Date(a.generado_en).getTime())
+}
+
 /** Todos los resumenes guardados; si la tabla no existe todavia, devuelve una lista vacia. */
 export async function leerResumenes(db: any): Promise<{ candidato_id: string; proceso_id: string | null; resumen: string; generado_en: string }[]> {
   try {

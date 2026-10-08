@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 
-const { guardarResumen, leerResumenes, claveResumen } = await import('../lib/server/resumenesIa.ts')
+const { guardarResumen, leerResumenes, claveResumen, resumenesVisibles } = await import('../lib/server/resumenesIa.ts')
 
 const CANDIDATO = 'fc4fd900-2198-4300-a37f-6cd1e6a439b2'
 const PROCESO = '740a08d1-a5f9-45e2-9887-a7b2ece99796'
@@ -66,4 +66,19 @@ const filas = [{ candidato_id: CANDIDATO, proceso_id: PROCESO, resumen: 'r', gen
 const dbLee = { from: () => ({ select: () => ({ range: () => ({ order: async () => ({ data: filas, error: null }) }) }) }) }
 assert.deepEqual(await leerResumenes(dbLee), filas)
 
-console.log('✅ resumenes-ia: un resumen por candidato y proceso que se reemplaza al regenerar, ids que no son uuid no se guardan, y sin la tabla o con la BD caida nunca lanza (el panel carga igual)')
+// Quien ve cada resumen: solo de los candidatos indicados, mas recientes primero; una cuenta de solo lectura, solo de sus procesos
+const OTRO = '11111111-2222-4333-8444-555555555555'
+const PROCESO_AJENO = '99999999-2222-4333-8444-555555555555'
+const todos = [
+  { candidato_id: CANDIDATO, proceso_id: PROCESO, resumen: 'viejo', generado_en: '2026-10-01T12:00:00Z' },
+  { candidato_id: CANDIDATO, proceso_id: null, resumen: 'nuevo sin proceso', generado_en: '2026-10-05T12:00:00Z' },
+  { candidato_id: CANDIDATO, proceso_id: PROCESO_AJENO, resumen: 'de otro proceso', generado_en: '2026-10-03T12:00:00Z' },
+  { candidato_id: OTRO, proceso_id: PROCESO, resumen: 'de otra persona', generado_en: '2026-10-06T12:00:00Z' },
+]
+assert.deepEqual(resumenesVisibles(todos, new Set([CANDIDATO]), null).map(r => r.resumen), ['nuevo sin proceso', 'de otro proceso', 'viejo'])
+assert.deepEqual(resumenesVisibles(todos, new Set([CANDIDATO]), new Set([PROCESO])).map(r => r.resumen), ['viejo'])
+assert.deepEqual(resumenesVisibles(todos, new Set(), null), [])
+assert.deepEqual(resumenesVisibles([], new Set([CANDIDATO]), null), [])
+assert.equal(todos[0].resumen, 'viejo')
+
+console.log('✅ resumenes-ia: un resumen por candidato y proceso que se reemplaza al regenerar, ids que no son uuid no se guardan, sin la tabla o con la BD caida nunca lanza (el panel carga igual), y cada cuenta ve solo los resumenes de sus candidatos y procesos')
