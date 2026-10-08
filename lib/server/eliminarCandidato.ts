@@ -6,7 +6,7 @@
 //   base tenga ON DELETE CASCADE en todas las tablas.
 
 /** Tablas con una columna candidato_id que se vacian antes de borrar al candidato. */
-const TABLAS_DEL_CANDIDATO = ['candidatos_procesos', 'resumenes_ia', 'informes_psicometricos', 'progreso_evaluaciones', 'recordatorios_evaluacion'] as const
+const TABLAS_DEL_CANDIDATO = ['candidatos_procesos', 'resumenes_ia', 'informes_psicometricos', 'progreso_evaluaciones', 'recordatorios_evaluacion', 'supervisor_evaluados', 'informes_supervisor'] as const
 
 export type ResumenEliminacion = {
   candidato: { id: string; nombre: string; apellido: string; email: string }

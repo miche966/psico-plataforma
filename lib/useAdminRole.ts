@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { getAdminHeaders } from '@/lib/evaluacionLink'
 
-export type AdminRole = 'admin' | 'viewer'
+export type AdminRole = 'admin' | 'viewer' | 'supervisor'
 
 interface EstadoRol {
   role: AdminRole | null
@@ -30,7 +30,7 @@ export function useAdminRole(): EstadoRol {
         const res = await fetch('/api/admin/whoami', { headers, cache: 'no-store' })
         const data = await res.json().catch(() => ({}))
         if (!vivo) return
-        if (res.ok && (data.role === 'admin' || data.role === 'viewer')) {
+        if (res.ok && (data.role === 'admin' || data.role === 'viewer' || data.role === 'supervisor')) {
           setEstado({ role: data.role, allowedProcesoIds: data.allowedProcesoIds ?? null, mfaRequerido: data.mfaRequerido === true, loading: false })
         } else {
           setEstado({ role: null, allowedProcesoIds: null, mfaRequerido: false, loading: false })

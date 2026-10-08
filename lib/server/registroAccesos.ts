@@ -1,6 +1,11 @@
 import { z } from 'zod'
 
-export type AccionRegistrada = 'ver_informe' | 'ver_videos' | 'ver_respuestas_sesion' | 'generar_informe' | 'restablecer_2fa' | 'eliminar_candidato'
+export type AccionRegistrada =
+  | 'ver_informe' | 'ver_videos' | 'ver_respuestas_sesion' | 'generar_informe' | 'restablecer_2fa' | 'eliminar_candidato'
+  // Administracion de supervisores (ver docs/PLAN_SUPERVISORES.md)
+  | 'habilitar_supervisor' | 'quitar_supervisor' | 'publicar_informe_supervisor'
+  // Accesos de los propios supervisores
+  | 'supervisor_ver_evaluados' | 'supervisor_ver_evaluado' | 'supervisor_ver_videos' | 'supervisor_descargar_informe'
 
 const esUuid = (v: unknown): v is string => z.guid().safeParse(v).success
 
