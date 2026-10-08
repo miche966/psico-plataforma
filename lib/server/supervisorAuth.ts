@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createSupabaseAdmin } from './supabaseAdmin'
 import { cumpleMfa } from './mfa'
 import { clavePublica } from './clavesSupabase'
-import { decidirRolSupervisor } from './supervisorRol'
+import { decidirRolSupervisor, emailsAdmin } from './supervisorRol'
 
 // Autorizacion de los supervisores de la empresa (ver docs/PLAN_SUPERVISORES.md). Es un rol APARTE del administrador y del de
 // solo lectura: requireAdminSession nunca devuelve una sesion para un supervisor, y estas rutas (/api/supervisor/*) solo
@@ -11,13 +11,6 @@ import { decidirRolSupervisor } from './supervisorRol'
 export type SupervisorSession =
   | { response: NextResponse; user?: undefined; role?: undefined; email?: undefined }
   | { user: any; role: 'supervisor'; email: string; response?: undefined }
-
-function emailsAdmin(): string[] {
-  return (process.env.ADMIN_EMAILS || 'mochoa@republicamicrofinanzas.com.uy')
-    .split(',')
-    .map(email => email.trim().toLowerCase())
-    .filter(Boolean)
-}
 
 /**
  * Valida la sesion de un supervisor: el token lo valida Supabase Auth, se exige 2FA ('aal2') salvo `permitirAal1`

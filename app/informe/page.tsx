@@ -82,6 +82,7 @@ import { estimarMBTI, estimarMBTIDesdeSesiones } from '@/lib/baremos'
 import { resumenCognitivo, COLOR_VALORACION } from '@/lib/baremoCognitivo'
 import { obtenerNarrativaFactor } from '@/lib/interpretaciones/narrativasFactor'
 import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
+import CompartirConSupervisores from '@/components/CompartirConSupervisores'
 
 
 const DOMINIOS = {
@@ -1323,6 +1324,8 @@ PsicoPlataforma - Gestión Inteligente de Talento
             <input id="informe-evaluador" style={{ ...s.ta, padding: '0.75rem' }} value={inf.nombreEvaluador || ''} onChange={e => upd('nombreEvaluador', e.target.value)} />
           </div>
         </div>
+        {/* ── COMPARTIR CON SUPERVISORES (solo el administrador completo) ──── */}
+        {!esViewer && id && <CompartirConSupervisores candidatoId={id} />}
         {/* ── PIE DE INFORME (AUDITORÍA) ────────────────────────────────── */}
         <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--slate-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--slate-500)', fontSize: '0.85rem' }}>
           <span>PsicoPlataforma</span>
