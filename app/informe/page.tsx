@@ -83,6 +83,7 @@ import { resumenCognitivo, COLOR_VALORACION } from '@/lib/baremoCognitivo'
 import { obtenerNarrativaFactor } from '@/lib/interpretaciones/narrativasFactor'
 import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
 import CompartirConSupervisores from '@/components/CompartirConSupervisores'
+import InformeSupervisorEditor from '@/components/InformeSupervisorEditor'
 
 
 const DOMINIOS = {
@@ -1325,6 +1326,7 @@ PsicoPlataforma - Gestión Inteligente de Talento
           </div>
         </div>
         {/* ── COMPARTIR CON SUPERVISORES (solo el administrador completo) ──── */}
+        {!esViewer && id && <InformeSupervisorEditor candidatoId={id} nombre={`${candidato.nombre} ${candidato.apellido}`.trim()} />}
         {!esViewer && id && <CompartirConSupervisores candidatoId={id} />}
         {/* ── PIE DE INFORME (AUDITORÍA) ────────────────────────────────── */}
         <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--slate-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--slate-500)', fontSize: '0.85rem' }}>
