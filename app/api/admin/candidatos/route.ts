@@ -4,6 +4,7 @@ import { createSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { candidatoIdsEnProcesos } from '@/lib/server/procesoScope'
 import { eliminarCandidato, resumenDeEliminacion } from '@/lib/server/eliminarCandidato'
 import { registrarAcceso } from '@/lib/server/registroAccesos'
+import { leerResumenes, resumenesVisibles } from '@/lib/server/resumenesIa'
 
 const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -50,7 +51,22 @@ export async function GET(request: Request) {
       if (res.data) sesiones = sesiones.concat(res.data)
     }
 
-    return NextResponse.json({ candidatos: candidatos || [], sesiones })
+    // Resumenes con IA ya guardados (los genera el Centro de control): la ficha ejecutiva los muestra sin gastar IA
+    const resumenes = resumenesVisibles(
+      await leerResumenes(db),
+      new Set<string>(candidateIds),
+      auth.role === 'viewer' ? new Set<string>(auth.allowedProcesoIds) : null,
+    )
+    const procesoIds = Array.from(new Set(resumenes.map(x => x.proceso_id).filter((id): id is string => !!id)))
+    const nombres = new Map<string, string>()
+    if (procesoIds.length > 0) {
+      const { data: procs, error: procsError } = await db.from('procesos').select('id, nombre').in('id', procesoIds)
+      if (procsError) console.error('[admin/candidatos GET] No se pudieron leer los nombres de proceso de los resumenes:', procsError.message)
+      for (const p of procs || []) nombres.set(p.id, p.nombre)
+    }
+    const resumenesIa = resumenes.map(x => ({ ...x, proceso_nombre: x.proceso_id ? nombres.get(x.proceso_id) || null : null }))
+
+    return NextResponse.json({ candidatos: candidatos || [], sesiones, resumenesIa })
   } catch (error) {
     console.error('[admin/candidatos GET]', error)
     return NextResponse.json({ error: 'No se pudieron cargar los candidatos' }, { status: 500 })

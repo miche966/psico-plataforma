@@ -12,6 +12,7 @@ import { normalizarContextoInterpretacion, obtenerInterpretacion } from '@/lib/i
 import { useAdminRole } from '@/lib/useAdminRole'
 import { resumenCognitivo, valoracionDePercentil } from '@/lib/baremoCognitivo'
 import { normalizarTestId } from '@/lib/progresoEvaluacion'
+import { nombreDeProcesoLegible } from '@/lib/nombreProceso'
 
 interface Candidato {
   id: string
@@ -42,6 +43,8 @@ export default function CandidatosPage() {
   const [filtro, setFiltro] = useState('')
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'completado' | 'incompleto' | 'pendiente'>('todos')
   const [sesionesData, setSesionesData] = useState<any[]>([])
+  // Resumenes con IA ya guardados (los genera el Centro de control), uno por candidato y proceso
+  const [resumenesIa, setResumenesIa] = useState<Array<{ candidato_id: string; proceso_id: string | null; proceso_nombre: string | null; resumen: string; generado_en: string }>>([])
   const [sesionesCount, setSesionesCount] = useState<Record<string, number>>({})
   const [sesionParaDetalle, setSesionParaDetalle] = useState<any | null>(null)
   const [mostrarDetalle, setMostrarDetalle] = useState(false)
@@ -112,6 +115,7 @@ export default function CandidatosPage() {
       })
 
       setSesionesData(sData)
+      setResumenesIa(payload.resumenesIa || [])
       setSesionesCount(counts)
       setCandidatos(data)
     } catch (err) {
@@ -1093,6 +1097,30 @@ export default function CandidatosPage() {
                       </div>
                     </section>
 
+                    {!simularDatos && (() => {
+                      const guardados = resumenesIa.filter(x => x.candidato_id === candidatoParaDashboard.id)
+                      return (
+                        <section aria-labelledby="resumen-ia-guardado" className="pb-8 border-b border-slate-200">
+                          <h4 id="resumen-ia-guardado" className="text-lg font-semibold text-slate-900" style={SERIF}>Resumen con IA</h4>
+                          {guardados.length === 0 ? (
+                            <p className="mt-2 text-sm text-slate-500">Todavía no hay un resumen con IA guardado para este candidato. Se genera desde el Centro de control.</p>
+                          ) : (
+                            <div className="mt-3 space-y-5">
+                              {guardados.map(g => (
+                                <div key={`${g.candidato_id}:${g.proceso_id || 'independiente'}`}>
+                                  {guardados.length > 1 && (
+                                    <p className="text-sm font-semibold text-slate-700 mb-1">{g.proceso_nombre ? nombreDeProcesoLegible(g.proceso_nombre) : 'Evaluación independiente'}</p>
+                                  )}
+                                  <p className="text-slate-700 leading-relaxed whitespace-pre-line">{g.resumen}</p>
+                                  <p className="mt-2 text-xs text-slate-500">Generado el {new Date(g.generado_en).toLocaleDateString('es-UY')} en el Centro de control, donde también se regenera.</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </section>
+                      )
+                    })()}
+
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-8">
                       <section aria-labelledby="resumen-perfil">
                         <h4 id="resumen-perfil" className="text-lg font-semibold text-slate-900" style={SERIF}>Perfil conductual</h4>
@@ -1174,7 +1202,7 @@ export default function CandidatosPage() {
                           <h5 style={SERIF} className="text-lg font-semibold text-slate-900">Fortaleza clave</h5>
                         </div>
                         {(() => {
-                          let text = "El evaluado demuestra un excelente equilibrio conductual y adaptabilidad a las demandas estándar. Se perfila como una persona propicia para roles dinámicos de soporte corporativo."
+                          let text = "Ningún factor del Big Five llega a 4 de 5, el nivel que se toma como destacado. El perfil conductual y el resumen con IA tienen el detalle."
                           const resp = getValorOCEAN('responsabilidad')
                           const ext = getValorOCEAN('extraversion')
                           const amab = getValorOCEAN('amabilidad')
@@ -1194,7 +1222,7 @@ export default function CandidatosPage() {
                           <h5 style={SERIF} className="text-lg font-semibold text-slate-900">Desafío adaptativo</h5>
                         </div>
                         {(() => {
-                          let text = "En entornos de extrema imprevisibilidad o sin metas explícitas, el evaluado se beneficiará de contar con directrices claras y metas a corto plazo para sostener su eficiencia."
+                          let text = "Ningún indicador del Big Five señala un punto de atención (se consideran neuroticismo desde 3,5 o responsabilidad por debajo de 3)."
                           const neur = getValorOCEAN('neuroticismo')
                           const resp = getValorOCEAN('responsabilidad')
                           
@@ -1212,11 +1240,10 @@ export default function CandidatosPage() {
                           <h5 style={SERIF} className="text-lg font-semibold text-slate-900">Plan de incorporación sugerido</h5>
                         </div>
                         {(() => {
-                          let text = "Implementar un plan de inducción técnica enfocado en la asimilación del Baremo Ideal del puesto. Programar revisiones de desempeño mensuales durante el primer trimestre."
                           const apert = getValorOCEAN('apertura')
-                          
+                          let text: string
                           if (apert >= 4.0) text = "Favorecer su integración mediante asignación a proyectos transversales de diseño estratégico. Brindarle libertad para proponer soluciones a problemáticas existentes."
-                          else text = "Acompañarlo de un tutor con experiencia que actúe como validador al inicio. Ofrecer retroalimentación positiva periódica para apuntalar su asimilación del rol."
+                          else text = "Acompañar los primeros meses con una persona con experiencia que actúe como tutora y ofrecer retroalimentación positiva periódica para apuntalar la asimilación del rol."
                           
                           return <p className="text-slate-700 leading-relaxed">{hayBF ? text : 'Sin datos de personalidad para esta lectura.'}</p>
                         })()}
